@@ -1,0 +1,11 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ~#PROJECT#~
+Upstream-Contact: ~#OWNER#~ <~#OWNEREMAIL#~>
+Source: https://~#CVSPATH#~/~#PROJECT#~
+
+Files: *
+Copyright: Copyright ~#CURRENTYEAR#~ ~#OWNER#~ <~#OWNEREMAIL#~>
+License: RESERVED
+
+License: RESERVED
+ ALL RIGHTS RESERVED
