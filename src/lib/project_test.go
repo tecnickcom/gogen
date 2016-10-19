@@ -1,4 +1,4 @@
-package dummy
+package ~#LIBPACKAGE#~
 
 import (
 	"fmt"
