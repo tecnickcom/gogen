@@ -28,10 +28,14 @@ so the developer can immediately start writing the logic code while reusing a co
 * Logging;
 * StatsD client to collect usage metrics;
 * Unit tests;
+* Makefile;
+* Docker build;
 
 ### Library Features
 
-* ...
+* Unit tests;
+* Makefile;
+* Docker build;
 
 
 ## Quick Start
