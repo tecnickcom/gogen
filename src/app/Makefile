@@ -293,7 +293,7 @@ rpm:
 	--define "_topdir $(PATHRPMPKG)" \
 	--define "_vendor $(VENDOR)" \
 	--define "_owner $(OWNER)"\
-	 --define "_project $(PROJECT)" \
+	--define "_project $(PROJECT)" \
 	--define "_package $(PKGNAME)" \
 	--define "_version $(VERSION)" \
 	--define "_release $(RELEASE)" \
@@ -386,6 +386,7 @@ dockertest:
 	@exit `grep -ic "false" target/project_docker_container.run`
 
 # Full build and test sequence
+# You may want to change this and remove the option you don't need
 buildall: deps qa rpm deb bz2 crossbuild
 
 # Build everything inside a Docker container

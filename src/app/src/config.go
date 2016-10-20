@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -84,7 +85,7 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 
 	// support environment variables for the remote configuration
 	viper.AutomaticEnv()
-	viper.SetEnvPrefix(ProgramName) // will be uppercased automatically
+	viper.SetEnvPrefix(strings.Replace(ProgramName, "-", "_", -1)) // will be uppercased automatically
 	viper.BindEnv("remoteConfigProvider")
 	viper.BindEnv("remoteConfigEndpoint")
 	viper.BindEnv("remoteConfigPath")

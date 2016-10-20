@@ -16,3 +16,10 @@ func TestGetStatus(t *testing.T) {
 		t.Error(fmt.Errorf("The expected status error for the code 200 is: %s", StatusSuccess))
 	}
 }
+
+func BenchmarkGetStatus(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		getStatus(200)
+	}
+}
