@@ -1,6 +1,6 @@
 # gogen
 
-*Command-line tool to generate GO applications and libraries*
+*Command-line tool to generate GO applications and libraries with reusabe logic.*
 
 [![Donate via PayPal](https://img.shields.io/badge/donate-paypal-87ceeb.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&currency_code=GBP&business=paypal@tecnick.com&item_name=donation%20for%20gogen%20project)
 *Please consider supporting this project by making a donation via [PayPal](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&currency_code=GBP&business=paypal@tecnick.com&item_name=donation%20for%20gogen%20project)*
@@ -14,10 +14,23 @@
 
 ## Description
 
-This is a command-line tool to generate GO applications and libraries.
+This is a command-line tool to quickly generate GO applications and libraries with a common set of features and reusable logic.
 
-Each GO application and library built with this tool contains a set of common features,
-so the developer can immediately start writing the logic code while reusing a common infrastructure.
+Each GO project built with this tool adheres to the set of conventions detailed in the following articles:
+
+* [Software Naming](https://technick.net/guides/software/software_naming)
+* [Software Structure](https://technick.net/guides/software/software_structure)
+* [Software Versioning](https://technick.net/guides/software/software_versioning)
+* [Software Configuration](https://technick.net/guides/software/software_configuration)
+* [Software Logging Format](https://technick.net/guides/software/software_logging_format)
+* [Software Metrics](https://technick.net/guides/software/software_metrics)
+* [Simple API JSON Response Format](https://technick.net/guides/software/software_json_api_format)
+* [Software Automation](https://technick.net/guides/software/software_automation)
+* [Build Software with Docker](https://technick.net/guides/software/software_docker_build)
+
+Each generated project is immediately functional and can be fully tested using the ```make qa``` command.
+
+To understand the logic of the generated applications please start with the ```main.go``` file and follow the code.
 
 
 ### Application Features
@@ -58,9 +71,9 @@ make new TYPE=app CONFIG=myproject.cfg
 * **TYPE** defines the project type: app or lib
 * **CONFIG** specify the configuration file containing the project settings.
 
-To create a new configuration please clone *default.cfg* and change the values.
+To create a new configuration please clone the *default.cfg* file and change the values.
 
-All projects are creted inside the *target* directory and needs to be moved to the correct path inside the *GOPATH/src*.
+All projects are creted inside the *target* directory and should be moved to the correct path inside the *$GOPATH/src*.
 
 
 ## Developer(s) Contact
