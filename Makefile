@@ -25,6 +25,10 @@ endif
 # include the configuration file
 include $(CONFIG)
 
+# Prefix for environmental variables
+UPROJECT=$(shell echo $(PROJECT) | tr a-z A-Z | tr - _)
+
+
 # --- MAKE TARGETS ---
 
 # Display general help about this command
@@ -47,7 +51,7 @@ new: newproject rename$(TYPE) template confirm
 newproject:
 	@mkdir -p ./target/$(CVSPATH)/$(PROJECT)
 	@rm -rf ./target/$(CVSPATH)/$(PROJECT)/*
-	@cp -rf ./src/$(TYPE)/* ./target/$(CVSPATH)/$(PROJECT)/
+	@cp -rf ./src/$(TYPE)/. ./target/$(CVSPATH)/$(PROJECT)/
 
 # Rename some application files
 renameapp:
