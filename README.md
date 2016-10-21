@@ -68,8 +68,12 @@ make help
 make new TYPE=app CONFIG=myproject.cfg
 ```
 
-* **TYPE** defines the project type: app or lib
-* **CONFIG** specify the configuration file containing the project settings.
+* **TYPE** is the project type:
+    * **lib**  :  library
+    * **app**  :  command-line application
+    * **srv**  :  HTTP API service
+
+* **CONFIG** is the configuration file containing the project settings.
 
 To create a new configuration please clone the *default.cfg* file and change the values.
 

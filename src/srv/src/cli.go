@@ -18,8 +18,12 @@ func cli() (*cobra.Command, error) {
 	rootCmd := new(cobra.Command)
 
 	// overwrites the configuration parameters with the ones specified in the command line (if any)
+	rootCmd.Flags().StringVarP(&appParams.serverAddress, "serverAddress", "u", cfgParams.serverAddress, "HTTP API address (ip:port) or just (:port)")
+	rootCmd.Flags().StringVarP(&appParams.statsPrefix, "statsPrefix", "p", cfgParams.statsPrefix, "StatsD bucket prefix name")
+	rootCmd.Flags().StringVarP(&appParams.statsNetwork, "statsNetwork", "k", cfgParams.statsNetwork, "StatsD client network type (udp or tcp)")
+	rootCmd.Flags().StringVarP(&appParams.statsAddress, "statsAddress", "m", cfgParams.statsAddress, "StatsD daemon address (ip:port) or just (:port)")
+	rootCmd.Flags().IntVarP(&appParams.statsFlushPeriod, "statsFlushPeriod", "r", cfgParams.statsFlushPeriod, "StatsD client flush period in milliseconds")
 	rootCmd.Flags().StringVarP(&appParams.logLevel, "logLevel", "o", cfgParams.logLevel, "Log level: panic, fatal, error, warning, info, debug")
-	rootCmd.Flags().IntVarP(&appParams.quantity, "quantity", "r", cfgParams.quantity, "Number of results to return")
 
 	rootCmd.Use = "~#PROJECT#~"
 	rootCmd.Short = "~#SHORTDESCRIPTION#~"
@@ -31,12 +35,12 @@ func cli() (*cobra.Command, error) {
 			return err
 		}
 
-		// get results
-		for i := 0; i < appParams.quantity; i++ {
-			getResult()
-		}
+		// initialize StatsD client (ignore errors)
+		initStats(appParams)
+		defer stats.Close()
 
-		return nil
+		// start the HTTP server
+		return startServer(appParams.serverAddress)
 	}
 
 	// sub-command to print the version

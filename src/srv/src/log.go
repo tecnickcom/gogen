@@ -49,6 +49,9 @@ func (f *logJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
 	data["msg"] = entry.Message
 	data["level"] = entry.Level.String()
 
+	// count each error type
+	stats.Increment(fmt.Sprintf("log.%s", data["level"]))
+
 	serialized, err := json.Marshal(data)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to marshal fields to JSON, %v", err)

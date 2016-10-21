@@ -107,6 +107,11 @@ Please check all the available options using `make help`.
 
 Flags:
 
+-u, --serverAddress="8543": HTTP API address for server mode (ip:port) or just (:port)
+-p, --statsPrefix="": StatsD bucket prefix name
+-k, --statsNetwork="udp": StatsD client network type (udp or tcp)
+-m, --statsAddress=":8125": StatsD daemon address (ip:port) or just (:port)
+-r, --statsFlushPeriod=100: StatsD client flush period in milliseconds
 -o, --loglevel=INFO: Log level: panic, fatal, error, warning, info, debug
 ```
 
@@ -133,6 +138,16 @@ The equivalent environment variables are:
 * ~#UPROJECT#~_REMOTECONFIGENDPOINT
 * ~#UPROJECT#~_REMOTECONFIGPATH
 * ~#UPROJECT#~_REMOTECONFIGSECRETKEYRING
+
+
+## Server Mode
+
+When the server mode is enabled a RESTful HTTP JSON API server will listen on the configured **address:port** for the following entry points:
+
+| ENTRY POINT                   | METHOD | DESCRIPTION                                                    |
+|:----------------------------- |:------:|:-------------------------------------------------------------- |
+|<nobr> /                </nobr>| GET    |<nobr> return a list of available entry points and tests </nobr>|
+|<nobr> /status          </nobr>| GET    |<nobr> check the server status                           </nobr>|
 
 
 ## Examples

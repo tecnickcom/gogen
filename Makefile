@@ -40,6 +40,13 @@ help:
 	@echo "    make new TYPE=app CONFIG=myproject.cfg  :  Generate a new go project"
 	@echo "    make clean                              :  Remove all generated projects"
 	@echo ""
+	@echo "    TYPE is the project type:"
+	@echo "        lib : library"
+	@echo "        app : command-line application"
+	@echo "        srv : HTTP API service"
+	@echo ""
+	@echo "    CONFIG is the configuration file containing the project settings."
+	@echo ""
 
 # Alias for help target
 all: help
@@ -57,8 +64,11 @@ newproject:
 renameapp:
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/usr/share/man/man1/project.1 ./target/$(CVSPATH)/$(PROJECT)/resources/usr/share/man/man1/$(PROJECT).1
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/$(PROJECT)
-	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/$(PROJECT)
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/test/etc/project ./target/$(CVSPATH)/$(PROJECT)/resources/test/etc/$(PROJECT)
+
+# Rename some service files
+renamesrv: renameapp
+	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/$(PROJECT)
 
 # Rename some lib files
 renamelib:
@@ -73,6 +83,7 @@ template:
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s|~#CVSPATH#~|$(CVSPATH)|" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#VENDOR#~/$(VENDOR)/" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#OWNER#~/$(OWNER)/" {} \;
+	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#OWNEREMAIL#~/$(OWNEREMAIL)/" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#CURRENTYEAR#~/$(CURRENTYEAR)/" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#LIBPACKAGE#~/$(LIBPACKAGE)/" {} \;
 
