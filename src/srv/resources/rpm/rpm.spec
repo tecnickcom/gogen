@@ -34,6 +34,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %attr(-,root,root) %{_binpath}
+%attr(-,root,root) %{_initpath}
 %attr(-,root,root) %{_docpath}
 %attr(-,root,root) %{_manpath}
 %docdir %{_docpath}

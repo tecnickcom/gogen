@@ -1,0 +1,12 @@
+{
+    "remoteConfigProvider" : "",
+    "remoteConfigEndpoint" : "",
+    "remoteConfigPath" : "",
+    "remoteConfigSecretKeyring" : "",
+    "serverAddress": ":8812",
+    "statsPrefix": "~#PROJECT#~",
+    "statsNetwork": "udp",
+    "statsAddress": ":8125",
+    "statsFlushPeriod": 100,
+    "logLevel" : "debug"
+}

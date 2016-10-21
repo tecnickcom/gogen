@@ -3,10 +3,6 @@
     "remoteConfigEndpoint" : "",
     "remoteConfigPath" : "",
     "remoteConfigSecretKeyring" : "",
-    "serverAddress": ":8810",
-    "statsPrefix": "~#PROJECT#~",
-    "statsNetwork": "udp",
-    "statsAddress": ":8125",
-    "statsFlushPeriod": 100,
-    "logLevel" : "info"
+    "logLevel" : "info",
+    "quantity" : 10
 }

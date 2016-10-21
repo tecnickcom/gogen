@@ -55,6 +55,9 @@ BINPATH=usr/bin/
 # Path for configuration files
 CONFIGPATH=etc/$(PROJECT)/
 
+# Path for init script
+INITPATH=etc/init.d/
+
 # Path path for documentation
 DOCPATH=usr/share/doc/$(PKGNAME)/
 
@@ -66,6 +69,9 @@ PATHINSTBIN=$(DESTDIR)/$(BINPATH)
 
 # Installation path for the configuration files
 PATHINSTCFG=$(DESTDIR)/$(CONFIGPATH)
+
+# Installation path for the init file
+PATHINSTINIT=$(DESTDIR)/$(INITPATH)
 
 # Installation path for documentation
 PATHINSTDOC=$(DESTDIR)/$(DOCPATH)
@@ -223,6 +229,12 @@ install: uninstall
 	cp -f ./VERSION $(PATHINSTDOC)
 	cp -f ./RELEASE $(PATHINSTDOC)
 	chmod -R 644 $(PATHINSTDOC)*
+ifneq ($(strip $(INITPATH)),)
+	mkdir -p $(PATHINSTINIT)
+	cp -ru ./resources/${INITPATH}* $(PATHINSTINIT)
+	find $(PATHINSTINIT) -type d -exec chmod 755 {} \;
+	find $(PATHINSTINIT) -type f -exec chmod 755 {} \;
+endif
 ifneq ($(strip $(CONFIGPATH)),)
 	mkdir -p $(PATHINSTCFG)
 	touch -c $(PATHINSTCFG)*
@@ -291,6 +303,7 @@ rpm:
 	--define "_binpath /$(BINPATH)" \
 	--define "_docpath /$(DOCPATH)" \
 	--define "_configpath /$(CONFIGPATH)" \
+	--define "_initpath /$(INITPATH)" \
 	--define "_manpath /$(MANPATH)" \
 	-bb resources/rpm/rpm.spec
 
@@ -313,6 +326,10 @@ deb: build
 	echo "$(BINPATH)* $(BINPATH)" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
 	echo $(DOCPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
 	echo "$(DOCPATH)* $(DOCPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+ifneq ($(strip $(INITPATH)),)
+	echo $(INITPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
+	echo "$(INITPATH)* $(INITPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+endif
 ifneq ($(strip $(CONFIGPATH)),)
 	echo $(CONFIGPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
 	echo "$(CONFIGPATH)* $(CONFIGPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install

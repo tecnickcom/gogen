@@ -10,8 +10,12 @@ import (
 
 func TestCheckParams(t *testing.T) {
 	err := checkParams(&params{
-		quantity: 10,
-		logLevel: "info",
+		serverAddress:    ":8123",
+		statsPrefix:      "~#PROJECT#~test",
+		statsNetwork:     "udp",
+		statsAddress:     "8125",
+		statsFlushPeriod: 100,
+		logLevel:         "info",
 	})
 	if err != nil {
 		t.Error(fmt.Errorf("No errors are expected"))
@@ -19,16 +23,20 @@ func TestCheckParams(t *testing.T) {
 }
 
 func TestCheckParamsErrorsServer(t *testing.T) {
-	err := checkParams(&params{quantity: 0})
+	err := checkParams(&params{serverAddress: ""})
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the quantity is <= 0"))
+		t.Error(fmt.Errorf("An error was expected because the server address is empty"))
 	}
 }
 
 func TestCheckParamsErrorsLogLevelEmpty(t *testing.T) {
 	err := checkParams(&params{
-		quantity: 10,
-		logLevel: "",
+		serverAddress:    ":8123",
+		statsPrefix:      "~#PROJECT#~test",
+		statsNetwork:     "udp",
+		statsAddress:     "8125",
+		statsFlushPeriod: 100,
+		logLevel:         "",
 	})
 	if err == nil {
 		t.Error(fmt.Errorf("An error was expected because the logLevel is empty"))
@@ -37,8 +45,12 @@ func TestCheckParamsErrorsLogLevelEmpty(t *testing.T) {
 
 func TestCheckParamsErrorsLogLevelInvalid(t *testing.T) {
 	err := checkParams(&params{
-		quantity: 10,
-		logLevel: "INVALID",
+		serverAddress:    ":8123",
+		statsPrefix:      "~#PROJECT#~test",
+		statsNetwork:     "udp",
+		statsAddress:     "8125",
+		statsFlushPeriod: 100,
+		logLevel:         "INVALID",
 	})
 	if err == nil {
 		t.Error(fmt.Errorf("An error was expected because the logLevel is not valid"))
@@ -49,6 +61,9 @@ func TestGetConfigParams(t *testing.T) {
 	prm, err := getConfigParams()
 	if err != nil {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
+	}
+	if prm.serverAddress != ":8812" {
+		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
 	}
 	if prm.logLevel != "debug" {
 		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.logLevel))
@@ -66,6 +81,9 @@ func TestGetLocalConfigParams(t *testing.T) {
 
 	prm, rprm := getLocalConfigParams()
 
+	if prm.serverAddress != ":8812" {
+		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
+	}
 	if prm.logLevel != "debug" {
 		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.logLevel))
 	}
@@ -123,6 +141,9 @@ func TestGetConfigParamsRemote(t *testing.T) {
 	prm, err := getConfigParams()
 	if err != nil {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
+	}
+	if prm.serverAddress != ":8123" {
+		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
 	}
 	if prm.logLevel != "debug" {
 		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.logLevel))
