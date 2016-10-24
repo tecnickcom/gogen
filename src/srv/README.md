@@ -107,12 +107,8 @@ Please check all the available options using `make help`.
 
 Flags:
 
--u, --serverAddress="8543": HTTP API address for server mode (ip:port) or just (:port)
--p, --statsPrefix="": StatsD bucket prefix name
--k, --statsNetwork="udp": StatsD client network type (udp or tcp)
--m, --statsAddress=":8125": StatsD daemon address (ip:port) or just (:port)
--r, --statsFlushPeriod=100: StatsD client flush period in milliseconds
--o, --loglevel=INFO: Log level: panic, fatal, error, warning, info, debug
+-o, --loglevel=INFO : Log level: panic, fatal, error, warning, info, debug
+-c, -- configDir    : Configuration directory
 ```
 
 ## Configuration

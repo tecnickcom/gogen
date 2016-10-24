@@ -16,14 +16,11 @@ import (
 var emptyParamCases = []string{
 	"--logLevel=",
 	"--logLevel=INVALID",
-	"--serverAddress=",
-	"--statsNetwork=INVALID",
-	"--statsFlushPeriod=-1",
 }
 
 func TestCliEmptyParamError(t *testing.T) {
 	for _, param := range emptyParamCases {
-		os.Args = []string{"~#PROJECT#~", param}
+		os.Args = []string{ProgramName, param}
 		cmd, err := cli()
 		if err != nil {
 			t.Error(fmt.Errorf("An error wasn't expected: %v", err))
@@ -47,12 +44,7 @@ func TestCliEmptyParamError(t *testing.T) {
 
 func TestCli(t *testing.T) {
 	os.Args = []string{
-		"~#PROJECT#~",
-		"--serverAddress=:8765",
-		"--statsPrefix=~#PROJECT#~test",
-		"--statsNetwork=udp",
-		"--statsAddress=:8125",
-		"--statsFlushPeriod=100",
+		ProgramName,
 	}
 	cmd, err := cli()
 	if err != nil {
@@ -107,7 +99,7 @@ func isJSON(s []byte) bool {
 
 func testEndPoint(t *testing.T, method string, path string, data string, code int) {
 	var payload = []byte(data)
-	req, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:8765%s", path), bytes.NewBuffer(payload))
+	req, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:8812%s", path), bytes.NewBuffer(payload))
 	if err != nil {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
 		return

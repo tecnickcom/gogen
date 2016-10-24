@@ -28,6 +28,7 @@ type params struct {
 	quantity int    // number of strings to generate
 }
 
+var configDir string
 var appParams = new(params)
 
 // getConfigParams returns the configuration parameters
@@ -56,6 +57,10 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 
 	// configuration type
 	viper.SetConfigType("json")
+
+	if configDir != "" {
+		viper.AddConfigPath(configDir)
+	}
 
 	// add local configuration paths
 	for _, cpath := range ConfigPath {
@@ -130,9 +135,7 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 
 // checkParams cheks if the configuration parameters are valid
 func checkParams(prm *params) error {
-	if prm.quantity <= 0 {
-		return errors.New("The quantity must be > 0")
-	}
+	// Log
 	if prm.logLevel == "" {
 		return errors.New("logLevel is empty")
 	}
@@ -141,5 +144,11 @@ func checkParams(prm *params) error {
 		return errors.New("The logLevel must be one of the following: panic, fatal, error, warning, info, debug")
 	}
 	log.SetLevel(levelCode)
+
+	// Other settings
+	if prm.quantity <= 0 {
+		return errors.New("The quantity must be > 0")
+	}
+
 	return nil
 }

@@ -131,11 +131,9 @@ func TestGetConfigParamsRemote(t *testing.T) {
 	// load a specific config file just for testing
 	oldCfg := ConfigPath
 	viper.Reset()
-	ConfigPath[0] = "wrong/path/0/"
-	ConfigPath[1] = "wrong/path/1/"
-	ConfigPath[2] = "wrong/path/2/"
-	ConfigPath[3] = "wrong/path/3/"
-	ConfigPath[4] = "wrong/path/4/"
+	for k := range ConfigPath {
+		ConfigPath[k] = "wrong/path/"
+	}
 	defer func() { ConfigPath = oldCfg }()
 
 	prm, err := getConfigParams()

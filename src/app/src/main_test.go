@@ -10,7 +10,7 @@ import (
 )
 
 func TestProgramVersion(t *testing.T) {
-	os.Args = []string{"~#PROJECT#~", "version"}
+	os.Args = []string{ProgramName, "version"}
 	out := getMainOutput(t)
 	match, err := regexp.MatchString("^[\\d]+\\.[\\d]+\\.[\\d]+[\\s]*$", out)
 	if err != nil {

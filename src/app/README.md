@@ -107,7 +107,8 @@ Please check all the available options using `make help`.
 
 Flags:
 
--o, --loglevel=INFO: Log level: panic, fatal, error, warning, info, debug
+-o, --loglevel=INFO : Log level: panic, fatal, error, warning, info, debug
+-c, -- configDir    : Configuration directory
 ```
 
 ## Configuration
