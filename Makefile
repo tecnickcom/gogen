@@ -7,7 +7,7 @@
 # ------------------------------------------------------------------------------
 
 # List special make targets that are not associated with files
-.PHONY: help all new newproject renameapp renamelib template
+.PHONY: help all new newproject renameapp renamesrv renamelib template confirm clean
 
 # Current directory
 CURRENTDIR=$(shell pwd)
