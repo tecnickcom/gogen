@@ -1,20 +1,20 @@
 # gogen
 
-*Command-line tool to generate GO applications and libraries with reusabe logic.*
+*Command-line tool to generate GO services, applications and libraries with reusabe logic.*
 
 [![Donate via PayPal](https://img.shields.io/badge/donate-paypal-87ceeb.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&currency_code=GBP&business=paypal@tecnick.com&item_name=donation%20for%20gogen%20project)
 *Please consider supporting this project by making a donation via [PayPal](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&currency_code=GBP&business=paypal@tecnick.com&item_name=donation%20for%20gogen%20project)*
 
 * **category**    Tool
 * **author**      Nicola Asuni <info@tecnick.com>
-* **copyright**   2015-2016 Nicola Asuni - Tecnick.com LTD
-* **license**     MIT (see LICENSE)
+* **copyright**   2014-2016 Nicola Asuni - Tecnick.com LTD
+* **license**     MIT (see [LICENSE](LICENSE))
 * **link**        https://github.com/tecnickcom/gogen
 
 
 ## Description
 
-This is a command-line tool to quickly generate GO applications and libraries with a common set of features and reusable logic.
+This is a command-line tool to quickly generate GO services, applications and libraries with a common set of features and reusable logic.
 
 Each GO project built with this tool adheres to the set of conventions detailed in the following articles:
 
@@ -31,24 +31,6 @@ Each GO project built with this tool adheres to the set of conventions detailed 
 Each generated project is immediately functional and can be fully tested using the ```make qa``` command.
 
 To understand the logic of the generated applications please start with the ```main.go``` file and follow the code.
-
-
-### Application Features
-
-* Web HTTP RESTful JSON API;
-* Standard command line options;
-* Multiple configuration options, including remote configuration via Consul or Etcd;
-* Logging;
-* StatsD client to collect usage metrics;
-* Unit tests;
-* Makefile;
-* Docker build;
-
-### Library Features
-
-* Unit tests;
-* Makefile;
-* Docker build;
 
 
 ## Quick Start
@@ -80,6 +62,32 @@ To create a new configuration please clone the *default.cfg* file and change the
 All projects are creted inside the *target* directory and should be moved to the correct path inside the *$GOPATH/src*.
 
 
-## Developer(s) Contact
+## Features
 
-* Nicola Asuni <info@tecnick.com>
+### Services (srv)
+
+* Web HTTP RESTful JSON API;
+* Standard command line options;
+* Multiple configuration options, including remote configuration via Consul or Etcd;
+* Logging;
+* StatsD client to collect usage metrics;
+* Unit tests;
+* Makefile;
+* Docker build;
+* RPM, DEB and Docker packaging.
+
+### Applications (app)
+
+* Standard command line options;
+* Multiple configuration options, including remote configuration via Consul or Etcd;
+* Logging;
+* Unit tests;
+* Makefile;
+* Docker build;
+* RPM, DEB and Docker packaging.
+
+### Libraries (lib)
+
+* Unit tests;
+* Makefile;
+* Docker build;
