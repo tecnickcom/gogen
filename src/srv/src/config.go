@@ -24,14 +24,15 @@ func (rcfg remoteConfigParams) isEmpty() bool {
 
 // params struct contains the application parameters
 type params struct {
+	logLevel         string // Log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
 	serverAddress    string // HTTP API address for server mode (ip:port) or just (:port)
 	statsPrefix      string // StatsD client's string prefix that will be used in every bucket name.
 	statsNetwork     string // network type used by the StatsD client (i.e. udp or tcp).
 	statsAddress     string // network address of the StatsD daemon (ip:port) or just (:port)
 	statsFlushPeriod int    // How often (in milliseconds) the StatsD client's buffer is flushed.
-	logLevel         string // Log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
 }
 
+var configDir string
 var appParams = new(params)
 
 // getConfigParams returns the configuration parameters
@@ -52,18 +53,22 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 	viper.SetDefault("remoteConfigSecretKeyring", RemoteConfigSecretKeyring)
 
 	// set default configuration values
+	viper.SetDefault("logLevel", LogLevel)
 	viper.SetDefault("serverAddress", ServerAddress)
 	viper.SetDefault("statsPrefix", StatsPrefix)
 	viper.SetDefault("statsNetwork", StatsNetwork)
 	viper.SetDefault("statsAddress", StatsAddress)
 	viper.SetDefault("statsFlushPeriod", StatsFlushPeriod)
-	viper.SetDefault("logLevel", LogLevel)
 
 	// name of the configuration file without extension
 	viper.SetConfigName("config")
 
 	// configuration type
 	viper.SetConfigType("json")
+
+	if configDir != "" {
+		viper.AddConfigPath(configDir)
+	}
 
 	// add local configuration paths
 	for _, cpath := range ConfigPath {
@@ -75,12 +80,12 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 
 	// read configuration parameters
 	cfg = params{
+		logLevel:         viper.GetString("logLevel"),
 		serverAddress:    viper.GetString("serverAddress"),
 		statsPrefix:      viper.GetString("statsPrefix"),
 		statsNetwork:     viper.GetString("statsNetwork"),
 		statsAddress:     viper.GetString("statsAddress"),
 		statsFlushPeriod: viper.GetInt("statsFlushPeriod"),
-		logLevel:         viper.GetString("logLevel"),
 	}
 
 	// support environment variables for the remote configuration
@@ -111,12 +116,12 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 	viper.Reset()
 
 	// set default configuration values
+	viper.SetDefault("logLevel", cfg.logLevel)
 	viper.SetDefault("serverAddress", cfg.serverAddress)
 	viper.SetDefault("statsPrefix", cfg.statsPrefix)
 	viper.SetDefault("statsNetwork", cfg.statsNetwork)
 	viper.SetDefault("statsAddress", cfg.statsAddress)
 	viper.SetDefault("statsFlushPeriod", cfg.statsFlushPeriod)
-	viper.SetDefault("logLevel", cfg.logLevel)
 
 	// configuration type
 	viper.SetConfigType("json")
@@ -138,27 +143,19 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 
 	// read configuration parameters
 	return params{
+			logLevel:         viper.GetString("logLevel"),
 			serverAddress:    viper.GetString("serverAddress"),
 			statsPrefix:      viper.GetString("statsPrefix"),
 			statsNetwork:     viper.GetString("statsNetwork"),
 			statsAddress:     viper.GetString("statsAddress"),
 			statsFlushPeriod: viper.GetInt("statsFlushPeriod"),
-			logLevel:         viper.GetString("logLevel"),
 		},
 		nil
 }
 
 // checkParams cheks if the configuration parameters are valid
 func checkParams(prm *params) error {
-	if prm.serverAddress == "" {
-		return errors.New("The Server address is empty")
-	}
-	if prm.statsNetwork != "udp" && prm.statsNetwork != "tcp" {
-		return errors.New("The statsNetwork must be udp or tcp")
-	}
-	if prm.statsFlushPeriod < 0 {
-		return errors.New("The statsFlushPeriod must be >= 0")
-	}
+	// Log
 	if prm.logLevel == "" {
 		return errors.New("logLevel is empty")
 	}
@@ -167,5 +164,19 @@ func checkParams(prm *params) error {
 		return errors.New("The logLevel must be one of the following: panic, fatal, error, warning, info, debug")
 	}
 	log.SetLevel(levelCode)
+
+	// Server
+	if prm.serverAddress == "" {
+		return errors.New("The Server address is empty")
+	}
+
+	// StatsD
+	if prm.statsNetwork != "udp" && prm.statsNetwork != "tcp" {
+		return errors.New("The statsNetwork must be udp or tcp")
+	}
+	if prm.statsFlushPeriod < 0 {
+		return errors.New("The statsFlushPeriod must be >= 0")
+	}
+
 	return nil
 }

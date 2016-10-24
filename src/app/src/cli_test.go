@@ -16,7 +16,7 @@ var emptyParamCases = []string{
 
 func TestCliEmptyParamError(t *testing.T) {
 	for _, param := range emptyParamCases {
-		os.Args = []string{"~#PROJECT#~", param}
+		os.Args = []string{ProgramName, param}
 		cmd, err := cli()
 		if err != nil {
 			t.Error(fmt.Errorf("An error wasn't expected: %v", err))
@@ -40,9 +40,9 @@ func TestCliEmptyParamError(t *testing.T) {
 
 func TestCli(t *testing.T) {
 	os.Args = []string{
-		"~#PROJECT#~",
-		"--quantity=3",
+		ProgramName,
 		"--logLevel=debug",
+		"--quantity=3",
 	}
 	cmd, err := cli()
 	if err != nil {
