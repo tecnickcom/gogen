@@ -17,7 +17,7 @@ func TestProgramVersion(t *testing.T) {
 		t.Error(fmt.Errorf("An error wasn't expected: %v", err))
 	}
 	if !match {
-		t.Error(fmt.Errorf("The expected version hs not been returned"))
+		t.Error(fmt.Errorf("The expected version has not been returned"))
 	}
 }
 

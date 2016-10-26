@@ -156,6 +156,7 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 // checkParams cheks if the configuration parameters are valid
 func checkParams(prm *params) error {
 	// Log
+	log.SetLevel(0)
 	if prm.logLevel == "" {
 		return errors.New("logLevel is empty")
 	}

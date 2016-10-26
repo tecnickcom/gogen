@@ -2,15 +2,17 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
 
 func cli() (*cobra.Command, error) {
 
-	// set the root command
-	rootCmd := new(cobra.Command)
-	rootCmd.Flags().StringVarP(&configDir, "configDir", "c", "", "Configuration directory")
+	// parse the configDir argument
+	cfgCmd := new(cobra.Command)
+	cfgCmd.Flags().StringVarP(&configDir, "configDir", "c", "", "Configuration directory to be added on top of the search list")
+	cfgCmd.ParseFlags(os.Args)
 
 	// configuration parameters
 	cfgParams, err := getConfigParams()
@@ -20,6 +22,8 @@ func cli() (*cobra.Command, error) {
 
 	// overwrites the configuration parameters with the ones specified in the command line (if any)
 	appParams = &cfgParams
+	rootCmd := new(cobra.Command)
+	rootCmd.Flags().StringVarP(&configDir, "configDir", "c", "", "Configuration directory to be added on top of the search list")
 	rootCmd.Flags().StringVarP(&appParams.logLevel, "logLevel", "o", cfgParams.logLevel, "Log level: panic, fatal, error, warning, info, debug")
 	rootCmd.Flags().IntVarP(&appParams.quantity, "quantity", "r", cfgParams.quantity, "Number of results to return")
 
