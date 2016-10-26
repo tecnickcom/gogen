@@ -1,7 +1,7 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni <info@tecnick.com>
-# @link        https://github.com/tecnickcom/allgen
+# @link        https://github.com/tecnickcom/gogen
 #
 # This file is intended to be executed in a Linux-compatible system.
 # ------------------------------------------------------------------------------
