@@ -5,7 +5,7 @@
 * **category**    Library
 * **copyright**   ~#CURRENTYEAR#~ ~#OWNER#~
 * **license**     see [LICENSE](LICENSE)
-* **link**        https://~#CVSPATH#~/~#PROJECT#~
+* **link**        ~#PROJECTLINK#~
 
 
 ## Description

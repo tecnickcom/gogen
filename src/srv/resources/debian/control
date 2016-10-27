@@ -4,8 +4,8 @@ Section: utils
 Priority: optional
 Build-Depends: debhelper (>= 9), dh-golang
 Standards-Version: 3.9.7
-Homepage: https://~#CVSPATH#~/~#PROJECT#~
-Vcs-Git: https://~#CVSPATH#~/~#PROJECT#~.git
+Homepage: ~#PROJECTLINK#~
+Vcs-Git: ~#PROJECTLINK#~.git
 
 Package: ~#PKGNAME#~
 Provides: ~#PROJECT#~

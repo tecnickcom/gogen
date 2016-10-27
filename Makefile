@@ -12,20 +12,20 @@
 # Current directory
 CURRENTDIR=$(shell pwd)
 
-# Project type
+# Set default project type
 ifeq ($(TYPE),)
 	TYPE=app
 endif
 
-# Project configuration file
+# Set default project configuration file
 ifeq ($(CONFIG),)
 	CONFIG=default.cfg
 endif
 
-# include the configuration file
+# Include the configuration file
 include $(CONFIG)
 
-# Prefix for environmental variables
+# Generate a prefix for environmental variables
 UPROJECT=$(shell echo $(PROJECT) | tr a-z A-Z | tr - _)
 
 
@@ -40,12 +40,12 @@ help:
 	@echo "    make new TYPE=app CONFIG=myproject.cfg  :  Generate a new go project"
 	@echo "    make clean                              :  Remove all generated projects"
 	@echo ""
-	@echo "    TYPE is the project type:"
+	@echo "    * TYPE is the project type:"
 	@echo "        lib : library"
 	@echo "        app : command-line application"
 	@echo "        srv : HTTP API service"
 	@echo ""
-	@echo "    CONFIG is the configuration file containing the project settings."
+	@echo "    * CONFIG is the configuration file containing the project settings."
 	@echo ""
 
 # Alias for help target
@@ -81,6 +81,7 @@ template:
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#UPROJECT#~/$(UPROJECT)/" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#SHORTDESCRIPTION#~/$(SHORTDESCRIPTION)/" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s|~#CVSPATH#~|$(CVSPATH)|" {} \;
+	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s|~#PROJECTLINK#~|$(PROJECTLINK)|" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#VENDOR#~/$(VENDOR)/" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#OWNER#~/$(OWNER)/" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#OWNEREMAIL#~/$(OWNEREMAIL)/" {} \;

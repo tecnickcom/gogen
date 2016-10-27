@@ -1,7 +1,7 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni <info@tecnick.com>
-# @link        https://~#CVSPATH#~/~#PROJECT#~
+# @link        ~#PROJECTLINK#~
 # ------------------------------------------------------------------------------
 
 # List special make targets that are not associated with files
@@ -138,7 +138,7 @@ all: help
 test:
 	@mkdir -p target/test
 	GOPATH=$(GOPATH) \
-	go test -covermode=atomic -bench=. -race -v ./... | \
+	go test -covermode=atomic -bench=. -race -v ./src | \
 	tee >(PATH=$(GOPATH)/bin:$(PATH) go-junit-report > target/test/report.xml); \
 	test $${PIPESTATUS[0]} -eq 0
 
@@ -164,7 +164,7 @@ lint:
 coverage:
 	@mkdir -p target/report
 	GOPATH=$(GOPATH) \
-	go test -covermode=count -coverprofile=target/report/coverage.out -v ./... && \
+	go test -covermode=count -coverprofile=target/report/coverage.out -v ./src && \
 	GOPATH=$(GOPATH) \
 	go tool cover -html=target/report/coverage.out -o target/report/coverage.html
 
