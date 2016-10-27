@@ -107,8 +107,8 @@ Please check all the available options using `make help`.
 
 Flags:
 
--c, -- configDir    : Configuration directory to be added on top of the search list
--o, --loglevel=INFO : Log level: panic, fatal, error, warning, info, debug
+-c, --configDir  string  Configuration directory to be added on top of the search list
+-o, --loglevel   string  Log level: panic, fatal, error, warning, info, debug
 ```
 
 ## Configuration
