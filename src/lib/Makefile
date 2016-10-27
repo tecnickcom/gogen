@@ -1,7 +1,7 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni <info@tecnick.com>
-# @link        https://~#CVSPATH#~/~#PROJECT#~
+# @link        ~#PROJECTLINK#~
 # ------------------------------------------------------------------------------
 
 # List special make targets that are not associated with files
@@ -162,7 +162,7 @@ lint:
 coverage:
 	@mkdir -p target/report
 	GOPATH=$(GOPATH) \
-	go test -covermode=count -coverprofile=target/report/coverage.out && \
+	go test -covermode=count -coverprofile=target/report/coverage.out -v ./... && \
 	GOPATH=$(GOPATH) \
 	go tool cover -html=target/report/coverage.out -o target/report/coverage.html
 
