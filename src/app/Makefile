@@ -296,7 +296,7 @@ rpm:
 	-bb resources/rpm/rpm.spec
 
 # Build the DEB package for Debian-like Linux distributions
-deb: build
+deb:
 	rm -rf $(PATHDEBPKG)
 	make install DESTDIR=$(PATHDEBPKG)/$(PKGNAME)-$(VERSION)
 	rm -f $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/$(DOCPATH)LICENSE
@@ -327,13 +327,13 @@ endif
 	cd $(PATHDEBPKG)/$(PKGNAME)-$(VERSION) && debuild -us -uc
 
 # Build a compressed bz2 archive
-bz2: build
+bz2:
 	rm -rf $(PATHBZ2PKG)
 	make install DESTDIR=$(PATHBZ2PKG)
 	tar -jcvf $(PATHBZ2PKG)/$(PKGNAME)-$(VERSION)-$(RELEASE).tbz2 -C $(PATHBZ2PKG) usr/ etc/
 
 # Build a docker container to run this service
-docker: build
+docker:
 	rm -rf $(PATHDOCKERPKG)
 	make install DESTDIR=$(PATHDOCKERPKG)
 	cp resources/DockerDeploy/Dockerfile $(PATHDOCKERPKG)/
@@ -370,8 +370,9 @@ dockertest:
 	@exit `grep -ic "false" target/project_docker_container.run`
 
 # Full build and test sequence
-# You may want to change this and remove the options you don't need
-buildall: deps qa rpm deb bz2 crossbuild
+# You may want to change this and add/remove options
+#buildall: deps qa rpm deb bz2 crossbuild
+buildall: deps qa rpm deb
 
 # Build everything inside a Docker container
 dbuild:
