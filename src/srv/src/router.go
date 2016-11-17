@@ -41,12 +41,20 @@ func startServer(address string) error {
 }
 
 // send the HTTP response in JSON format
-func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params, code int, data interface{}) {
+func setHeader(hw http.ResponseWriter, contentType string, code int) {
 	hw.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	hw.Header().Set("Pragma", "no-cache")
 	hw.Header().Set("Expires", "0")
-	hw.Header().Set("Content-Type", "application/json")
+	hw.Header().Set("Content-Type", contentType)
 	hw.WriteHeader(code)
+
+	// count HTTP statuses
+	stats.Increment(fmt.Sprintf("httpstatus.%d", code))
+}
+
+// send the HTTP response in JSON format
+func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params, code int, data interface{}) {
+	setHeader(hw, "application/json", code)
 
 	nowTime := time.Now().UTC()
 
@@ -61,9 +69,6 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 		Message:   http.StatusText(code),
 		Data:      data,
 	}
-
-	// count HTTP statuses
-	stats.Increment(fmt.Sprintf("httpstatus.%s", response.Status))
 
 	// log request
 	log.WithFields(log.Fields{
