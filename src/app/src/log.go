@@ -40,8 +40,10 @@ func (f *logJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
 
 	nowTime := time.Now().UTC()
 
-	// #nosec -- ignore error
-	data["hostname"], _ = os.Hostname()
+	hostname, err := os.Hostname()
+	if err == nil {
+		data["hostname"] = hostname
+	}
 	data["program"] = ProgramName
 	data["version"] = ProgramVersion
 	data["release"] = ProgramRelease
