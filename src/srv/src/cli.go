@@ -37,7 +37,7 @@ func cli() (*cobra.Command, error) {
 		}
 
 		// initialize StatsD client (ignore errors)
-		initStats(appParams)
+		initStats(appParams.stats)
 		defer stats.Close()
 
 		// start the HTTP server

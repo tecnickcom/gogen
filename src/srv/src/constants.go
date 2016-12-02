@@ -13,6 +13,30 @@ var ProgramVersion = "0.0.0"
 // (-ldflags '-X main.ProgramRelease=$(shell cat RELEASE)')
 var ProgramRelease = "0"
 
+// ConfigPath list the paths where to look for configuration files (in order)
+var ConfigPath = [...]string{
+	"../resources/test/etc/" + ProgramName + "/",
+	"./",
+	"config/",
+	"$HOME/." + ProgramName + "/",
+	"/etc/" + ProgramName + "/",
+}
+
+// RemoteConfigProvider is the remote configuration source ("consul", "etcd")
+const RemoteConfigProvider = ""
+
+// RemoteConfigEndpoint is the remote configuration URL (ip:port)
+const RemoteConfigEndpoint = ""
+
+// RemoteConfigPath is the remote configuration path where to search fo the configuration file ("/config/~#PROJECT#~")
+const RemoteConfigPath = ""
+
+// RemoteConfigSecretKeyring is the path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
+const RemoteConfigSecretKeyring = "" // nosec
+
+// LogLevel defines the default log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
+const LogLevel = "INFO"
+
 // ServerAddress is the default HTTP API URL (ip:port) or just (:port)
 const ServerAddress = ":8081"
 
@@ -28,27 +52,3 @@ const StatsAddress = ":8125"
 // StatsFlushPeriod sets how often (in milliseconds) the StatsD client's buffer is flushed.
 // When 0 the buffer is only flushed when it is full.
 const StatsFlushPeriod = 100
-
-// ConfigPath list the paths where to look for configuration files (in order)
-var ConfigPath = [...]string{
-	"../resources/test/etc/" + ProgramName + "/",
-	"./",
-	"config/",
-	"$HOME/." + ProgramName + "/",
-	"/etc/" + ProgramName + "/",
-}
-
-// LogLevel defines the default log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
-const LogLevel = "info"
-
-// RemoteConfigProvider is the remote configuration source ("consul", "etcd")
-const RemoteConfigProvider = ""
-
-// RemoteConfigEndpoint is the remote configuration URL (ip:port)
-const RemoteConfigEndpoint = ""
-
-// RemoteConfigPath is the remote configuration path where to search fo the configuration file ("/config/~#PROJECT#~")
-const RemoteConfigPath = ""
-
-// RemoteConfigSecretKeyring is the path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
-const RemoteConfigSecretKeyring = "" // nosec

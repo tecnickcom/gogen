@@ -24,12 +24,9 @@ func (rcfg remoteConfigParams) isEmpty() bool {
 
 // params struct contains the application parameters
 type params struct {
-	logLevel         string // Log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
-	serverAddress    string // HTTP API address for server mode (ip:port) or just (:port)
-	statsPrefix      string // StatsD client's string prefix that will be used in every bucket name.
-	statsNetwork     string // network type used by the StatsD client (i.e. udp or tcp).
-	statsAddress     string // network address of the StatsD daemon (ip:port) or just (:port)
-	statsFlushPeriod int    // How often (in milliseconds) the StatsD client's buffer is flushed.
+	logLevel      string     // Log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
+	serverAddress string     // HTTP API address for server mode (ip:port) or just (:port)
+	stats         *StatsData // StatsD configuration, it is used to collect usage metrics
 }
 
 var configDir string
@@ -55,10 +52,11 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 	// set default configuration values
 	viper.SetDefault("logLevel", LogLevel)
 	viper.SetDefault("serverAddress", ServerAddress)
-	viper.SetDefault("statsPrefix", StatsPrefix)
-	viper.SetDefault("statsNetwork", StatsNetwork)
-	viper.SetDefault("statsAddress", StatsAddress)
-	viper.SetDefault("statsFlushPeriod", StatsFlushPeriod)
+
+	viper.SetDefault("stats.prefix", StatsPrefix)
+	viper.SetDefault("stats.network", StatsNetwork)
+	viper.SetDefault("stats.address", StatsAddress)
+	viper.SetDefault("stats.flush_period", StatsFlushPeriod)
 
 	// name of the configuration file without extension
 	viper.SetConfigName("config")
@@ -79,14 +77,7 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 	viper.ReadInConfig()
 
 	// read configuration parameters
-	cfg = params{
-		logLevel:         viper.GetString("logLevel"),
-		serverAddress:    viper.GetString("serverAddress"),
-		statsPrefix:      viper.GetString("statsPrefix"),
-		statsNetwork:     viper.GetString("statsNetwork"),
-		statsAddress:     viper.GetString("statsAddress"),
-		statsFlushPeriod: viper.GetInt("statsFlushPeriod"),
-	}
+	cfg = getViperParams()
 
 	// support environment variables for the remote configuration
 	viper.AutomaticEnv()
@@ -117,11 +108,13 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 
 	// set default configuration values
 	viper.SetDefault("logLevel", cfg.logLevel)
+
 	viper.SetDefault("serverAddress", cfg.serverAddress)
-	viper.SetDefault("statsPrefix", cfg.statsPrefix)
-	viper.SetDefault("statsNetwork", cfg.statsNetwork)
-	viper.SetDefault("statsAddress", cfg.statsAddress)
-	viper.SetDefault("statsFlushPeriod", cfg.statsFlushPeriod)
+
+	viper.SetDefault("stats.prefix", cfg.stats.Prefix)
+	viper.SetDefault("stats.network", cfg.stats.Network)
+	viper.SetDefault("stats.address", cfg.stats.Address)
+	viper.SetDefault("stats.flush_period", cfg.stats.FlushPeriod)
 
 	// configuration type
 	viper.SetConfigType("json")
@@ -142,15 +135,23 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 	}
 
 	// read configuration parameters
+	return getViperParams(), nil
+}
+
+// getViperParams reads the config params via Viper
+func getViperParams() params {
 	return params{
-			logLevel:         viper.GetString("logLevel"),
-			serverAddress:    viper.GetString("serverAddress"),
-			statsPrefix:      viper.GetString("statsPrefix"),
-			statsNetwork:     viper.GetString("statsNetwork"),
-			statsAddress:     viper.GetString("statsAddress"),
-			statsFlushPeriod: viper.GetInt("statsFlushPeriod"),
+		logLevel: viper.GetString("logLevel"),
+
+		serverAddress: viper.GetString("serverAddress"),
+
+		stats: &StatsData{
+			Prefix:      viper.GetString("stats.prefix"),
+			Network:     viper.GetString("stats.network"),
+			Address:     viper.GetString("stats.address"),
+			FlushPeriod: viper.GetInt("stats.flush_period"),
 		},
-		nil
+	}
 }
 
 // checkParams cheks if the configuration parameters are valid
@@ -172,11 +173,14 @@ func checkParams(prm *params) error {
 	}
 
 	// StatsD
-	if prm.statsNetwork != "udp" && prm.statsNetwork != "tcp" {
-		return errors.New("The statsNetwork must be udp or tcp")
+	if prm.stats.Prefix == "" {
+		return errors.New("The stats Prefix is empty")
 	}
-	if prm.statsFlushPeriod < 0 {
-		return errors.New("The statsFlushPeriod must be >= 0")
+	if prm.stats.Network != "udp" && prm.stats.Network != "tcp" {
+		return errors.New("The stats Network must be udp or tcp")
+	}
+	if prm.stats.FlushPeriod < 0 {
+		return errors.New("The stats FlushPeriod must be >= 0")
 	}
 
 	return nil

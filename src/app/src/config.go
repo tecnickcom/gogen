@@ -71,10 +71,7 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 	viper.ReadInConfig()
 
 	// read configuration parameters
-	cfg = params{
-		logLevel: viper.GetString("logLevel"),
-		quantity: viper.GetInt("quantity"),
-	}
+	cfg = getViperParams()
 
 	// support environment variables for the remote configuration
 	viper.AutomaticEnv()
@@ -126,11 +123,15 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 	}
 
 	// read configuration parameters
+	return getViperParams(), nil
+}
+
+// getViperParams reads the config params via Viper
+func getViperParams() params {
 	return params{
-			logLevel: viper.GetString("logLevel"),
-			quantity: viper.GetInt("quantity"),
-		},
-		nil
+		logLevel: viper.GetString("logLevel"),
+		quantity: viper.GetInt("quantity"),
+	}
 }
 
 // checkParams cheks if the configuration parameters are valid

@@ -71,11 +71,22 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 	}
 
 	// log request
-	log.WithFields(log.Fields{
-		"type": hr.Method,
-		"URI":  hr.RequestURI,
-		"code": code,
-	}).Info("request")
+	if code == 500 {
+		log.WithFields(log.Fields{
+			"type":  hr.Method,
+			"URI":   hr.RequestURI,
+			"query": hr.URL.Query(),
+			"code":  code,
+			"err":   data.(string),
+		}).Error("request")
+	} else {
+		log.WithFields(log.Fields{
+			"type":  hr.Method,
+			"URI":   hr.RequestURI,
+			"query": hr.URL.Query(),
+			"code":  code,
+		}).Info("request")
+	}
 
 	// send response as JSON
 	if err := json.NewEncoder(hw).Encode(response); err != nil {

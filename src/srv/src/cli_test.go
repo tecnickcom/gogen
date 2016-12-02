@@ -43,9 +43,7 @@ func TestCliEmptyParamError(t *testing.T) {
 }
 
 func TestCli(t *testing.T) {
-	os.Args = []string{
-		ProgramName,
-	}
+	os.Args = []string{ProgramName, "--configDir=wrong/path"}
 	cmd, err := cli()
 	if err != nil {
 		t.Error(fmt.Errorf("An error wasn't expected: %v", err))
@@ -74,7 +72,7 @@ func TestCli(t *testing.T) {
 	}()
 
 	// wait for the http server connection to start
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(300 * time.Millisecond)
 
 	// CLIENT
 	wg.Add(1)
