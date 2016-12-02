@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -52,10 +51,12 @@ func (f *logJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
 	data["msg"] = entry.Message
 	data["level"] = entry.Level.String()
 
-	// count each error type
-	stats.Increment(fmt.Sprintf("log.%s", data["level"]))
+	if stats != nil {
+		// count each error type
+		stats.Increment(fmt.Sprintf("log.%s", data["level"]))
+	}
 
-	serialized, err := json.Marshal(data)
+	serialized, err := jsonMarshal(data)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to marshal fields to JSON, %v", err)
 	}

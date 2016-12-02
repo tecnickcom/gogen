@@ -11,7 +11,7 @@
 # This script requires Docker
 
 # EXAMPLE USAGE:
-# VENDOR=vendorname PROJECT=projectname MAKETARGET=buildall ./dockerbuild.sh
+# CVSPATH=project VENDOR=vendorname PROJECT=projectname MAKETARGET=buildall ./dockerbuild.sh
 
 # Get vendor and project name
 : ${CVSPATH:=project}

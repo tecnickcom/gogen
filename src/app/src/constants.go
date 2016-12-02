@@ -22,9 +22,6 @@ var ConfigPath = [...]string{
 	"/etc/" + ProgramName + "/",
 }
 
-// LogLevel defines the default log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
-const LogLevel = "info"
-
 // RemoteConfigProvider is the remote configuration source ("consul", "etcd")
 const RemoteConfigProvider = ""
 
@@ -36,6 +33,9 @@ const RemoteConfigPath = ""
 
 // RemoteConfigSecretKeyring is the path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
 const RemoteConfigSecretKeyring = "" // nosec
+
+// LogLevel defines the default log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
+const LogLevel = "INFO"
 
 // Quantity is the default number of results to return
 const Quantity = 1

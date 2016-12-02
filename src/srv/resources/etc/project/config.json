@@ -3,10 +3,12 @@
     "remoteConfigEndpoint" : "",
     "remoteConfigPath" : "",
     "remoteConfigSecretKeyring" : "",
+    "logLevel" : "info",
     "serverAddress": ":8810",
-    "statsPrefix": "~#PROJECT#~",
-    "statsNetwork": "udp",
-    "statsAddress": ":8125",
-    "statsFlushPeriod": 100,
-    "logLevel" : "info"
+    "stats": {
+        "prefix": "~#PROJECT#~",
+        "network": "udp",
+        "address": ":8125",
+        "flush_period": 100
+    }
 }

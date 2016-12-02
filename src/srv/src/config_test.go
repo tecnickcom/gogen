@@ -8,52 +8,77 @@ import (
 	"github.com/spf13/viper"
 )
 
-func TestCheckParams(t *testing.T) {
-	err := checkParams(&params{
-		serverAddress:    ":8123",
-		statsPrefix:      "~#PROJECT#~test",
-		statsNetwork:     "udp",
-		statsAddress:     "8125",
-		statsFlushPeriod: 100,
-		logLevel:         "info",
-	})
-	if err != nil {
-		t.Error(fmt.Errorf("No errors are expected"))
+func getTestCfgParams() *params {
+	return &params{
+		logLevel:      "INFO",
+		serverAddress: ":8123",
+		stats: &StatsData{
+			Prefix:      "~#PROJECT#~-test",
+			Network:     "udp",
+			Address:     ":8125",
+			FlushPeriod: 100,
+		},
 	}
 }
 
-func TestCheckParamsErrorsServer(t *testing.T) {
-	err := checkParams(&params{serverAddress: ""})
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the server address is empty"))
+func TestCheckParams(t *testing.T) {
+	err := checkParams(getTestCfgParams())
+	if err != nil {
+		t.Error(fmt.Errorf("No errors are expected: %v", err))
 	}
 }
 
 func TestCheckParamsErrorsLogLevelEmpty(t *testing.T) {
-	err := checkParams(&params{
-		serverAddress:    ":8123",
-		statsPrefix:      "~#PROJECT#~test",
-		statsNetwork:     "udp",
-		statsAddress:     "8125",
-		statsFlushPeriod: 100,
-		logLevel:         "",
-	})
+	cfg := getTestCfgParams()
+	cfg.logLevel = ""
+	err := checkParams(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the logLevel is empty"))
+		t.Error(fmt.Errorf("An error was expected because logLevel is empty"))
 	}
 }
 
 func TestCheckParamsErrorsLogLevelInvalid(t *testing.T) {
-	err := checkParams(&params{
-		serverAddress:    ":8123",
-		statsPrefix:      "~#PROJECT#~test",
-		statsNetwork:     "udp",
-		statsAddress:     "8125",
-		statsFlushPeriod: 100,
-		logLevel:         "INVALID",
-	})
+	cfg := getTestCfgParams()
+	cfg.logLevel = "INVALID"
+	err := checkParams(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the logLevel is not valid"))
+		t.Error(fmt.Errorf("An error was expected because logLevel is invalid"))
+	}
+}
+
+func TestCheckParamsErrorsServerAddress(t *testing.T) {
+	cfg := getTestCfgParams()
+	cfg.serverAddress = ""
+	err := checkParams(cfg)
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected because serverAddress is empty"))
+	}
+}
+
+func TestCheckParamsErrorsStatsPrefix(t *testing.T) {
+	cfg := getTestCfgParams()
+	cfg.stats.Prefix = ""
+	err := checkParams(cfg)
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected because the stats Prefix is empty"))
+	}
+}
+
+func TestCheckParamsErrorsStatsNetwork(t *testing.T) {
+	cfg := getTestCfgParams()
+	cfg.stats.Network = ""
+	err := checkParams(cfg)
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected because the stats Network is empty"))
+	}
+}
+
+func TestCheckParamsErrorsStatsFlushPeriod(t *testing.T) {
+	cfg := getTestCfgParams()
+	cfg.stats.FlushPeriod = -1
+	err := checkParams(cfg)
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected because the stats FlushPeriod is negative"))
 	}
 }
 
@@ -145,6 +170,30 @@ func TestGetConfigParamsRemote(t *testing.T) {
 	}
 	if prm.logLevel != "debug" {
 		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.logLevel))
+	}
+}
+
+func TestCliWrongConfigError(t *testing.T) {
+
+	// test environment variables
+	defer unsetRemoteConfigEnv()
+	os.Setenv("~#UPROJECT#~_REMOTECONFIGPROVIDER", "consul")
+	os.Setenv("~#UPROJECT#~_REMOTECONFIGENDPOINT", "127.0.0.1:999999")
+	os.Setenv("~#UPROJECT#~_REMOTECONFIGPATH", "/config/wrong")
+	os.Setenv("~#UPROJECT#~_REMOTECONFIGSECRETKEYRING", "")
+
+	// load a specific config file just for testing
+	oldCfg := ConfigPath
+	viper.Reset()
+	for k := range ConfigPath {
+		ConfigPath[k] = "wrong/path/"
+	}
+	defer func() { ConfigPath = oldCfg }()
+
+	_, err := cli()
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected"))
+		return
 	}
 }
 

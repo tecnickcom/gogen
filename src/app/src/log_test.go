@@ -11,3 +11,11 @@ func TestPrefixFieldClashes(t *testing.T) {
 		"msg": "additional message",
 	}).Info("testing log")
 }
+
+func TestLogJsonError(t *testing.T) {
+	oldJsonMarshal := jsonMarshal
+	defer func() { jsonMarshal = oldJsonMarshal }()
+	jsonMarshal = mockJsonMarshalError
+
+	log.Info("testing log error")
+}

@@ -8,40 +8,44 @@ import (
 	"github.com/spf13/viper"
 )
 
-func TestCheckParams(t *testing.T) {
-	err := checkParams(&params{
+func getTestCfgParams() *params {
+	return &params{
+		logLevel: "INFO",
 		quantity: 10,
-		logLevel: "info",
-	})
-	if err != nil {
-		t.Error(fmt.Errorf("No errors are expected"))
 	}
 }
 
-func TestCheckParamsErrorsServer(t *testing.T) {
-	err := checkParams(&params{quantity: 0})
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the quantity is <= 0"))
+func TestCheckParams(t *testing.T) {
+	err := checkParams(getTestCfgParams())
+	if err != nil {
+		t.Error(fmt.Errorf("No errors are expected: %v", err))
 	}
 }
 
 func TestCheckParamsErrorsLogLevelEmpty(t *testing.T) {
-	err := checkParams(&params{
-		quantity: 10,
-		logLevel: "",
-	})
+	cfg := getTestCfgParams()
+	cfg.logLevel = ""
+	err := checkParams(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the logLevel is empty"))
+		t.Error(fmt.Errorf("An error was expected because logLevel is empty"))
 	}
 }
 
 func TestCheckParamsErrorsLogLevelInvalid(t *testing.T) {
-	err := checkParams(&params{
-		quantity: 10,
-		logLevel: "INVALID",
-	})
+	cfg := getTestCfgParams()
+	cfg.logLevel = "INVALID"
+	err := checkParams(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the logLevel is not valid"))
+		t.Error(fmt.Errorf("An error was expected because logLevel is invalid"))
+	}
+}
+
+func TestCheckParamsErrorsQuantity(t *testing.T) {
+	cfg := getTestCfgParams()
+	cfg.quantity = 0
+	err := checkParams(cfg)
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected because quantity is empty"))
 	}
 }
 
@@ -124,6 +128,30 @@ func TestGetConfigParamsRemote(t *testing.T) {
 	}
 	if prm.logLevel != "debug" {
 		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.logLevel))
+	}
+}
+
+func TestCliWrongConfigError(t *testing.T) {
+
+	// test environment variables
+	defer unsetRemoteConfigEnv()
+	os.Setenv("~#UPROJECT#~_REMOTECONFIGPROVIDER", "consul")
+	os.Setenv("~#UPROJECT#~_REMOTECONFIGENDPOINT", "127.0.0.1:999999")
+	os.Setenv("~#UPROJECT#~_REMOTECONFIGPATH", "/config/wrong")
+	os.Setenv("~#UPROJECT#~_REMOTECONFIGSECRETKEYRING", "")
+
+	// load a specific config file just for testing
+	oldCfg := ConfigPath
+	viper.Reset()
+	for k := range ConfigPath {
+		ConfigPath[k] = "wrong/path/"
+	}
+	defer func() { ConfigPath = oldCfg }()
+
+	_, err := cli()
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected"))
+		return
 	}
 }
 
