@@ -32,7 +32,7 @@ const RemoteConfigEndpoint = ""
 const RemoteConfigPath = ""
 
 // RemoteConfigSecretKeyring is the path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
-const RemoteConfigSecretKeyring = "" // nosec
+const RemoteConfigSecretKeyring = "" // #nosec
 
 // LogLevel defines the default log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
 const LogLevel = "INFO"
