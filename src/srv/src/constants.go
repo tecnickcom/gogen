@@ -34,8 +34,16 @@ const RemoteConfigPath = ""
 // RemoteConfigSecretKeyring is the path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
 const RemoteConfigSecretKeyring = "" // #nosec
 
-// LogLevel defines the default log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
+// Log (syslog)
+
+// LogLevel defines the default log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
 const LogLevel = "INFO"
+
+// LogNetwork is the network type used by Syslog (i.e. udp or tcp). Leave emty to disable.
+const LogNetwork = ""
+
+// LogAddress is the network address of the Syslog daemon (ip:port) or just (:port). Leave emty to disable.
+const LogAddress = ""
 
 // ServerAddress is the default HTTP API URL (ip:port) or just (:port)
 const ServerAddress = ":8081"

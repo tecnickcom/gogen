@@ -369,7 +369,7 @@ dockertest:
 	sleep 5
 	# push Consul configuration
 	docker inspect --format='{{(index (index .NetworkSettings.Ports "8500/tcp") 0).HostPort}}' `cat target/consul_docker_container.id` > target/consul_docker_container.port
-	curl -X PUT -d '{"serverMode":true,"serverAddress":":8765","charset":"0123456789abcdefghijklmnopqrstuvwxyz","length":17,"quantity": 7}' http://127.0.0.1:`cat target/consul_docker_container.port`/v1/kv/config/~#PROJECT#~
+	curl -X PUT -d '{"serverAddress": ":8812","log": {"level": "DEBUG","network": "","address": ""},"stats": {"prefix": "~#PROJECT#~","network": "udp","address": ":8125","flush_period": 100}}' http://127.0.0.1:`cat target/consul_docker_container.port`/v1/kv/config/$(PROJECT)
 	docker run --detach=true --net="host" --tty=true \
 	--env="~#UPROJECT#~_REMOTECONFIGPROVIDER=consul" \
 	--env="~#UPROJECT#~_REMOTECONFIGENDPOINT=127.0.0.1:`cat target/consul_docker_container.port`" \

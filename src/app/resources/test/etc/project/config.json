@@ -1,8 +1,12 @@
 {
-    "remoteConfigProvider" : "",
-    "remoteConfigEndpoint" : "",
-    "remoteConfigPath" : "",
-    "remoteConfigSecretKeyring" : "",
-    "logLevel" : "debug",
-    "quantity" : 1
+  "remoteConfigProvider" : "",
+  "remoteConfigEndpoint" : "",
+  "remoteConfigPath" : "",
+  "remoteConfigSecretKeyring" : "",
+  "log": {
+    "level": "DEBUG",
+    "network": "",
+    "address": ""
+  },
+  "quantity" : 1
 }

@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------
 
 # List special make targets that are not associated with files
-.PHONY: help all test format fmtcheck vet lint coverage cyclo ineffassign misspell astscan qa deps install uninstall clean nuke build rpm deb bz2 docker dockertest buildall dbuild bintray
+.PHONY: help all test format fmtcheck vet lint coverage cyclo ineffassign misspell astscan qa deps install uninstall clean nuke build rpm deb bz2 docker buildall dbuild bintray
 
 # Use bash as shell (Note: Ubuntu now uses dash which doesn't support PIPESTATUS).
 SHELL=/bin/bash
@@ -125,7 +125,6 @@ help:
 	@echo "    make deb         : Build a DEB package"
 	@echo "    make bz2         : Build a tar bz2 (tbz2) compressed archive"
 	@echo "    make docker      : Build a scratch docker container to run this service"
-	@echo "    make dockertest  : Test the newly built docker container"
 	@echo ""
 	@echo "    make buildall    : Full build and test sequence"
 	@echo "    make dbuild      : Build everything inside a Docker container"
@@ -338,36 +337,6 @@ docker:
 	make install DESTDIR=$(PATHDOCKERPKG)
 	cp resources/DockerDeploy/Dockerfile $(PATHDOCKERPKG)/
 	docker build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
-
-# Check if the deployment container starts
-dockertest:
-	# clean any previous container (if any)
-	rm -f target/old_docker_containers.id
-	docker ps -a | grep $(CONSUL_DOCKER_IMAGE_NAME) | awk '{print $$1}' >> target/old_docker_containers.id
-	docker ps -a | grep ${VENDOR}/${PROJECT}$(DOCKERSUFFIX) | awk '{print $$1}' >> target/old_docker_containers.id
-	docker stop `cat target/old_docker_containers.id` 2> /dev/null || true
-	docker rm `cat target/old_docker_containers.id` 2> /dev/null || true
-	# start Consul service inside a Docker container
-	docker run --detach=true --name=$(CONSUL_DOCKER_IMAGE_NAME) --publish=8500 --hostname=test.consul progrium/consul -server -bootstrap > target/consul_docker_container.id
-	sleep 5
-	# push Consul configuration
-	docker inspect --format='{{(index (index .NetworkSettings.Ports "8500/tcp") 0).HostPort}}' `cat target/consul_docker_container.id` > target/consul_docker_container.port
-	curl -X PUT -d '{"serverMode":true,"serverAddress":":8765","charset":"0123456789abcdefghijklmnopqrstuvwxyz","length":17,"quantity": 7}' http://127.0.0.1:`cat target/consul_docker_container.port`/v1/kv/config/~#PROJECT#~
-	docker run --detach=true --net="host" --tty=true \
-	--env="~#UPROJECT#~_REMOTECONFIGPROVIDER=consul" \
-	--env="~#UPROJECT#~_REMOTECONFIGENDPOINT=127.0.0.1:`cat target/consul_docker_container.port`" \
-	--env="~#UPROJECT#~_REMOTECONFIGPATH=/config/~#PROJECT#~" \
-	--env="~#UPROJECT#~_REMOTECONFIGSECRETKEYRING=" \
-	${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest > target/project_docker_container.id || true
-	sleep 5
-	# check if the container is working
-	docker inspect -f {{.State.Running}} `cat target/project_docker_container.id` > target/project_docker_container.run || true
-	# remove containers
-	docker stop `cat target/project_docker_container.id` || true
-	docker rm `cat target/project_docker_container.id` || true
-	docker stop `cat target/consul_docker_container.id` || true
-	docker rm `cat target/consul_docker_container.id` || true
-	@exit `grep -ic "false" target/project_docker_container.run`
 
 # Full build and test sequence
 # You may want to change this and add/remove options

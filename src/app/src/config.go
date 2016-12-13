@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/viper"
 	_ "github.com/spf13/viper/remote"
 )
@@ -24,8 +23,8 @@ func (rcfg remoteConfigParams) isEmpty() bool {
 
 // params struct contains the application parameters
 type params struct {
-	logLevel string // Log level: NONE, EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
-	quantity int    // number of strings to generate
+	log      *LogData // Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG.
+	quantity int      // number of strings to generate
 }
 
 var configDir string
@@ -49,7 +48,11 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 	viper.SetDefault("remoteConfigSecretKeyring", RemoteConfigSecretKeyring)
 
 	// set default configuration values
-	viper.SetDefault("logLevel", LogLevel)
+
+	viper.SetDefault("log.level", LogLevel)
+	viper.SetDefault("log.network", LogNetwork)
+	viper.SetDefault("log.address", LogAddress)
+
 	viper.SetDefault("quantity", Quantity)
 
 	// name of the configuration file without extension
@@ -101,7 +104,11 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 	viper.Reset()
 
 	// set default configuration values
-	viper.SetDefault("logLevel", cfg.logLevel)
+
+	viper.SetDefault("log.level", cfg.log.Level)
+	viper.SetDefault("log.network", cfg.log.Network)
+	viper.SetDefault("log.address", cfg.log.Address)
+
 	viper.SetDefault("quantity", cfg.quantity)
 
 	// configuration type
@@ -129,7 +136,13 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 // getViperParams reads the config params via Viper
 func getViperParams() params {
 	return params{
-		logLevel: viper.GetString("logLevel"),
+
+		log: &LogData{
+			Level:   viper.GetString("log.level"),
+			Network: viper.GetString("log.network"),
+			Address: viper.GetString("log.address"),
+		},
+
 		quantity: viper.GetInt("quantity"),
 	}
 }
@@ -137,15 +150,13 @@ func getViperParams() params {
 // checkParams cheks if the configuration parameters are valid
 func checkParams(prm *params) error {
 	// Log
-	log.SetLevel(0)
-	if prm.logLevel == "" {
-		return errors.New("logLevel is empty")
+	if prm.log.Level == "" {
+		return errors.New("log Level is empty")
 	}
-	levelCode, err := log.ParseLevel(prm.logLevel)
+	err := prm.log.setLog()
 	if err != nil {
-		return errors.New("The logLevel must be one of the following: panic, fatal, error, warning, info, debug")
+		return err
 	}
-	log.SetLevel(levelCode)
 
 	// Other settings
 	if prm.quantity <= 0 {
