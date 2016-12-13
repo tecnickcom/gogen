@@ -24,7 +24,7 @@ func cli() (*cobra.Command, error) {
 	appParams = &cfgParams
 	rootCmd := new(cobra.Command)
 	rootCmd.Flags().StringVarP(&configDir, "configDir", "c", "", "Configuration directory to be added on top of the search list")
-	rootCmd.Flags().StringVarP(&appParams.logLevel, "logLevel", "o", cfgParams.logLevel, "Log level: panic, fatal, error, warning, info, debug")
+	rootCmd.Flags().StringVarP(&appParams.log.Level, "logLevel", "o", cfgParams.log.Level, "Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG")
 
 	rootCmd.Use = "~#PROJECT#~"
 	rootCmd.Short = "~#SHORTDESCRIPTION#~"

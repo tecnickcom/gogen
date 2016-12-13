@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
@@ -13,9 +14,35 @@ func TestPrefixFieldClashes(t *testing.T) {
 }
 
 func TestLogJsonError(t *testing.T) {
-	oldJsonMarshal := jsonMarshal
-	defer func() { jsonMarshal = oldJsonMarshal }()
-	jsonMarshal = mockJsonMarshalError
+	oldJSONMarshal := jsonMarshal
+	defer func() { jsonMarshal = oldJSONMarshal }()
+	jsonMarshal = mockJSONMarshalError
 
 	log.Info("testing log error")
+}
+
+func TestParseLogLevel(t *testing.T) {
+	ld := &LogData{}
+
+	ld.Level = "WRONG"
+	_, _, err := ld.parseLogLevel()
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected"))
+	}
+
+	level := []string{"EMERGENCY", "ALERT", "CRITICAL", "ERROR", "WARNING", "NOTICE", "INFO", "DEBUG"}
+
+	for i := range level {
+		ld.Level = level[i]
+		logLevel, syslogPriority, err := ld.parseLogLevel()
+		if err != nil {
+			t.Error(fmt.Errorf("An error was not expected: %v", err))
+		}
+		if logLevel < 0 {
+			t.Error(fmt.Errorf("logLevel for %s should be >= 0", ld.Level))
+		}
+		if syslogPriority < 0 {
+			t.Error(fmt.Errorf("syslogPriority for %s should be >= 0", ld.Level))
+		}
+	}
 }

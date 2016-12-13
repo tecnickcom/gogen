@@ -10,7 +10,11 @@ import (
 
 func getTestCfgParams() *params {
 	return &params{
-		logLevel: "INFO",
+		log: &LogData{
+			Level:   "INFO",
+			Network: "",
+			Address: "",
+		},
 		quantity: 10,
 	}
 }
@@ -24,7 +28,7 @@ func TestCheckParams(t *testing.T) {
 
 func TestCheckParamsErrorsLogLevelEmpty(t *testing.T) {
 	cfg := getTestCfgParams()
-	cfg.logLevel = ""
+	cfg.log.Level = ""
 	err := checkParams(cfg)
 	if err == nil {
 		t.Error(fmt.Errorf("An error was expected because logLevel is empty"))
@@ -33,7 +37,7 @@ func TestCheckParamsErrorsLogLevelEmpty(t *testing.T) {
 
 func TestCheckParamsErrorsLogLevelInvalid(t *testing.T) {
 	cfg := getTestCfgParams()
-	cfg.logLevel = "INVALID"
+	cfg.log.Level = "INVALID"
 	err := checkParams(cfg)
 	if err == nil {
 		t.Error(fmt.Errorf("An error was expected because logLevel is invalid"))
@@ -54,8 +58,8 @@ func TestGetConfigParams(t *testing.T) {
 	if err != nil {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
 	}
-	if prm.logLevel != "debug" {
-		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.logLevel))
+	if prm.log.Level != "DEBUG" {
+		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.log.Level))
 	}
 }
 
@@ -70,8 +74,8 @@ func TestGetLocalConfigParams(t *testing.T) {
 
 	prm, rprm := getLocalConfigParams()
 
-	if prm.logLevel != "debug" {
-		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.logLevel))
+	if prm.log.Level != "DEBUG" {
+		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.log.Level))
 	}
 	if rprm.remoteConfigProvider != "consul" {
 		t.Error(fmt.Errorf("Found different remoteConfigProvider than expected, found %s", rprm.remoteConfigProvider))
@@ -126,8 +130,8 @@ func TestGetConfigParamsRemote(t *testing.T) {
 	if err != nil {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
 	}
-	if prm.logLevel != "debug" {
-		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.logLevel))
+	if prm.log.Level != "DEBUG" {
+		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.log.Level))
 	}
 }
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -40,21 +39,22 @@ func startServer(address string) error {
 	return fmt.Errorf("unable to start the HTTP server: %v", http.ListenAndServe(address, router))
 }
 
-// send the HTTP response in JSON format
-func setHeader(hw http.ResponseWriter, contentType string, code int) {
+// setHeaders set the default headers
+func setHeaders(hw http.ResponseWriter, contentType string, code int) {
 	hw.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	hw.Header().Set("Pragma", "no-cache")
 	hw.Header().Set("Expires", "0")
 	hw.Header().Set("Content-Type", contentType)
 	hw.WriteHeader(code)
 
-	// count HTTP statuses
+	// count HTTP status
 	stats.Increment(fmt.Sprintf("httpstatus.%d", code))
 }
 
 // send the HTTP response in JSON format
 func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params, code int, data interface{}) {
-	setHeader(hw, "application/json", code)
+
+	setHeaders(hw, "application/json", code)
 
 	nowTime := time.Now().UTC()
 
@@ -88,10 +88,11 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 		}).Info("request")
 	}
 
-	// send response as JSON
-	if err := json.NewEncoder(hw).Encode(response); err != nil {
+	// send JSON response
+	err := sendJSONEncode(hw, response)
+	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-		}).Error("unable to send the JSON response")
+		}).Error("unable to send JSON response")
 	}
 }

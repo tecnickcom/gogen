@@ -1,14 +1,18 @@
 {
-    "remoteConfigProvider" : "",
-    "remoteConfigEndpoint" : "",
-    "remoteConfigPath" : "",
-    "remoteConfigSecretKeyring" : "",
-    "logLevel" : "debug",
-    "serverAddress": ":8812",
-    "stats": {
-        "prefix": "~#PROJECT#~",
-        "network": "udp",
-        "address": ":8125",
-        "flush_period": 100
-    }
+  "remoteConfigProvider" : "",
+  "remoteConfigEndpoint" : "",
+  "remoteConfigPath" : "",
+  "remoteConfigSecretKeyring" : "",
+  "serverAddress": ":8812",
+  "log": {
+    "level": "DEBUG",
+    "network": "",
+    "address": ""
+  },
+  "stats": {
+    "prefix": "~#PROJECT#~",
+    "network": "udp",
+    "address": ":8125",
+    "flush_period": 100
+  }
 }
