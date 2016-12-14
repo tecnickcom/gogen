@@ -13,6 +13,12 @@ func TestPrefixFieldClashes(t *testing.T) {
 	}).Info("testing log")
 }
 
+func TestLogError(t *testing.T) {
+	log.WithFields(log.Fields{
+		"error": fmt.Errorf("ERROR"),
+	}).Error("testing error log")
+}
+
 func TestLogJsonError(t *testing.T) {
 	oldJSONMarshal := jsonMarshal
 	defer func() { jsonMarshal = oldJSONMarshal }()

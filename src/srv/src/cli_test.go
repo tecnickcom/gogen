@@ -43,7 +43,10 @@ func TestCliEmptyParamError(t *testing.T) {
 }
 
 func TestCli(t *testing.T) {
-	os.Args = []string{ProgramName, "--configDir=wrong/path"}
+	os.Args = []string{
+		ProgramName,
+		"--configDir=wrong/path",
+	}
 	cmd, err := cli()
 	if err != nil {
 		t.Error(fmt.Errorf("An error wasn't expected: %v", err))
