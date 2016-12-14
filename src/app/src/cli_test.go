@@ -43,6 +43,7 @@ func TestCli(t *testing.T) {
 		ProgramName,
 		"--logLevel=debug",
 		"--quantity=3",
+		"--configDir=wrong/path",
 	}
 	cmd, err := cli()
 	if err != nil {
@@ -60,7 +61,10 @@ func TestCli(t *testing.T) {
 }
 
 func TestCliConfigDir(t *testing.T) {
-	os.Args = []string{ProgramName, "--configDir=resources/test/etc/~#PROJECT#~"}
+	os.Args = []string{
+		ProgramName,
+		"--configDir=resources/test/etc/~#PROJECT#~",
+	}
 	cmd, err := cli()
 	if err != nil {
 		t.Error(fmt.Errorf("An error wasn't expected: %v", err))
