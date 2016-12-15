@@ -20,7 +20,7 @@ type LogData struct {
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
-	log.SetFormatter(new(logJSONFormatter))
+	log.SetFormatter(&logJSONFormatter{})
 
 	// Output to stderr instead of stdout, could also be a file.
 	log.SetOutput(os.Stderr)
@@ -36,30 +36,31 @@ type logJSONFormatter struct {
 func (f *logJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
 	data := make(log.Fields, len(entry.Data)+3)
 	for k, v := range entry.Data {
+		key := "ext_" + k
 		switch v := v.(type) {
 		case error:
 			// Otherwise errors are ignored by `encoding/json`
 			// https://github.com/Sirupsen/logrus/issues/137
-			data[k] = v.Error()
+			data[key] = v.Error()
 		default:
-			data[k] = v
+			data[key] = v
 		}
 	}
-	prefixFieldClashes(data)
 
 	nowTime := time.Now().UTC()
 
 	hostname, err := os.Hostname()
 	if err == nil {
-		data["hostname"] = hostname
+		hostname = ""
 	}
+	data["hostname"] = hostname
 	data["program"] = ProgramName
 	data["version"] = ProgramVersion
 	data["release"] = ProgramRelease
 	data["datetime"] = nowTime.Format(time.RFC3339)
 	data["timestamp"] = nowTime.UnixNano()
-	data["msg"] = entry.Message
 	data["level"] = entry.Level.String()
+	data["msg"] = entry.Message
 
 	if stats != nil {
 		// count each error type
@@ -71,16 +72,6 @@ func (f *logJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
 		return nil, fmt.Errorf("Failed to marshal fields to JSON, %v", err)
 	}
 	return append(serialized, '\n'), nil
-}
-
-// prefixFieldClashes avoid overwrite default fields
-func prefixFieldClashes(data log.Fields) {
-	fields := [...]string{"hostname", "program", "version", "release", "time", "timestamp", "msg", "level"}
-	for i := range fields {
-		if val, ok := data[fields[i]]; ok {
-			data["fields."+fields[i]] = val
-		}
-	}
 }
 
 // parseLogLevel takes a string level and returns the Logrus log level constant and he syslog priority
