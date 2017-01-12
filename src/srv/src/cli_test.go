@@ -11,6 +11,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 var emptyParamCases = []string{
@@ -64,6 +66,14 @@ func TestCli(t *testing.T) {
 	// use two separate channels for server and client testing
 	var wg sync.WaitGroup
 
+	routes = append(routes,
+		Route{
+			"GET",
+			"/panic",
+			triggerPanic,
+			"TRIGGER PANIC",
+		})
+
 	// SERVER
 	wg.Add(1)
 	go func() {
@@ -83,17 +93,22 @@ func TestCli(t *testing.T) {
 		defer wg.Done()
 		defer wg.Done() // End the server process
 
-		// test index
 		testEndPoint(t, "GET", "/", "", 200)
-		// test 404
-		testEndPoint(t, "GET", "/INVALID", "", 404)
-		// test 405
-		testEndPoint(t, "DELETE", "/", "", 405)
-		// test valid endpoints
 		testEndPoint(t, "GET", "/status", "", 200)
+
+		// error conditions
+
+		testEndPoint(t, "GET", "/INVALID", "", 404) // NotFound
+		testEndPoint(t, "DELETE", "/", "", 405)     // MethodNotAllowed
+		testEndPoint(t, "GET", "/panic", "", 500)   // PanicHandler
 	}()
 
 	wg.Wait()
+}
+
+// triggerPanic triggers a Panic
+func triggerPanic(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+	panic("TEST PANIC")
 }
 
 // return true if the input is a JSON
