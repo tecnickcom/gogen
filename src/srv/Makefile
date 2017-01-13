@@ -389,7 +389,7 @@ dockertest:
 # Full build and test sequence
 # You may want to change this and add/remove options
 #buildall: deps qa rpm deb bz2 crossbuild
-buildall: deps qa rpm deb
+buildall: build qa rpm deb
 
 # Build everything inside a Docker container
 dbuild:
