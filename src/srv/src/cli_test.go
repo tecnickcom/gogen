@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/spf13/cobra"
 )
 
 var emptyParamCases = []string{
@@ -63,9 +64,8 @@ func TestCli(t *testing.T) {
 	defer func() { os.Stderr = old }()
 	os.Stderr = nil
 
-	// use two separate channels for server and client testing
-	var wg sync.WaitGroup
-
+	// add an endpoint to test the panic handler
+	oldRoutes := routes
 	routes = append(routes,
 		Route{
 			"GET",
@@ -73,25 +73,52 @@ func TestCli(t *testing.T) {
 			triggerPanic,
 			"TRIGGER PANIC",
 		})
+	defer func() { routes = oldRoutes }()
 
-	// SERVER
-	wg.Add(1)
+	quitChannel := make(chan bool)
+
+	// use two separate channels for server and client testing
+	var twg sync.WaitGroup
+	startTestServer(t, cmd, &twg, quitChannel)
+	startTestClient(t, &twg, quitChannel)
+	twg.Wait()
+}
+
+func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup, quitChannel chan bool) {
+	twg.Add(1)
 	go func() {
-		defer wg.Done()
-		// start server
-		if err := cmd.Execute(); err != nil {
-			t.Error(fmt.Errorf("An error was not expected: %v", err))
+		defer twg.Done()
+
+		chp := make(chan error, 1)
+		go func() {
+			chp <- cmd.Execute()
+		}()
+
+		for {
+			select {
+			case err := <-chp:
+				if err != nil {
+					t.Error(fmt.Errorf("An error was not expected: %v", err))
+				}
+				return
+			case <-time.After(60 * time.Second): // one minute timeout to complete the tests
+				t.Error(fmt.Errorf("Time to complete the server-client tests has expired"))
+				return
+			case <-quitChannel:
+				return
+			}
 		}
 	}()
 
 	// wait for the http server connection to start
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
+}
 
-	// CLIENT
-	wg.Add(1)
+func startTestClient(t *testing.T, twg *sync.WaitGroup, quitChannel chan bool) {
+	twg.Add(1)
 	go func() {
-		defer wg.Done()
-		defer wg.Done() // End the server process
+		defer func() { quitChannel <- true }()
+		defer twg.Done()
 
 		testEndPoint(t, "GET", "/", "", 200)
 		testEndPoint(t, "GET", "/status", "", 200)
@@ -102,8 +129,6 @@ func TestCli(t *testing.T) {
 		testEndPoint(t, "DELETE", "/", "", 405)     // MethodNotAllowed
 		testEndPoint(t, "GET", "/panic", "", 500)   // PanicHandler
 	}()
-
-	wg.Wait()
 }
 
 // triggerPanic triggers a Panic
