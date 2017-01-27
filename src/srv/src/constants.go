@@ -45,6 +45,9 @@ const LogNetwork = ""
 // LogAddress is the network address of the Syslog daemon (ip:port) or just (:port). Leave emty to disable.
 const LogAddress = ""
 
+// ServerNetwork is the network type used by the server (tcp)
+const ServerNetwork = "tcp"
+
 // ServerAddress is the default HTTP API URL (ip:port) or just (:port)
 const ServerAddress = ":8081"
 

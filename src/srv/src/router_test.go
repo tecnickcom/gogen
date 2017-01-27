@@ -73,3 +73,10 @@ func TestSendResponseError(t *testing.T) {
 		t.Error(fmt.Errorf("Expected 200, got %d", rw.Code))
 	}
 }
+
+func TestStartServerError(t *testing.T) {
+	err := startServer("-1")
+	if err == nil {
+		t.Error(fmt.Errorf("An error was expected"))
+	}
+}
