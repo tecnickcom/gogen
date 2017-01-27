@@ -338,6 +338,32 @@ docker:
 	cp resources/DockerDeploy/Dockerfile $(PATHDOCKERPKG)/
 	docker build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
 
+# Check if the deployment container starts
+dockertest:
+	# clean any previous container (if any)
+	rm -f target/old_docker_containers.id
+	docker ps -a | grep $(CONSUL_DOCKER_IMAGE_NAME) | awk '{print $$1}' >> target/old_docker_containers.id
+	docker ps -a | grep ${VENDOR}/${PROJECT}$(DOCKERSUFFIX) | awk '{print $$1}' >> target/old_docker_containers.id
+	docker stop `cat target/old_docker_containers.id` 2> /dev/null || true
+	docker rm `cat target/old_docker_containers.id` 2> /dev/null || true
+	# start Consul service inside a Docker container
+	docker run --detach=true --name=$(CONSUL_DOCKER_IMAGE_NAME) --publish=8500 --hostname=test.consul progrium/consul -server -bootstrap > target/consul_docker_container.id
+	sleep 5
+	# push Consul configuration
+	docker inspect --format='{{(index (index .NetworkSettings.Ports "8500/tcp") 0).HostPort}}' `cat target/consul_docker_container.id` > target/consul_docker_container.port
+	curl --request PUT --data @resources/test/etc/~#PROJECT#~/config.json http://127.0.0.1:`cat target/consul_docker_container.port`/v1/kv/config/$(PROJECT)
+	docker run --net="host" --tty=true \
+	--env="~#UPROJECT#~_REMOTECONFIGPROVIDER=consul" \
+	--env="~#UPROJECT#~_REMOTECONFIGENDPOINT=127.0.0.1:`cat target/consul_docker_container.port`" \
+	--env="~#UPROJECT#~_REMOTECONFIGPATH=/config/~#PROJECT#~" \
+	--env="~#UPROJECT#~_REMOTECONFIGSECRETKEYRING=" \
+	${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest > target/project_docker_container.out 2>&1 || true
+	# remove containers
+	docker stop `cat target/consul_docker_container.id` || true
+	docker rm `cat target/consul_docker_container.id` || true
+	# set here the test condition...
+	#grep -ic "" target/project_docker_container.out > /dev/null
+
 # Full build and test sequence
 # You may want to change this and add/remove options
 #buildall: deps qa rpm deb bz2 crossbuild
