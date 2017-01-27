@@ -9,12 +9,16 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/spf13/cobra"
 )
+
+var endTestChannel chan bool
+var serverTestErrors uint64
 
 var emptyParamCases = []string{
 	"--logLevel=",
@@ -65,7 +69,6 @@ func TestCli(t *testing.T) {
 	os.Stderr = nil
 
 	// add an endpoint to test the panic handler
-	oldRoutes := routes
 	routes = append(routes,
 		Route{
 			"GET",
@@ -73,18 +76,19 @@ func TestCli(t *testing.T) {
 			triggerPanic,
 			"TRIGGER PANIC",
 		})
-	defer func() { routes = oldRoutes }()
+	defer func() { routes = routes[:len(routes)-1] }()
 
-	quitChannel := make(chan bool)
+	endTestChannel = make(chan bool)
+	serverTestErrors = 0
 
 	// use two separate channels for server and client testing
 	var twg sync.WaitGroup
-	startTestServer(t, cmd, &twg, quitChannel)
-	startTestClient(t, &twg, quitChannel)
+	startTestServer(t, cmd, &twg)
+	startTestClient(t, &twg)
 	twg.Wait()
 }
 
-func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup, quitChannel chan bool) {
+func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup) {
 	twg.Add(1)
 	go func() {
 		defer twg.Done()
@@ -94,31 +98,36 @@ func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup, quit
 			chp <- cmd.Execute()
 		}()
 
+		quit := false
 		for {
 			select {
 			case err := <-chp:
-				if err != nil {
+				if !quit && err != nil {
+					atomic.AddUint64(&serverTestErrors, 1)
 					t.Error(fmt.Errorf("An error was not expected: %v", err))
 				}
 				return
-			case <-time.After(60 * time.Second): // one minute timeout to complete the tests
-				t.Error(fmt.Errorf("Time to complete the server-client tests has expired"))
-				return
-			case <-quitChannel:
-				return
+			case <-endTestChannel:
+				quit = true
+				stopServer() // this triggers the cmd.Execute error
 			}
 		}
 	}()
 
-	// wait for the http server connection to start
-	time.Sleep(200 * time.Millisecond)
+	// wait for the server to start
+	time.Sleep(500 * time.Millisecond)
 }
 
-func startTestClient(t *testing.T, twg *sync.WaitGroup, quitChannel chan bool) {
+func startTestClient(t *testing.T, twg *sync.WaitGroup) {
+
+	if atomic.LoadUint64(&serverTestErrors) > 0 {
+		return
+	}
+
 	twg.Add(1)
 	go func() {
-		defer func() { quitChannel <- true }()
 		defer twg.Done()
+		defer func() { endTestChannel <- true }()
 
 		testEndPoint(t, "GET", "/", "", 200)
 		testEndPoint(t, "GET", "/status", "", 200)
@@ -129,6 +138,13 @@ func startTestClient(t *testing.T, twg *sync.WaitGroup, quitChannel chan bool) {
 		testEndPoint(t, "DELETE", "/", "", 405)     // MethodNotAllowed
 		testEndPoint(t, "GET", "/panic", "", 500)   // PanicHandler
 	}()
+}
+
+// stop the server listener
+func stopServer() {
+	if serverListener != nil {
+		serverListener.Close()
+	}
 }
 
 // triggerPanic triggers a Panic

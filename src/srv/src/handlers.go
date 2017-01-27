@@ -10,7 +10,7 @@ import (
 var startTime = time.Now()
 
 // return a list of available routes
-func index(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func indexHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
 	stats.Increment("http.index.in")
 	type info struct {
 		Duration float64 `json:"duration"` // elapsed time since last passwor drequest or service start
@@ -24,7 +24,7 @@ func index(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
 }
 
 // returns the status of the service
-func status(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func statusHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
 	stats.Increment("http.status.in")
 	type info struct {
 		Duration float64 `json:"duration"` // elapsed time since last request in seconds

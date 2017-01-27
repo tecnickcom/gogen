@@ -18,7 +18,7 @@ var routes = Routes{
 	Route{
 		"GET",
 		"/status",
-		status,
+		statusHandler,
 		"check this service status",
 	},
 }
