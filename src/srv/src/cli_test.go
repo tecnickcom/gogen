@@ -9,7 +9,6 @@ import (
 	"os"
 	"reflect"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,8 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var endTestChannel chan bool
-var serverTestErrors uint64
+var stopServerChannel chan bool
 
 var emptyParamCases = []string{
 	"--logLevel=",
@@ -78,17 +76,17 @@ func TestCli(t *testing.T) {
 		})
 	defer func() { routes = routes[:len(routes)-1] }()
 
-	endTestChannel = make(chan bool)
-	serverTestErrors = 0
-
 	// use two separate channels for server and client testing
 	var twg sync.WaitGroup
 	startTestServer(t, cmd, &twg)
-	startTestClient(t, &twg)
+	startTestClient(t)
 	twg.Wait()
 }
 
 func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup) {
+
+	stopServerChannel = make(chan bool)
+
 	twg.Add(1)
 	go func() {
 		defer twg.Done()
@@ -98,18 +96,22 @@ func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup) {
 			chp <- cmd.Execute()
 		}()
 
-		quit := false
+		stopped := false
 		for {
 			select {
-			case err := <-chp:
-				if !quit && err != nil {
-					atomic.AddUint64(&serverTestErrors, 1)
+			case err, ok := <-chp:
+				if ok && !stopped && err != nil {
+					stopServerChannel <- true
 					t.Error(fmt.Errorf("An error was not expected: %v", err))
 				}
 				return
-			case <-endTestChannel:
-				quit = true
-				stopServer() // this triggers the cmd.Execute error
+			case <-stopServerChannel:
+				stopped = true
+				if serverListener != nil {
+					serverListener.Close() // this triggers the cmd.Execute error
+				} else {
+					return
+				}
 			}
 		}
 	}()
@@ -118,33 +120,28 @@ func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup) {
 	time.Sleep(500 * time.Millisecond)
 }
 
-func startTestClient(t *testing.T, twg *sync.WaitGroup) {
+func startTestClient(t *testing.T) {
 
-	if atomic.LoadUint64(&serverTestErrors) > 0 {
-		return
+	// check if the server is running
+	select {
+	case stop, ok := <-stopServerChannel:
+		if ok && stop {
+			return
+		}
+	default:
+		break
 	}
 
-	twg.Add(1)
-	go func() {
-		defer twg.Done()
-		defer func() { endTestChannel <- true }()
+	defer func() { stopServerChannel <- true }()
 
-		testEndPoint(t, "GET", "/", "", 200)
-		testEndPoint(t, "GET", "/status", "", 200)
+	testEndPoint(t, "GET", "/", "", 200)
+	testEndPoint(t, "GET", "/status", "", 200)
 
-		// error conditions
+	// error conditions
 
-		testEndPoint(t, "GET", "/INVALID", "", 404) // NotFound
-		testEndPoint(t, "DELETE", "/", "", 405)     // MethodNotAllowed
-		testEndPoint(t, "GET", "/panic", "", 500)   // PanicHandler
-	}()
-}
-
-// stop the server listener
-func stopServer() {
-	if serverListener != nil {
-		serverListener.Close()
-	}
+	testEndPoint(t, "GET", "/INVALID", "", 404) // NotFound
+	testEndPoint(t, "DELETE", "/", "", 405)     // MethodNotAllowed
+	testEndPoint(t, "GET", "/panic", "", 500)   // PanicHandler
 }
 
 // triggerPanic triggers a Panic
