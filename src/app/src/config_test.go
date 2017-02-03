@@ -26,30 +26,21 @@ func TestCheckParams(t *testing.T) {
 	}
 }
 
-func TestCheckParamsErrorsLogLevelEmpty(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.log.Level = ""
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because logLevel is empty"))
+func TestCheckConfigParametersErrors(t *testing.T) {
+	var testCases = []struct {
+		fcfg  func(cfg *params) *params
+		field string
+	}{
+		{func(cfg *params) *params { cfg.log.Level = ""; return cfg }, "log.Level"},
+		{func(cfg *params) *params { cfg.log.Level = "INVALID"; return cfg }, "log.Level"},
+		{func(cfg *params) *params { cfg.quantity = 0; return cfg }, "quantity"},
 	}
-}
-
-func TestCheckParamsErrorsLogLevelInvalid(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.log.Level = "INVALID"
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because logLevel is invalid"))
-	}
-}
-
-func TestCheckParamsErrorsQuantity(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.quantity = 0
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because quantity is empty"))
+	for _, tt := range testCases {
+		cfg := getTestCfgParams()
+		err := checkParams(tt.fcfg(cfg))
+		if err == nil {
+			t.Error(fmt.Errorf("An error was expected because the %s field is invalid", tt.field))
+		}
 	}
 }
 
