@@ -32,57 +32,24 @@ func TestCheckParams(t *testing.T) {
 	}
 }
 
-func TestCheckParamsErrorsLogLevelEmpty(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.log.Level = ""
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because logLevel is empty"))
+func TestCheckConfigParametersErrors(t *testing.T) {
+	var testCases = []struct {
+		fcfg  func(cfg *params) *params
+		field string
+	}{
+		{func(cfg *params) *params { cfg.log.Level = ""; return cfg }, "log.Level"},
+		{func(cfg *params) *params { cfg.log.Level = "INVALID"; return cfg }, "log.Level"},
+		{func(cfg *params) *params { cfg.serverAddress = ""; return cfg }, "serverAddress"},
+		{func(cfg *params) *params { cfg.stats.Prefix = ""; return cfg }, "stats.Prefix"},
+		{func(cfg *params) *params { cfg.stats.Network = ""; return cfg }, "stats.Network"},
+		{func(cfg *params) *params { cfg.stats.FlushPeriod = -1; return cfg }, "stats.FlushPeriod"},
 	}
-}
-
-func TestCheckParamsErrorsLogLevelInvalid(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.log.Level = "INVALID"
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because logLevel is invalid"))
-	}
-}
-
-func TestCheckParamsErrorsServerAddress(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.serverAddress = ""
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because serverAddress is empty"))
-	}
-}
-
-func TestCheckParamsErrorsStatsPrefix(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.stats.Prefix = ""
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the stats Prefix is empty"))
-	}
-}
-
-func TestCheckParamsErrorsStatsNetwork(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.stats.Network = ""
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the stats Network is empty"))
-	}
-}
-
-func TestCheckParamsErrorsStatsFlushPeriod(t *testing.T) {
-	cfg := getTestCfgParams()
-	cfg.stats.FlushPeriod = -1
-	err := checkParams(cfg)
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected because the stats FlushPeriod is negative"))
+	for _, tt := range testCases {
+		cfg := getTestCfgParams()
+		err := checkParams(tt.fcfg(cfg))
+		if err == nil {
+			t.Error(fmt.Errorf("An error was expected because the %s field is invalid", tt.field))
+		}
 	}
 }
 
