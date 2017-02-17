@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"time"
 
@@ -10,8 +9,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// srvListener is the server network listener
-var serverListener net.Listener
+// server is the HTTP server
+var server *http.Server
 
 // start the HTTP server
 func startServer(address string) (err error) {
@@ -41,13 +40,14 @@ func startServer(address string) (err error) {
 		"address": address,
 	}).Info("starting http server")
 
-	serverListener, err = net.Listen(ServerNetwork, address)
-	if err != nil {
-		return fmt.Errorf("unable to open the server listening port: %v", err)
+	server = &http.Server{
+		Addr:     address,
+		Handler:  router,
+		ErrorLog: stdLogger,
 	}
-	defer serverListener.Close()
+	defer server.Close()
 
-	return fmt.Errorf("unable to start the HTTP server: %v", http.Serve(serverListener, router))
+	return fmt.Errorf("unable to start the HTTP server: %v", server.ListenAndServe())
 }
 
 // setHeaders set the default headers

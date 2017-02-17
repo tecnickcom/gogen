@@ -107,8 +107,8 @@ func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup) {
 				return
 			case <-stopServerChannel:
 				stopped = true
-				if serverListener != nil {
-					serverListener.Close() // this triggers the cmd.Execute error
+				if server != nil {
+					server.Close() // this triggers the cmd.Execute error
 				} else {
 					return
 				}
