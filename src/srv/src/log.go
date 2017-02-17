@@ -2,14 +2,17 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	logrus "github.com/Sirupsen/logrus"
 	logrus_syslog "github.com/Sirupsen/logrus/hooks/syslog"
 	syslog "log/syslog"
 )
+
+var stdLogger *log.Logger
 
 // LogData store a single log configuration
 type LogData struct {
@@ -20,21 +23,21 @@ type LogData struct {
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
-	log.SetFormatter(&logJSONFormatter{})
+	logrus.SetFormatter(&logJSONFormatter{})
 
 	// Output to stderr instead of stdout, could also be a file.
-	log.SetOutput(os.Stderr)
+	logrus.SetOutput(os.Stderr)
 
 	// Only log the warning severity or above.
-	log.SetLevel(log.DebugLevel)
+	logrus.SetLevel(logrus.DebugLevel)
 }
 
 type logJSONFormatter struct {
 }
 
 // Format is a custom JSON formatter for the logs
-func (f *logJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
-	data := make(log.Fields, len(entry.Data)+3)
+func (f *logJSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	data := make(logrus.Fields, len(entry.Data)+3)
 	for k, v := range entry.Data {
 		key := "ext_" + k
 		switch v := v.(type) {
@@ -64,7 +67,7 @@ func (f *logJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
 
 	if stats != nil {
 		// count each error type
-		stats.Increment(fmt.Sprintf("log.%s", data["level"]))
+		stats.Increment(fmt.Sprintf("logrus.%s", data["level"]))
 	}
 
 	serialized, err := jsonMarshal(data)
@@ -75,27 +78,27 @@ func (f *logJSONFormatter) Format(entry *log.Entry) ([]byte, error) {
 }
 
 // parseLogLevel takes a string level and returns the Logrus log level constant and he syslog priority
-func (ld *LogData) parseLogLevel() (log.Level, syslog.Priority, error) {
+func (ld *LogData) parseLogLevel() (logrus.Level, syslog.Priority, error) {
 	switch strings.ToLower(ld.Level) {
 	case "emergency":
-		return log.PanicLevel, syslog.LOG_EMERG, nil
+		return logrus.PanicLevel, syslog.LOG_EMERG, nil
 	case "alert":
-		return log.PanicLevel, syslog.LOG_ALERT, nil
+		return logrus.PanicLevel, syslog.LOG_ALERT, nil
 	case "crit", "critical":
-		return log.FatalLevel, syslog.LOG_CRIT, nil
+		return logrus.FatalLevel, syslog.LOG_CRIT, nil
 	case "err", "error":
-		return log.ErrorLevel, syslog.LOG_ERR, nil
+		return logrus.ErrorLevel, syslog.LOG_ERR, nil
 	case "warn", "warning":
-		return log.WarnLevel, syslog.LOG_WARNING, nil
+		return logrus.WarnLevel, syslog.LOG_WARNING, nil
 	case "notice":
-		return log.InfoLevel, syslog.LOG_NOTICE, nil
+		return logrus.InfoLevel, syslog.LOG_NOTICE, nil
 	case "info":
-		return log.InfoLevel, syslog.LOG_INFO, nil
+		return logrus.InfoLevel, syslog.LOG_INFO, nil
 	case "debug":
-		return log.DebugLevel, syslog.LOG_DEBUG, nil
+		return logrus.DebugLevel, syslog.LOG_DEBUG, nil
 	}
 
-	return log.DebugLevel, syslog.LOG_DEBUG, fmt.Errorf("Not a valid log Level: %q", ld.Level)
+	return logrus.DebugLevel, syslog.LOG_DEBUG, fmt.Errorf("Not a valid log Level: %q", ld.Level)
 }
 
 // setLog configure the log
@@ -104,10 +107,14 @@ func (ld *LogData) setLog() error {
 	if err != nil {
 		return fmt.Errorf("The logLevel must be one of the following: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG")
 	}
-	log.SetLevel(logLevel)
+	logrus.SetLevel(logLevel)
 	hook, err := logrus_syslog.NewSyslogHook(ld.Network, ld.Address, syslogPriority, "")
 	if err == nil {
-		log.AddHook(hook)
+		logrus.AddHook(hook)
 	}
+
+	logger := logrus.StandardLogger()
+	stdLogger = log.New(logger.Out, "", 0)
+
 	return nil
 }
