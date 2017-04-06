@@ -104,7 +104,7 @@ ifeq ($(STATIC),0)
 	STATIC_FLAG=
 else
 	STATIC_TAG=static
-	STATIC_FLAG="-static"
+	STATIC_FLAG=-static
 endif
 
 # --- MAKE TARGETS ---
@@ -331,7 +331,7 @@ build: deps
 	GOPATH=$(GOPATH) \
 	go build \
 	-tags ${STATIC_TAG} \
-	-ldflags '-s -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
+	-ldflags '-linkmode external -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
 	-o ./target/${BINPATH}$(PROJECT) ./src
 ifneq (${UPXENABLED},)
 	upx --brute ./target/${BINPATH}$(PROJECT)
