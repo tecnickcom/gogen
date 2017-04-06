@@ -34,6 +34,12 @@ const RemoteConfigPath = ""
 // RemoteConfigSecretKeyring is the path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
 const RemoteConfigSecretKeyring = "" // #nosec
 
+// ServerAddress is the default HTTP address (ip:port) or just (:port)
+const ServerAddress = ":8081"
+
+// ServerShutdownTimeout timeout in seconds before forcing the server to close
+const ServerShutdownTimeout = 10
+
 // Log (syslog)
 
 // LogLevel defines the default log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
@@ -45,11 +51,7 @@ const LogNetwork = ""
 // LogAddress is the network address of the Syslog daemon (ip:port) or just (:port). Leave emty to disable.
 const LogAddress = ""
 
-// ServerNetwork is the network type used by the server (tcp)
-const ServerNetwork = "tcp"
-
-// ServerAddress is the default HTTP API URL (ip:port) or just (:port)
-const ServerAddress = ":8081"
+// StatsD is used to collect usage metrics
 
 // StatsPrefix is the StatsD client's string prefix that will be used in every bucket name.
 const StatsPrefix = "~#PROJECT#~"

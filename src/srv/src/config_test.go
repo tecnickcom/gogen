@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/spf13/viper"
 )
 
+// getTestCfgParams returns a valid reference configuration as the one parsed by Viper
 func getTestCfgParams() *params {
 	return &params{
 		serverAddress: ":8123",
@@ -33,6 +35,7 @@ func TestCheckParams(t *testing.T) {
 }
 
 func TestCheckConfigParametersErrors(t *testing.T) {
+
 	var testCases = []struct {
 		fcfg  func(cfg *params) *params
 		field string
@@ -44,6 +47,7 @@ func TestCheckConfigParametersErrors(t *testing.T) {
 		{func(cfg *params) *params { cfg.stats.Network = ""; return cfg }, "stats.Network"},
 		{func(cfg *params) *params { cfg.stats.FlushPeriod = -1; return cfg }, "stats.FlushPeriod"},
 	}
+
 	for _, tt := range testCases {
 		cfg := getTestCfgParams()
 		err := checkParams(tt.fcfg(cfg))
@@ -58,7 +62,7 @@ func TestGetConfigParams(t *testing.T) {
 	if err != nil {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
 	}
-	if prm.serverAddress != ":8812" {
+	if prm.serverAddress != ":8000" {
 		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
 	}
 	if prm.log.Level != "DEBUG" {
@@ -69,15 +73,15 @@ func TestGetConfigParams(t *testing.T) {
 func TestGetLocalConfigParams(t *testing.T) {
 
 	// test environment variables
-	defer unsetRemoteConfigEnv()
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGPROVIDER", "consul")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGENDPOINT", "127.0.0.1:98765")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGPATH", "/config/~#PROJECT#~")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGSECRETKEYRING", "")
+	defer unsetRemoteConfigEnv(t)
+	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:98765", "/config/~#PROJECT#~", ""})
 
-	prm, rprm := getLocalConfigParams()
+	prm, rprm, err := getLocalConfigParams()
+	if err != nil {
+		t.Error(fmt.Errorf("An error was not expected: %v", err))
+	}
 
-	if prm.serverAddress != ":8812" {
+	if prm.serverAddress != ":8000" {
 		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
 	}
 	if prm.log.Level != "DEBUG" {
@@ -96,7 +100,7 @@ func TestGetLocalConfigParams(t *testing.T) {
 		t.Error(fmt.Errorf("Found different remoteConfigSecretKeyring than expected, found %s", rprm.remoteConfigSecretKeyring))
 	}
 
-	_, err := getRemoteConfigParams(prm, rprm)
+	_, err = getRemoteConfigParams(prm, rprm)
 	if err == nil {
 		t.Error(fmt.Errorf("A remote configuration error was expected"))
 	}
@@ -118,11 +122,8 @@ func TestGetConfigParamsRemote(t *testing.T) {
 	}
 
 	// test environment variables
-	defer unsetRemoteConfigEnv()
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGPROVIDER", "consul")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGENDPOINT", "127.0.0.1:8500")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGPATH", "/config/~#PROJECT#~")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGSECRETKEYRING", "")
+	defer unsetRemoteConfigEnv(t)
+	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:8500", "/config/~#PROJECT#~", ""})
 
 	// load a specific config file just for testing
 	oldCfg := ConfigPath
@@ -147,11 +148,8 @@ func TestGetConfigParamsRemote(t *testing.T) {
 func TestCliWrongConfigError(t *testing.T) {
 
 	// test environment variables
-	defer unsetRemoteConfigEnv()
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGPROVIDER", "consul")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGENDPOINT", "127.0.0.1:999999")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGPATH", "/config/wrong")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGSECRETKEYRING", "")
+	defer unsetRemoteConfigEnv(t)
+	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:999999", "/config/wrong", ""})
 
 	// load a specific config file just for testing
 	oldCfg := ConfigPath
@@ -161,17 +159,41 @@ func TestCliWrongConfigError(t *testing.T) {
 	}
 	defer func() { ConfigPath = oldCfg }()
 
-	_, err := cli()
-	if err == nil {
-		t.Error(fmt.Errorf("An error was expected"))
+	cmd, err := cli()
+	if err != nil {
+		t.Error(fmt.Errorf("Unexpected error: %v", err))
 		return
+	}
+	if cmdtype := reflect.TypeOf(cmd).String(); cmdtype != "*cobra.Command" {
+		t.Error(fmt.Errorf("The expected type is '*cobra.Command', found: '%s'", cmdtype))
+		return
+	}
+
+	old := os.Stderr // keep backup of the real stdout
+	defer func() { os.Stderr = old }()
+	os.Stderr = nil
+
+	// execute the main function
+	if err := cmd.Execute(); err == nil {
+		t.Error(fmt.Errorf("An error was expected"))
 	}
 }
 
-// unsetRemoteConfigEnv clear the environmental variables used to set the remote configuration
-func unsetRemoteConfigEnv() {
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGPROVIDER", "")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGENDPOINT", "")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGPATH", "")
-	os.Setenv("~#UPROJECT#~_REMOTECONFIGSECRETKEYRING", "")
+func unsetRemoteConfigEnv(t *testing.T) {
+	setRemoteConfigEnv(t, []string{"", "", "", ""})
+}
+
+func setRemoteConfigEnv(t *testing.T, val []string) {
+	envVar := []string{
+		"~#UPROJECT#~_REMOTECONFIGPROVIDER",
+		"~#UPROJECT#~_REMOTECONFIGENDPOINT",
+		"~#UPROJECT#~_REMOTECONFIGPATH",
+		"~#UPROJECT#~_REMOTECONFIGSECRETKEYRING",
+	}
+	for i, ev := range envVar {
+		err := os.Setenv(ev, val[i])
+		if err != nil {
+			t.Error(fmt.Errorf("Unexpected error: %v", err))
+		}
+	}
 }

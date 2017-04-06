@@ -11,7 +11,7 @@ Release:   %{_release}%{?dist}
 Summary:   ~#SHORTDESCRIPTION#~
 
 Group:     Applications/Services
-License:   RESERVED
+License:   %{_docpath}/LICENSE
 URL:       https://%{gh_cvspath}/%{gh_project}
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-%(%{__id_u} -n)
@@ -22,7 +22,7 @@ Provides:  %{gh_project} = %{version}
 ~#SHORTDESCRIPTION#~
 
 %build
-(cd %{_current_directory} && make build)
+#(cd %{_current_directory} && make build)
 
 %install
 rm -rf $RPM_BUILD_ROOT

@@ -10,8 +10,7 @@ import (
 func getResult() string {
 	length := 32
 	charset := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	password := make([]byte, length)
-	// #nosec
+	password := make([]byte, length) // #nosec
 	chars := []byte(charset)
 	maxValue := new(big.Int).SetInt64(int64(len(charset)))
 
