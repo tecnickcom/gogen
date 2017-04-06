@@ -23,21 +23,24 @@ func (rcfg remoteConfigParams) isEmpty() bool {
 
 // params struct contains the application parameters
 type params struct {
-	log      *LogData // Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG.
+	log      *LogData // Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
 	quantity int      // number of strings to generate
 }
 
 var configDir string
-var appParams = new(params)
+var appParams = &params{}
 
 // getConfigParams returns the configuration parameters
-func getConfigParams() (params, error) {
-	cfg, rcfg := getLocalConfigParams()
+func getConfigParams() (par params, err error) {
+	cfg, rcfg, err := getLocalConfigParams()
+	if err != nil {
+		return par, err
+	}
 	return getRemoteConfigParams(cfg, rcfg)
 }
 
 // getLocalConfigParams returns the local configuration parameters
-func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
+func getLocalConfigParams() (cfg params, rcfg remoteConfigParams, err error) {
 
 	viper.Reset()
 
@@ -46,8 +49,6 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 	viper.SetDefault("remoteConfigEndpoint", RemoteConfigEndpoint)
 	viper.SetDefault("remoteConfigPath", RemoteConfigPath)
 	viper.SetDefault("remoteConfigSecretKeyring", RemoteConfigSecretKeyring)
-
-	// set default configuration values
 
 	viper.SetDefault("log.level", LogLevel)
 	viper.SetDefault("log.network", LogNetwork)
@@ -71,7 +72,10 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 	}
 
 	// Find and read the local configuration file (if any)
-	viper.ReadInConfig()
+	err = viper.ReadInConfig()
+	if err != nil {
+		return cfg, rcfg, err
+	}
 
 	// read configuration parameters
 	cfg = getViperParams()
@@ -79,10 +83,18 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 	// support environment variables for the remote configuration
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix(strings.Replace(ProgramName, "-", "_", -1)) // will be uppercased automatically
-	viper.BindEnv("remoteConfigProvider")
-	viper.BindEnv("remoteConfigEndpoint")
-	viper.BindEnv("remoteConfigPath")
-	viper.BindEnv("remoteConfigSecretKeyring")
+	envVar := []string{
+		"remoteConfigProvider",
+		"remoteConfigEndpoint",
+		"remoteConfigPath",
+		"remoteConfigSecretKeyring",
+	}
+	for _, ev := range envVar {
+		err = viper.BindEnv(ev)
+		if err != nil {
+			return cfg, rcfg, err
+		}
+	}
 
 	rcfg = remoteConfigParams{
 		remoteConfigProvider:      viper.GetString("remoteConfigProvider"),
@@ -91,7 +103,7 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams) {
 		remoteConfigSecretKeyring: viper.GetString("remoteConfigSecretKeyring"),
 	}
 
-	return cfg, rcfg
+	return cfg, rcfg, nil
 }
 
 // getRemoteConfigParams returns the remote configuration parameters
@@ -151,14 +163,13 @@ func getViperParams() params {
 func checkParams(prm *params) error {
 	// Log
 	if prm.log.Level == "" {
-		return errors.New("log Level is empty")
+		return errors.New("log.level is empty")
 	}
 	err := prm.log.setLog()
 	if err != nil {
 		return err
 	}
 
-	// Other settings
 	if prm.quantity <= 0 {
 		return errors.New("The quantity must be > 0")
 	}

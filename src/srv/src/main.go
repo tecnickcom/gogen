@@ -11,12 +11,12 @@ func main() {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-		}).Fatal("unable to start the service")
+		}).Fatal("UNABLE TO START THE PROGRAM")
 	}
 	// execute the root command and log errors (if any)
 	if err = rootCmd.Execute(); err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-		}).Fatal("unable to start the service")
+		}).Fatal("UNABLE TO RUN THE COMMAND")
 	}
 }

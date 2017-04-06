@@ -10,13 +10,13 @@ import (
 func TestPrefixFieldClashes(t *testing.T) {
 	log.WithFields(log.Fields{
 		"msg": "additional message",
-	}).Info("testing log")
+	}).Info("Testing log")
 }
 
 func TestLogError(t *testing.T) {
 	log.WithFields(log.Fields{
 		"error": fmt.Errorf("ERROR"),
-	}).Error("testing error log")
+	}).Error("Testing log error")
 }
 
 func TestLogJsonError(t *testing.T) {
@@ -24,7 +24,7 @@ func TestLogJsonError(t *testing.T) {
 	defer func() { jsonMarshal = oldJSONMarshal }()
 	jsonMarshal = mockJSONMarshalError
 
-	log.Info("testing log error")
+	log.Info("Testing log error")
 }
 
 func TestParseLogLevel(t *testing.T) {

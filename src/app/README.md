@@ -13,6 +13,14 @@
 Full project description ...
 
 
+## Requirements
+
+An additional Python program is used to check the validity of the JSON configuration files against a JSON schema:
+
+```
+sudo pip install json-spec 
+```
+
 ## Quick Start
 
 This project includes a Makefile that allows you to test and build the project in a Linux-compatible system with simple commands.  

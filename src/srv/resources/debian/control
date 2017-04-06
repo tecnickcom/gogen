@@ -12,4 +12,4 @@ Provides: ~#PROJECT#~
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: ~#SHORTDESCRIPTION#~
- ~#SHORTDESCRIPTION#~
+ ~#PROJECT#~ : ~#SHORTDESCRIPTION#~

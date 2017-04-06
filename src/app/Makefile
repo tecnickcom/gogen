@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------
 
 # List special make targets that are not associated with files
-.PHONY: help all test format fmtcheck vet lint coverage cyclo ineffassign misspell astscan qa deps install uninstall clean nuke build rpm deb bz2 docker buildall dbuild bintray
+.PHONY: help all test format fmtcheck confcheck vet lint coverage cyclo ineffassign misspell structcheck varcheck errcheck gosimple astscan qa deps install uninstall clean nuke build rpm deb bz2 docker buildall dbuild bintray
 
 # Use bash as shell (Note: Ubuntu now uses dash which doesn't support PIPESTATUS).
 SHELL=/bin/bash
@@ -55,6 +55,10 @@ BINPATH=usr/bin/
 # Path for configuration files
 CONFIGPATH=etc/$(PROJECT)/
 
+# Path for ssl root certs
+#SSLCONFIGPATH=etc/ssl/
+SSLCONFIGPATH=
+
 # Path path for documentation
 DOCPATH=usr/share/doc/$(PKGNAME)/
 
@@ -66,6 +70,9 @@ PATHINSTBIN=$(DESTDIR)/$(BINPATH)
 
 # Installation path for the configuration files
 PATHINSTCFG=$(DESTDIR)/$(CONFIGPATH)
+
+# Installation path for the ssl root certs
+PATHINSTSSLCFG=$(DESTDIR)/$(SSLCONFIGPATH)
 
 # Installation path for documentation
 PATHINSTDOC=$(DESTDIR)/$(DOCPATH)
@@ -91,6 +98,15 @@ CCTARGETS=darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/38
 # docker image name for consul (used during testing)
 CONSUL_DOCKER_IMAGE_NAME=consul_$(VENDOR)_$(PROJECT)$(DOCKERSUFFIX)
 
+# STATIC is a flag to indicate whether to build using static or dynamic linking
+ifeq ($(STATIC),0)
+	STATIC_TAG=dynamic
+	STATIC_FLAG=
+else
+	STATIC_TAG=static
+	STATIC_FLAG="-static"
+endif
+
 # --- MAKE TARGETS ---
 
 # Display general help about this command
@@ -105,12 +121,17 @@ help:
 	@echo ""
 	@echo "    make format      : Format the source code"
 	@echo "    make fmtcheck    : Check if the source code has been formatted"
+	@echo "    make confcheck   : Check the JSON configuration files against the schema"
 	@echo "    make vet         : Check for suspicious constructs"
 	@echo "    make lint        : Check for style errors"
 	@echo "    make coverage    : Generate the coverage report"
 	@echo "    make cyclo       : Generate the cyclomatic complexity report"
 	@echo "    make ineffassign : Detect ineffectual assignments"
 	@echo "    make misspell    : Detect commonly misspelled words in source files"
+	@echo "    make structcheck : Find unused struct fields"
+	@echo "    make varcheck    : Find unused global variables and constants"
+	@echo "    make errcheck    : Check that error return values are used"
+	@echo "    make gosimple    : Suggest code simplifications"
 	@echo "    make astscan     : GO AST scanner"
 	@echo ""
 	@echo "    make docs        : Generate source code documentation"
@@ -136,8 +157,17 @@ all: help
 # Run the unit tests
 test:
 	@mkdir -p target/test
+	@mkdir -p target/report
 	GOPATH=$(GOPATH) \
-	go test -covermode=atomic -bench=. -race -v ./src | \
+	go test -tags ${STATIC_TAG} \
+	-covermode=atomic \
+	-bench=. \
+	-race \
+	-cpuprofile=target/report/cpu.out \
+	-memprofile=target/report/mem.out \
+	-mutexprofile=target/report/mutex.out \
+	-coverprofile=target/report/coverage.out \
+	-v ./src | \
 	tee >(PATH=$(GOPATH)/bin:$(PATH) go-junit-report > target/test/report.xml); \
 	test $${PIPESTATUS[0]} -eq 0
 
@@ -151,9 +181,15 @@ fmtcheck:
 	@find ./src -type f -name "*.go" -exec gofmt -s -d {} \; | tee target/format.diff
 	@test ! -s target/format.diff || { echo "ERROR: the source code has not been formatted - please use 'make format' or 'gofmt'"; exit 1; }
 
+# Validate JSON configuration files against the JSON schema
+confcheck:
+	json validate --schema-file=resources/etc/${PROJECT}/config.schema.json --document-file=resources/test/etc/${PROJECT}/config.json
+	json validate --schema-file=resources/etc/${PROJECT}/config.schema.json --document-file=resources/etc/${PROJECT}/config.json
+
 # Check for syntax errors
 vet:
-	GOPATH=$(GOPATH) go vet ./src
+	GOPATH=$(GOPATH) \
+	go vet ./src
 
 # Check for style errors
 lint:
@@ -162,8 +198,6 @@ lint:
 # Generate the coverage report
 coverage:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) \
-	go test -covermode=count -coverprofile=target/report/coverage.out -v ./src && \
 	GOPATH=$(GOPATH) \
 	go tool cover -html=target/report/coverage.out -o target/report/coverage.html
 
@@ -182,10 +216,30 @@ misspell:
 	@mkdir -p target/report
 	GOPATH=$(GOPATH) misspell -error ./src  | tee target/report/misspell.txt ; test $${PIPESTATUS[0]} -eq 0
 
+# Find unused struct fields.
+structcheck:
+	@mkdir -p target/report
+	GOPATH=$(GOPATH) structcheck -a ./src  | tee target/report/structcheck.txt
+
+# Find unused global variables and constants.
+varcheck:
+	@mkdir -p target/report
+	GOPATH=$(GOPATH) varcheck -e ./src  | tee target/report/varcheck.txt
+
+# Check that error return values are used.
+errcheck:
+	@mkdir -p target/report
+	GOPATH=$(GOPATH) errcheck ./src  | tee target/report/errcheck.txt
+
+# Suggest code simplifications"
+gosimple:
+	@mkdir -p target/report
+	GOPATH=$(GOPATH) gosimple ./src  | tee target/report/gosimple.txt
+
 # AST scanner
 astscan:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) gas ./src/*.go | tee target/report/astscan.txt ; test $${PIPESTATUS[0]} -eq 0
+	GOPATH=$(GOPATH) gas ./src/*.go | tee target/report/astscan.txt ; test $${PIPESTATUS[0]} -eq 0 || true
 
 # Generate source docs
 docs:
@@ -195,13 +249,14 @@ docs:
 	@echo '<html><head><meta http-equiv="refresh" content="0;./127.0.0.1:6060/pkg/'${CVSPATH}'/'${PROJECT}'/index.html"/></head><a href="./127.0.0.1:6060/pkg/'${CVSPATH}'/'${PROJECT}'/index.html">'${PKGNAME}' Documentation ...</a></html>' > target/docs/index.html
 
 # Alias to run targets: fmtcheck test vet lint coverage
-qa: fmtcheck test vet lint coverage cyclo ineffassign misspell astscan
+qa: fmtcheck confcheck test vet lint coverage cyclo ineffassign misspell structcheck varcheck errcheck gosimple astscan
+
 
 # --- INSTALL ---
 
 # Get the dependencies
 deps:
-	GOPATH=$(GOPATH) go get ./...
+	GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./src
 	GOPATH=$(GOPATH) go get github.com/inconshreveable/mousetrap
 	GOPATH=$(GOPATH) go get github.com/golang/lint/golint
 	GOPATH=$(GOPATH) go get github.com/jstemmer/go-junit-report
@@ -209,7 +264,11 @@ deps:
 	GOPATH=$(GOPATH) go get github.com/fzipp/gocyclo
 	GOPATH=$(GOPATH) go get github.com/gordonklaus/ineffassign
 	GOPATH=$(GOPATH) go get github.com/client9/misspell/cmd/misspell
-	GOPATH=$(GOPATH) go get github.com/HewlettPackard/gas
+	GOPATH=$(GOPATH) go get github.com/opennota/check/cmd/structcheck
+	GOPATH=$(GOPATH) go get github.com/opennota/check/cmd/varcheck
+	GOPATH=$(GOPATH) go get github.com/kisielk/errcheck
+	GOPATH=$(GOPATH) go get honnef.co/go/tools/cmd/gosimple
+	GOPATH=$(GOPATH) go get github.com/GoASTScanner/gas
 
 # Install this application
 install: uninstall
@@ -220,9 +279,16 @@ install: uninstall
 	mkdir -p $(PATHINSTDOC)
 	cp -f ./LICENSE $(PATHINSTDOC)
 	cp -f ./README.md $(PATHINSTDOC)
+	cp -f ./CONFIG.md $(PATHINSTDOC)
 	cp -f ./VERSION $(PATHINSTDOC)
 	cp -f ./RELEASE $(PATHINSTDOC)
 	chmod -R 644 $(PATHINSTDOC)*
+ifneq ($(strip $(INITPATH)),)
+	mkdir -p $(PATHINSTINIT)
+	cp -ru ./resources/${INITPATH}* $(PATHINSTINIT)
+	find $(PATHINSTINIT) -type d -exec chmod 755 {} \;
+	find $(PATHINSTINIT) -type f -exec chmod 755 {} \;
+endif
 ifneq ($(strip $(CONFIGPATH)),)
 	mkdir -p $(PATHINSTCFG)
 	touch -c $(PATHINSTCFG)*
@@ -234,6 +300,16 @@ ifneq ($(strip $(MANPATH)),)
 	mkdir -p $(PATHINSTMAN)
 	cat ./resources/${MANPATH}${PROJECT}.1 | gzip -9 > $(PATHINSTMAN)${PROJECT}.1.gz
 	find $(PATHINSTMAN) -type f -exec chmod 644 {} \;
+endif
+
+# Install SSL certificates
+installssl: 
+ifneq ($(strip $(SSLCONFIGPATH)),)
+	mkdir -p $(PATHINSTSSLCFG)
+	touch -c $(PATHINSTSSLCFG)*
+	cp -ru ./resources/${SSLCONFIGPATH}* $(PATHINSTSSLCFG)
+	find $(PATHINSTSSLCFG) -type d -exec chmod 755 {} \;
+	find $(PATHINSTSSLCFG) -type f -exec chmod 644 {} \;
 endif
 
 # Remove all installed files (excluding configuration files)
@@ -253,8 +329,10 @@ nuke:
 # Compile the application
 build: deps
 	GOPATH=$(GOPATH) \
-	CGO_ENABLED=0 \
-	go build -ldflags '-extldflags "-static" -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' -o ./target/${BINPATH}$(PROJECT) ./src
+	go build \
+	-tags ${STATIC_TAG} \
+	-ldflags '-s -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
+	-o ./target/${BINPATH}$(PROJECT) ./src
 ifneq (${UPXENABLED},)
 	upx --brute ./target/${BINPATH}$(PROJECT)
 endif
@@ -266,7 +344,13 @@ crossbuild: deps
 		$(eval GOOS = $(word 1,$(subst /, ,$(TARGET)))) \
 		$(eval GOARCH = $(word 2,$(subst /, ,$(TARGET)))) \
 		$(shell which mkdir) -p target/$(TARGET) && \
-		GOOS=${GOOS} GOARCH=${GOARCH} GOPATH=$(GOPATH) go build -ldflags '-X main.ProgramVersion=${VERSION}' -o ./target/${GOOS}/${GOARCH}/$(PROJECT) ./src \
+		GOOS=${GOOS} \
+		GOARCH=${GOARCH} \
+		GOPATH=$(GOPATH) \
+		go build \
+		-tags ${STATIC_TAG} \
+		-ldflags '-s -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
+		-o ./target/${GOOS}/${GOARCH}/$(PROJECT) ./src \
 		|| echo $(TARGET) >> target/ccfailures.txt ; \
 	)
 ifneq ($(strip $(cat target/ccfailures.txt)),)
@@ -291,6 +375,7 @@ rpm:
 	--define "_binpath /$(BINPATH)" \
 	--define "_docpath /$(DOCPATH)" \
 	--define "_configpath /$(CONFIGPATH)" \
+	--define "_initpath /$(INITPATH)" \
 	--define "_manpath /$(MANPATH)" \
 	-bb resources/rpm/rpm.spec
 
@@ -311,6 +396,10 @@ deb:
 	echo "$(BINPATH)* $(BINPATH)" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
 	echo $(DOCPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
 	echo "$(DOCPATH)* $(DOCPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+ifneq ($(strip $(INITPATH)),)
+	echo $(INITPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
+	echo "$(INITPATH)* $(INITPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+endif
 ifneq ($(strip $(CONFIGPATH)),)
 	echo $(CONFIGPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
 	echo "$(CONFIGPATH)* $(CONFIGPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
@@ -319,7 +408,7 @@ ifneq ($(strip $(MANPATH)),)
 	echo $(MANPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
 	echo "$(MANPATH)* $(MANPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
 endif
-	echo "statically-linked-binary usr/bin/~#PROJECT#~" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
+	echo "statically-linked-binary usr/bin/$(PROJECT)" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
 	echo "new-package-should-close-itp-bug" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
 	echo "hardening-no-relro $(BINPATH)$(PROJECT)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
 	echo "embedded-library $(BINPATH)$(PROJECT): libyaml" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
@@ -335,8 +424,10 @@ bz2:
 docker:
 	rm -rf $(PATHDOCKERPKG)
 	make install DESTDIR=$(PATHDOCKERPKG)
-	cp resources/DockerDeploy/Dockerfile $(PATHDOCKERPKG)/
+	make installssl DESTDIR=$(PATHDOCKERPKG)
+	cp resources/DockerDeploy/Dockerfile $(PATHDOCKERPKG)/Dockerfile
 	docker build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
+	docker save --output=$(PATHDOCKERPKG)/${VENDOR}-${PROJECT}$(DOCKERSUFFIX)-$(VERSION)-$(RELEASE) ${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest
 
 # Check if the deployment container starts
 dockertest:
@@ -351,7 +442,7 @@ dockertest:
 	sleep 5
 	# push Consul configuration
 	docker inspect --format='{{(index (index .NetworkSettings.Ports "8500/tcp") 0).HostPort}}' `cat target/consul_docker_container.id` > target/consul_docker_container.port
-	curl --request PUT --data @resources/test/etc/~#PROJECT#~/config.json http://127.0.0.1:`cat target/consul_docker_container.port`/v1/kv/config/$(PROJECT)
+	curl --request PUT --data @resources/test/etc/~#PROJECT#~/config.json http://127.0.0.1:`cat target/consul_docker_container.port`/v1/kv/config/~#PROJECT#~
 	docker run --net="host" --tty=true \
 	--env="~#UPROJECT#~_REMOTECONFIGPROVIDER=consul" \
 	--env="~#UPROJECT#~_REMOTECONFIGENDPOINT=127.0.0.1:`cat target/consul_docker_container.port`" \
@@ -365,7 +456,7 @@ dockertest:
 	#grep -ic "" target/project_docker_container.out > /dev/null
 
 # Full build and test sequence
-# You may want to change this and add/remove options
+# You may want to change this and remove the options you don't need
 #buildall: deps qa rpm deb bz2 crossbuild
 buildall: build qa rpm deb
 
@@ -379,5 +470,5 @@ dbuild:
 
 # Upload linux packages to bintray
 bintray: rpm deb
-	@curl -T target/RPM/RPMS/x86_64/~#VENDOR#~-${PROJECT}-${VERSION}-${RELEASE}.x86_64.rpm -u${APIUSER}:${APIKEY} -H "X-Bintray-Package:${PROJECT}" -H "X-Bintray-Version:${VERSION}" -H "X-Bintray-Publish:1" -H "X-Bintray-Override:1" https://api.bintray.com/content/~#VENDOR#~/rpm/~#VENDOR#~-${PROJECT}-${VERSION}-${RELEASE}.x86_64.rpm
-	@curl -T target/DEB/~#VENDOR#~-${PROJECT}_${VERSION}-${RELEASE}_amd64.deb -u${APIUSER}:${APIKEY} -H "X-Bintray-Package:${PROJECT}" -H "X-Bintray-Version:${VERSION}" -H "X-Bintray-Debian-Distribution:amd64" -H "X-Bintray-Debian-Component:main" -H "X-Bintray-Debian-Architecture:amd64" -H "X-Bintray-Publish:1" -H "X-Bintray-Override:1" https://api.bintray.com/content/~#VENDOR#~/deb/~#VENDOR#~-${PROJECT}_${VERSION}-${RELEASE}_amd64.deb
+	@curl -T target/RPM/RPMS/x86_64/${VENDOR}-${PROJECT}-${VERSION}-${RELEASE}.x86_64.rpm -u${APIUSER}:${APIKEY} -H "X-Bintray-Package:${PROJECT}" -H "X-Bintray-Version:${VERSION}" -H "X-Bintray-Publish:1" -H "X-Bintray-Override:1" https://api.bintray.com/content/~#VENDOR#~/rpm/~#VENDOR#~-${PROJECT}-${VERSION}-${RELEASE}.x86_64.rpm
+	@curl -T target/DEB/${VENDOR}-${PROJECT}_${VERSION}-${RELEASE}_amd64.deb -u${APIUSER}:${APIKEY} -H "X-Bintray-Package:${PROJECT}" -H "X-Bintray-Version:${VERSION}" -H "X-Bintray-Debian-Distribution:amd64" -H "X-Bintray-Debian-Component:main" -H "X-Bintray-Debian-Architecture:amd64" -H "X-Bintray-Publish:1" -H "X-Bintray-Override:1" https://api.bintray.com/content/~#VENDOR#~/deb/~#VENDOR#~-${PROJECT}_${VERSION}-${RELEASE}_amd64.deb

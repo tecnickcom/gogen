@@ -12,6 +12,7 @@ type Response struct {
 	Program   string      `json:"program"`   // Program name
 	Version   string      `json:"version"`   // Program version
 	Release   string      `json:"release"`   // Program release number
+	URL       string      `json:"url"`       // Public URL of this service
 	DateTime  string      `json:"datetime"`  // Human-readable date and time when the event occurred
 	Timestamp int64       `json:"timestamp"` // Machine-readable UTC timestamp in nanoseconds since EPOCH
 	Status    string      `json:"status"`    // Status code (error|fail|success)
