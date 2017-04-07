@@ -31,10 +31,10 @@ The configuration fields are:
 
 The equivalent environment variables are:
 
-* SRV_IDP_REMOTECONFIGPROVIDER
-* SRV_IDP_REMOTECONFIGENDPOINT
-* SRV_IDP_REMOTECONFIGPATH
-* SRV_IDP_REMOTECONFIGSECRETKEYRING
+* ~#UPROJECT#~_REMOTECONFIGPROVIDER
+* ~#UPROJECT#~_REMOTECONFIGENDPOINT
+* ~#UPROJECT#~_REMOTECONFIGPATH
+* ~#UPROJECT#~_REMOTECONFIGSECRETKEYRING
 
 
 ## Configuration Format
@@ -47,8 +47,6 @@ The configuration format is a single JSON structure with the following fields:
 * **remoteConfigPath** :          Remote configuration path in which to search for the configuration file (e.g. "/config/~#PROJECT#~")
 * **remoteConfigSecretKeyring** : Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. "/etc/~#PROJECT#~/configkey.gpg"); if empty a non secure connection will be used instead
 
-* **serverAddress**:              Internal HTTP address (ip:port) or just (:port)
-
 * **log**:  *Logging settings*
     * **level**:   Defines the default log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
     * **network**: (OPTIONAL) Network type used by the Syslog (i.e. udp or tcp)
@@ -59,6 +57,8 @@ The configuration format is a single JSON structure with the following fields:
     * **network**:      Network type used by the StatsD client (i.e. udp or tcp)
     * **address**:      Network address of the StatsD daemon (ip:port) or just (:port)
     * **flush_period**: Sets how often (in milliseconds) the StatsD client's buffer is flushed. When 0 the buffer is only flushed when it is full
+
+* **serverAddress**:              Internal HTTP address (ip:port) or just (:port)
 
 ## Validate Configuration
 
