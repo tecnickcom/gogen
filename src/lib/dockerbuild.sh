@@ -25,7 +25,7 @@
 DOCKERDEV=${VENDOR}/dev_${PROJECT}
 
 # Build the base environment and keep it cached locally
-docker build -t ${DOCKERDEV} ./resources/DockerDev/
+docker build --pull --tag ${DOCKERDEV} ./resources/DockerDev/
 
 # Define the project root path
 PRJPATH=/root/src/${CVSPATH}/${PROJECT}
@@ -45,7 +45,7 @@ EOM
 DOCKER_IMAGE_NAME=${VENDOR}/build_${PROJECT}
 
 # Build the Docker image
-docker build --no-cache -t ${DOCKER_IMAGE_NAME} .
+docker build --no-cache --tag ${DOCKER_IMAGE_NAME} .
 
 # Start a container using the newly created Docker image
 CONTAINER_ID=$(docker run -d ${DOCKER_IMAGE_NAME})
