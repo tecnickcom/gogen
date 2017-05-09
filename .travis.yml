@@ -46,11 +46,15 @@ install:
 
 script:
   - make new TYPE=srv
-  - cd target/github.com/dummyvendor/dummy && make buildall
+  - cd target/github.com/dummyvendor/dummy
+  - make buildall
+  - cd ../../../..
   - make clean
   - make new TYPE=app
-  - cd target/github.com/dummyvendor/dummy && make buildall
+  - cd target/github.com/dummyvendor/dummy
+  - make buildall
+  - cd ../../../..
   - make clean
   - make new TYPE=lib
-  - cd target/github.com/dummyvendor/dummy && make buildall
-  - make clean
+  - cd target/github.com/dummyvendor/dummy
+  - make buildall
