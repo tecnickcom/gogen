@@ -1,0 +1,56 @@
+language: go
+
+dist: trusty
+
+sudo: true
+
+branches:
+  except:
+    - release
+
+branches:
+  only:
+    - master
+    - develop
+
+go:
+  - 1.8
+  - tip
+
+matrix:
+  allow_failures:
+    - go: tip
+
+before_install:
+  - sudo apt-get update || true
+  - if [ -n "$GH_USER" ]; then git config --global github.user ${GH_USER}; fi;
+  - if [ -n "$GH_TOKEN" ]; then git config --global github.token ${GH_TOKEN}; fi;
+  - go get github.com/mattn/goveralls
+
+addons:
+  apt:
+    packages:
+    - devscripts
+    - debhelper
+    - pkg-config
+    - alien
+    - rpm
+    - dh-make
+    - dh-golang
+    - upx-ucl
+    - python
+    - python-pip
+
+install:
+  - pip install json-spec
+
+script:
+  - make new TYPE=srv
+  - cd target/github.com/dummyvendor/dummy && make buildall
+  - make clean
+  - make new TYPE=app
+  - cd target/github.com/dummyvendor/dummy && make buildall
+  - make clean
+  - make new TYPE=lib
+  - cd target/github.com/dummyvendor/dummy && make buildall
+  - make clean
