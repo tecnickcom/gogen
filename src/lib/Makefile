@@ -184,8 +184,9 @@ lint:
 # Generate the coverage report
 coverage:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) \
-	go tool cover -html=target/report/coverage.out -o target/report/coverage.html
+	#echo "mode: count" > target/report/coverage.out
+	#GOPATH=$(GOPATH) go list ./src/... | xargs -L 1 -I % go test -covermode=count -coverprofile=target/report/coverage.part % | xargs -L 1 -I % sh -c 'echo % && grep -h -v "mode: count" target/report/coverage.part >> target/report/coverage.out'
+	GOPATH=$(GOPATH) go tool cover -html=target/report/coverage.out -o target/report/coverage.html
 
 # Report cyclomatic complexity
 cyclo:
