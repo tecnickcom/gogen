@@ -14,7 +14,7 @@ branches:
     - develop
 
 go:
-  - 1.8
+  - 1.8.3
   - tip
 
 matrix:
@@ -31,6 +31,7 @@ addons:
   apt:
     packages:
     - devscripts
+    - fakeroot
     - debhelper
     - pkg-config
     - alien
