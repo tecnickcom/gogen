@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	logrus "github.com/Sirupsen/logrus"
-	logrus_syslog "github.com/Sirupsen/logrus/hooks/syslog"
+	logrus "github.com/sirupsen/logrus"
+	logrus_syslog "github.com/sirupsen/logrus/hooks/syslog"
 	syslog "log/syslog"
 )
 
@@ -43,7 +43,7 @@ func (f *logJSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		switch v := v.(type) {
 		case error:
 			// Otherwise errors are ignored by `encoding/json`
-			// https://github.com/Sirupsen/logrus/issues/137
+			// https://github.com/sirupsen/logrus/issues/137
 			data[key] = v.Error()
 		default:
 			data[key] = v
