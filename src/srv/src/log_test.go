@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestPrefixFieldClashes(t *testing.T) {
