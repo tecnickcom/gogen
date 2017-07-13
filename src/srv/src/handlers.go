@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
+	log "github.com/sirupsen/logrus"
 )
 
 var startTime = time.Now()

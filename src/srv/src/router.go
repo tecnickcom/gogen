@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
+	log "github.com/sirupsen/logrus"
 )
 
 // stopServerChan is the channel used to stop the server
