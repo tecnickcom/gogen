@@ -46,16 +46,11 @@ install:
   - pip install json-spec
 
 script:
-  - make new TYPE=srv
-  - cd target/github.com/dummyvendor/dummy
   - make buildall
-  - cd ../../../..
-  - make clean
-  - make new TYPE=app
-  - cd target/github.com/dummyvendor/dummy
-  - make buildall
-  - cd ../../../..
-  - make clean
-  - make new TYPE=lib
-  - cd target/github.com/dummyvendor/dummy
-  - make buildall
+
+after_failure:
+  - cat ./target/test/report.xml
+
+#after_success:
+#  - if [ "$TRAVIS_GO_VERSION" = "1.9" ]; then $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci; fi;
+#  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_GO_VERSION" = "1.9" ] && [ -n "$BT_APIUSER" ]; then make bintray APIUSER=${BT_APIUSER} APIKEY=${BT_APIKEY}; fi;
