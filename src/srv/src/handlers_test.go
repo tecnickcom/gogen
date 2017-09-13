@@ -17,7 +17,7 @@ func TestIndexHandler(t *testing.T) {
 
 	status := 200
 	rw := httptest.NewRecorder()
-	hr := httptest.NewRequest("GET", "http://127.0.0.1:8000/", nil)
+	hr := httptest.NewRequest("GET", "http://127.0.0.1:8017/", nil)
 	ps := httprouter.Params{}
 
 	indexHandler(rw, hr, ps)
@@ -36,7 +36,7 @@ func TestStatusHandler(t *testing.T) {
 
 	status := 200
 	rw := httptest.NewRecorder()
-	hr := httptest.NewRequest("GET", "http://127.0.0.1:8000/status", nil)
+	hr := httptest.NewRequest("GET", "http://127.0.0.1:8017/status", nil)
 	ps := httprouter.Params{}
 
 	statusHandler(rw, hr, ps)
