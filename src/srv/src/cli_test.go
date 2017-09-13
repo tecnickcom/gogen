@@ -8,7 +8,6 @@ import (
 	"os"
 	"reflect"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -116,16 +115,13 @@ func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup) {
 				return
 			case <-stopTestServerChan:
 				stopped = true
-				err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-				if err != nil {
-					t.Error(fmt.Errorf("An error was not expected: %v", err))
-				}
+				stopServerChan <- os.Interrupt
 			}
 		}
 	}()
 
-	// wait for the server to start
-	time.Sleep(500 * time.Millisecond)
+	// wait for the server to shut down
+	time.Sleep(5000 * time.Millisecond)
 }
 
 func startTestClient(t *testing.T) {
@@ -165,7 +161,7 @@ func isJSON(s []byte) bool {
 
 func testEndPoint(t *testing.T, method string, path string, data string, code int) {
 	var payload = []byte(data)
-	req, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:8000%s", path), bytes.NewBuffer(payload))
+	req, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:8017%s", path), bytes.NewBuffer(payload))
 	if err != nil {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
 		return

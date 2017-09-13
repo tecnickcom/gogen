@@ -62,7 +62,7 @@ func TestGetConfigParams(t *testing.T) {
 	if err != nil {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
 	}
-	if prm.serverAddress != ":8000" {
+	if prm.serverAddress != ":8017" {
 		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
 	}
 	if prm.log.Level != "DEBUG" {
@@ -81,7 +81,7 @@ func TestGetLocalConfigParams(t *testing.T) {
 		t.Error(fmt.Errorf("An error was not expected: %v", err))
 	}
 
-	if prm.serverAddress != ":8000" {
+	if prm.serverAddress != ":8017" {
 		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
 	}
 	if prm.log.Level != "DEBUG" {

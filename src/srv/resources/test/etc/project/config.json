@@ -3,7 +3,7 @@
   "remoteConfigEndpoint" : "",
   "remoteConfigPath" : "",
   "remoteConfigSecretKeyring" : "",
-  "serverAddress": ":8000",
+  "serverAddress": ":8017",
   "log": {
     "level": "DEBUG",
     "network": "",
