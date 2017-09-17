@@ -44,7 +44,7 @@ addons:
 
 install:
   - pip install --upgrade pip
-  - pip install --upgrade --user json-spe
+  - pip install --upgrade --user json-spec
 
 script:
   - make buildall
