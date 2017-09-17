@@ -43,7 +43,8 @@ addons:
     - python-pip
 
 install:
-  - pip install json-spec
+  - pip install --upgrade pip
+  - pip install --upgrade --user json-spec
 
 script:
   - make new TYPE=srv
