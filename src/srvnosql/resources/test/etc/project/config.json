@@ -1,0 +1,31 @@
+{
+  "remoteConfigProvider" : "",
+  "remoteConfigEndpoint" : "",
+  "remoteConfigPath" : "",
+  "remoteConfigSecretKeyring" : "",
+  "serverAddress": ":8017",
+  "log": {
+    "level": "DEBUG",
+    "network": "",
+    "address": ""
+  },
+  "stats": {
+    "prefix": "~#PROJECT#~",
+    "network": "udp",
+    "address": ":8125",
+    "flush_period": 100
+  },
+  "mongodb": {
+    "address": "ds035428.mongolab.com:35428",
+    "database": "goinggo",
+    "user": "guest",
+    "password": "welcome",
+    "timeout": 60
+  },
+  "elasticsearch": {
+    "url": "http://127.0.0.1:9200",
+    "index": "test",
+    "username": "",
+    "password": ""
+  }
+}

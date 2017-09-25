@@ -1,0 +1,15 @@
+Source: ~#PKGNAME#~
+Maintainer: ~#OWNER#~ <~#OWNEREMAIL#~>
+Section: utils
+Priority: optional
+Build-Depends: debhelper (>= 9), dh-golang
+Standards-Version: 3.9.7
+Homepage: ~#PROJECTLINK#~
+Vcs-Git: ~#PROJECTLINK#~.git
+
+Package: ~#PKGNAME#~
+Provides: ~#PROJECT#~
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: ~#SHORTDESCRIPTION#~
+ ~#PROJECT#~ : ~#SHORTDESCRIPTION#~
