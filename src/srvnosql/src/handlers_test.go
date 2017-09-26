@@ -35,6 +35,7 @@ func TestStatusHandler(t *testing.T) {
 		t.Error(fmt.Errorf("Unexpected error: %v", err))
 	}
 	defer stats.Close()
+	defer appParams.mongodb.session.Close()
 
 	status := 200
 	rw := httptest.NewRecorder()
