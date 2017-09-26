@@ -10,16 +10,16 @@
     "address": ""
   },
   "stats": {
-    "prefix": "~#PROJECT#~",
+    "prefix": "dummy",
     "network": "udp",
     "address": ":8125",
     "flush_period": 100
   },
   "mongodb": {
-    "address": "ds035428.mongolab.com:35428",
-    "database": "goinggo",
-    "user": "guest",
-    "password": "welcome",
+    "address": "127.0.0.1:27017",
+    "database": "test",
+    "user": "",
+    "password": "",
     "timeout": 60
   },
   "elasticsearch": {

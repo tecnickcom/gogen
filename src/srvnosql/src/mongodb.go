@@ -40,3 +40,11 @@ func initMongodbSession(cfg *MongodbData) (*MongodbData, error) {
 	cfg.session = mgosession
 	return cfg, nil
 }
+
+// isMongodbAlive returns the status of MongoDB
+func isMongodbAlive() error {
+	session := appParams.mongodb.session.Copy()
+	defer session.Close()
+	_, err := session.DatabaseNames()
+	return err
+}

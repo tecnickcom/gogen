@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"gopkg.in/olivere/elastic.v5"
 	"gopkg.in/olivere/elastic.v5/config"
@@ -35,4 +36,13 @@ func initElasticsearchSession(cfg *ElasticsearchData) (*ElasticsearchData, error
 	}
 
 	return cfg, err
+}
+
+// isElasticsearchAlive returns the status of ElasticSearch
+func isElasticsearchAlive() error {
+	_, code, err := appParams.elasticsearch.client.Ping(appParams.elasticsearch.URL).Do(appParams.elasticsearch.ctx)
+	if err == nil && code != 200 {
+		err = fmt.Errorf("Invalid response code: %d", code)
+	}
+	return err
 }

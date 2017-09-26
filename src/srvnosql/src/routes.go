@@ -21,16 +21,4 @@ var routes = Routes{
 		statusHandler,
 		"Check this service status.",
 	},
-	Route{
-		"GET",
-		"/mongodbstatus",
-		mongodbStatusHandler,
-		"Check MongoDB status.",
-	},
-	Route{
-		"GET",
-		"/elasticsearchstatus",
-		elasticsearchStatusHandler,
-		"Check ElasticSearch status.",
-	},
 }
