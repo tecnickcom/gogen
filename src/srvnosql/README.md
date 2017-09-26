@@ -15,6 +15,8 @@ Full project description ...
 
 ## Requirements
 
+Requires Elasticsearch and MongoDB.
+
 An additional Python program is used to check the validity of the JSON configuration files against a JSON schema:
 
 ```
