@@ -74,9 +74,6 @@ func initProgramTest() error {
 
 	// initialize ElasticSearch Session
 	appParams.elasticsearch, err = initElasticsearchSession(appParams.elasticsearch)
-	if err != nil {
-		return err
-	}
 
 	return err
 }
