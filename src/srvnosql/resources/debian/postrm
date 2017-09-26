@@ -1,0 +1,10 @@
+#!/bin/sh
+# postrm script for ~#PROJECT#~
+
+set -e
+
+update-rc.d -f ~#PROJECT#~ remove
+
+#DEBHELPER#
+
+exit 0

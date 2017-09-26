@@ -41,9 +41,10 @@ help:
 	@echo "    make clean                              :  Remove all generated projects"
 	@echo ""
 	@echo "    * TYPE is the project type:"
-	@echo "        lib : library"
-	@echo "        app : command-line application"
-	@echo "        srv : HTTP API service"
+	@echo "        lib      : library"
+	@echo "        app      : command-line application"
+	@echo "        srv      : HTTP API service"
+	@echo "        srvnosql : HTTP API service with MongoDB and Elasticsearch backend support"
 	@echo ""
 	@echo "    * CONFIG is the configuration file containing the project settings."
 	@echo ""
@@ -69,6 +70,9 @@ renameapp:
 # Rename some service files
 renamesrv: renameapp
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/$(PROJECT)
+	
+# Rename some service files
+renamesrvnosql: renamesrv
 
 # Rename some lib files
 renamelib:
