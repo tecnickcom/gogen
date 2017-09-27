@@ -10,13 +10,12 @@ import (
 
 // MongodbData store a single MongoDB configuration
 type MongodbData struct {
-	Address  string        `json:"address"`  // MongoDB address: [mongodb://][user:pass@]host1[:port1][,host2[:port2],...][/database][?options]
-	Database string        `json:"database"` // MongoDB database name.
-	User     string        `json:"user"`     // MongoDB user name.
-	Password string        `json:"password"` // MongoDB password.
-	Timeout  int           `json:"timeout"`  // MongoDB connection timeout.
-	session  *mgo.Session  // MongoDB session
-	database *mgo.Database // MongoDB database object
+	Address  string       `json:"address"`  // MongoDB address: [mongodb://][user:pass@]host1[:port1][,host2[:port2],...][/database][?options]
+	Database string       `json:"database"` // MongoDB database name.
+	User     string       `json:"user"`     // MongoDB user name.
+	Password string       `json:"password"` // MongoDB password.
+	Timeout  int          `json:"timeout"`  // MongoDB connection timeout.
+	session  *mgo.Session // MongoDB session
 }
 
 // initMongodbSession return a new MongoDB session
