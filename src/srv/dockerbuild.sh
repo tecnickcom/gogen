@@ -25,7 +25,7 @@
 DOCKERDEV=${VENDOR}/dev_${PROJECT}
 
 # Build the base environment and keep it cached locally
-docker build --pull --tag ${DOCKERDEV} ./resources/DockerDev/
+docker build --pull --tag ${DOCKERDEV} --file ./resources/Docker/Dockerfile.dev ./resources/Docker/
 
 # Define the project root path
 PRJPATH=/root/src/${CVSPATH}/${PROJECT}
@@ -33,7 +33,7 @@ PRJPATH=/root/src/${CVSPATH}/${PROJECT}
 # Generate a temporary Dockerfile to build and test the project
 # NOTE: The exit status of the RUN command is stored to be returned later,
 #       so in case of error we can continue without interrupting this script.
-cat > Dockerfile <<- EOM
+cat > Dockerfile.test <<- EOM
 FROM ${DOCKERDEV}
 RUN mkdir -p ${PRJPATH}
 ADD ./ ${PRJPATH}
@@ -45,7 +45,7 @@ EOM
 DOCKER_IMAGE_NAME=${VENDOR}/build_${PROJECT}
 
 # Build the Docker image
-docker build --no-cache --tag ${DOCKER_IMAGE_NAME} .
+docker build --no-cache --tag ${DOCKER_IMAGE_NAME} --file Dockerfile.test .
 
 # Start a container using the newly created Docker image
 CONTAINER_ID=$(docker run -d ${DOCKER_IMAGE_NAME})

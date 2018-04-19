@@ -426,7 +426,7 @@ docker:
 	rm -rf $(PATHDOCKERPKG)
 	make install DESTDIR=$(PATHDOCKERPKG)
 	make installssl DESTDIR=$(PATHDOCKERPKG)
-	cp resources/DockerDeploy/Dockerfile $(PATHDOCKERPKG)/Dockerfile
+	cp resources/Docker/Dockerfile.run $(PATHDOCKERPKG)/Dockerfile
 	docker build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
 	docker save --output=$(PATHDOCKERPKG)/${VENDOR}-${PROJECT}$(DOCKERSUFFIX)-$(VERSION)-$(RELEASE) ${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest
 

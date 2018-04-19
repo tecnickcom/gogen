@@ -14,7 +14,7 @@ branches:
     - develop
 
 go:
-  - 1.9
+  - '1.10.1'
   - tip
 
 matrix:
