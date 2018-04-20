@@ -17,6 +17,8 @@
 
 This is a command-line tool to quickly generate GO services, applications and libraries with a common set of features and reusable logic.
 
+For an equivalent project in Python please check [PyGen](https://github.com/tecnickcom/pygen).
+
 Each GO project built with this tool adheres to the set of conventions detailed in the following articles:
 
 * [Software Naming](https://technick.net/guides/software/software_naming)
