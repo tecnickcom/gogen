@@ -259,7 +259,7 @@ qa: fmtcheck confcheck test vet lint coverage cyclo ineffassign misspell structc
 deps:
 	GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./src
 	GOPATH=$(GOPATH) go get github.com/inconshreveable/mousetrap
-	GOPATH=$(GOPATH) go get github.com/golang/lint/golint
+	GOPATH=$(GOPATH) go get golang.org/x/lint/golint
 	GOPATH=$(GOPATH) go get github.com/jstemmer/go-junit-report
 	GOPATH=$(GOPATH) go get github.com/axw/gocov/gocov
 	GOPATH=$(GOPATH) go get github.com/fzipp/gocyclo
