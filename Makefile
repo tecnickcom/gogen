@@ -106,3 +106,14 @@ confirm:
 .PHONY: clean
 clean:
 	@rm -rf ./target
+
+.PHONY: test
+test:
+	make new TYPE=srv
+	cd target/github.com/dummyvendor/dummy && make buildall
+	make clean
+	make new TYPE=app
+	cd target/github.com/dummyvendor/dummy && make buildall
+	make clean
+	make new TYPE=lib
+	cd target/github.com/dummyvendor/dummy && make buildall

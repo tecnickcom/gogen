@@ -14,7 +14,7 @@ branches:
     - develop
 
 go:
-  - '1.11.1'
+  - '1.12.7'
   - tip
 
 matrix:
@@ -46,16 +46,4 @@ install:
   - pip install --upgrade --user json-spec
 
 script:
-  - make new TYPE=srv
-  - cd target/github.com/dummyvendor/dummy
-  - make buildall
-  - cd ../../../..
-  - make clean
-  - make new TYPE=app
-  - cd target/github.com/dummyvendor/dummy
-  - make buildall
-  - cd ../../../..
-  - make clean
-  - make new TYPE=lib
-  - cd target/github.com/dummyvendor/dummy
-  - make buildall
+  - make test
