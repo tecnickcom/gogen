@@ -72,7 +72,7 @@ func (f *logJSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 
 	serialized, err := jsonMarshal(data)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to marshal fields to JSON, %v", err)
+		return nil, fmt.Errorf("failed to marshal fields to JSON, %v", err)
 	}
 	return append(serialized, '\n'), nil
 }
@@ -98,14 +98,14 @@ func (ld *LogData) parseLogLevel() (logrus.Level, syslog.Priority, error) {
 		return logrus.DebugLevel, syslog.LOG_DEBUG, nil
 	}
 
-	return logrus.DebugLevel, syslog.LOG_DEBUG, fmt.Errorf("Not a valid log Level: %q", ld.Level)
+	return logrus.DebugLevel, syslog.LOG_DEBUG, fmt.Errorf("not a valid log Level: %q", ld.Level)
 }
 
 // setLog configure the log
 func (ld *LogData) setLog() error {
 	logLevel, syslogPriority, err := ld.parseLogLevel()
 	if err != nil {
-		return fmt.Errorf("The logLevel must be one of the following: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG")
+		return fmt.Errorf("the logLevel must be one of the following: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG")
 	}
 	logrus.SetLevel(logLevel)
 	hook, err := logrus_syslog.NewSyslogHook(ld.Network, ld.Address, syslogPriority, "")

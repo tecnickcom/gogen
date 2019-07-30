@@ -13,8 +13,9 @@ func TestSetHeaders(t *testing.T) {
 	if rw.Code != 200 {
 		t.Error(fmt.Errorf("Expected 200, got %d", rw.Code))
 	}
-	if rw.HeaderMap["Content-Type"][0] != "application/test" {
-		t.Error(fmt.Errorf("Expected 'application/test', got %s", rw.HeaderMap["Content-Type"][0]))
+	hdr := rw.Header().Get("Content-Type")
+	if hdr != "application/test" {
+		t.Error(fmt.Errorf("Expected 'application/test', got %s", hdr))
 	}
 }
 
@@ -29,8 +30,9 @@ func TestSendResponse200(t *testing.T) {
 	if rw.Code != 200 {
 		t.Error(fmt.Errorf("Expected 200, got %d", rw.Code))
 	}
-	if rw.HeaderMap["Content-Type"][0] != "application/json" {
-		t.Error(fmt.Errorf("Expected 'application/json', got %s", rw.HeaderMap["Content-Type"][0]))
+	hdr := rw.Header().Get("Content-Type")
+	if hdr != "application/json" {
+		t.Error(fmt.Errorf("Expected 'application/json', got %s", hdr))
 	}
 	if !strings.Contains(rw.Body.String(), `"data":"TEST STRING"`) {
 		t.Error(fmt.Errorf("The resulting body is not correct: %v", rw.Body.String()))
@@ -48,8 +50,9 @@ func TestSendResponse500(t *testing.T) {
 	if rw.Code != 500 {
 		t.Error(fmt.Errorf("Expected 500, got %d", rw.Code))
 	}
-	if rw.HeaderMap["Content-Type"][0] != "application/json" {
-		t.Error(fmt.Errorf("Expected 'application/json', got %s", rw.HeaderMap["Content-Type"][0]))
+	hdr := rw.Header().Get("Content-Type")
+	if hdr != "application/json" {
+		t.Error(fmt.Errorf("Expected 'application/json', got %s", hdr))
 	}
 	if !strings.Contains(rw.Body.String(), `"data":"TEST STRING"`) {
 		t.Error(fmt.Errorf("The resulting body is not correct: %v", rw.Body.String()))

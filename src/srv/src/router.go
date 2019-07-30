@@ -15,6 +15,11 @@ import (
 // stopServerChan is the channel used to stop the server
 var stopServerChan chan os.Signal
 
+// closeServer quietly closes the server
+func closeServer(s *http.Server) {
+	_ = s.Close()
+}
+
 // startServer starts the HTTP server
 func startServer(address string) error {
 	log.Info("Setting http router")
@@ -56,7 +61,7 @@ func startServer(address string) error {
 		Handler:  router,
 		ErrorLog: stdLogger,
 	}
-	defer server.Close()
+	defer closeServer(server)
 
 	go func() {
 		// wait for SIGINT
@@ -71,7 +76,7 @@ func startServer(address string) error {
 		// shut down gracefully, but wait no longer than specified timeout before halting
 		ctx, cancel := context.WithTimeout(context.Background(), ServerShutdownTimeout*time.Second)
 		defer cancel()
-		server.Shutdown(ctx)
+		_ = server.Shutdown(ctx)
 	}()
 
 	err := server.ListenAndServe()

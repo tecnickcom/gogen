@@ -68,31 +68,31 @@ const StatsFlushPeriod = 100
 
 // ----------
 
-// Network address of the ElasticSearch serice (ip:port) or just (:port)
+// ElasticsearchURL is the network address of the ElasticSearch service (ip:port) or just (:port)
 const ElasticsearchURL = "http://127.0.0.1:9200"
 
-// ElasticSearch main index
+// ElasticsearchIndex is the ElasticSearch main index
 const ElasticsearchIndex = ""
 
-// ElasticSearch user name
+// ElasticsearchUsername is the ElasticSearch user name
 const ElasticsearchUsername = ""
 
-// ElasticSearch password
+// ElasticsearchPassword is the ElasticSearch password
 const ElasticsearchPassword = ""
 
 // ----------
 
-// Network address of the MongoDB serice (ip:port) or just (:port)
+// MongodbAddress is the network address of the MongoDB service (ip:port) or just (:port)
 const MongodbAddress = "mongodb://127.0.0.1:27017"
 
-// MongoDB Database name
+// MongodbDatabase is the MongoDB Database name
 const MongodbDatabase = "test"
 
-// MongoDB user name
+// MongodbUser is the MongoDB user name
 const MongodbUser = ""
 
-// MongoDB password
+// MongodbPassword is the MongoDB password
 const MongodbPassword = ""
 
-// MongoDB connection timeout in seconds
+// MongodbTimeout is the MongoDB connection timeout in seconds
 const MongodbTimeout = 60

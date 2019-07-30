@@ -109,11 +109,9 @@ clean:
 
 .PHONY: test
 test:
-	make new TYPE=srv
+	make clean new TYPE=srv
 	cd target/github.com/dummyvendor/dummy && make buildall
-	make clean
-	make new TYPE=app
+	make clean new TYPE=app
 	cd target/github.com/dummyvendor/dummy && make buildall
-	make clean
-	make new TYPE=lib
+	make clean new TYPE=lib
 	cd target/github.com/dummyvendor/dummy && make buildall

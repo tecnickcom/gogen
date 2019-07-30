@@ -42,7 +42,7 @@ func initElasticsearchSession(cfg *ElasticsearchData) (*ElasticsearchData, error
 func isElasticsearchAlive() error {
 	_, code, err := appParams.elasticsearch.client.Ping(appParams.elasticsearch.URL).Do(appParams.elasticsearch.ctx)
 	if err == nil && code != 200 {
-		err = fmt.Errorf("Invalid response code: %d", code)
+		err = fmt.Errorf("invalid response code: %d", code)
 	}
 	return err
 }

@@ -127,7 +127,7 @@ help:
 	@echo "    make structcheck : Find unused struct fields"
 	@echo "    make varcheck    : Find unused global variables and constants"
 	@echo "    make errcheck    : Check that error return values are used"
-	@echo "    make gosimple    : Suggest code simplifications"
+	@echo "    make staticcheck : Suggest code simplifications"
 	@echo "    make astscan     : GO AST scanner"
 	@echo ""
 	@echo "    make docs        : Generate source code documentation"
@@ -229,16 +229,16 @@ errcheck:
 	GOPATH=$(GOPATH) errcheck .  | tee target/report/errcheck.txt
 
 # Suggest code simplifications"
-.PHONY: gosimple
-gosimple:
+.PHONY: staticcheck
+staticcheck:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) gosimple .  | tee target/report/gosimple.txt
+	GOPATH=$(GOPATH) staticcheck .  | tee target/report/staticcheck.txt
 
 # AST scanner
 .PHONY: astscan
 astscan:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) gosec ./*.go | tee target/report/astscan.txt ; test $${PIPESTATUS[0]} -eq 0 || true
+	GOPATH=$(GOPATH) gosec ./... | tee target/report/astscan.txt ; test $${PIPESTATUS[0]} -eq 0 || true
 
 # Generate source docs
 .PHONY: docs
@@ -250,7 +250,7 @@ docs:
 
 # Alias to run targets: fmtcheck test vet lint coverage
 .PHONY: qa
-qa: fmtcheck test vet lint coverage cyclo ineffassign misspell structcheck varcheck errcheck gosimple astscan
+qa: fmtcheck test vet lint coverage cyclo ineffassign misspell structcheck varcheck errcheck staticcheck astscan
 
 
 # --- INSTALL ---
@@ -269,7 +269,7 @@ deps:
 	GOPATH=$(GOPATH) go get github.com/opennota/check/cmd/structcheck
 	GOPATH=$(GOPATH) go get github.com/opennota/check/cmd/varcheck
 	GOPATH=$(GOPATH) go get github.com/kisielk/errcheck
-	GOPATH=$(GOPATH) go get honnef.co/go/tools/cmd/gosimple
+	GOPATH=$(GOPATH) go get honnef.co/go/tools/cmd/staticcheck
 	GOPATH=$(GOPATH) go get github.com/securego/gosec/cmd/gosec/...
 
 # Remove any build artifact

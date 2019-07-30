@@ -171,7 +171,7 @@ func checkParams(prm *params) error {
 	}
 
 	if prm.quantity <= 0 {
-		return errors.New("The quantity must be > 0")
+		return errors.New("the quantity must be > 0")
 	}
 
 	return nil
