@@ -6,9 +6,6 @@
 # This file is intended to be executed in a Linux-compatible system.
 # ------------------------------------------------------------------------------
 
-# List special make targets that are not associated with files
-.PHONY: help all new newproject renameapp renamesrv renamelib template confirm clean
-
 # Current directory
 CURRENTDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -32,6 +29,7 @@ UPROJECT=$(shell echo $(PROJECT) | tr a-z A-Z | tr - _)
 # --- MAKE TARGETS ---
 
 # Display general help about this command
+.PHONY: help
 help:
 	@echo ""
 	@echo "gogen Makefile."
@@ -53,33 +51,40 @@ help:
 all: help
 
 # Generate a new go project
+.PHONY: new
 new: newproject rename$(TYPE) template confirm
 
 # Copy the project template in the output folder
+.PHONY: newproject
 newproject:
 	@mkdir -p ./target/$(CVSPATH)/$(PROJECT)
 	@rm -rf ./target/$(CVSPATH)/$(PROJECT)/*
 	@cp -rf ./src/$(TYPE)/. ./target/$(CVSPATH)/$(PROJECT)/
 
 # Rename some application files
+.PHONY: renameapp
 renameapp:
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/usr/share/man/man1/project.1 ./target/$(CVSPATH)/$(PROJECT)/resources/usr/share/man/man1/$(PROJECT).1
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/$(PROJECT)
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/test/etc/project ./target/$(CVSPATH)/$(PROJECT)/resources/test/etc/$(PROJECT)
 
 # Rename some service files
+.PHONY: renamesrv
 renamesrv: renameapp
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/$(PROJECT)
 	
 # Rename some service files
+.PHONY: renamesrvnosql
 renamesrvnosql: renamesrv
 
 # Rename some lib files
+.PHONY: renamelib
 renamelib:
 	@mv ./target/$(CVSPATH)/$(PROJECT)/project.go ./target/$(CVSPATH)/$(PROJECT)/$(LIBPACKAGE).go
 	@mv ./target/$(CVSPATH)/$(PROJECT)/project_test.go ./target/$(CVSPATH)/$(PROJECT)/$(LIBPACKAGE)_test.go
 
 # Replace text templates in the code
+.PHONY: template
 template:
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#PROJECT#~/$(PROJECT)/g" {} \;
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#UPROJECT#~/$(UPROJECT)/g" {} \;
@@ -93,9 +98,11 @@ template:
 	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#LIBPACKAGE#~/$(LIBPACKAGE)/g" {} \;
 
 # Print confirmation message
+.PHONY: confirm
 confirm:
 	@echo "A new "$(TYPE)" project has been created: "target/$(CVSPATH)/$(PROJECT)
 
 # Remove all generated projects
+.PHONY: clean
 clean:
 	@rm -rf ./target

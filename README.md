@@ -8,7 +8,7 @@
 
 * **category**    Tool
 * **author**      Nicola Asuni <info@tecnick.com>
-* **copyright**   2014-2017 Nicola Asuni - Tecnick.com LTD
+* **copyright**   2014-2019 Nicola Asuni - Tecnick.com LTD
 * **license**     MIT (see [LICENSE](LICENSE))
 * **link**        https://github.com/tecnickcom/gogen
 
@@ -54,9 +54,10 @@ make new TYPE=app CONFIG=myproject.cfg
 ```
 
 * **TYPE** is the project type:
-    * **lib**  :  library
-    * **app**  :  command-line application
-    * **srv**  :  HTTP API service
+    * **lib**       :  library
+    * **app**       :  command-line application
+    * **srv**       :  HTTP API service
+    * **srvnosql**  :  HTTP API service with MongoDB and Elasticsearch backend support"
 
 * **CONFIG** is the configuration file containing the project settings.
 
