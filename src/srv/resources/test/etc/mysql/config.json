@@ -1,8 +1,4 @@
 {
-  "remoteConfigProvider": "",
-  "remoteConfigEndpoint": "",
-  "remoteConfigPath": "",
-  "remoteConfigSecretKeyring": "",
   "serverAddress": ":8017",
   "tls": {
     "enabled": true,
@@ -16,7 +12,7 @@
     "enabled": false,
     "key": "4VjfMNj3TKC2xrhL5vKzjZDAkAaGn8GwHdT6zyF8tGeStvv35jS3wHFyrHYF5VejDvs5Jsa5E52GrfwbHW9fwzbQYm7kTJaaR8SfwGVrxvRsTM3L6rMEYPUm3ammHzeSYb8Hn5wbs2tMxtrx4dufUhYae9eYm9X77QH5WA8EcSThzZVvbMba3MrDmPrZxGBat9WFVjvLPhrpyFkeSDNJEVXZN6AynF7DPWPBJBasZvxuuAGQzgjeUUmRJDn3xP9a",
     "exp": 5,
-    "renewTime": 299
+    "renewTime": 30
   },
   "log": {
     "level": "DEBUG",
@@ -29,19 +25,19 @@
     "address": ":8125",
     "flush_period": 100
   },
-  "proxyAddress": "http://localhost:8117",
+  "proxyAddress": "http://127.0.0.1:8117/",
   "mysql": {
-    "DSN": ""
+    "DSN": "~#PROJECT#~:~#PROJECT#~@tcp(localhost:9306)/~#PROJECT#~"
   },
   "mongodb": {
-    "address": "",
+    "address": "mongodb://127.0.0.1:27017",
     "database": "test",
     "user": "",
     "password": "",
     "timeout": 60
   },
   "elasticsearch": {
-    "url": "",
+    "url": "http://127.0.0.1:9200",
     "index": "test",
     "username": "",
     "password": ""

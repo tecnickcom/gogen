@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"errors"
 	"strings"
 
@@ -14,6 +16,7 @@ type remoteConfigParams struct {
 	remoteConfigEndpoint      string // remote configuration URL (ip:port)
 	remoteConfigPath          string // remote configuration path where to search fo the configuration file ("/config/~#PROJECT#~")
 	remoteConfigSecretKeyring string // path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
+	remoteConfigData          string // base64 encoded JSON configuration data to be used with the "envvar" provider
 }
 
 // isEmpty returns true if all the fields are empty strings
@@ -88,12 +91,10 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams, err error) {
 		"remoteConfigEndpoint",
 		"remoteConfigPath",
 		"remoteConfigSecretKeyring",
+		"remoteConfigData",
 	}
 	for _, ev := range envVar {
-		err = viper.BindEnv(ev)
-		if err != nil {
-			return cfg, rcfg, err
-		}
+		_ = viper.BindEnv(ev)
 	}
 
 	rcfg = remoteConfigParams{
@@ -101,6 +102,7 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams, err error) {
 		remoteConfigEndpoint:      viper.GetString("remoteConfigEndpoint"),
 		remoteConfigPath:          viper.GetString("remoteConfigPath"),
 		remoteConfigSecretKeyring: viper.GetString("remoteConfigSecretKeyring"),
+		remoteConfigData:          viper.GetString("remoteConfigData"),
 	}
 
 	return cfg, rcfg, nil
@@ -126,17 +128,27 @@ func getRemoteConfigParams(cfg params, rcfg remoteConfigParams) (params, error) 
 	// configuration type
 	viper.SetConfigType("json")
 
-	// add remote configuration provider
 	var err error
-	if rcfg.remoteConfigSecretKeyring == "" {
-		err = viper.AddRemoteProvider(rcfg.remoteConfigProvider, rcfg.remoteConfigEndpoint, rcfg.remoteConfigPath)
+
+	if rcfg.remoteConfigProvider == "envvar" {
+		var data []byte
+		data, err = base64.StdEncoding.DecodeString(rcfg.remoteConfigData)
+		if err == nil {
+			err = viper.ReadConfig(bytes.NewReader(data))
+		}
 	} else {
-		err = viper.AddSecureRemoteProvider(rcfg.remoteConfigProvider, rcfg.remoteConfigEndpoint, rcfg.remoteConfigPath, rcfg.remoteConfigSecretKeyring)
+		// add remote configuration provider
+		if rcfg.remoteConfigSecretKeyring == "" {
+			err = viper.AddRemoteProvider(rcfg.remoteConfigProvider, rcfg.remoteConfigEndpoint, rcfg.remoteConfigPath)
+		} else {
+			err = viper.AddSecureRemoteProvider(rcfg.remoteConfigProvider, rcfg.remoteConfigEndpoint, rcfg.remoteConfigPath, rcfg.remoteConfigSecretKeyring)
+		}
+		if err == nil {
+			// try to read the remote configuration (if any)
+			err = viper.ReadRemoteConfig()
+		}
 	}
-	if err == nil {
-		// try to read the remote configuration (if any)
-		err = viper.ReadRemoteConfig()
-	}
+
 	if err != nil {
 		return cfg, err
 	}

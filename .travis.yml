@@ -1,6 +1,6 @@
 language: go
 
-dist: trusty
+dist: xenial
 
 sudo: true
 
@@ -14,12 +14,14 @@ branches:
     - develop
 
 go:
-  - '1.12.7'
-  - tip
+  - '1.13.1'
 
 matrix:
   allow_failures:
     - go: tip
+
+services:
+  - docker
 
 before_install:
   - sudo apt-get update || true
@@ -43,7 +45,10 @@ addons:
     - python-pip
 
 install:
-  - pip install --upgrade --user json-spec
+  - sudo pip install --upgrade pip
+  - pip install --upgrade --user jsonschema
+  - pip install --upgrade --user awscli
 
 script:
+  - echo "$TRAVIS_BUILD_NUMBER" > RELEASE
   - make test

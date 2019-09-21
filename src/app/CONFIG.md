@@ -1,6 +1,6 @@
 # Configuration Guide
 
-The ~#PROJECT#~ service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/) or [Etcd](https://github.com/coreos/etcd).
+The ~#PROJECT#~ application can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/coreos/etcd) or single environmental variable.
 
 The local configuration file is always loaded before the remote configuration, the latter always overwrites any local setting.
 
@@ -13,21 +13,21 @@ If the *configDir* parameter is not specified, then the program searches for a *
 
 ## Default Configuration
 
-The default configuration file is installed in the **/etc/~#PROJECT#~/** folder along with the example configuration file **config.example.json** and the JSON schema **config.schema.json**.
-The example configuration file contains multiple *Service Providers* definitions but all sensitive data has been removed or replaced with "******".
+The default configuration file is installed in the **/etc/~#PROJECT#~/** folder (**config.json**) along with the JSON schema **config.schema.json**.
 
 
 ## Remote Configuration
 
-The remote configuration endpoint can be configured either in the local config file or by setting some environmental variables.
-The use of environmental variables is particularly important when the program is running inside a Docker container.
+This program also support secure remote configuration via Consul, Etcd or single environment variable.
+The remote configuration server can be defined either in the local configuration file using the following parameters, or with environment variables:
 
 The configuration fields are:
 
-* **remoteConfigProvider** : remote configuration source ("consul", "etcd")
-* **remoteConfigEndpoint** : remote configuration URL (ip:port)
-* **remoteConfigPath** : remote configuration path in which to search for the configuration file (e.g. "/config/~#PROJECT#~")
-* **remoteConfigSecretKeyring** : path to the [OpenPGP](http://openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/~#PROJECT#~/configkey.gpg"); if empty a non secure connection will be used instead
+* **remoteConfigProvider**      : remote configuration source ("consul", "etcd", "envvar");
+* **remoteConfigEndpoint**      : remote configuration URL (ip:port);
+* **remoteConfigPath**          : remote configuration path in which to search for the configuration file (e.g. "/config/~#PROJECT#~");
+* **remoteConfigSecretKeyring** : path to the [OpenPGP](http://openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/~#PROJECT#~/configkey.gpg"); if empty a non secure connection will be used instead;
+* **remoteConfigData**          : base64 encoded JSON configuration data to be used with the "envvar" provider.
 
 The equivalent environment variables are:
 
@@ -35,6 +35,7 @@ The equivalent environment variables are:
 * ~#UPROJECT#~_REMOTECONFIGENDPOINT
 * ~#UPROJECT#~_REMOTECONFIGPATH
 * ~#UPROJECT#~_REMOTECONFIGSECRETKEYRING
+* ~#UPROJECT#~_REMOTECONFIGDATA
 
 
 ## Configuration Format
@@ -57,7 +58,7 @@ The configuration format is a single JSON structure with the following fields:
 
 ## Validate Configuration
 
-The json-spec Python program can be used to check the validity of the configuration file against the JSON schema.
+The jsonschema Python program can be used to check the validity of the configuration file against the JSON schema.
 It can be installed using the Python pip install tool:
 
 ```

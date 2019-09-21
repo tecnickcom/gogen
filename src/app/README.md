@@ -18,7 +18,7 @@ Full project description ...
 An additional Python program is used to check the validity of the JSON configuration files against a JSON schema:
 
 ```
-sudo pip install json-spec 
+sudo pip install jsonschema
 ```
 
 ## Quick Start
@@ -121,27 +121,7 @@ Flags:
 
 ## Configuration
 
-If no command-line parameters are specified, then the ones in the configuration file (**config.json**) will be used.
-The configuration files can be stored in the current directory or in any of the following (in order of precedence):
-* ./
-* config/
-* $HOME/~#PROJECT#~/
-* /etc/~#PROJECT#~/
-
-This program also support secure remote configuration via Consul or Etcd.
-The remote configuration server can be defined either in the local configuration file using the following parameters, or with environment variables:
-
-* **remoteConfigProvider** : remote configuration source ("consul", "etcd");
-* **remoteConfigEndpoint** : remote configuration URL (ip:port);
-* **remoteConfigPath** : remote configuration path where to search fo the configuration file (e.g. "/config/~#PROJECT#~");
-* **remoteConfigSecretKeyring** : path to the openpgp secret keyring used to decript the remote configuration data (e.g. "/etc/~#PROJECT#~/configkey.gpg"); if empty a non secure connection will be used instead;
-
-The equivalent environment variables are:
-
-* ~#UPROJECT#~_REMOTECONFIGPROVIDER
-* ~#UPROJECT#~_REMOTECONFIGENDPOINT
-* ~#UPROJECT#~_REMOTECONFIGPATH
-* ~#UPROJECT#~_REMOTECONFIGSECRETKEYRING
+See [CONFIG.md](CONFIG.md).
 
 
 ## Examples
@@ -149,7 +129,7 @@ The equivalent environment variables are:
 Once the application has being compiled with `make build`, it can be quickly tested:
 
 ```bash
-target/usr/bin/~#PROJECT#~
+target/usr/bin/~#PROJECT#~ -c ../../../resources/test/etc/~#PROJECT#~
 ```
 
 ## Logs

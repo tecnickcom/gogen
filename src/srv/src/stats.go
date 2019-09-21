@@ -4,7 +4,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/tecnickcom/statsd"
+	"github.com/tecnickcom/statsd/v2"
 )
 
 var stats *statsd.Client

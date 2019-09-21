@@ -46,8 +46,34 @@ func cli() (*cobra.Command, error) {
 			defer stats.Close()
 		}
 
+		// initialize Mysql client
+		err = initMysql(appParams.mysql)
+		if err != nil {
+			return err
+		}
+		defer appParams.mysql.Close()
+
+		// initialize ElasticSearch Session
+		err = initElasticsearchSession(appParams.elasticsearch)
+		if err != nil {
+			return err
+		}
+
+		// initialize MongoDB Session
+		err = initMongodbSession(appParams.mongodb)
+		if err != nil {
+			return err
+		}
+		defer appParams.mongodb.Close()
+
+		// Check and initialize TLS certifictes (if any)
+		err = appParams.tls.initTLS()
+		if err != nil {
+			return err
+		}
+
 		// start the HTTP server
-		return startServer(appParams.serverAddress)
+		return startServer(appParams.serverAddress, appParams.tls)
 	}
 
 	// sub-command to print the version

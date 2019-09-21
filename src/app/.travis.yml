@@ -1,6 +1,6 @@
 language: go
 
-dist: trusty
+dist: xenial
 
 sudo: true
 
@@ -14,12 +14,15 @@ branches:
     - develop
 
 go:
-  - '1.11.1'
+  - '1.13.1'
   - tip
 
 matrix:
   allow_failures:
     - go: tip
+
+services:
+  - docker
 
 before_install:
   - sudo apt-get update || true
@@ -43,15 +46,18 @@ addons:
     - python-pip
 
 install:
-  - pip install --upgrade pip
-  - pip install --upgrade --user json-spec
+  - sudo pip install --upgrade pip
+  - pip install --upgrade --user jsonschema
+  - pip install --upgrade --user awscli
 
 script:
-  - make buildall
+  - echo "$TRAVIS_BUILD_NUMBER" > RELEASE
+  - make deps build qa docker
 
 after_failure:
   - cat ./target/test/report.xml
 
 #after_success:
-#  - if [ "$TRAVIS_GO_VERSION" = "1.11.1" ]; then $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci; fi;
-#  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_GO_VERSION" = "1.11.1" ] && [ -n "$BT_APIUSER" ]; then make bintray APIUSER=${BT_APIUSER} APIKEY=${BT_APIKEY}; fi;
+#  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_GO_VERSION" = "1.13.1" ]; then make dockerpush; fi;
+#  - if [ "$TRAVIS_GO_VERSION" = "1.13.1" ]; then $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci; fi;
+#  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_GO_VERSION" = "1.13.1" ] && [ -n "$BT_APIUSER" ]; then make bintray APIUSER=${BT_APIUSER} APIKEY=${BT_APIKEY}; fi;

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -62,7 +64,7 @@ func TestGetLocalConfigParams(t *testing.T) {
 
 	// test environment variables
 	defer unsetRemoteConfigEnv(t)
-	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:98765", "/config/~#PROJECT#~", ""})
+	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:98765", "/config/~#PROJECT#~", "", ""})
 
 	prm, rprm, err := getLocalConfigParams()
 	if err != nil {
@@ -97,6 +99,28 @@ func TestGetLocalConfigParams(t *testing.T) {
 	}
 }
 
+func TestGetConfigParamsRemoteEnv(t *testing.T) {
+
+	data, err := ioutil.ReadFile("../resources/test/etc/~#PROJECT#~/env.config.json")
+	if err != nil {
+		t.Error(fmt.Errorf("Unable to read the env.config.json file: %v", err))
+	}
+	envdata := base64.StdEncoding.EncodeToString(data)
+
+	// test environment variables
+	defer unsetRemoteConfigEnv(t)
+	setRemoteConfigEnv(t, []string{"envvar", "", "", "", envdata})
+
+	viper.Reset()
+	prm, err := getConfigParams()
+	if err != nil {
+		t.Error(fmt.Errorf("An error was not expected: %v", err))
+	}
+	if prm.quantity != 13 {
+		t.Error(fmt.Errorf("Expected quantity=13, found %d", prm.quantity))
+	}
+}
+
 // Test real Consul provider
 // To activate this define the environmental variable ~#UPROJECT#~_LIVECONSUL
 func TestGetConfigParamsRemote(t *testing.T) {
@@ -108,7 +132,7 @@ func TestGetConfigParamsRemote(t *testing.T) {
 
 	// test environment variables
 	defer unsetRemoteConfigEnv(t)
-	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:8500", "/config/~#PROJECT#~", ""})
+	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:8500", "/config/~#PROJECT#~", "", ""})
 
 	// load a specific config file just for testing
 	oldCfg := ConfigPath
@@ -131,7 +155,7 @@ func TestCliWrongConfigError(t *testing.T) {
 
 	// test environment variables
 	defer unsetRemoteConfigEnv(t)
-	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:999999", "/config/wrong", ""})
+	setRemoteConfigEnv(t, []string{"consul", "127.0.0.1:999999", "/config/wrong", "", ""})
 
 	// load a specific config file just for testing
 	oldCfg := ConfigPath
@@ -162,7 +186,7 @@ func TestCliWrongConfigError(t *testing.T) {
 }
 
 func unsetRemoteConfigEnv(t *testing.T) {
-	setRemoteConfigEnv(t, []string{"", "", "", ""})
+	setRemoteConfigEnv(t, []string{"", "", "", "", ""})
 }
 
 func setRemoteConfigEnv(t *testing.T, val []string) {
@@ -171,6 +195,7 @@ func setRemoteConfigEnv(t *testing.T, val []string) {
 		"~#UPROJECT#~_REMOTECONFIGENDPOINT",
 		"~#UPROJECT#~_REMOTECONFIGPATH",
 		"~#UPROJECT#~_REMOTECONFIGSECRETKEYRING",
+		"~#UPROJECT#~_REMOTECONFIGDATA",
 	}
 	for i, ev := range envVar {
 		err := os.Setenv(ev, val[i])

@@ -27,7 +27,7 @@ func TestIndexHandler(t *testing.T) {
 	}
 }
 
-func TestStatusHandler(t *testing.T) {
+func TestPingHandler(t *testing.T) {
 
 	err := initProgramTest()
 	if err != nil {
@@ -35,6 +35,25 @@ func TestStatusHandler(t *testing.T) {
 	}
 
 	status := 200
+	rw := httptest.NewRecorder()
+	hr := httptest.NewRequest("GET", "http://127.0.0.1:8017/ping", nil)
+	ps := httprouter.Params{}
+
+	pingHandler(rw, hr, ps)
+
+	if rw.Code != status {
+		t.Error(fmt.Errorf("Expected %d, got %d", status, rw.Code))
+	}
+}
+
+func TestStatusHandler(t *testing.T) {
+
+	err := initProgramTest()
+	if err != nil {
+		t.Error(fmt.Errorf("Unexpected error: %v", err))
+	}
+
+	status := 503
 	rw := httptest.NewRecorder()
 	hr := httptest.NewRequest("GET", "http://127.0.0.1:8017/status", nil)
 	ps := httprouter.Params{}

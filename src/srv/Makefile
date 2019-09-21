@@ -1,7 +1,7 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni <info@tecnick.com>
-# @link        ~#PROJECTLINK#~
+# @link        https://~#CVSPATH#~/~#PROJECT#~
 # ------------------------------------------------------------------------------
 
 # Use bash as shell (Note: Ubuntu now uses dash which doesn't support PIPESTATUS).
@@ -14,7 +14,7 @@ CVSPATH=~#CVSPATH#~
 OWNER=~#OWNER#~
 
 # Project vendor
-VENDOR=~#VENDOR#~
+VENDOR=~#OWNER#~
 
 # Project name
 PROJECT=~#PROJECT#~
@@ -102,6 +102,7 @@ CCTARGETS=darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/38
 CONSUL_DOCKER_IMAGE_NAME=consul_$(VENDOR)_$(PROJECT)$(DOCKERSUFFIX)
 
 # STATIC is a flag to indicate whether to build using static or dynamic linking
+STATIC=1
 ifeq ($(STATIC),0)
 	STATIC_TAG=dynamic
 	STATIC_FLAG=
@@ -109,6 +110,15 @@ else
 	STATIC_TAG=static
 	STATIC_FLAG=-static
 endif
+
+# Prefix for docker container name
+DOCKERPREFIX=
+
+# Docker repository where to upload the container
+DOCKER_REPO=
+
+# AWS command to get the ECR Docker login
+AWS_ECR_GET_LOGIN="aws ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION} | sed 's|https://||'"
 
 # --- MAKE TARGETS ---
 
@@ -140,7 +150,7 @@ help:
 	@echo ""
 	@echo "    make docs        : Generate source code documentation"
 	@echo ""
-	@echo "    make deps        : Get the dependencies"
+	@echo "    make deps        : Get the test dependencies"
 	@echo "    make build       : Compile the application"
 	@echo "    make clean       : Remove any build artifact"
 	@echo "    make nuke        : Deletes any intermediate file"
@@ -150,6 +160,7 @@ help:
 	@echo "    make deb         : Build a DEB package"
 	@echo "    make bz2         : Build a tar bz2 (tbz2) compressed archive"
 	@echo "    make docker      : Build a scratch docker container to run this service"
+	@echo "    make dockerpush  : Push docker container to the remote repository"
 	@echo "    make dockertest  : Test the newly built docker container"
 	@echo ""
 	@echo "    make buildall    : Full build and test sequence"
@@ -169,6 +180,8 @@ test:
 	-covermode=atomic \
 	-bench=. \
 	-race \
+	-mod=vendor \
+	-failfast \
 	-cpuprofile=target/report/cpu.out \
 	-memprofile=target/report/mem.out \
 	-mutexprofile=target/report/mutex.out \
@@ -192,8 +205,13 @@ fmtcheck:
 # Validate JSON configuration files against the JSON schema
 .PHONY: confcheck
 confcheck:
-	json validate --schema-file=resources/etc/${PROJECT}/config.schema.json --document-file=resources/test/etc/${PROJECT}/config.json
-	json validate --schema-file=resources/etc/${PROJECT}/config.schema.json --document-file=resources/etc/${PROJECT}/config.json
+	jsonschema -i resources/test/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema -i resources/test/etc/${PROJECT}/env.config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema -i resources/test/etc/${PROJECT}/consul.config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema -i resources/test/etc/mysql/config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema -i resources/test/etc/mysql_err/config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema -i resources/test/etc/tls_err/config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema -i resources/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
 
 # Check for syntax errors
 .PHONY: vet
@@ -276,10 +294,11 @@ qa: fmtcheck confcheck test vet lint coverage cyclo ineffassign misspell structc
 
 # --- INSTALL ---
 
-# Get the dependencies
+# Get the test dependencies
 .PHONY: deps
 deps:
-	GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./src
+	#GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./src
+	GOPATH=$(GOPATH) go mod download && go mod vendor
 	GOPATH=$(GOPATH) go get github.com/inconshreveable/mousetrap
 	GOPATH=$(GOPATH) go get golang.org/x/lint/golint
 	GOPATH=$(GOPATH) go get github.com/jstemmer/go-junit-report
@@ -356,15 +375,19 @@ nuke:
 
 # Compile the application
 .PHONY: build
-build: deps
+build:
 	GOPATH=$(GOPATH) \
+	CGO_ENABLED=0 \
 	go build \
 	-tags ${STATIC_TAG} \
-	-ldflags '-linkmode external -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
+	-ldflags '-w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
+	-mod=vendor \
 	-o ./target/${BINPATH}$(PROJECT) ./src
 ifneq (${UPXENABLED},)
 	upx --brute ./target/${BINPATH}$(PROJECT)
 endif
+
+#-ldflags '-linkmode external -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
 
 # Cross-compile the application for several platforms
 .PHONY: crossbuild
@@ -461,46 +484,26 @@ docker:
 	make installssl DESTDIR=$(PATHDOCKERPKG)
 	cp resources/Docker/Dockerfile.run $(PATHDOCKERPKG)/Dockerfile
 	docker build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
-	docker save --output=$(PATHDOCKERPKG)/${VENDOR}-${PROJECT}$(DOCKERSUFFIX)-$(VERSION)-$(RELEASE) ${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest
+
+# Push docker container to the remote repository
+.PHONY: dockerpush
+dockerpush:
+	$(shell eval ${AWS_ECR_GET_LOGIN})
+	docker tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REPO}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	docker push "${DOCKER_REPO}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	docker tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REPO}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
+	docker push "${DOCKER_REPO}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 
 # Check if the deployment container starts
 .PHONY: dockertest
 dockertest:
-	# clean any previous container (if any)
-	rm -f target/old_docker_containers.id
-	docker ps -a | grep $(CONSUL_DOCKER_IMAGE_NAME) | awk '{print $$1}' >> target/old_docker_containers.id
-	docker ps -a | grep ${VENDOR}/${PROJECT}$(DOCKERSUFFIX) | awk '{print $$1}' >> target/old_docker_containers.id
-	docker stop `cat target/old_docker_containers.id` 2> /dev/null || true
-	docker rm `cat target/old_docker_containers.id` 2> /dev/null || true
-	# start Consul service inside a Docker container
-	docker run --detach=true --name=$(CONSUL_DOCKER_IMAGE_NAME) --publish=8500 --hostname=test.consul progrium/consul -server -bootstrap > target/consul_docker_container.id
-	sleep 3
-	# push Consul configuration
-	docker inspect --format='{{(index (index .NetworkSettings.Ports "8500/tcp") 0).HostPort}}' `cat target/consul_docker_container.id` > target/consul_docker_container.port
-	curl --request PUT --data @resources/test/etc/~#PROJECT#~/config.json http://127.0.0.1:`cat target/consul_docker_container.port`/v1/kv/config/~#PROJECT#~
-	# Run the program container
-	docker run --detach=true --net="host" --tty=true \
-	--env="~#UPROJECT#~_REMOTECONFIGPROVIDER=consul" \
-	--env="~#UPROJECT#~_REMOTECONFIGENDPOINT=127.0.0.1:`cat target/consul_docker_container.port`" \
-	--env="~#UPROJECT#~_REMOTECONFIGPATH=/config/~#PROJECT#~" \
-	--env="~#UPROJECT#~_REMOTECONFIGSECRETKEYRING=" \
-	${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest > target/project_docker_container.id || true
-	sleep 3
-	# check if the container is working
-	docker inspect -f {{.State.Running}} `cat target/project_docker_container.id` > target/project_docker_container.run || true
-	# remove containers
-	docker stop `cat target/project_docker_container.id` || true
-	docker logs `cat target/project_docker_container.id` || true
-	docker rm `cat target/project_docker_container.id` || true
-	docker stop `cat target/consul_docker_container.id` || true
-	docker rm `cat target/consul_docker_container.id` || true
-	@exit `grep -ic "false" target/project_docker_container.run`
+	docker-compose up
 
 # Full build and test sequence
 # You may want to change this and remove the options you don't need
 #buildall: deps qa rpm deb bz2 crossbuild
 .PHONY: buildall
-buildall: build qa rpm deb
+buildall: deps build qa rpm deb docker
 
 # Build everything inside a Docker container
 .PHONY: dbuild
@@ -510,9 +513,3 @@ dbuild:
 	@echo 0 > target/make.exit
 	CVSPATH=$(CVSPATH) VENDOR=$(VENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' ./dockerbuild.sh
 	@exit `cat target/make.exit`
-
-# Upload linux packages to bintray
-.PHONY: bintray
-bintray: rpm deb
-	@curl -T target/RPM/RPMS/x86_64/${VENDOR}-${PROJECT}-${VERSION}-${RELEASE}.x86_64.rpm -u${APIUSER}:${APIKEY} -H "X-Bintray-Package:${PROJECT}" -H "X-Bintray-Version:${VERSION}" -H "X-Bintray-Publish:1" -H "X-Bintray-Override:1" https://api.bintray.com/content/~#VENDOR#~/rpm/~#VENDOR#~-${PROJECT}-${VERSION}-${RELEASE}.x86_64.rpm
-	@curl -T target/DEB/${VENDOR}-${PROJECT}_${VERSION}-${RELEASE}_amd64.deb -u${APIUSER}:${APIKEY} -H "X-Bintray-Package:${PROJECT}" -H "X-Bintray-Version:${VERSION}" -H "X-Bintray-Debian-Distribution:amd64" -H "X-Bintray-Debian-Component:main" -H "X-Bintray-Debian-Architecture:amd64" -H "X-Bintray-Publish:1" -H "X-Bintray-Override:1" https://api.bintray.com/content/~#VENDOR#~/deb/~#VENDOR#~-${PROJECT}_${VERSION}-${RELEASE}_amd64.deb

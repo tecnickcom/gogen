@@ -40,6 +40,33 @@ const ServerAddress = ":8081"
 // ServerShutdownTimeout timeout in seconds before forcing the server to close
 const ServerShutdownTimeout = 10
 
+// ----------
+
+// TLSEnabled enable the server HTTPS-only mode
+const TLSEnabled = false
+
+// CertPem is the default TLS certificate in PEM format
+const CertPem = ""
+
+// CertKey is the default TLS private key in PEM format
+const CertKey = ""
+
+// ----------
+
+// JwtEnabled enable JWT authentication when true
+const JwtEnabled = false
+
+// JwtKey is the default JWT signing key
+const JwtKey = ""
+
+// JwtExp is the time in minutes after which the JWT token will expire
+const JwtExp = 5
+
+// JwtRenewTime is the time in second before the JWT expiration time when the renewal is allowed
+const JwtRenewTime = 30
+
+// ----------
+
 // Log (syslog)
 
 // LogLevel defines the default log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
@@ -65,3 +92,44 @@ const StatsAddress = ":8125"
 // StatsFlushPeriod sets how often (in milliseconds) the StatsD client's buffer is flushed.
 // When 0 the buffer is only flushed when it is full.
 const StatsFlushPeriod = 100
+
+// ----------
+
+// ProxyAddress is the url of the service to proxy
+const ProxyAddress = ""
+
+// ----------
+
+// MysqlDSN is the DSN in the format: username:password@protocol(address)/dbname?param=value
+const MysqlDSN = ""
+
+// ----------
+
+// ElasticsearchURL is the network address of the ElasticSearch service (ip:port) or just (:port)
+const ElasticsearchURL = "http://127.0.0.1:9200"
+
+// ElasticsearchIndex is the ElasticSearch main index
+const ElasticsearchIndex = ""
+
+// ElasticsearchUsername is the ElasticSearch user name
+const ElasticsearchUsername = ""
+
+// ElasticsearchPassword is the ElasticSearch password
+const ElasticsearchPassword = ""
+
+// ----------
+
+// MongodbAddress is the network address of the MongoDB service (ip:port) or just (:port)
+const MongodbAddress = "mongodb://127.0.0.1:27017"
+
+// MongodbDatabase is the MongoDB Database name
+const MongodbDatabase = "test"
+
+// MongodbUser is the MongoDB user name
+const MongodbUser = ""
+
+// MongodbPassword is the MongoDB password
+const MongodbPassword = ""
+
+// MongodbTimeout is the MongoDB connection timeout in seconds
+const MongodbTimeout = 60

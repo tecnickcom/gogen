@@ -1,0 +1,45 @@
+{
+  "serverAddress": ":8017",
+  "tls": {
+    "enabled": true,
+    "certPem": "-----BEGIN CERTIFICATE-----\nERROR\n-----END CERTIFICATE-----",
+    "keyPem": "-----BEGIN PRIVATE KEY-----\nERROR\n-----END PRIVATE KEY-----"
+  },
+  "user": {
+    "test": "$2a$04$GfYChjSytr0zgLYbSJoyK.XZGbiNm4F5VY08WL0bHBAKgnq3AkcZu"
+  },
+  "jwt": {
+    "enabled": false,
+    "key": "4VjfMNj3TKC2xrhL5vKzjZDAkAaGn8GwHdT6zyF8tGeStvv35jS3wHFyrHYF5VejDvs5Jsa5E52GrfwbHW9fwzbQYm7kTJaaR8SfwGVrxvRsTM3L6rMEYPUm3ammHzeSYb8Hn5wbs2tMxtrx4dufUhYae9eYm9X77QH5WA8EcSThzZVvbMba3MrDmPrZxGBat9WFVjvLPhrpyFkeSDNJEVXZN6AynF7DPWPBJBasZvxuuAGQzgjeUUmRJDn3xP9a",
+    "exp": 5,
+    "renewTime": 30
+  },
+  "log": {
+    "level": "DEBUG",
+    "network": "",
+    "address": ""
+  },
+  "stats": {
+    "prefix": "~#PROJECT#~",
+    "network": "udp",
+    "address": ":8125",
+    "flush_period": 100
+  },
+  "proxyAddress": "http://127.0.0.1:8117/",
+  "mysql": {
+    "DSN": "error:error@tcp(localhost:1111)/error"
+  },
+  "mongodb": {
+    "address": "mongodb://127.0.0.1:27017",
+    "database": "test",
+    "user": "",
+    "password": "",
+    "timeout": 60
+  },
+  "elasticsearch": {
+    "url": "http://127.0.0.1:9200",
+    "index": "test",
+    "username": "",
+    "password": ""
+  }
+}

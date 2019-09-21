@@ -21,8 +21,8 @@ func closeServer(s *http.Server) {
 }
 
 // startServer starts the HTTP server
-func startServer(address string) error {
-	log.Info("Setting http router")
+func startServer(address string, tlsdata *TLSData) (err error) {
+	log.Info("setting http router")
 	router := httprouter.New()
 
 	// set error handlers
@@ -46,7 +46,7 @@ func startServer(address string) error {
 
 	log.WithFields(log.Fields{
 		"address": address,
-	}).Info("Starting http server")
+	}).Info("starting http server")
 	stats.Increment("http.server.start")
 
 	// initialize the stopping channel
@@ -57,9 +57,12 @@ func startServer(address string) error {
 	signal.Notify(stopServerChan, os.Interrupt)
 
 	server := &http.Server{
-		Addr:     address,
-		Handler:  router,
-		ErrorLog: stdLogger,
+		TLSConfig:    tlsdata.tlsConfig,
+		Addr:         address,
+		Handler:      router,
+		ErrorLog:     stdLogger,
+		ReadTimeout:  time.Minute,
+		WriteTimeout: time.Minute,
 	}
 	defer closeServer(server)
 
@@ -71,7 +74,7 @@ func startServer(address string) error {
 
 		log.WithFields(log.Fields{
 			"address": address,
-		}).Info("Shutting down server")
+		}).Info("shutting down server")
 
 		// shut down gracefully, but wait no longer than specified timeout before halting
 		ctx, cancel := context.WithTimeout(context.Background(), ServerShutdownTimeout*time.Second)
@@ -79,16 +82,21 @@ func startServer(address string) error {
 		_ = server.Shutdown(ctx)
 	}()
 
-	err := server.ListenAndServe()
-	if err.Error() == "http: Server closed" {
+	if tlsdata.Enabled {
+		err = server.ListenAndServeTLS("", "")
+	} else {
+		err = server.ListenAndServe()
+	}
+
+	if err.Error() == "http: server closed" {
 		log.WithFields(log.Fields{
 			"address": address,
-		}).Info("Server stopped")
+		}).Info("server stopped")
 		stats.Increment("http.server.stop")
 		return nil
 	}
 
-	return fmt.Errorf("HTTP server has stopped: %v", err)
+	return fmt.Errorf("server has stopped: %v", err)
 }
 
 // setHeaders set the default headers
@@ -122,7 +130,7 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 	}
 
 	// log request
-	if code == 500 {
+	if code >= 400 {
 		log.WithFields(log.Fields{
 			"IP":        hr.RemoteAddr,
 			"UserAgent": hr.UserAgent(),
@@ -130,7 +138,7 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 			"URI":       hr.RequestURI,
 			"query":     hr.URL.Query(),
 			"code":      code,
-			"err":       data.(string),
+			"err":       data,
 		}).Error("Request")
 	} else {
 		log.WithFields(log.Fields{
@@ -149,6 +157,6 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-		}).Error("Unable to send JSON response")
+		}).Error("unable to send JSON response")
 	}
 }

@@ -54,10 +54,9 @@ make new TYPE=app CONFIG=myproject.cfg
 ```
 
 * **TYPE** is the project type:
-    * **lib**       :  library
-    * **app**       :  command-line application
-    * **srv**       :  HTTP API service
-    * **srvnosql**  :  HTTP API service with MongoDB and Elasticsearch backend support"
+    * **lib** : Library
+    * **app** : Command-line application
+    * **srv** : HTTP API service
 
 * **CONFIG** is the configuration file containing the project settings.
 
@@ -70,20 +69,22 @@ All projects are creted inside the *target* directory and should be moved to the
 
 ### Services (srv)
 
-* Web HTTP RESTful JSON API;
+* Web HTTP(S) RESTful JSON API;
 * Standard command line options;
-* Multiple configuration options, including remote configuration via Consul or Etcd;
+* Multiple configuration options, including remote configuration via Consul, Etcd or Environmental variable;
 * Logging;
 * StatsD client to collect usage metrics;
 * Unit tests;
 * Makefile;
 * Docker build;
-* RPM, DEB and Docker packaging.
+* RPM, DEB and Docker packaging;
+* Example Proxy endpoint;
+* Backend examples in MySQL, MongoDB and ElasticSearch.
 
 ### Applications (app)
 
 * Standard command line options;
-* Multiple configuration options, including remote configuration via Consul or Etcd;
+* Multiple configuration options, including remote configuration via Consul, Etcd or Environmental variable;
 * Logging;
 * Unit tests;
 * Makefile;

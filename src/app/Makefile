@@ -96,6 +96,7 @@ CCTARGETS=darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/38
 CONSUL_DOCKER_IMAGE_NAME=consul_$(VENDOR)_$(PROJECT)$(DOCKERSUFFIX)
 
 # STATIC is a flag to indicate whether to build using static or dynamic linking
+STATIC=1
 ifeq ($(STATIC),0)
 	STATIC_TAG=dynamic
 	STATIC_FLAG=
@@ -185,8 +186,9 @@ fmtcheck:
 # Validate JSON configuration files against the JSON schema
 .PHONY: confcheck
 confcheck:
-	json validate --schema-file=resources/etc/${PROJECT}/config.schema.json --document-file=resources/test/etc/${PROJECT}/config.json
-	json validate --schema-file=resources/etc/${PROJECT}/config.schema.json --document-file=resources/etc/${PROJECT}/config.json
+	jsonschema -i resources/test/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema -i resources/test/etc/${PROJECT}/env.config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema -i resources/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
 
 # Check for syntax errors
 .PHONY: vet
@@ -273,7 +275,8 @@ qa: fmtcheck confcheck test vet lint coverage cyclo ineffassign misspell structc
 # Get the dependencies
 .PHONY: deps
 deps:
-	GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./src
+	#GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./src
+	GOPATH=$(GOPATH) go mod download && go mod vendor
 	GOPATH=$(GOPATH) go get github.com/inconshreveable/mousetrap
 	GOPATH=$(GOPATH) go get golang.org/x/lint/golint
 	GOPATH=$(GOPATH) go get github.com/jstemmer/go-junit-report
@@ -350,15 +353,19 @@ nuke:
 
 # Compile the application
 .PHONY: build
-build: deps
+build:
 	GOPATH=$(GOPATH) \
+	CGO_ENABLED=0 \
 	go build \
 	-tags ${STATIC_TAG} \
-	-ldflags '-linkmode external -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
+	-ldflags '-w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
+	-mod=vendor \
 	-o ./target/${BINPATH}$(PROJECT) ./src
 ifneq (${UPXENABLED},)
 	upx --brute ./target/${BINPATH}$(PROJECT)
 endif
+
+
 
 # Cross-compile the application for several platforms
 .PHONY: crossbuild
@@ -488,7 +495,7 @@ dockertest:
 # You may want to change this and remove the options you don't need
 #buildall: deps qa rpm deb bz2 crossbuild
 .PHONY: buildall
-buildall: build qa rpm deb
+buildall: deps build qa rpm deb
 
 # Build everything inside a Docker container
 .PHONY: dbuild

@@ -1,3 +1,4 @@
+// Package ~#PROJECT#~
 // Copyright (c) ~#CURRENTYEAR#~ ~#OWNER#~
 // ~#SHORTDESCRIPTION#~
 package ~#LIBPACKAGE#~

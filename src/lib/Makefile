@@ -258,7 +258,8 @@ qa: fmtcheck test vet lint coverage cyclo ineffassign misspell structcheck varch
 # Get the dependencies
 .PHONY: deps
 deps:
-	GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./...
+	#GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./...
+	GOPATH=$(GOPATH) go mod download && go mod vendor
 	GOPATH=$(GOPATH) go get github.com/inconshreveable/mousetrap
 	GOPATH=$(GOPATH) go get golang.org/x/lint/golint
 	GOPATH=$(GOPATH) go get github.com/jstemmer/go-junit-report

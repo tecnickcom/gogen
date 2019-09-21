@@ -18,7 +18,7 @@ Full project description ...
 An additional Python program is used to check the validity of the JSON configuration files against a JSON schema:
 
 ```
-sudo pip install json-spec 
+sudo pip install jsonschema
 ```
 
 ## Quick Start
@@ -121,37 +121,7 @@ Flags:
 
 ## Configuration
 
-If no command-line parameters are specified, then the ones in the configuration file (**config.json**) will be used.
-The configuration files can be stored in the current directory or in any of the following (in order of precedence):
-* ./
-* config/
-* $HOME/~#PROJECT#~/
-* /etc/~#PROJECT#~/
-
-This program also support secure remote configuration via Consul or Etcd.
-The remote configuration server can be defined either in the local configuration file using the following parameters, or with environment variables:
-
-* **remoteConfigProvider** : remote configuration source ("consul", "etcd");
-* **remoteConfigEndpoint** : remote configuration URL (ip:port);
-* **remoteConfigPath** : remote configuration path where to search fo the configuration file (e.g. "/config/~#PROJECT#~");
-* **remoteConfigSecretKeyring** : path to the openpgp secret keyring used to decript the remote configuration data (e.g. "/etc/~#PROJECT#~/configkey.gpg"); if empty a non secure connection will be used instead;
-
-The equivalent environment variables are:
-
-* ~#UPROJECT#~_REMOTECONFIGPROVIDER
-* ~#UPROJECT#~_REMOTECONFIGENDPOINT
-* ~#UPROJECT#~_REMOTECONFIGPATH
-* ~#UPROJECT#~_REMOTECONFIGSECRETKEYRING
-
-
-## Server Mode
-
-When the server mode is enabled a RESTful HTTP JSON API server will listen on the configured **address:port** for the following entry points:
-
-| ENTRY POINT                   | METHOD | DESCRIPTION                                                    |
-|:----------------------------- |:------:|:-------------------------------------------------------------- |
-|<nobr> /                </nobr>| GET    |<nobr> return a list of available entry points and tests </nobr>|
-|<nobr> /status          </nobr>| GET    |<nobr> check the server status                           </nobr>|
+See [CONFIG.md](CONFIG.md).
 
 
 ## Examples
@@ -159,7 +129,7 @@ When the server mode is enabled a RESTful HTTP JSON API server will listen on th
 Once the application has being compiled with `make build`, it can be quickly tested:
 
 ```bash
-target/usr/bin/~#PROJECT#~
+target/usr/bin/~#PROJECT#~ -c ../../../resources/test/etc/~#PROJECT#~
 ```
 
 ## Logs
@@ -178,7 +148,78 @@ This program logs the log messages in JSON format:
     "release":"1",
     "timestamp":1475765808084372773,
     "type":"GET",
-    "version":"3.4.0"
+    "version":"1.0.0"
 }
 ```
+
+
+## TLS (HTTPS)
+
+To convert PEM file format to JSON for the configuration file:
+```
+awk 'NF {sub(/\r/, ""); printf "%s\\n",$0;}' cert.pem
+```
+
+## User Authentication
+
+The configuration file contains user accounts that are allowed to access the API.
+The password field contains the hash version of the original password generated using the *hash* tool in resources/hash.
+```
+./resources/hash/hash 'jwttest'
+
+$2a$04$GfYChjSytr0zgLYbSJoyK.XZGbiNm4F5VY08WL0bHBAKgnq3AkcZu
+```
+The default password in the test file is "jwttest".
+
+To get the JWT authentication token  send a POST request with the user credentials.
+For example:
+
+```
+curl -k -d '{"username":"test","password":"jwttest"}' -H "Content-Type: application/json" -X POST https://localhost:8017/auth/login
+
+```
+
+this returns the JWT token in a JSON data field:
+
+```
+{
+  "program": "~#PROJECT#~",
+  "version": "1.0.0",
+  "release": "1",
+  "url": ":8017",
+  "datetime": "2016-06-09T15:11:12Z",
+  "timestamp": 1574356649975251500,
+  "status": "success",
+  "code": 200,
+  "message": "OK",
+  "data": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJleHAiOjE1NzQzNTY5NDl9.z51YUiSkDEE78TOORLcjF5fkeIEG6jT_E64luKlogEw"
+}
+```
+
+To get JWT the token with *curl* and *jq*:
+
+```
+TOKEN=$(curl -s -k -d '{"username":"test","password":"jwttest"}' -H "Content-Type: application/json" -X POST https://localhost:8017/auth/login | jq -r .data)
+```
+```
+echo $TOKEN
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJleHAiOjE1NzQzNTcwNjV9.imrC22sivbTLVgsaSDIL_GG9N6FDOkhl0S_BNobWxus
+```
+
+The secured endpoints can be accessed by specifying the authorization token:
+
+```
+curl -s -k -H "Authorization: Bearer $TOKEN" https://localhost:8017/status
+```
+
+Before the expiration the token can be renewed using the auth/refresh endpoint:
+
+```
+TOKEN=$(curl -s -k -H "Authorization: Bearer $TOKEN" https://localhost:8017/auth/refresh | jq -r .data)
+```
+```
+echo $TOKEN
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJleHAiOjE1NzQ0Mzk3ODV9.uw7PIX2Pjqh_UJd1jTQ7JN6bRNGXmSB4ThHra0kfqBg
+```
+
 

@@ -78,7 +78,7 @@ func TestSendResponseError(t *testing.T) {
 }
 
 func TestStartServerError(t *testing.T) {
-	err := startServer("-1")
+	err := startServer("-1", &TLSData{})
 	if err == nil {
 		t.Error(fmt.Errorf("An error was expected"))
 	}
