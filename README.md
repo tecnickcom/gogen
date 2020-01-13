@@ -8,7 +8,7 @@
 
 * **category**    Tool
 * **author**      Nicola Asuni <info@tecnick.com>
-* **copyright**   2014-2019 Nicola Asuni - Tecnick.com LTD
+* **copyright**   2014-2020 Nicola Asuni - Tecnick.com LTD
 * **license**     MIT (see [LICENSE](LICENSE))
 * **link**        https://github.com/tecnickcom/gogen
 

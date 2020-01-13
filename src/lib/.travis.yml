@@ -14,7 +14,7 @@ branches:
     - develop
 
 go:
-  - '1.13.1'
+  - '1.13.6'
   - tip
 
 matrix:
@@ -58,6 +58,6 @@ after_failure:
   - cat ./target/test/report.xml
 
 #after_success:
-#  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_GO_VERSION" = "1.13.1" ]; then make dockerpush; fi;
-#  - if [ "$TRAVIS_GO_VERSION" = "1.13.1" ]; then $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci; fi;
-#  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_GO_VERSION" = "1.13.1" ] && [ -n "$BT_APIUSER" ]; then make bintray APIUSER=${BT_APIUSER} APIKEY=${BT_APIKEY}; fi;
+#  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_GO_VERSION" = "1.13.6" ]; then make dockerpush; fi;
+#  - if [ "$TRAVIS_GO_VERSION" = "1.13.6" ]; then $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci; fi;
+#  - if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_GO_VERSION" = "1.13.6" ] && [ -n "$BT_APIUSER" ]; then make bintray APIUSER=${BT_APIUSER} APIKEY=${BT_APIKEY}; fi;
