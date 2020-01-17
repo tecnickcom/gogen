@@ -147,7 +147,7 @@ func TestGetLocalConfigParams(t *testing.T) {
 		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
 	}
 	if prm.proxyAddress != "http://localhost:8117" {
-		t.Error(fmt.Errorf("Found different proxy address than expected, found %s", prm.serverAddress))
+		t.Error(fmt.Errorf("Found different proxy address than expected, found %s", prm.proxyAddress))
 	}
 	if prm.log.Level != "DEBUG" {
 		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.log.Level))

@@ -19,7 +19,7 @@
 : ${PROJECT:=project}
 
 # make target to execute
-: ${MAKETARGET:=build qa rpm deb}
+: ${MAKETARGET:=deps build qa rpm deb}
 
 # Name of the base development Docker image
 DOCKERDEV=${VENDOR}/dev_${PROJECT}
