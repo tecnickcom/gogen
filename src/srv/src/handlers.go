@@ -12,7 +12,7 @@ import (
 var startTime = time.Now()
 
 // index returns a list of available routes
-func indexHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func indexHandler(rw http.ResponseWriter, hr *http.Request) {
 	stats.Increment("http.index.in")
 	defer stats.Increment("http.index.out")
 	log.Debug("handler: indexHandler")
@@ -20,22 +20,22 @@ func indexHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 		Duration float64 `json:"duration"` // elapsed time since service start [seconds]
 		Entries  Routes  `json:"routes"`   // available routes (http entry points)
 	}
-	sendResponse(rw, hr, ps, http.StatusOK, info{
+	sendResponse(rw, hr, http.StatusOK, info{
 		Duration: time.Since(startTime).Seconds(),
 		Entries:  routes,
 	})
 }
 
 // PingHandler ping back the response
-func pingHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func pingHandler(rw http.ResponseWriter, hr *http.Request) {
 	stats.Increment("http.ping.in")
 	defer stats.Increment("http.ping.out")
 	log.Debug("handler: ping")
-	sendResponse(rw, hr, ps, http.StatusOK, "OK")
+	sendResponse(rw, hr, http.StatusOK, "OK")
 }
 
 // statusHandler returns the status of the service
-func statusHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func statusHandler(rw http.ResponseWriter, hr *http.Request) {
 	stats.Increment("http.status.in")
 	defer stats.Increment("http.status.out")
 	log.Debug("handler: status")
@@ -76,11 +76,11 @@ func statusHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Param
 		resp.Elastic = err.Error()
 		status = http.StatusServiceUnavailable
 	}
-	sendResponse(rw, hr, ps, status, resp)
+	sendResponse(rw, hr, status, resp)
 }
 
 // proxyHandler forward the request to the proxy provisioning API (reverse proxy)
-func proxyHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func proxyHandler(rw http.ResponseWriter, hr *http.Request) {
 	stats.Increment("http.proxy.in")
 	defer stats.Increment("http.proxy.out")
 	log.Debug("Handler: proxyHandler")
@@ -88,6 +88,7 @@ func proxyHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 	proxy := httputil.NewSingleHostReverseProxy(appParams.proxyURL)
 	hr.URL.Host = appParams.proxyURL.Host
 	hr.URL.Scheme = appParams.proxyURL.Scheme
+	ps := httprouter.ParamsFromContext(hr.Context())
 	hr.URL.Path = ps.ByName("path")
 	hr.Header.Set("X-Forwarded-Host", hr.Header.Get("Host"))
 	hr.Host = appParams.proxyURL.Host

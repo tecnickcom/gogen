@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
 
 	log "github.com/sirupsen/logrus"
@@ -35,7 +34,7 @@ type Claims struct {
 }
 
 // loginHandler handles the /auth/login
-func loginHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func loginHandler(rw http.ResponseWriter, hr *http.Request) {
 	stats.Increment("http.auth.login.in")
 	defer stats.Increment("http.auth.login.out")
 	log.Debug("handler: loginHandler")
@@ -43,19 +42,19 @@ func loginHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 	var creds Credentials
 	err := json.NewDecoder(hr.Body).Decode(&creds)
 	if err != nil {
-		sendResponse(rw, hr, ps, http.StatusBadRequest, err.Error())
+		sendResponse(rw, hr, http.StatusBadRequest, err.Error())
 		return
 	}
 	hash, ok := appParams.user[creds.Username]
 	if !ok {
 		// invalid user
-		sendResponse(rw, hr, ps, http.StatusUnauthorized, "invalid authentication credentials")
+		sendResponse(rw, hr, http.StatusUnauthorized, "invalid authentication credentials")
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(creds.Password))
 	if err != nil {
 		// invalid password
-		sendResponse(rw, hr, ps, http.StatusUnauthorized, "invalid authentication credentials")
+		sendResponse(rw, hr, http.StatusUnauthorized, "invalid authentication credentials")
 		return
 	}
 
@@ -70,16 +69,16 @@ func loginHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString(appParams.jwt.Key)
 	if err != nil {
-		sendResponse(rw, hr, ps, http.StatusInternalServerError, "unable to sign the JWT token")
+		sendResponse(rw, hr, http.StatusInternalServerError, "unable to sign the JWT token")
 		return
 	}
 
-	sendResponse(rw, hr, ps, http.StatusOK, signedToken)
+	sendResponse(rw, hr, http.StatusOK, signedToken)
 }
 
 // checkJwtToken extract the JWT token from the header "Authorization: Bearer <TOKEN>"
 // and returns an error if the token is invalid.
-func checkJwtToken(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) (*Claims, error) {
+func checkJwtToken(rw http.ResponseWriter, hr *http.Request) (*Claims, error) {
 	headAuth := hr.Header.Get("Authorization")
 	if len(headAuth) == 0 {
 		return nil, errors.New("missing Authorization header")
@@ -103,40 +102,40 @@ func checkJwtToken(rw http.ResponseWriter, hr *http.Request, ps httprouter.Param
 }
 
 // renewJwtHandler handles the /auth/refresh
-func renewJwtHandler(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func renewJwtHandler(rw http.ResponseWriter, hr *http.Request) {
 	stats.Increment("http.auth.refresh.in")
 	defer stats.Increment("http.auth.refresh.out")
 	log.Debug("handler: renewJwtHandler")
 
-	claims, err := checkJwtToken(rw, hr, ps)
+	claims, err := checkJwtToken(rw, hr)
 	if err != nil {
-		sendResponse(rw, hr, ps, http.StatusUnauthorized, err.Error())
+		sendResponse(rw, hr, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	if time.Until(time.Unix(claims.ExpiresAt, 0)) > time.Duration(appParams.jwt.RenewTime)*time.Second {
-		sendResponse(rw, hr, ps, http.StatusBadRequest, "the JWT token can be renewed only when it is close to expiration")
+		sendResponse(rw, hr, http.StatusBadRequest, "the JWT token can be renewed only when it is close to expiration")
 		return
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signedToken, err := token.SignedString(appParams.jwt.Key)
 	if err != nil {
-		sendResponse(rw, hr, ps, http.StatusInternalServerError, "unable to sign the JWT token")
+		sendResponse(rw, hr, http.StatusInternalServerError, "unable to sign the JWT token")
 		return
 	}
 
-	sendResponse(rw, hr, ps, http.StatusOK, signedToken)
+	sendResponse(rw, hr, http.StatusOK, signedToken)
 }
 
 // isAuthorized checks if the user is authorized via JWT token
-func isAuthorized(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) bool {
+func isAuthorized(rw http.ResponseWriter, hr *http.Request) bool {
 	if !appParams.jwt.Enabled {
 		return true
 	}
-	_, err := checkJwtToken(rw, hr, ps)
+	_, err := checkJwtToken(rw, hr)
 	if err != nil {
-		sendResponse(rw, hr, ps, http.StatusUnauthorized, err.Error())
+		sendResponse(rw, hr, http.StatusUnauthorized, err.Error())
 		return false
 	}
 	return true

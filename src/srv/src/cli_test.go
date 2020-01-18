@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
 	"github.com/spf13/cobra"
 )
 
@@ -173,7 +172,7 @@ func startTestClient(t *testing.T) {
 }
 
 // triggerPanic triggers a Panic
-func triggerPanic(rw http.ResponseWriter, hr *http.Request, ps httprouter.Params) {
+func triggerPanic(rw http.ResponseWriter, hr *http.Request) {
 	panic("TEST PANIC")
 }
 

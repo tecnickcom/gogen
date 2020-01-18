@@ -1,13 +1,13 @@
 package main
 
-import "github.com/julienschmidt/httprouter"
+import "net/http"
 
 // Route contains the HTTP route description
 type Route struct {
-	Method      string            `json:"method"`      // HTTP method
-	Path        string            `json:"path"`        // URL path
-	Handle      httprouter.Handle `json:"-"`           // Handler function
-	Description string            `json:"description"` // Description
+	Method      string           `json:"method"`      // HTTP method
+	Path        string           `json:"path"`        // URL path
+	Handler     http.HandlerFunc `json:"-"`           // Handler function
+	Description string           `json:"description"` // Description
 }
 
 // Routes is a list of HTTP routes

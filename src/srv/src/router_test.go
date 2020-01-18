@@ -25,7 +25,7 @@ func TestSendResponse200(t *testing.T) {
 	code := 200
 	data := "TEST STRING"
 
-	sendResponse(rw, hr, nil, code, data)
+	sendResponse(rw, hr, code, data)
 
 	if rw.Code != 200 {
 		t.Error(fmt.Errorf("Expected 200, got %d", rw.Code))
@@ -45,7 +45,7 @@ func TestSendResponse500(t *testing.T) {
 	code := 500
 	data := "TEST STRING"
 
-	sendResponse(rw, hr, nil, code, data)
+	sendResponse(rw, hr, code, data)
 
 	if rw.Code != 500 {
 		t.Error(fmt.Errorf("Expected 500, got %d", rw.Code))
@@ -70,7 +70,7 @@ func TestSendResponseError(t *testing.T) {
 	code := 200
 	data := "TEST STRING"
 
-	sendResponse(rw, hr, nil, code, data)
+	sendResponse(rw, hr, code, data)
 
 	if rw.Code != 200 {
 		t.Error(fmt.Errorf("Expected 200, got %d", rw.Code))

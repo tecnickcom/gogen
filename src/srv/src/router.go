@@ -27,21 +27,21 @@ func startServer(address string, tlsdata *TLSData) (err error) {
 
 	// set error handlers
 	router.NotFound = http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) { // 404
-		sendResponse(rw, hr, nil, http.StatusNotFound, "invalid end point")
+		sendResponse(rw, hr, http.StatusNotFound, "invalid end point")
 	})
 	router.MethodNotAllowed = http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) { // 405
-		sendResponse(rw, hr, nil, http.StatusMethodNotAllowed, "the request cannot be routed")
+		sendResponse(rw, hr, http.StatusMethodNotAllowed, "the request cannot be routed")
 	})
 	router.PanicHandler = func(rw http.ResponseWriter, hr *http.Request, p interface{}) { // 500
-		sendResponse(rw, hr, nil, http.StatusInternalServerError, "internal error")
+		sendResponse(rw, hr, http.StatusInternalServerError, "internal error")
 	}
 
 	// index handler
-	router.GET("/", indexHandler)
+	router.HandlerFunc("GET", "/", indexHandler)
 
 	// set end points and handlers
 	for _, route := range routes {
-		router.Handle(route.Method, route.Path, route.Handle)
+		router.HandlerFunc(route.Method, route.Path, route.Handler)
 	}
 
 	log.WithFields(log.Fields{
@@ -112,7 +112,7 @@ func setHeaders(hw http.ResponseWriter, contentType string, code int) {
 }
 
 // sendResponse sends the HTTP response in JSON format
-func sendResponse(hw http.ResponseWriter, hr *http.Request, ps httprouter.Params, code int, data interface{}) {
+func sendResponse(hw http.ResponseWriter, hr *http.Request, code int, data interface{}) {
 
 	nowTime := time.Now().UTC()
 

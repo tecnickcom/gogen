@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/julienschmidt/httprouter"
 )
 
 func TestIndexHandler(t *testing.T) {
@@ -18,9 +16,8 @@ func TestIndexHandler(t *testing.T) {
 	status := 200
 	rw := httptest.NewRecorder()
 	hr := httptest.NewRequest("GET", "http://127.0.0.1:8017/", nil)
-	ps := httprouter.Params{}
 
-	indexHandler(rw, hr, ps)
+	indexHandler(rw, hr)
 
 	if rw.Code != status {
 		t.Error(fmt.Errorf("Expected %d, got %d", status, rw.Code))
@@ -37,9 +34,8 @@ func TestPingHandler(t *testing.T) {
 	status := 200
 	rw := httptest.NewRecorder()
 	hr := httptest.NewRequest("GET", "http://127.0.0.1:8017/ping", nil)
-	ps := httprouter.Params{}
 
-	pingHandler(rw, hr, ps)
+	pingHandler(rw, hr)
 
 	if rw.Code != status {
 		t.Error(fmt.Errorf("Expected %d, got %d", status, rw.Code))
@@ -56,9 +52,8 @@ func TestStatusHandler(t *testing.T) {
 	status := 503
 	rw := httptest.NewRecorder()
 	hr := httptest.NewRequest("GET", "http://127.0.0.1:8017/status", nil)
-	ps := httprouter.Params{}
 
-	statusHandler(rw, hr, ps)
+	statusHandler(rw, hr)
 
 	if rw.Code != status {
 		t.Error(fmt.Errorf("Expected %d, got %d", status, rw.Code))
