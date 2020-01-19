@@ -43,6 +43,15 @@ var (
 		[]string{},
 	)
 
+	// metricErrorLevel counts errors by level
+	metricError = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "error_level_total",
+			Help: "Number of error levels.",
+		},
+		[]string{"level"},
+	)
+
 	metricsHandler = promhttp.Handler().ServeHTTP
 )
 
@@ -53,6 +62,7 @@ func init() {
 		metricCounter,
 		metricDuration,
 		metricResponseSize,
+		metricError,
 	)
 }
 
@@ -68,4 +78,9 @@ func instrumentHandler(path string, handler http.HandlerFunc) http.Handler {
 			),
 		),
 	)
+}
+
+// incMetricError count the number of errors for each error level
+func incMetricError(level string) {
+	metricError.With(prometheus.Labels{"level": level}).Inc()
 }

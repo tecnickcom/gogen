@@ -70,6 +70,8 @@ func (f *logJSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		stats.Increment(fmt.Sprintf("logrus.%s", data["level"]))
 	}
 
+	incMetricError(entry.Level.String())
+
 	serialized, err := jsonMarshal(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal fields to JSON, %v", err)
