@@ -144,6 +144,7 @@ func startTestClient(t *testing.T) {
 	testEndPoint(t, "GET", "/", "", "", 200)
 	testEndPoint(t, "GET", "/ping", "", "", 200)
 	testEndPoint(t, "GET", "/status", "", "", 503)
+	testEndPoint(t, "GET", "/metrics", "", "", 200)
 
 	testEndPoint(t, "GET", "/auth/refresh", "", "", 401)
 	testEndPoint(t, "GET", "/auth/refresh", "", "ERROR", 401)
@@ -224,7 +225,7 @@ func testEndPoint(t *testing.T, method, path, data, token string, code int) []by
 		return nil
 	}
 
-	if len(body) > 0 && !isJSON(body) {
+	if path != "/metrics" && len(body) > 0 && !isJSON(body) {
 		t.Error(fmt.Errorf("The body is not JSON: %v", body))
 	}
 

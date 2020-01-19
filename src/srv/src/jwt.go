@@ -9,8 +9,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // JwtData store a single JWT configuration
@@ -35,10 +33,6 @@ type Claims struct {
 
 // loginHandler handles the /auth/login
 func loginHandler(rw http.ResponseWriter, hr *http.Request) {
-	stats.Increment("http.auth.login.in")
-	defer stats.Increment("http.auth.login.out")
-	log.Debug("handler: loginHandler")
-
 	var creds Credentials
 	err := json.NewDecoder(hr.Body).Decode(&creds)
 	if err != nil {
@@ -103,10 +97,6 @@ func checkJwtToken(rw http.ResponseWriter, hr *http.Request) (*Claims, error) {
 
 // renewJwtHandler handles the /auth/refresh
 func renewJwtHandler(rw http.ResponseWriter, hr *http.Request) {
-	stats.Increment("http.auth.refresh.in")
-	defer stats.Increment("http.auth.refresh.out")
-	log.Debug("handler: renewJwtHandler")
-
 	claims, err := checkJwtToken(rw, hr)
 	if err != nil {
 		sendResponse(rw, hr, http.StatusUnauthorized, err.Error())

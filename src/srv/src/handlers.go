@@ -13,9 +13,6 @@ var startTime = time.Now()
 
 // index returns a list of available routes
 func indexHandler(rw http.ResponseWriter, hr *http.Request) {
-	stats.Increment("http.index.in")
-	defer stats.Increment("http.index.out")
-	log.Debug("handler: indexHandler")
 	type info struct {
 		Duration float64 `json:"duration"` // elapsed time since service start [seconds]
 		Entries  Routes  `json:"routes"`   // available routes (http entry points)
@@ -28,17 +25,11 @@ func indexHandler(rw http.ResponseWriter, hr *http.Request) {
 
 // PingHandler ping back the response
 func pingHandler(rw http.ResponseWriter, hr *http.Request) {
-	stats.Increment("http.ping.in")
-	defer stats.Increment("http.ping.out")
-	log.Debug("handler: ping")
 	sendResponse(rw, hr, http.StatusOK, "OK")
 }
 
 // statusHandler returns the status of the service
 func statusHandler(rw http.ResponseWriter, hr *http.Request) {
-	stats.Increment("http.status.in")
-	defer stats.Increment("http.status.out")
-	log.Debug("handler: status")
 	type info struct {
 		Duration float64 `json:"duration"` // elapsed time since service start [seconds]
 		Service  string  `json:"service"`  // error message
@@ -81,10 +72,6 @@ func statusHandler(rw http.ResponseWriter, hr *http.Request) {
 
 // proxyHandler forward the request to the proxy provisioning API (reverse proxy)
 func proxyHandler(rw http.ResponseWriter, hr *http.Request) {
-	stats.Increment("http.proxy.in")
-	defer stats.Increment("http.proxy.out")
-	log.Debug("Handler: proxyHandler")
-
 	proxy := httputil.NewSingleHostReverseProxy(appParams.proxyURL)
 	hr.URL.Host = appParams.proxyURL.Host
 	hr.URL.Scheme = appParams.proxyURL.Scheme

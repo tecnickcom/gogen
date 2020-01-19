@@ -23,25 +23,26 @@ func closeServer(s *http.Server) {
 // startServer starts the HTTP server
 func startServer(address string, tlsdata *TLSData) (err error) {
 	log.Info("setting http router")
+
 	router := httprouter.New()
 
 	// set error handlers
-	router.NotFound = http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) { // 404
+	router.NotFound = statsHandler("404", instrumentHandler("404", http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) { // 404
 		sendResponse(rw, hr, http.StatusNotFound, "invalid end point")
-	})
-	router.MethodNotAllowed = http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) { // 405
+	})))
+	router.MethodNotAllowed = statsHandler("404", instrumentHandler("405", http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) { // 405
 		sendResponse(rw, hr, http.StatusMethodNotAllowed, "the request cannot be routed")
-	})
+	})))
 	router.PanicHandler = func(rw http.ResponseWriter, hr *http.Request, p interface{}) { // 500
 		sendResponse(rw, hr, http.StatusInternalServerError, "internal error")
 	}
 
 	// index handler
-	router.HandlerFunc("GET", "/", indexHandler)
+	router.Handler("GET", "/", statsHandler("/", instrumentHandler("/", indexHandler)))
 
 	// set end points and handlers
 	for _, route := range routes {
-		router.HandlerFunc(route.Method, route.Path, route.Handler)
+		router.Handler(route.Method, route.Path, statsHandler(route.Path, instrumentHandler(route.Path, route.Handler)))
 	}
 
 	log.WithFields(log.Fields{

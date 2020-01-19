@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -33,4 +34,14 @@ func initStats(cfg *StatsData) (err error) {
 		}).Error("Unable to connect to the StatD daemon")
 	}
 	return err
+}
+
+// statsHandler wraps an http.Handler to send StasdMetrics
+func statsHandler(path string, handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) {
+		stats.Increment(path + ".in")
+		defer stats.Increment(path + ".out")
+		log.Debug("handler: " + path)
+		handler.ServeHTTP(rw, hr)
+	})
 }

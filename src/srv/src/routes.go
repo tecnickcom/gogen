@@ -28,6 +28,12 @@ var routes = Routes{
 		"Check this service health status.",
 	},
 	Route{
+		"GET",
+		"/metrics",
+		metricsHandler,
+		"Returns Prometheus metrics.",
+	},
+	Route{
 		"POST",
 		"/auth/login",
 		loginHandler,
