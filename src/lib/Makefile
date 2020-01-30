@@ -32,12 +32,6 @@ PKGNAME=${VENDOR}-${PROJECT}
 CURRENTDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 # GO lang path
-ifneq ($(GOPATH),)
-	ifeq ($(findstring $(GOPATH),$(CURRENTDIR)),)
-		# the defined GOPATH is not valid
-		GOPATH=
-	endif
-endif
 ifeq ($(GOPATH),)
 	# extract the GOPATH
 	GOPATH=$(firstword $(subst /src/, ,$(CURRENTDIR)))
