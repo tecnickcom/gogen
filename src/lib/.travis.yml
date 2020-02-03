@@ -14,12 +14,12 @@ branches:
     - develop
 
 go:
-  - '1.13.6'
-  - tip
+  - '1.13.x'
+  - master
 
 matrix:
   allow_failures:
-    - go: tip
+    - go: master
 
 services:
   - docker
