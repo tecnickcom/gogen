@@ -34,6 +34,12 @@ var routes = Routes{
 		"Returns Prometheus metrics.",
 	},
 	Route{
+		"GET",
+		"/pprof/*option",
+		pprofHandler,
+		"Returns pprof data for the selected profile.",
+	},
+	Route{
 		"POST",
 		"/auth/login",
 		loginHandler,

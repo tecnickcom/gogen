@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"net/http/httputil"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -10,6 +9,7 @@ import (
 )
 
 var startTime = time.Now()
+var httpPingClient = http.Client{Timeout: time.Duration(1 * time.Second)}
 
 // index returns a list of available routes
 func indexHandler(rw http.ResponseWriter, hr *http.Request) {
@@ -72,14 +72,12 @@ func statusHandler(rw http.ResponseWriter, hr *http.Request) {
 
 // proxyHandler forward the request to the proxy provisioning API (reverse proxy)
 func proxyHandler(rw http.ResponseWriter, hr *http.Request) {
-	proxy := httputil.NewSingleHostReverseProxy(appParams.proxyURL)
 	hr.URL.Host = appParams.proxyURL.Host
 	hr.URL.Scheme = appParams.proxyURL.Scheme
 	ps := httprouter.ParamsFromContext(hr.Context())
 	hr.URL.Path = ps.ByName("path")
 	hr.Header.Set("X-Forwarded-Host", hr.Header.Get("Host"))
 	hr.Host = appParams.proxyURL.Host
-
 	log.WithFields(log.Fields{
 		"IP":        hr.RemoteAddr,
 		"UserAgent": hr.UserAgent(),
@@ -87,12 +85,14 @@ func proxyHandler(rw http.ResponseWriter, hr *http.Request) {
 		"URI":       hr.RequestURI,
 		"query":     hr.URL.Query(),
 	}).Info("Request proxy")
-
-	proxy.ServeHTTP(rw, hr)
+	appParams.proxy.ServeHTTP(rw, hr)
 }
 
 // isProxyAlive check if the proxy URL is reacheable
 func isProxyAlive() error {
-	_, err := http.Get(appParams.proxyURL.String())
+	resp, err := httpPingClient.Head(appParams.proxyURL.String())
+	if err == nil {
+		_ = resp.Body.Close()
+	}
 	return err
 }

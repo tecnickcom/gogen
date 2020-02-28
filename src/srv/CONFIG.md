@@ -1,6 +1,6 @@
 # Configuration Guide
 
-The ~#PROJECT#~ service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/coreos/etcd) or single environmental variable.
+The ~#PROJECT#~ service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/coreos/etcd) or a single Environmental Variable.
 
 The local configuration file is always loaded before the remote configuration, the latter always overwrites any local setting.
 
@@ -36,6 +36,7 @@ The equivalent environment variables are:
 * ~#UPROJECT#~_REMOTECONFIGPATH
 * ~#UPROJECT#~_REMOTECONFIGSECRETKEYRING
 * ~#UPROJECT#~_REMOTECONFIGDATA
+
 
 ## Configuration Format
 
@@ -103,5 +104,5 @@ sudo pip install jsonschema
 Example usage:
 
 ```
-jsonschema -i resources/test/etc/~#PROJECT#~/config.json resources/etc/~#PROJECT#~/config.schema.json
+json validate --schema-file=/etc/~#PROJECT#~/config.schema.json --document-file=/etc/~#PROJECT#~/config.json
 ```

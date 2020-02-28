@@ -7,6 +7,8 @@ import (
 	"os"
 	"regexp"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func TestProgramVersion(t *testing.T) {
@@ -52,4 +54,26 @@ func getMainOutput(t *testing.T) string {
 	out := <-outC
 
 	return out
+}
+
+func TestMainCliError(t *testing.T) {
+	defer func() { log.StandardLogger().ExitFunc = nil }()
+	fatal := false
+	log.StandardLogger().ExitFunc = func(int) { fatal = true }
+	os.Args = []string{ProgramName, "--INVALID"}
+	main()
+	if !fatal {
+		t.Error(fmt.Errorf("An error was not expected"))
+	}
+}
+
+func TestMainCliExecuteError(t *testing.T) {
+	defer func() { log.StandardLogger().ExitFunc = nil }()
+	fatal := false
+	log.StandardLogger().ExitFunc = func(int) { fatal = true }
+	os.Args = []string{ProgramName, "--logLevel=INVALID"}
+	main()
+	if !fatal {
+		t.Error(fmt.Errorf("An error was not expected"))
+	}
 }

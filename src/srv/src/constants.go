@@ -34,6 +34,9 @@ const RemoteConfigPath = ""
 // RemoteConfigSecretKeyring is the path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
 const RemoteConfigSecretKeyring = "" // #nosec
 
+// EnvironmentVariablesPrefix prefix to add to the configuration environment variables
+const EnvironmentVariablesPrefix = "~#UPROJECT#~"
+
 // ServerAddress is the default HTTP address (ip:port) or just (:port)
 const ServerAddress = ":8081"
 
@@ -77,6 +80,8 @@ const LogNetwork = ""
 
 // LogAddress is the network address of the Syslog daemon (ip:port) or just (:port). Leave emty to disable.
 const LogAddress = ""
+
+// ----------
 
 // StatsD is used to collect usage metrics
 

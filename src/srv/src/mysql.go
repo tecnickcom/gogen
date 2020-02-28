@@ -10,32 +10,33 @@ import (
 
 // MysqlData store a single Mysql configuration
 type MysqlData struct {
-	DSN string  `json:"dsn"` // Mysql DSN "username:password@protocol(address)/dbname?param=value"
+	DSN string  `json:"DSN"` // Mysql DSN "username:password@protocol(address)/dbname?param=value"
 	db  *sql.DB // Mysql database handle
 }
 
 // initMysql initialize a new Mysql handle
-func initMysql(cfg *MysqlData) error {
+func initMysql(cfg *MysqlData) (err error) {
 	if cfg.DSN == "" {
 		cfg.db = nil
 		return nil
 	}
-	db, err := sql.Open("mysql", cfg.DSN)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err,
-		}).Error("unable to open the database connection")
-		return err
+	if cfg.db == nil {
+		cfg.db, err = sql.Open("mysql", cfg.DSN)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"error": err,
+			}).Error("unable to open the database connection")
+			return err
+		}
 	}
 	// Open doesn't open a connection. Validate DSN data:
-	err = db.Ping()
+	err = cfg.db.Ping()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Error("unable to connect to the specified database")
 		return err
 	}
-	cfg.db = db
 	return nil
 }
 
@@ -48,16 +49,17 @@ func (md *MysqlData) Close() {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
-		}).Error("unable to Close the mysql connection")
+		}).Error("unable to Close the database connection")
 	}
 }
 
 // isMysqlAlive returns the status of Mysql
 func isMysqlAlive() error {
 	if appParams.mysql.db == nil {
-		return errors.New("mysql is not available")
+		return errors.New("the database is not available")
 	}
-	return appParams.mysql.db.Ping()
+	_, err := appParams.mysql.db.Exec("SELECT 1")
+	return err
 }
 
 // stmtClose closes the prepared database statement and report errors if any

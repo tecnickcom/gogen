@@ -71,6 +71,7 @@ renameapp:
 .PHONY: renamesrv
 renamesrv: renameapp
 	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/$(PROJECT)
+	@mv ./target/$(CVSPATH)/$(PROJECT)/project.test.Dockerfile ./target/$(CVSPATH)/$(PROJECT)/$(PROJECT).test.Dockerfile
 	
 # Rename some service files
 .PHONY: renamesrvnosql

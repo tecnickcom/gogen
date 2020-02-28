@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"net/http/httputil"
 	"net/url"
 	"regexp"
 	"strings"
@@ -16,8 +17,8 @@ import (
 type remoteConfigParams struct {
 	remoteConfigProvider      string // remote configuration source ("consul", "etcd", "envvar")
 	remoteConfigEndpoint      string // remote configuration URL (ip:port)
-	remoteConfigPath          string // remote configuration path where to search fo the configuration file ("/config/~#PROJECT#~")
-	remoteConfigSecretKeyring string // path to the openpgp secret keyring used to decript the remote configuration data ("/etc/~#PROJECT#~/configkey.gpg")
+	remoteConfigPath          string // remote configuration path where to search fo the configuration file ("/config/dummy")
+	remoteConfigSecretKeyring string // path to the openpgp secret keyring used to decript the remote configuration data ("/etc/dummy/configkey.gpg")
 	remoteConfigData          string // base64 encoded JSON configuration data to be used with the "envvar" provider
 }
 
@@ -28,14 +29,15 @@ func (rcfg remoteConfigParams) isEmpty() bool {
 
 // params struct contains the application parameters
 type params struct {
-	serverAddress string             // HTTP address (ip:port) or just (:port)
-	tls           *TLSData           // TLS configuration data
-	log           *LogData           // Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
-	stats         *StatsData         // StatsD configuration, it is used to collect usage metrics
-	user          map[string]string  // key: username, value: hashed password
-	jwt           *JwtData           // JWT configuration
-	proxyAddress  string             // Proxy API HTTP Address
-	proxyURL      *url.URL           // Proxy API URL
+	serverAddress string            // HTTP address (ip:port) or just (:port)
+	tls           *TLSData          // TLS configuration data
+	log           *LogData          // Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
+	stats         *StatsData        // StatsD configuration, it is used to collect usage metrics
+	user          map[string]string // key: username, value: hashed password
+	jwt           *JwtData          // JWT configuration
+	proxyAddress  string            // Proxy API HTTP Address
+	proxyURL      *url.URL          // Proxy API URL
+	proxy         *httputil.ReverseProxy
 	mysql         *MysqlData         // MySQL database data
 	mongodb       *MongodbData       // MongoDB configuration
 	elasticsearch *ElasticsearchData // ElasticSearch configuration
@@ -126,7 +128,7 @@ func getLocalConfigParams() (cfg params, rcfg remoteConfigParams, err error) {
 
 	// support environment variables for the remote configuration
 	viper.AutomaticEnv()
-	viper.SetEnvPrefix(strings.Replace(ProgramName, "-", "_", -1)) // will be uppercased automatically
+	viper.SetEnvPrefix(strings.Replace(EnvironmentVariablesPrefix, "-", "_", -1)) // will be uppercased automatically
 	envVar := []string{
 		"remoteConfigProvider",
 		"remoteConfigEndpoint",
@@ -301,6 +303,7 @@ func checkParams(prm *params) error {
 		}
 	}
 
+	// Proxy
 	if prm.proxyAddress == "" {
 		return errors.New("proxyAddress is empty")
 	}
@@ -308,6 +311,7 @@ func checkParams(prm *params) error {
 	if err != nil {
 		return err
 	}
+	prm.proxy = httputil.NewSingleHostReverseProxy(prm.proxyURL)
 
 	// StatsD
 	if prm.stats.Prefix == "" {
@@ -324,14 +328,16 @@ func checkParams(prm *params) error {
 	if len(prm.user) == 0 {
 		return errors.New("at least one user must be defined")
 	}
-	if len(prm.jwt.Key) == 0 {
-		return errors.New("jwt.key is empty")
-	}
-	if prm.jwt.Exp <= 0 {
-		return errors.New("jwt.exp must be > 0")
-	}
-	if prm.jwt.RenewTime <= 0 {
-		return errors.New("jwt.renewTime must be > 0")
+	if prm.jwt.Enabled {
+		if len(prm.jwt.Key) == 0 {
+			return errors.New("jwt.key is empty")
+		}
+		if prm.jwt.Exp <= 0 {
+			return errors.New("jwt.exp must be > 0")
+		}
+		if prm.jwt.RenewTime <= 0 {
+			return errors.New("jwt.renewTime must be > 0")
+		}
 	}
 
 	// Proxy

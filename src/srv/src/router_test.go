@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -9,9 +10,9 @@ import (
 
 func TestSetHeaders(t *testing.T) {
 	rw := httptest.NewRecorder()
-	setHeaders(rw, "application/test", 200)
-	if rw.Code != 200 {
-		t.Error(fmt.Errorf("Expected 200, got %d", rw.Code))
+	setHeaders(rw, "application/test", http.StatusOK)
+	if rw.Code != http.StatusOK {
+		t.Error(fmt.Errorf("Expected %d, got %d", http.StatusOK, rw.Code))
 	}
 	hdr := rw.Header().Get("Content-Type")
 	if hdr != "application/test" {
@@ -19,16 +20,14 @@ func TestSetHeaders(t *testing.T) {
 	}
 }
 
-func TestSendResponse200(t *testing.T) {
+func TestSendResponseOK(t *testing.T) {
 	rw := httptest.NewRecorder()
 	hr := httptest.NewRequest("GET", "http://example.com", nil)
-	code := 200
+	code := http.StatusOK
 	data := "TEST STRING"
-
 	sendResponse(rw, hr, code, data)
-
-	if rw.Code != 200 {
-		t.Error(fmt.Errorf("Expected 200, got %d", rw.Code))
+	if rw.Code != code {
+		t.Error(fmt.Errorf("Expected %d, got %d", code, rw.Code))
 	}
 	hdr := rw.Header().Get("Content-Type")
 	if hdr != "application/json" {
@@ -39,16 +38,14 @@ func TestSendResponse200(t *testing.T) {
 	}
 }
 
-func TestSendResponse500(t *testing.T) {
+func TestSendResponseInternalServerError(t *testing.T) {
 	rw := httptest.NewRecorder()
 	hr := httptest.NewRequest("GET", "http://example.com", nil)
-	code := 500
+	code := http.StatusInternalServerError
 	data := "TEST STRING"
-
 	sendResponse(rw, hr, code, data)
-
-	if rw.Code != 500 {
-		t.Error(fmt.Errorf("Expected 500, got %d", rw.Code))
+	if rw.Code != code {
+		t.Error(fmt.Errorf("Expected %d, got %d", code, rw.Code))
 	}
 	hdr := rw.Header().Get("Content-Type")
 	if hdr != "application/json" {
@@ -60,20 +57,16 @@ func TestSendResponse500(t *testing.T) {
 }
 
 func TestSendResponseError(t *testing.T) {
-
 	oldSendJSONEncode := sendJSONEncode
 	defer func() { sendJSONEncode = oldSendJSONEncode }()
 	sendJSONEncode = mockSendJSONEncode
-
 	rw := httptest.NewRecorder()
 	hr := httptest.NewRequest("GET", "http://example.com", nil)
-	code := 200
+	code := http.StatusOK
 	data := "TEST STRING"
-
 	sendResponse(rw, hr, code, data)
-
-	if rw.Code != 200 {
-		t.Error(fmt.Errorf("Expected 200, got %d", rw.Code))
+	if rw.Code != code {
+		t.Error(fmt.Errorf("Expected %d, got %d", code, rw.Code))
 	}
 }
 

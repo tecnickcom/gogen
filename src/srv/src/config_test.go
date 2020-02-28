@@ -36,7 +36,7 @@ func getTestCfgParams() *params {
 			"test": "$2a$04$GfYChjSytr0zgLYbSJoyK.XZGbiNm4F5VY08WL0bHBAKgnq3AkcZu",
 		},
 		jwt: &JwtData{
-			Enabled:   false,
+			Enabled:   true,
 			Key:       []byte("4VjfMNj3TKC2xrhL5vKzjZDAkAaGn8GwHdT6zyF8tGeStvv35jS3wHFyrHYF5VejDvs5Jsa5E52GrfwbHW9fwzbQYm7kTJaaR8SfwGVrxvRsTM3L6rMEYPUm3ammHzeSYb8Hn5wbs2tMxtrx4dufUhYae9eYm9X77QH5WA8EcSThzZVvbMba3MrDmPrZxGBat9WFVjvLPhrpyFkeSDNJEVXZN6AynF7DPWPBJBasZvxuuAGQzgjeUUmRJDn3xP9a"),
 			Exp:       5,
 			RenewTime: 299,
@@ -88,9 +88,9 @@ func TestCheckConfigParametersErrors(t *testing.T) {
 		{func(cfg *params) *params { cfg.stats.Network = ""; return cfg }, "stats.Network"},
 		{func(cfg *params) *params { cfg.stats.FlushPeriod = -1; return cfg }, "stats.FlushPeriod"},
 		{func(cfg *params) *params { cfg.user = map[string]string{}; return cfg }, "user"},
-		{func(cfg *params) *params { cfg.jwt.Key = []byte(""); return cfg }, "jwt.key"},
-		{func(cfg *params) *params { cfg.jwt.Exp = -1; return cfg }, "jwt.exp"},
-		{func(cfg *params) *params { cfg.jwt.RenewTime = -1; return cfg }, "jwt.renewTime"},
+		{func(cfg *params) *params { cfg.jwt.Enabled = true; cfg.jwt.Key = []byte(""); return cfg }, "jwt.key"},
+		{func(cfg *params) *params { cfg.jwt.Enabled = true; cfg.jwt.Exp = -1; return cfg }, "jwt.exp"},
+		{func(cfg *params) *params { cfg.jwt.Enabled = true; cfg.jwt.RenewTime = -1; return cfg }, "jwt.renewTime"},
 		{func(cfg *params) *params { cfg.proxyAddress = ""; return cfg }, "proxyAddress"},
 		{func(cfg *params) *params { cfg.proxyAddress = "+*&^https://error\"!£"; return cfg }, "proxyAddress"},
 		{func(cfg *params) *params {

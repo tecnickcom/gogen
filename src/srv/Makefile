@@ -89,9 +89,6 @@ PATHBZ2PKG=$(CURRENTDIR)/target/BZ2
 # DOCKER Packaging path (where BZ2s will be stored)
 PATHDOCKERPKG=$(CURRENTDIR)/target/DOCKER
 
-# Cross compilation targets
-CCTARGETS=darwin/386 darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/386 linux/amd64 linux/arm openbsd/386 openbsd/amd64 windows/386 windows/amd64
-
 # docker image name for consul (used during testing)
 CONSUL_DOCKER_IMAGE_NAME=consul_$(VENDOR)_$(PROJECT)$(DOCKERSUFFIX)
 
@@ -105,14 +102,36 @@ else
 	STATIC_FLAG=-static
 endif
 
+# Docker tag
+DOCKERTAG="$(VERSION)-$(RELEASE)"
+ifeq ($(RELEASE),0)
+	DOCKERTAG="latest"
+endif
+
+# Docker command
+ifeq ($(DOCKER),)
+	DOCKER=docker
+endif
+
 # Prefix for docker container name
-DOCKERPREFIX=
+DOCKERPREFIX=$(VENDOR)-
 
-# Docker repository where to upload the container
-DOCKER_REPO=
+# Specify api test configuration files to execute (venom YAML files or * for all)
+ifeq ($(API_TEST_FILE),)
+	API_TEST_FILE=*
+endif
 
-# AWS command to get the ECR Docker login
-AWS_ECR_GET_LOGIN="aws ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION} | sed 's|https://||'"
+# --- FUNCTIONS ---
+
+# Retry the make target (1) for (2) times each (3) seconds.
+define make_retry
+	ret=1 ; num=1 ; while [[ $${num} -le $(2) ]] ; do \
+		$(MAKE) $(1) && ret=0 && break ; \
+		((num = num + 1)) ; \
+		sleep $(3); \
+	done ; exit $${ret}
+endef
+
 
 # --- MAKE TARGETS ---
 
@@ -160,6 +179,9 @@ help:
 	@echo "    make buildall    : Full build and test sequence"
 	@echo "    make dbuild      : Build everything inside a Docker container"
 	@echo ""
+	@echo "    make openapitest : Test the OpenAPI specification"
+	@echo "    make apitest     : Execute API tests"
+	@echo ""
 
 # Alias for help target
 all: help
@@ -200,11 +222,8 @@ fmtcheck:
 .PHONY: confcheck
 confcheck:
 	jsonschema -i resources/test/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
-	jsonschema -i resources/test/etc/${PROJECT}/env.config.json resources/etc/${PROJECT}/config.schema.json
 	jsonschema -i resources/test/etc/${PROJECT}/consul.config.json resources/etc/${PROJECT}/config.schema.json
 	jsonschema -i resources/test/etc/mysql/config.json resources/etc/${PROJECT}/config.schema.json
-	jsonschema -i resources/test/etc/mysql_err/config.json resources/etc/${PROJECT}/config.schema.json
-	jsonschema -i resources/test/etc/tls_err/config.json resources/etc/${PROJECT}/config.schema.json
 	jsonschema -i resources/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
 
 # Check for syntax errors
@@ -279,7 +298,7 @@ astscan:
 docs:
 	@mkdir -p target/docs
 	nohup sh -c 'GOPATH=$(GOPATH) godoc -http=127.0.0.1:6060' > target/godoc_server.log 2>&1 &
-	wget --directory-prefix=target/docs/ --execute robots=off --retry-connrefused --recursive --no-parent --adjust-extension --page-requisites --convert-links http://127.0.0.1:6060/pkg/github.com/${VENDOR}/${PROJECT}/ ; kill -9 `lsof -ti :6060`
+	wget --directory-prefix=target/docs/ --execute robots=off --retry-connrefused --recursive --no-parent --adjust-extension --page-requisites --convert-links http://127.0.0.1:6060/pkg/${CVSPATH}/${PROJECT}/ ; kill -9 `lsof -ti :6060`
 	@echo '<html><head><meta http-equiv="refresh" content="0;./127.0.0.1:6060/pkg/'${CVSPATH}'/'${PROJECT}'/index.html"/></head><a href="./127.0.0.1:6060/pkg/'${CVSPATH}'/'${PROJECT}'/index.html">'${PKGNAME}' Documentation ...</a></html>' > target/docs/index.html
 
 # Alias to run targets: fmtcheck test vet lint coverage
@@ -288,11 +307,13 @@ qa: fmtcheck confcheck test vet lint coverage cyclo ineffassign misspell structc
 
 # --- INSTALL ---
 
+.PHONY: mod
+mod:
+	GOPATH=$(GOPATH) go mod download && go mod vendor
+
 # Get the test dependencies
 .PHONY: deps
 deps:
-	#GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./src
-	GOPATH=$(GOPATH) go mod download && go mod vendor
 	GOPATH=$(GOPATH) go get github.com/inconshreveable/mousetrap
 	GOPATH=$(GOPATH) go get golang.org/x/lint/golint
 	GOPATH=$(GOPATH) go get github.com/jstemmer/go-junit-report
@@ -383,28 +404,6 @@ endif
 
 #-ldflags '-linkmode external -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
 
-# Cross-compile the application for several platforms
-.PHONY: crossbuild
-crossbuild: deps
-	@echo "" > target/ccfailures.txt
-	$(foreach TARGET,$(CCTARGETS), \
-		$(eval GOOS = $(word 1,$(subst /, ,$(TARGET)))) \
-		$(eval GOARCH = $(word 2,$(subst /, ,$(TARGET)))) \
-		$(shell which mkdir) -p target/$(TARGET) && \
-		GOOS=${GOOS} \
-		GOARCH=${GOARCH} \
-		GOPATH=$(GOPATH) \
-		go build \
-		-tags ${STATIC_TAG} \
-		-ldflags '-s -extldflags ${STATIC_FLAG} -w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE}' \
-		-o ./target/${GOOS}/${GOARCH}/$(PROJECT) ./src \
-		|| echo $(TARGET) >> target/ccfailures.txt ; \
-	)
-ifneq ($(strip $(cat target/ccfailures.txt)),)
-	echo target/ccfailures.txt
-	exit 1
-endif
-
 # --- PACKAGING ---
 
 # Build the RPM package for RedHat-like Linux distributions
@@ -431,7 +430,7 @@ rpm:
 .PHONY: deb
 deb:
 	rm -rf $(PATHDEBPKG)
-	make install DESTDIR=$(PATHDEBPKG)/$(PKGNAME)-$(VERSION)
+	$(MAKE) install DESTDIR=$(PATHDEBPKG)/$(PKGNAME)-$(VERSION)
 	rm -f $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/$(DOCPATH)LICENSE
 	tar -zcvf $(PATHDEBPKG)/$(PKGNAME)_$(VERSION).orig.tar.gz -C $(PATHDEBPKG)/ $(PKGNAME)-$(VERSION)
 	cp -rf ./resources/debian $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian
@@ -467,26 +466,46 @@ endif
 .PHONY: bz2
 bz2:
 	rm -rf $(PATHBZ2PKG)
-	make install DESTDIR=$(PATHBZ2PKG)
+	$(MAKE) install DESTDIR=$(PATHBZ2PKG)
 	tar -jcvf $(PATHBZ2PKG)/$(PKGNAME)-$(VERSION)-$(RELEASE).tbz2 -C $(PATHBZ2PKG) usr/ etc/
+
+# Create the directory with docker files to be packaged
+.PHONY: dockerdir
+dockerdir:
+	rm -rf $(PATHDOCKERPKG)
+	$(MAKE) install DESTDIR=$(PATHDOCKERPKG)
+	$(MAKE) installssl DESTDIR=$(PATHDOCKERPKG)
+	cp resources/Docker/Dockerfile.run $(PATHDOCKERPKG)/Dockerfile
+
+# Build the docker container in the target/DOCKER directory
+.PHONY: dockerbuild
+dockerbuild:
+	$(DOCKER) build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
+
+# Delete the Docker image
+.PHONY: dockerdelete
+dockerdelete:
+	$(DOCKER) rmi -f `docker images "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" -q`
 
 # Build a docker container to run this service
 .PHONY: docker
-docker:
-	rm -rf $(PATHDOCKERPKG)
-	make install DESTDIR=$(PATHDOCKERPKG)
-	make installssl DESTDIR=$(PATHDOCKERPKG)
-	cp resources/Docker/Dockerfile.run $(PATHDOCKERPKG)/Dockerfile
-	docker build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
+docker: dockerdir dockerbuild
 
 # Push docker container to the remote repository
 .PHONY: dockerpush
 dockerpush:
 	$(shell eval ${AWS_ECR_GET_LOGIN})
-	docker tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REPO}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	docker push "${DOCKER_REPO}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	docker tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REPO}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
-	docker push "${DOCKER_REPO}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
+	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) push "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
+	$(DOCKER) push "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
+
+# Promote docker image from DEV to PROD
+.PHONY: dockerpromote
+dockerpromote:
+	$(DOCKER) pull "${DOCKER_REGISTRY_DEV}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) tag "${DOCKER_REGISTRY_DEV}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)" "${DOCKER_REGISTRY_PROD}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) push "${DOCKER_REGISTRY_PROD}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
 
 # Check if the deployment container starts
 .PHONY: dockertest
@@ -497,7 +516,7 @@ dockertest:
 # You may want to change this and remove the options you don't need
 #buildall: deps qa rpm deb bz2 crossbuild
 .PHONY: buildall
-buildall: deps build qa rpm deb
+buildall: build qa rpm deb docker
 
 # Build everything inside a Docker container
 .PHONY: dbuild
@@ -507,3 +526,31 @@ dbuild:
 	@echo 0 > target/make.exit
 	CVSPATH=$(CVSPATH) VENDOR=$(VENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' ./dockerbuild.sh
 	@exit `cat target/make.exit`
+
+# Ping the deployed service to check if the correct deployed container is alive
+.PHONY: ping
+ping:
+	if [ "200_$(VERSION)_$(RELEASE)_" != "$(shell curl --silent --insecure '$(~#UPROJECT#~_URL)/ping' | jq -r '.code,.version,.release' | tr '\n' '_')" ]; then exit 1; fi
+
+# Retry the ping command automatically (try 60 times every 5 sec = 5 min max)
+.PHONY: rping
+rping:
+	$(call make_retry,ping,60,5)
+
+# Test the OpenAPI specification against the real deployed service
+.PHONY: openapitest
+openapitest:
+	schemathesis run --validate-schema=true --hypothesis-deadline=1000 --checks=all --base-url='$(~#UPROJECT#~_URL)' openapi.yaml
+
+# Run venom tests (https://github.com/ovh/venom)
+.PHONY: apitest
+apitest:
+	@mkdir -p target/report
+	venom run \
+		--var ~#PROJECT#~.url="${~#UPROJECT#~_URL}" \
+		--var ~#PROJECT#~.version="${VERSION}" \
+		--var ~#PROJECT#~.release="${RELEASE}" \
+		--strict \
+		--log=info \
+		--output-dir=target/report \
+		resources/test/venom/$(API_TEST_FILE)

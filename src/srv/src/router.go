@@ -27,22 +27,22 @@ func startServer(address string, tlsdata *TLSData) (err error) {
 	router := httprouter.New()
 
 	// set error handlers
-	router.NotFound = statsHandler("404", instrumentHandler("404", http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) { // 404
+	router.NotFound = instrumentHandler("404", http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) {
 		sendResponse(rw, hr, http.StatusNotFound, "invalid end point")
-	})))
-	router.MethodNotAllowed = statsHandler("404", instrumentHandler("405", http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) { // 405
+	}))
+	router.MethodNotAllowed = instrumentHandler("405", http.HandlerFunc(func(rw http.ResponseWriter, hr *http.Request) {
 		sendResponse(rw, hr, http.StatusMethodNotAllowed, "the request cannot be routed")
-	})))
-	router.PanicHandler = func(rw http.ResponseWriter, hr *http.Request, p interface{}) { // 500
-		sendResponse(rw, hr, http.StatusInternalServerError, "internal error")
+	}))
+	router.PanicHandler = func(rw http.ResponseWriter, hr *http.Request, p interface{}) {
+		sendResponse(rw, hr, http.StatusInternalServerError, "internal error") // 500
 	}
 
 	// index handler
-	router.Handler("GET", "/", statsHandler("/", instrumentHandler("/", indexHandler)))
+	router.Handler("GET", "/", instrumentHandler("/", indexHandler))
 
 	// set end points and handlers
 	for _, route := range routes {
-		router.Handler(route.Method, route.Path, statsHandler(route.Path, instrumentHandler(route.Path, route.Handler)))
+		router.Handler(route.Method, route.Path, instrumentHandler(route.Path, route.Handler))
 	}
 
 	log.WithFields(log.Fields{
@@ -89,15 +89,12 @@ func startServer(address string, tlsdata *TLSData) (err error) {
 		err = server.ListenAndServe()
 	}
 
-	if err.Error() == "http: server closed" {
-		log.WithFields(log.Fields{
-			"address": address,
-		}).Info("server stopped")
-		stats.Increment("http.server.stop")
-		return nil
-	}
+	log.WithFields(log.Fields{
+		"address": address,
+	}).Info(err.Error())
+	stats.Increment("http.server.stop")
 
-	return fmt.Errorf("server has stopped: %v", err)
+	return err
 }
 
 // setHeaders set the default headers
@@ -107,8 +104,6 @@ func setHeaders(hw http.ResponseWriter, contentType string, code int) {
 	hw.Header().Set("Expires", "0")
 	hw.Header().Set("Content-Type", contentType)
 	hw.WriteHeader(code)
-
-	// count HTTP status
 	stats.Increment(fmt.Sprintf("httpstatus.%d", code))
 }
 

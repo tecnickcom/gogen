@@ -1,8 +1,6 @@
 package main
 
-import (
-	"crypto/tls"
-)
+import "crypto/tls"
 
 // TLSData store a single TLS configuration
 type TLSData struct {
