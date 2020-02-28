@@ -1,7 +1,6 @@
-module github.com/dummyvendor/dummy
+module ~#CVSPATH#~/~#PROJECT#~
 
 go 1.14
 
 require (
-
 )

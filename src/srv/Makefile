@@ -310,6 +310,7 @@ qa: fmtcheck confcheck test vet lint coverage cyclo ineffassign misspell structc
 .PHONY: mod
 mod:
 	GOPATH=$(GOPATH) go mod download && go mod vendor
+	rm -f vendor/github.com/coreos/etcd/client/keys.generated.go || true
 
 # Get the test dependencies
 .PHONY: deps
@@ -516,7 +517,7 @@ dockertest:
 # You may want to change this and remove the options you don't need
 #buildall: deps qa rpm deb bz2 crossbuild
 .PHONY: buildall
-buildall: build qa rpm deb docker
+buildall: deps mod build qa rpm deb docker
 
 # Build everything inside a Docker container
 .PHONY: dbuild

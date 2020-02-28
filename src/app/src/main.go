@@ -1,3 +1,4 @@
+// Package ~#PROJECT#~
 // Copyright (c) ~#CURRENTYEAR#~ ~#OWNER#~
 // ~#SHORTDESCRIPTION#~
 package main
@@ -12,6 +13,7 @@ func main() {
 		log.WithFields(log.Fields{
 			"error": err,
 		}).Fatal("UNABLE TO START THE PROGRAM")
+		return
 	}
 	// execute the root command and log errors (if any)
 	if err = rootCmd.Execute(); err != nil {

@@ -1,3 +1,6 @@
-module github.com/tecnickcom/gogen/target/github.com/dummyvendor/dummy
+module ~#CVSPATH#~/~#PROJECT#~
 
-go 1.13
+go 1.14
+
+require (
+)

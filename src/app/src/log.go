@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -10,6 +11,8 @@ import (
 	logrus_syslog "github.com/sirupsen/logrus/hooks/syslog"
 	syslog "log/syslog"
 )
+
+var stdLogger *log.Logger
 
 // LogData store a single log configuration
 type LogData struct {
@@ -90,7 +93,7 @@ func (ld *LogData) parseLogLevel() (logrus.Level, syslog.Priority, error) {
 		return logrus.DebugLevel, syslog.LOG_DEBUG, nil
 	}
 
-	return logrus.DebugLevel, syslog.LOG_DEBUG, fmt.Errorf("fot a valid log Level: %q", ld.Level)
+	return logrus.DebugLevel, syslog.LOG_DEBUG, fmt.Errorf("not a valid log Level: %q", ld.Level)
 }
 
 // setLog configure the log
@@ -104,6 +107,9 @@ func (ld *LogData) setLog() error {
 	if err == nil {
 		logrus.AddHook(hook)
 	}
+
+	logger := logrus.StandardLogger()
+	stdLogger = log.New(logger.Out, "", 0)
 
 	return nil
 }

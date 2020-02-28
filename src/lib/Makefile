@@ -239,7 +239,7 @@ astscan:
 docs:
 	@mkdir -p target/docs
 	nohup sh -c 'GOPATH=$(GOPATH) godoc -http=127.0.0.1:6060' > target/godoc_server.log 2>&1 &
-	wget --directory-prefix=target/docs/ --execute robots=off --retry-connrefused --recursive --no-parent --adjust-extension --page-requisites --convert-links http://127.0.0.1:6060/pkg/github.com/${VENDOR}/${PROJECT}/ ; kill -9 `lsof -ti :6060`
+	wget --directory-prefix=target/docs/ --execute robots=off --retry-connrefused --recursive --no-parent --adjust-extension --page-requisites --convert-links http://127.0.0.1:6060/pkg/${CVSPATH}/${PROJECT}/ ; kill -9 `lsof -ti :6060`
 	@echo '<html><head><meta http-equiv="refresh" content="0;./127.0.0.1:6060/pkg/'${CVSPATH}'/'${PROJECT}'/index.html"/></head><a href="./127.0.0.1:6060/pkg/'${CVSPATH}'/'${PROJECT}'/index.html">'${PKGNAME}' Documentation ...</a></html>' > target/docs/index.html
 
 # Alias to run targets: fmtcheck test vet lint coverage
@@ -249,11 +249,14 @@ qa: fmtcheck test vet lint coverage cyclo ineffassign misspell structcheck varch
 
 # --- INSTALL ---
 
-# Get the dependencies
+.PHONY: mod
+mod:
+	GOPATH=$(GOPATH) go mod download && go mod vendor
+	rm -f vendor/github.com/coreos/etcd/client/keys.generated.go || true
+
+# Get the test dependencies
 .PHONY: deps
 deps:
-	#GOPATH=$(GOPATH) go get -tags ${STATIC_TAG} -v ./...
-	GOPATH=$(GOPATH) go mod download && go mod vendor
 	GOPATH=$(GOPATH) go get github.com/inconshreveable/mousetrap
 	GOPATH=$(GOPATH) go get golang.org/x/lint/golint
 	GOPATH=$(GOPATH) go get github.com/jstemmer/go-junit-report
