@@ -109,9 +109,12 @@ clean:
 
 .PHONY: test
 test:
+	@echo "*** SRV ***"
 	make clean new TYPE=srv
 	cd target/github.com/dummyvendor/dummy && make buildall
+	@echo "*** APP ***"
 	make clean new TYPE=app
 	cd target/github.com/dummyvendor/dummy && make buildall
+	@echo "*** LIB ***"
 	make clean new TYPE=lib
 	cd target/github.com/dummyvendor/dummy && make buildall

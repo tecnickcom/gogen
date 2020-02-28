@@ -14,11 +14,11 @@ branches:
     - develop
 
 go:
-  - '1.13.6'
+  - '1.x'
 
 matrix:
   allow_failures:
-    - go: tip
+    - go: master
 
 services:
   - docker
@@ -27,7 +27,7 @@ before_install:
   - sudo apt-get update || true
   - if [ -n "$GH_USER" ]; then git config --global github.user ${GH_USER}; fi;
   - if [ -n "$GH_TOKEN" ]; then git config --global github.token ${GH_TOKEN}; fi;
-  - go get github.com/mattn/goveralls
+#  - go get github.com/mattn/goveralls
 
 addons:
   apt:
