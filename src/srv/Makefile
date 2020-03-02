@@ -517,7 +517,7 @@ dockertest:
 # You may want to change this and remove the options you don't need
 #buildall: deps qa rpm deb bz2 crossbuild
 .PHONY: buildall
-buildall: deps mod build qa rpm deb docker
+buildall: deps mod build qa rpm deb
 
 # Build everything inside a Docker container
 .PHONY: dbuild
