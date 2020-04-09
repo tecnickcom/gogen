@@ -151,7 +151,7 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, code int, data inter
 	err := sendJSONEncode(hw, response)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": err,
+			"error":    err,
 			"response": response,
 		}).Error("unable to send JSON response")
 	}
