@@ -125,26 +125,25 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, code int, data inter
 		Data:      data,
 	}
 
+	logFields := log.Fields{
+		"IP":            hr.RemoteAddr,
+		"UserAgent":     hr.UserAgent(),
+		"type":          hr.Method,
+		"URI":           hr.RequestURI,
+		"query":         hr.URL.Query(),
+		"res_code":      code,
+		"res_status":    response.Status,
+		"res_message":   response.Message,
+		"res_timestamp": response.Timestamp,
+		"res_datetime":  response.DateTime,
+		"res_data":      data,
+	}
+
 	// log request
 	if code >= 400 {
-		log.WithFields(log.Fields{
-			"IP":        hr.RemoteAddr,
-			"UserAgent": hr.UserAgent(),
-			"type":      hr.Method,
-			"URI":       hr.RequestURI,
-			"query":     hr.URL.Query(),
-			"code":      code,
-			"err":       data,
-		}).Error("Request")
+		log.WithFields(logFields).Error("Request")
 	} else {
-		log.WithFields(log.Fields{
-			"IP":        hr.RemoteAddr,
-			"UserAgent": hr.UserAgent(),
-			"type":      hr.Method,
-			"URI":       hr.RequestURI,
-			"query":     hr.URL.Query(),
-			"code":      code,
-		}).Info("Request")
+		log.WithFields(logFields).Info("Request")
 	}
 
 	// send JSON response
@@ -153,6 +152,7 @@ func sendResponse(hw http.ResponseWriter, hr *http.Request, code int, data inter
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,
+			"response": response,
 		}).Error("unable to send JSON response")
 	}
 }
