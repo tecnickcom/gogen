@@ -11,7 +11,7 @@ func TestInitMysqlNil(t *testing.T) {
 	cfg := &MysqlData{}
 	err := initMysql(cfg)
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected while initializing Mysql with empty DSN: %v", err))
+		t.Errorf("An error was not expected while initializing Mysql with empty DSN: %v", err)
 	}
 }
 
@@ -21,7 +21,7 @@ func TestInitMysqlBadDSN(t *testing.T) {
 	}
 	err := initMysql(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected while initializing Mysql with bad DSN"))
+		t.Errorf("An error was expected while initializing Mysql with bad DSN")
 	}
 }
 
@@ -31,14 +31,14 @@ func TestInitMysqlNoPing(t *testing.T) {
 	}
 	err := initMysql(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected while initializing Mysql with no ping"))
+		t.Errorf("An error was expected while initializing Mysql with no ping")
 	}
 }
 
 func TestInitMysql(t *testing.T) {
 	db, _, err := sqlmock.New()
 	if err != nil {
-		t.Error(fmt.Errorf("An error '%s' was not expected when opening a stub database connection", err))
+		t.Errorf("An error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer func() {
 		_ = db.Close()
@@ -49,7 +49,7 @@ func TestInitMysql(t *testing.T) {
 	}
 	err = initMysql(cfg)
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected while initializing Mysql: %v", err))
+		t.Errorf("An error was not expected while initializing Mysql: %v", err)
 	}
 }
 
@@ -61,12 +61,12 @@ func TestMysqlDataCloseNil(t *testing.T) {
 func TestMysqlDataCloseErr(t *testing.T) {
 	db, _, err := sqlmock.New()
 	if err != nil {
-		t.Error(fmt.Errorf("An error '%s' was not expected when opening a stub database connection", err))
+		t.Errorf("An error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer func() {
 		err = db.Close()
 		if err != nil {
-			t.Error(fmt.Errorf("An error was not expected when closing the db stub: %v", err))
+			t.Errorf("An error was not expected when closing the db stub: %v", err)
 		}
 	}()
 	cfg := &MysqlData{
@@ -79,26 +79,26 @@ func TestMysqlDataCloseErr(t *testing.T) {
 func TestIsMysqlAliveNil(t *testing.T) {
 	err := isMysqlAlive()
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected while checking if DB is alive"))
+		t.Errorf("An error was expected while checking if DB is alive")
 	}
 }
 
 func TestIsMysqlAlive(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected when opening a stub database connection: %v", err))
+		t.Errorf("An error was not expected when opening a stub database connection: %v", err)
 	}
 	defer func() {
 		err = db.Close()
 		if err == nil {
-			t.Error(fmt.Errorf("An error was expected when closing the db stub"))
+			t.Errorf("An error was expected when closing the db stub")
 		}
 	}()
 	mock.ExpectExec("SELECT 1").WillReturnResult(sqlmock.NewErrorResult(nil))
 	appParams.mysql.db = db
 	err = isMysqlAlive()
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected when checking if DB is alive: %v", err))
+		t.Errorf("An error was not expected when checking if DB is alive: %v", err)
 	}
 }
 
@@ -109,7 +109,7 @@ func TestStmtCloseNil(t *testing.T) {
 func TestStmtClose(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Error(fmt.Errorf("An error '%s' was not expected when opening a stub database connection", err))
+		t.Errorf("An error '%s' was not expected when opening a stub database connection", err)
 	}
 	defer func() {
 		_ = db.Close()
@@ -118,11 +118,29 @@ func TestStmtClose(t *testing.T) {
 	mock.ExpectPrepare("SELECT").WillReturnCloseError(fmt.Errorf("stmt close error"))
 	txn, err := db.Begin()
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected while opening transaction: %v", err))
+		t.Errorf("An error was not expected while opening transaction: %v", err)
 	}
 	stmt, err := txn.Prepare("SELECT")
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected when preparing sql statement: %v", err))
+		t.Errorf("An error was not expected when preparing sql statement: %v", err)
 	}
 	stmtClose(stmt)
+}
+
+func TestRowsCloseNil(t *testing.T) {
+	rowsClose(nil)
+}
+
+func TestRowsClose(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("An error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer func() {
+		_ = db.Close()
+	}()
+	rows := sqlmock.NewRows([]string{"id", "title"}).CloseError(fmt.Errorf("close error"))
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	rs, _ := db.Query("SELECT")
+	rowsClose(rs)
 }

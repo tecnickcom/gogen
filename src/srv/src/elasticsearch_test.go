@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -15,6 +14,6 @@ func TestGetElasticsearchSessionError(t *testing.T) {
 
 	err := initElasticsearchSession(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected while initializing ElasticSearch"))
+		t.Errorf("An error was expected while initializing ElasticSearch")
 	}
 }

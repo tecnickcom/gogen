@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -16,6 +15,6 @@ func TestGetMongodbSessionError(t *testing.T) {
 
 	err := initMongodbSession(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected while initializing MongoDB"))
+		t.Errorf("An error was expected while initializing MongoDB")
 	}
 }

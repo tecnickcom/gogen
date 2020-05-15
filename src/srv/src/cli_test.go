@@ -31,11 +31,11 @@ func TestCliBadParamError(t *testing.T) {
 		os.Args = []string{ProgramName, param}
 		cmd, err := cli()
 		if err != nil {
-			t.Error(fmt.Errorf("Unexpected error: %v", err))
+			t.Errorf("Unexpected error: %v", err)
 			return
 		}
 		if cmdtype := reflect.TypeOf(cmd).String(); cmdtype != "*cobra.Command" {
-			t.Error(fmt.Errorf("The expected type is '*cobra.Command', found: '%s'", cmdtype))
+			t.Errorf("The expected type is '*cobra.Command', found: '%s'", cmdtype)
 			return
 		}
 
@@ -45,7 +45,7 @@ func TestCliBadParamError(t *testing.T) {
 
 		// execute the main function
 		if err := cmd.Execute(); err == nil {
-			t.Error(fmt.Errorf("An error was expected"))
+			t.Errorf("An error was expected")
 		}
 	}
 }
@@ -54,7 +54,7 @@ func TestWrongParamError(t *testing.T) {
 	os.Args = []string{ProgramName, "--unknown"}
 	_, err := cli()
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected"))
+		t.Errorf("An error was expected")
 		return
 	}
 	os.Args = []string{ProgramName, ""}
@@ -63,11 +63,11 @@ func TestWrongParamError(t *testing.T) {
 func TestCli(t *testing.T) {
 	cmd, err := cli()
 	if err != nil {
-		t.Error(fmt.Errorf("Unexpected error: %v", err))
+		t.Errorf("Unexpected error: %v", err)
 		return
 	}
 	if cmdtype := reflect.TypeOf(cmd).String(); cmdtype != "*cobra.Command" {
-		t.Error(fmt.Errorf("The expected type is '*cobra.Command', found: '%s'", cmdtype))
+		t.Errorf("The expected type is '*cobra.Command', found: '%s'", cmdtype)
 		return
 	}
 
@@ -111,7 +111,7 @@ func startTestServer(t *testing.T, cmd *cobra.Command, twg *sync.WaitGroup) {
 			case err, ok := <-chp:
 				if ok && !stopped && err != nil {
 					stopTestServerChan <- true
-					t.Error(fmt.Errorf("An error was not expected: %v", err))
+					t.Errorf("An error was not expected: %v", err)
 				}
 				return
 			case <-stopTestServerChan:
@@ -196,7 +196,7 @@ func testEndPoint(t *testing.T, method, path, data, token string, code int) []by
 	var payload = []byte(data)
 	req, err := http.NewRequest(method, fmt.Sprintf("https://127.0.0.1:8017%s", path), bytes.NewBuffer(payload))
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected: %v", err))
+		t.Errorf("An error was not expected: %v", err)
 		return nil
 	}
 	req.Close = true
@@ -212,30 +212,30 @@ func testEndPoint(t *testing.T, method, path, data, token string, code int) []by
 	client := &http.Client{Transport: tr}
 	resp, err := client.Do(req)
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected: %v", err))
+		t.Errorf("An error was not expected: %v", err)
 		return nil
 	}
 	defer func() {
 		err := resp.Body.Close()
 		if err != nil {
-			t.Error(fmt.Errorf("An error was not expected: %v", err))
+			t.Errorf("An error was not expected: %v", err)
 			return
 		}
 	}()
 
 	body, err := ioutilReadAll(resp.Body)
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected: %v", err))
+		t.Errorf("An error was not expected: %v", err)
 		return nil
 	}
 
 	if resp.StatusCode != code {
-		t.Error(fmt.Errorf("The expected '%s' status code is %d, found %d", path, code, resp.StatusCode))
+		t.Errorf("The expected '%s' status code is %d, found %d", path, code, resp.StatusCode)
 		return nil
 	}
 
 	if path != "/metrics" && !strings.HasPrefix(path, "/pprof") && len(body) > 0 && !isJSON(body) {
-		t.Error(fmt.Errorf("The body is not JSON: %v", body))
+		t.Errorf("The body is not JSON: %v", body)
 	}
 
 	return body

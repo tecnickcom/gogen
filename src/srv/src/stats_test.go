@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -15,6 +14,6 @@ func TestInitStatsError(t *testing.T) {
 
 	err := initStats(cfg)
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected while initializing Stats"))
+		t.Errorf("An error was expected while initializing Stats")
 	}
 }

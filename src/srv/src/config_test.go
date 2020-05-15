@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -69,7 +68,7 @@ func getTestCfgParams() *params {
 func TestCheckParams(t *testing.T) {
 	err := checkParams(getTestCfgParams())
 	if err != nil {
-		t.Error(fmt.Errorf("Unexpected error: %v", err))
+		t.Errorf("Unexpected error: %v", err)
 	}
 }
 
@@ -114,7 +113,7 @@ func TestCheckConfigParametersErrors(t *testing.T) {
 		cfg := getTestCfgParams()
 		err := checkParams(tt.fcfg(cfg))
 		if err == nil {
-			t.Error(fmt.Errorf("An error was expected because the %s field is invalid", tt.field))
+			t.Errorf("An error was expected because the %s field is invalid", tt.field)
 		}
 	}
 }
@@ -122,13 +121,13 @@ func TestCheckConfigParametersErrors(t *testing.T) {
 func TestGetConfigParams(t *testing.T) {
 	prm, err := getConfigParams()
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected: %v", err))
+		t.Errorf("An error was not expected: %v", err)
 	}
 	if prm.serverAddress != ":8017" {
-		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
+		t.Errorf("Found different server address than expected, found %s", prm.serverAddress)
 	}
 	if prm.log.Level != "DEBUG" {
-		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.log.Level))
+		t.Errorf("Found different logLevel than expected, found %s", prm.log.Level)
 	}
 }
 
@@ -140,40 +139,40 @@ func TestGetLocalConfigParams(t *testing.T) {
 
 	prm, rprm, err := getLocalConfigParams()
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected: %v", err))
+		t.Errorf("An error was not expected: %v", err)
 	}
 
 	if prm.serverAddress != ":8017" {
-		t.Error(fmt.Errorf("Found different server address than expected, found %s", prm.serverAddress))
+		t.Errorf("Found different server address than expected, found %s", prm.serverAddress)
 	}
 	if prm.proxyAddress != "http://localhost:8117" {
-		t.Error(fmt.Errorf("Found different proxy address than expected, found %s", prm.proxyAddress))
+		t.Errorf("Found different proxy address than expected, found %s", prm.proxyAddress)
 	}
 	if prm.log.Level != "DEBUG" {
-		t.Error(fmt.Errorf("Found different logLevel than expected, found %s", prm.log.Level))
+		t.Errorf("Found different logLevel than expected, found %s", prm.log.Level)
 	}
 	if rprm.remoteConfigProvider != "consul" {
-		t.Error(fmt.Errorf("Found different remoteConfigProvider than expected, found %s", rprm.remoteConfigProvider))
+		t.Errorf("Found different remoteConfigProvider than expected, found %s", rprm.remoteConfigProvider)
 	}
 	if rprm.remoteConfigEndpoint != "127.0.0.1:98765" {
-		t.Error(fmt.Errorf("Found different remoteConfigEndpoint than expected, found %s", rprm.remoteConfigEndpoint))
+		t.Errorf("Found different remoteConfigEndpoint than expected, found %s", rprm.remoteConfigEndpoint)
 	}
 	if rprm.remoteConfigPath != "/config/~#PROJECT#~" {
-		t.Error(fmt.Errorf("Found different remoteConfigPath than expected, found %s", rprm.remoteConfigPath))
+		t.Errorf("Found different remoteConfigPath than expected, found %s", rprm.remoteConfigPath)
 	}
 	if rprm.remoteConfigSecretKeyring != "" {
-		t.Error(fmt.Errorf("Found different remoteConfigSecretKeyring than expected, found %s", rprm.remoteConfigSecretKeyring))
+		t.Errorf("Found different remoteConfigSecretKeyring than expected, found %s", rprm.remoteConfigSecretKeyring)
 	}
 
 	_, err = getRemoteConfigParams(prm, rprm)
 	if err == nil {
-		t.Error(fmt.Errorf("A remote configuration error was expected"))
+		t.Errorf("A remote configuration error was expected")
 	}
 
 	rprm.remoteConfigSecretKeyring = "/etc/~#PROJECT#~/cfgkey.gpg"
 	_, err = getRemoteConfigParams(prm, rprm)
 	if err == nil {
-		t.Error(fmt.Errorf("A remote configuration error was expected"))
+		t.Errorf("A remote configuration error was expected")
 	}
 }
 
@@ -181,7 +180,7 @@ func TestGetConfigParamsRemoteEnv(t *testing.T) {
 
 	data, err := ioutil.ReadFile("../resources/test/etc/~#PROJECT#~/env.config.json")
 	if err != nil {
-		t.Error(fmt.Errorf("Unable to read the env.config.json file: %v", err))
+		t.Errorf("Unable to read the env.config.json file: %v", err)
 	}
 	envdata := base64.StdEncoding.EncodeToString(data)
 
@@ -192,13 +191,13 @@ func TestGetConfigParamsRemoteEnv(t *testing.T) {
 	viper.Reset()
 	prm, err := getConfigParams()
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected: %v", err))
+		t.Errorf("An error was not expected: %v", err)
 	}
 	if prm.jwt.RenewTime != 234 {
-		t.Error(fmt.Errorf("Expected jwt.renewTime 234, found %d", prm.jwt.RenewTime))
+		t.Errorf("Expected jwt.renewTime 234, found %d", prm.jwt.RenewTime)
 	}
 	if prm.stats.FlushPeriod != 117 {
-		t.Error(fmt.Errorf("Expected stats.FlushPeriod 117, found %d", prm.stats.FlushPeriod))
+		t.Errorf("Expected stats.FlushPeriod 117, found %d", prm.stats.FlushPeriod)
 	}
 }
 
@@ -225,13 +224,13 @@ func TestGetConfigParamsRemoteConsul(t *testing.T) {
 
 	prm, err := getConfigParams()
 	if err != nil {
-		t.Error(fmt.Errorf("An error was not expected: %v", err))
+		t.Errorf("An error was not expected: %v", err)
 	}
 	if prm.serverAddress != ":8017" {
-		t.Error(fmt.Errorf("Found different serverAddress than expected, found %s", prm.serverAddress))
+		t.Errorf("Found different serverAddress than expected, found %s", prm.serverAddress)
 	}
 	if prm.log.Level != "DEBUG" {
-		t.Error(fmt.Errorf("Found different log.Level than expected, found %s", prm.log.Level))
+		t.Errorf("Found different log.Level than expected, found %s", prm.log.Level)
 	}
 }
 
@@ -251,11 +250,11 @@ func TestCliWrongConfigError(t *testing.T) {
 
 	cmd, err := cli()
 	if err != nil {
-		t.Error(fmt.Errorf("Unexpected error: %v", err))
+		t.Errorf("Unexpected error: %v", err)
 		return
 	}
 	if cmdtype := reflect.TypeOf(cmd).String(); cmdtype != "*cobra.Command" {
-		t.Error(fmt.Errorf("The expected type is '*cobra.Command', found: '%s'", cmdtype))
+		t.Errorf("The expected type is '*cobra.Command', found: '%s'", cmdtype)
 		return
 	}
 
@@ -265,7 +264,7 @@ func TestCliWrongConfigError(t *testing.T) {
 
 	// execute the main function
 	if err := cmd.Execute(); err == nil {
-		t.Error(fmt.Errorf("An error was expected"))
+		t.Errorf("An error was expected")
 	}
 }
 
@@ -284,7 +283,7 @@ func setRemoteConfigEnv(t *testing.T, val []string) {
 	for i, ev := range envVar {
 		err := os.Setenv(ev, val[i])
 		if err != nil {
-			t.Error(fmt.Errorf("Unexpected error: %v", err))
+			t.Errorf("Unexpected error: %v", err)
 		}
 	}
 }

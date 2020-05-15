@@ -74,3 +74,16 @@ func stmtClose(stmt *sql.Stmt) {
 		}).Error("unable to close the database statement")
 	}
 }
+
+// rowsClose closes the SQl database rows and report errors if any
+func rowsClose(rows *sql.Rows) {
+	if rows == nil {
+		return
+	}
+	err := rows.Close()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err,
+		}).Error("unable to close the database rows")
+	}
+}

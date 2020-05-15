@@ -33,7 +33,7 @@ func TestParseLogLevel(t *testing.T) {
 	ld.Level = "WRONG"
 	_, _, err := ld.parseLogLevel()
 	if err == nil {
-		t.Error(fmt.Errorf("An error was expected"))
+		t.Errorf("An error was expected")
 	}
 
 	level := []string{"EMERGENCY", "ALERT", "CRITICAL", "ERROR", "WARNING", "NOTICE", "INFO", "DEBUG"}
@@ -42,13 +42,13 @@ func TestParseLogLevel(t *testing.T) {
 		ld.Level = level[i]
 		logLevel, syslogPriority, err := ld.parseLogLevel()
 		if err != nil {
-			t.Error(fmt.Errorf("An error was not expected: %v", err))
+			t.Errorf("An error was not expected: %v", err)
 		}
 		if logLevel > 7 {
-			t.Error(fmt.Errorf("logLevel for %s should be < 8", ld.Level))
+			t.Errorf("logLevel for %s should be < 8", ld.Level)
 		}
 		if syslogPriority < 0 {
-			t.Error(fmt.Errorf("syslogPriority for %s should be >= 0", ld.Level))
+			t.Errorf("syslogPriority for %s should be >= 0", ld.Level)
 		}
 	}
 }
