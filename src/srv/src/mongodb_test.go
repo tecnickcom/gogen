@@ -5,7 +5,7 @@ import (
 )
 
 func TestGetMongodbSessionError(t *testing.T) {
-	cfg := &MongodbData{
+	cfg := MongodbData{
 		Address:  "1.2.3.4:4321",
 		Database: "",
 		User:     "",
@@ -13,7 +13,7 @@ func TestGetMongodbSessionError(t *testing.T) {
 		Timeout:  1,
 	}
 
-	err := initMongodbSession(cfg)
+	err := initMongodbSession(&cfg)
 	if err == nil {
 		t.Errorf("An error was expected while initializing MongoDB")
 	}

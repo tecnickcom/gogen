@@ -8,28 +8,28 @@ import (
 )
 
 func TestInitMysqlNil(t *testing.T) {
-	cfg := &MysqlData{}
-	err := initMysql(cfg)
+	cfg := MysqlData{}
+	err := initMysql(&cfg)
 	if err != nil {
 		t.Errorf("An error was not expected while initializing Mysql with empty DSN: %v", err)
 	}
 }
 
 func TestInitMysqlBadDSN(t *testing.T) {
-	cfg := &MysqlData{
+	cfg := MysqlData{
 		DSN: ":",
 	}
-	err := initMysql(cfg)
+	err := initMysql(&cfg)
 	if err == nil {
 		t.Errorf("An error was expected while initializing Mysql with bad DSN")
 	}
 }
 
 func TestInitMysqlNoPing(t *testing.T) {
-	cfg := &MysqlData{
+	cfg := MysqlData{
 		DSN: "user:pwd@tcp(localhost:12345)/table",
 	}
-	err := initMysql(cfg)
+	err := initMysql(&cfg)
 	if err == nil {
 		t.Errorf("An error was expected while initializing Mysql with no ping")
 	}
@@ -43,11 +43,11 @@ func TestInitMysql(t *testing.T) {
 	defer func() {
 		_ = db.Close()
 	}()
-	cfg := &MysqlData{
+	cfg := MysqlData{
 		DSN: "user:pwd@tcp(localhost:12345)/table",
 		db:  db,
 	}
-	err = initMysql(cfg)
+	err = initMysql(&cfg)
 	if err != nil {
 		t.Errorf("An error was not expected while initializing Mysql: %v", err)
 	}

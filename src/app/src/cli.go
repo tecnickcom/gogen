@@ -54,7 +54,7 @@ func cli() (*cobra.Command, error) {
 	}
 
 	// sub-command to print the version
-	var versionCmd = &cobra.Command{
+	var versionCmd = cobra.Command{
 		Use:   "version",
 		Short: "print this program version",
 		Long:  `print this program version`,
@@ -62,7 +62,7 @@ func cli() (*cobra.Command, error) {
 			fmt.Println(ProgramVersion)
 		},
 	}
-	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(&versionCmd)
 
 	return rootCmd, nil
 }

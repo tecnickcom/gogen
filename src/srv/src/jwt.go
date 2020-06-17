@@ -63,13 +63,13 @@ func loginHandler(rw http.ResponseWriter, hr *http.Request) {
 		return
 	}
 	exp := time.Now().Add(time.Duration(appParams.jwt.Exp) * time.Minute)
-	claims := &Claims{
+	claims := Claims{
 		Username: creds.Username,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: exp.Unix(),
 		},
 	}
-	sendTokenResponse(rw, hr, claims)
+	sendTokenResponse(rw, hr, &claims)
 }
 
 // renewJwtHandler handles the /auth/refresh
@@ -98,11 +98,11 @@ func checkJwtToken(rw http.ResponseWriter, hr *http.Request) (*Claims, error) {
 		return nil, errors.New("missing JWT token")
 	}
 	signedToken := authSplit[1]
-	claims := &Claims{}
-	_, err := jwt.ParseWithClaims(signedToken, claims, func(token *jwt.Token) (interface{}, error) {
+	claims := Claims{}
+	_, err := jwt.ParseWithClaims(signedToken, &claims, func(token *jwt.Token) (interface{}, error) {
 		return appParams.jwt.Key, nil
 	})
-	return claims, err
+	return &claims, err
 }
 
 // isAuthorized checks if the user is authorized via JWT token

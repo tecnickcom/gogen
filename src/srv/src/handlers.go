@@ -13,14 +13,14 @@ var httpPingClient = http.Client{Timeout: time.Duration(1 * time.Second)}
 
 // index returns a list of available routes
 func indexHandler(rw http.ResponseWriter, hr *http.Request) {
-	type info struct {
+	info := struct {
 		Duration float64 `json:"duration"` // elapsed time since service start [seconds]
 		Entries  Routes  `json:"routes"`   // available routes (http entry points)
-	}
-	sendResponse(rw, hr, http.StatusOK, info{
+	}{
 		Duration: time.Since(startTime).Seconds(),
 		Entries:  routes,
-	})
+	}
+	sendResponse(rw, hr, http.StatusOK, &info)
 }
 
 // PingHandler ping back the response
@@ -30,15 +30,14 @@ func pingHandler(rw http.ResponseWriter, hr *http.Request) {
 
 // statusHandler returns the status of the service
 func statusHandler(rw http.ResponseWriter, hr *http.Request) {
-	type info struct {
+	resp := struct {
 		Duration float64 `json:"duration"` // elapsed time since service start [seconds]
 		Service  string  `json:"service"`  // error message
 		Proxy    string  `json:"proxy"`    // proxy status
 		Mysql    string  `json:"mysql"`    // mysql database status
 		Mongo    string  `json:"mongo"`    // dmongo status
 		Elastic  string  `json:"elastic"`  // elastic status
-	}
-	resp := &info{
+	}{
 		Duration: time.Since(startTime).Seconds(),
 		Service:  "OK",
 		Proxy:    "OK",
@@ -67,7 +66,7 @@ func statusHandler(rw http.ResponseWriter, hr *http.Request) {
 		resp.Elastic = err.Error()
 		status = http.StatusServiceUnavailable
 	}
-	sendResponse(rw, hr, status, resp)
+	sendResponse(rw, hr, status, &resp)
 }
 
 // proxyHandler forward the request to the proxy provisioning API (reverse proxy)
