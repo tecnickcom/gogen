@@ -1,0 +1,88 @@
+# gosrvlib
+
+*Go Service Library*
+
+[![Build Status](https://travis-ci.com/nexmoinc/gosrvlib.svg?token=YHpDM41jM29w1XFFg2HR&branch=main)](https://travis-ci.com/nexmoinc/gosrvlib?token=YHpDM41jM29w1XFFg2HR&branch=main)
+
+* **category**    Library
+* **copyright**   2020 Vonage
+* **license**     see [LICENSE](LICENSE)
+* **link**        https://github.com/nexmoinc/gosrvlib
+
+-----------------------------------------------------------------
+
+## TOC
+
+* [Description](#description)
+* [Quick Start](#quickstart)
+* [Running all tests](#runtest)
+* [Examples](#examples)
+
+-----------------------------------------------------------------
+
+<a name="description"></a>
+## Description
+
+This project contains a collection of common GO packages that forms the base structure of a service.
+
+-----------------------------------------------------------------
+
+<a name="quickstart"></a>
+## Quick Start
+
+This project includes a Makefile that allows you to test and build the project in a Linux-compatible system with simple commands.  
+All the artifacts and reports produced using this Makefile are stored in the *target* folder.  
+
+All the packages listed in the *resources/DockerDev/Dockerfile* file are required in order to build and test all the library options in the current environment. Alternatively, everything can be built inside a [Docker](https://www.docker.com) container using the command "make dbuild".
+
+To see all available options:
+```
+make help
+```
+
+To build the project inside a Docker container (requires Docker):
+```
+make dbuild
+```
+
+An arbitrary make target can be executed inside a Docker container by specifying the "MAKETARGET" parameter:
+```
+MAKETARGET='qa' make dbuild
+```
+The list of make targets can be obtained by typing ```make```
+
+
+The base Docker building environment is defined in the following Dockerfile:
+```
+resources/Docker/Dockerfile.dev
+```
+
+To execute all the default test builds and generate reports in the current environment:
+```
+make qa
+```
+
+To format the code (please use this command before submitting any pull request):
+```
+make format
+```
+
+-----------------------------------------------------------------
+
+<a name="runtest"></a>
+## Running all tests
+
+Before committing the code, please check if it passes all tests using
+```bash
+make qa
+```
+
+Other make options are available install this library globally and build RPM and DEB packages.
+Please check all the available options using `make help`.
+
+-----------------------------------------------------------------
+
+<a name="examples"></a>
+## Examples
+
+Please check the `examples` folder for an example of a service based on this library.

@@ -1,0 +1,16 @@
+FROM golang
+ENV PATH=/root/.local/bin:$PATH
+RUN apt-get update \
+&& apt-get -y install \
+devscripts \
+fakeroot \
+debhelper \
+pkg-config \
+alien \
+rpm \
+dh-make \
+dh-golang \
+upx-ucl \
+python \
+python-pip \
+&& pip install --upgrade --user jsonschema

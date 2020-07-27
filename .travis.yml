@@ -1,0 +1,47 @@
+language: go
+
+dist: bionic
+
+sudo: true
+
+branches:
+  only:
+    - main
+    - develop
+
+go:
+  - '1.14'
+
+services:
+  - docker
+
+before_install:
+  - sudo apt-get update || true
+  - if [ -n "$GH_USER" ]; then git config --global github.user ${GH_USER}; fi;
+  - if [ -n "$GH_TOKEN" ]; then git config --global github.token ${GH_TOKEN}; fi;
+
+addons:
+  apt:
+    packages:
+    - devscripts
+    - fakeroot
+    - debhelper
+    - pkg-config
+    - alien
+    - rpm
+    - dh-make
+    - dh-golang
+    - upx-ucl
+    - python
+    - python-pip
+
+install:
+  - sudo pip install --upgrade pip
+  - pip install --upgrade --user jsonschema
+
+script:
+  - echo "$TRAVIS_BUILD_NUMBER" > RELEASE
+  - make deps mod qa
+
+after_failure:
+  - cat ./target/test/report.xml
