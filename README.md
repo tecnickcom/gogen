@@ -33,7 +33,8 @@ This project contains a collection of common GO packages that forms the base str
 This project includes a Makefile that allows you to test and build the project in a Linux-compatible system with simple commands.  
 All the artifacts and reports produced using this Makefile are stored in the *target* folder.  
 
-All the packages listed in the *resources/DockerDev/Dockerfile* file are required in order to build and test all the library options in the current environment. Alternatively, everything can be built inside a [Docker](https://www.docker.com) container using the command "make dbuild".
+All the packages listed in the *resources/docker/Dockerfile* file are required in order to build and test all the library options in the current environment.
+Alternatively, everything can be built inside a [Docker](https://www.docker.com) container using the command "make dbuild".
 
 To see all available options:
 ```
@@ -54,7 +55,17 @@ The list of make targets can be obtained by typing ```make```
 
 The base Docker building environment is defined in the following Dockerfile:
 ```
-resources/Docker/Dockerfile.dev
+resources/docker/Dockerfile.dev
+```
+
+To download all dependencies:
+```
+make deps
+```
+
+To update the mod file:
+```
+make mod
 ```
 
 To execute all the default test builds and generate reports in the current environment:
@@ -77,8 +88,10 @@ Before committing the code, please check if it passes all tests using
 make qa
 ```
 
-Other make options are available install this library globally and build RPM and DEB packages.
-Please check all the available options using `make help`.
+To run the example service tests:
+```bash
+make example
+```
 
 -----------------------------------------------------------------
 

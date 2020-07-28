@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "srvxmplname config",
+  "description": "JSON schema for srvxmplname configuration",
+  "type": "object",
+  "properties": {
+    "remoteConfigProvider": {
+      "description": "Remote configuration source (if any)",
+      "type": "string",
+      "default": "",
+      "enum": [
+        "",
+        "consul",
+        "etcd",
+        "envvar"
+      ]
+    },
+    "remoteConfigEndpoint": {
+      "description": "Remote configuration URL (ip:port)",
+      "type": "string",
+      "default": ""
+    },
+    "remoteConfigPath": {
+      "description": "Remote configuration path in which to search for the configuration file (e.g. '/config/srvxmplname')",
+      "type": "string",
+      "default": ""
+    },
+    "remoteConfigSecretKeyring": {
+      "description": "Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. '/etc/srvxmplname/configkey.gpg'); if empty a non secure connection will be used instead",
+      "type": "string",
+      "default": ""
+    },
+    "log": {
+      "description": "Logging settings",
+      "type": "object",
+      "properties": {
+        "format": {
+          "description": "Defines the default log format",
+          "type": "string",
+          "default": "JSON",
+          "enum": [
+            "CONSOLE",
+            "JSON"
+          ]
+        },
+        "level": {
+          "description": "Defines the default log level",
+          "type": "string",
+          "default": "DEBUG",
+          "enum": [
+            "EMERGENCY",
+            "ALERT",
+            "CRITICAL",
+            "ERROR",
+            "WARNING",
+            "NOTICE",
+            "INFO",
+            "DEBUG"
+          ]
+        },
+        "network": {
+          "description": "(OPTIONAL) Network type used by the Syslog",
+          "type": "string",
+          "default": "",
+          "enum": [
+            "",
+            "udp",
+            "tcp"
+          ]
+        },
+        "address": {
+          "description": "(OPTIONAL) Network address of the Syslog daemon (ip:port) or just (:port)",
+          "type": "string",
+          "default": ""
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "network",
+        "address"
+      ]
+    },
+    "enabled": {
+      "description": "Enable or disable the service",
+      "type": "boolean",
+      "default": true
+    },
+    "monitoring_address": {
+      "description": "Monitoring HTTP address (ip:port) or just (:port)",
+      "type": "string",
+      "default": ":8082"
+    },
+    "server_address": {
+      "description": "Service HTTP address (ip:port) or just (:port)",
+      "type": "string",
+      "default": ":8081"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "log",
+    "enabled",
+    "monitoring_address",
+    "server_address"
+  ]
+}

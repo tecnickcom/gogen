@@ -113,7 +113,7 @@ func Test_defaultPingHandler(t *testing.T) {
 	require.Equal(t, "OK\n", string(body))
 }
 
-func Test_routesIndexHandler(t *testing.T) {
+func Test_defaultRouteIndexHandler(t *testing.T) {
 	routes := []route.Route{
 		{
 			Method:      "GET",
@@ -130,7 +130,7 @@ func Test_routesIndexHandler(t *testing.T) {
 	}
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	routesIndexHandler(routes).ServeHTTP(rr, req)
+	defaultRouteIndexHandler(routes).ServeHTTP(rr, req)
 
 	resp := rr.Result()
 	body, _ := ioutil.ReadAll(resp.Body)

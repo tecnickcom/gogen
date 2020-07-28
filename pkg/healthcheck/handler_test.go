@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -31,6 +32,7 @@ func (th *testHealthChecker) HealthCheck(ctx context.Context) Result {
 func TestHandler(t *testing.T) {
 	tests := []struct {
 		name           string
+		appInfo        *jsendx.AppInfo
 		checkers       []HealthChecker
 		wantBody       string
 		wantMaxElapsed time.Duration
@@ -42,6 +44,20 @@ func TestHandler(t *testing.T) {
 				&testHealthChecker{delay: 100 * time.Millisecond, result: Result{Status: OK}},
 			},
 			wantBody:       `{"0":{"status":"OK"},"1":{"status":"OK"}}`,
+			wantMaxElapsed: 200 * time.Millisecond,
+		},
+		{
+			name: "success multiple OK (JSendX)",
+			appInfo: &jsendx.AppInfo{
+				ProgramName:    "Test",
+				ProgramVersion: "0.0.0",
+				ProgramRelease: "test",
+			},
+			checkers: []HealthChecker{
+				&testHealthChecker{delay: 100 * time.Millisecond, result: Result{Status: OK}},
+				&testHealthChecker{delay: 100 * time.Millisecond, result: Result{Status: OK}},
+			},
+			wantBody:       `{"program":"Test","version":"0.0.0","release":"test","url":"","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":{"0":{"status":"OK"},"1":{"status":"OK"}}}`,
 			wantMaxElapsed: 200 * time.Millisecond,
 		},
 		{
@@ -71,18 +87,24 @@ func TestHandler(t *testing.T) {
 			req, err := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 			require.NoError(t, err, "no error expected reading body data")
 
-			handler := Handler(checkers)
+			handler := Handler(checkers, tt.appInfo)
 
 			st := time.Now()
 			handler(rr, req)
 			el := time.Since(st)
 
 			resp := rr.Result()
-			payload, _ := ioutil.ReadAll(resp.Body)
+			payloadData, _ := ioutil.ReadAll(resp.Body)
+			payload := string(payloadData)
+
+			if tt.appInfo != nil {
+				payload = testutil.ReplaceDateTime(payload, "<DT>")
+				payload = testutil.ReplaceUnixTimestamp(payload, "<TS>")
+			}
 
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 			require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-			require.Equal(t, tt.wantBody+"\n", string(payload))
+			require.Equal(t, tt.wantBody+"\n", payload)
 
 			// ensure we are running concurrently
 			t.Logf("check time = %s, want = <%s", el, tt.wantMaxElapsed)

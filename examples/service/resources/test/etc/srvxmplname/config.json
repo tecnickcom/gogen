@@ -1,0 +1,15 @@
+{
+  "remoteConfigProvider": "",
+  "remoteConfigEndpoint": "",
+  "remoteConfigPath": "",
+  "remoteConfigSecretKeyring": "",
+  "log": {
+    "format": "JSON",
+    "level": "DEBUG",
+    "network": "",
+    "address": ""
+  },
+  "enabled": true,
+  "monitoring_address": ":8082",
+  "server_address": ":8081"
+}

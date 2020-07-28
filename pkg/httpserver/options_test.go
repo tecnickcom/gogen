@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/stretchr/testify/require"
 )
 
@@ -97,6 +98,20 @@ func TestWithStatusHandlerFunc(t *testing.T) {
 	err := WithStatusHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.statusHandlerFunc).Pointer())
+}
+
+func TestWithRoutesIndexHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	v := func(routes []route.Route) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// mock function
+		}
+	}
+	cfg := &config{}
+	err := WithRoutesIndexHandlerFunc(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.routeIndexHandlerFunc).Pointer())
 }
 
 func TestWithServerAddr(t *testing.T) {

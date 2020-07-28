@@ -89,6 +89,7 @@ help:
 	@echo "    make mod      : Download and vendor dependencies"
 	@echo "    make clean    : Remove any build artifact"
 	@echo ""
+	@echo "    make example  : Build and test the service example"
 	@echo "    make dbuild   : Build everything inside a Docker container"
 	@echo "    make tag      : Tag the Git repository"
 	@echo ""
@@ -177,3 +178,8 @@ dbuild:
 .PHONY: tag
 tag:
 	git tag -a v$(cat VERSION) -m "Version $(cat VERSION)"
+
+# Build and test the example
+.PHONY: example
+example:
+	cd examples/service && make clean deps mod qa build

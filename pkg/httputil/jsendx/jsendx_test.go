@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/julienschmidt/httprouter"
+	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/internal/mocks"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -115,4 +116,88 @@ func TestNewRouter(t *testing.T) {
 			require.Equal(t, tt.wantStatus, resp.StatusCode, "status code got = %d, want = %d", resp.StatusCode, tt.wantStatus)
 		})
 	}
+}
+
+func TestDefaultStatusHandler(t *testing.T) {
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "0.0.0",
+		ProgramRelease: "test",
+	}
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	DefaultStatusHandler(appInfo)(rr, req)
+
+	resp := rr.Result()
+	bodyData, _ := ioutil.ReadAll(resp.Body)
+
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"0.0.0\",\"release\":\"test\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+}
+
+func TestDefaultPingHandler(t *testing.T) {
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "0.0.0",
+		ProgramRelease: "test",
+	}
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	DefaultPingHandler(appInfo)(rr, req)
+
+	resp := rr.Result()
+	bodyData, _ := ioutil.ReadAll(resp.Body)
+
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"0.0.0\",\"release\":\"test\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+}
+
+func TestDefaultRoutesIndexHandler(t *testing.T) {
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "0.0.0",
+		ProgramRelease: "test",
+	}
+
+	routes := []route.Route{
+		{
+			Method:      "GET",
+			Path:        "/get",
+			Handler:     nil,
+			Description: "Get endpoint",
+		},
+		{
+			Method:      "POST",
+			Path:        "/post",
+			Handler:     nil,
+			Description: "Post endpoint",
+		},
+	}
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	DefaultRoutesIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
+
+	resp := rr.Result()
+	bodyData, _ := ioutil.ReadAll(resp.Body)
+
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, `{"program":"Test","version":"0.0.0","release":"test","url":"","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":[{"method":"GET","path":"/get","description":"Get endpoint"},{"method":"POST","path":"/post","description":"Post endpoint"}]}
+`, body)
 }

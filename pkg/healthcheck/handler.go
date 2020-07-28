@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
+	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
 )
 
 const (
@@ -19,7 +20,7 @@ type HealthCheckerMap map[string]HealthChecker
 // Handler returns an HTTP handler function performing the healthcheck
 // This is a basic fanout implementation, it could be smarter and run a background collection process
 // independent from how many times we call the status endpoint
-func Handler(checks HealthCheckerMap) http.HandlerFunc {
+func Handler(checks HealthCheckerMap, appInfo *jsendx.AppInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		checkCount := len(checks)
 
@@ -49,6 +50,11 @@ func Handler(checks HealthCheckerMap) http.HandlerFunc {
 		for i := 0; i < checkCount; i++ {
 			r := <-resCh
 			data[r.id] = r.result
+		}
+
+		if appInfo != nil {
+			jsendx.Send(r.Context(), w, http.StatusOK, appInfo, data)
+			return
 		}
 		httputil.SendJSON(r.Context(), w, http.StatusOK, data)
 	}

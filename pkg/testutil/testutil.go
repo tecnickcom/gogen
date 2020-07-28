@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"sync"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
@@ -33,6 +34,18 @@ func ContextWithLogObserver(level zapcore.Level) (context.Context, *observer.Obs
 	core, logs := observer.New(level)
 	l := zap.New(core)
 	return logging.WithLogger(context.Background(), l), logs
+}
+
+// ReplaceDateTime replaces a datetime. Useful to compare JSON responses, containing variable values
+func ReplaceDateTime(src, repl string) string {
+	re := regexp.MustCompile("([0-9]{4}\\-[0-9]{2}\\-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[^\"]*)")
+	return re.ReplaceAllString(src, repl)
+}
+
+// ReplaceUnixTimestamp replaces a unix timestamp. Useful to compare JSON responses, containing variable values
+func ReplaceUnixTimestamp(src, repl string) string {
+	re := regexp.MustCompile("([0-9]{19})")
+	return re.ReplaceAllString(src, repl)
 }
 
 // CaptureOutput hijacks and captures all log, stderr, stdout for testing

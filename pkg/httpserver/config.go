@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/profiling"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -26,33 +27,38 @@ var (
 	defaultEnabledRoutes  = []defaultRoute{IndexRoute, MetricsRoute, PingRoute, PprofRoute, StatusRoute}
 )
 
+// RouteIndexHandlerFunc is a type alias for the route index function
+type RouteIndexHandlerFunc func(routes []route.Route) http.HandlerFunc
+
 func defaultConfig() *config {
 	return &config{
-		defaultEnabledRoutes: defaultEnabledRoutes,
-		metricsHandlerFunc:   defaultMetricsHandler,
-		pingHandlerFunc:      defaultPingHandler,
-		pprofHandlerFunc:     defaultPprofHandler,
-		serverAddr:           ":8080",
-		serverReadTimeout:    1 * time.Minute,
-		serverWriteTimeout:   1 * time.Minute,
-		shutdownTimeout:      30 * time.Second,
-		statusHandlerFunc:    defaultStatusHandler,
-		router:               defaultRouter(),
+		defaultEnabledRoutes:  defaultEnabledRoutes,
+		metricsHandlerFunc:    defaultMetricsHandler,
+		pingHandlerFunc:       defaultPingHandler,
+		pprofHandlerFunc:      defaultPprofHandler,
+		routeIndexHandlerFunc: defaultRouteIndexHandler,
+		serverAddr:            ":8080",
+		serverReadTimeout:     1 * time.Minute,
+		serverWriteTimeout:    1 * time.Minute,
+		shutdownTimeout:       30 * time.Second,
+		statusHandlerFunc:     defaultStatusHandler,
+		router:                defaultRouter(),
 	}
 }
 
 type config struct {
-	defaultEnabledRoutes []defaultRoute
-	metricsHandlerFunc   http.HandlerFunc
-	pingHandlerFunc      http.HandlerFunc
-	pprofHandlerFunc     http.HandlerFunc
-	router               Router
-	serverAddr           string
-	serverReadTimeout    time.Duration
-	serverWriteTimeout   time.Duration
-	shutdownTimeout      time.Duration
-	statusHandlerFunc    http.HandlerFunc
-	tlsConfig            *tls.Config
+	defaultEnabledRoutes  []defaultRoute
+	metricsHandlerFunc    http.HandlerFunc
+	pingHandlerFunc       http.HandlerFunc
+	pprofHandlerFunc      http.HandlerFunc
+	routeIndexHandlerFunc RouteIndexHandlerFunc
+	router                Router
+	serverAddr            string
+	serverReadTimeout     time.Duration
+	serverWriteTimeout    time.Duration
+	shutdownTimeout       time.Duration
+	statusHandlerFunc     http.HandlerFunc
+	tlsConfig             *tls.Config
 }
 
 func (c *config) isIndexRouteEnabled() bool {

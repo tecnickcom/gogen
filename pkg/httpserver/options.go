@@ -66,6 +66,14 @@ func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
 	}
 }
 
+// WithRoutesIndexHandlerFunc replaces the index handler
+func WithRoutesIndexHandlerFunc(handler RouteIndexHandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.routeIndexHandlerFunc = handler
+		return nil
+	}
+}
+
 // WithServerAddr sets the address the httpServer will bind to
 func WithServerAddr(addr string) Option {
 	return func(cfg *config) error {

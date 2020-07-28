@@ -71,7 +71,7 @@ func Start(ctx context.Context, binder Binder, opts ...Option) error {
 	// attach route index if enabled
 	if cfg.isIndexRouteEnabled() {
 		l.Debug("enabling route index handler")
-		cfg.router.Handler(http.MethodGet, "/", metrics.Handler("/", routesIndexHandler(routes)))
+		cfg.router.Handler(http.MethodGet, "/", metrics.Handler("/", cfg.routeIndexHandlerFunc(routes)))
 	}
 
 	// wrap router with default middlewares
@@ -149,7 +149,7 @@ func defaultPingHandler(w http.ResponseWriter, r *http.Request) {
 	httputil.SendStatus(r.Context(), w, http.StatusOK)
 }
 
-func routesIndexHandler(routes []route.Route) http.HandlerFunc {
+func defaultRouteIndexHandler(routes []route.Route) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		httputil.SendJSON(r.Context(), w, http.StatusOK, routes)
 	}

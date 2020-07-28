@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
+	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 )
@@ -62,7 +64,7 @@ func NewRouter(info *AppInfo) *httprouter.Router {
 	r := httprouter.New()
 
 	r.NotFound = metrics.Handler("404", func(w http.ResponseWriter, r *http.Request) {
-		Send(r.Context(), w, http.StatusNotFound, info, "invalid end point")
+		Send(r.Context(), w, http.StatusNotFound, info, "invalid endpoint")
 	})
 
 	r.MethodNotAllowed = metrics.Handler("405", func(w http.ResponseWriter, r *http.Request) {
@@ -74,4 +76,27 @@ func NewRouter(info *AppInfo) *httprouter.Router {
 	}
 
 	return r
+}
+
+// DefaultStatusHandler returns the server status in JSendX format
+func DefaultStatusHandler(info *AppInfo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		Send(r.Context(), w, http.StatusOK, info, "OK")
+	}
+}
+
+// DefaultPingHandler returns a ping request in JSendX format
+func DefaultPingHandler(info *AppInfo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		Send(r.Context(), w, http.StatusOK, info, "OK")
+	}
+}
+
+// DefaultRoutesIndexHandler returns the route index in JSendX format
+func DefaultRoutesIndexHandler(info *AppInfo) httpserver.RouteIndexHandlerFunc {
+	return func(routes []route.Route) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			Send(r.Context(), w, http.StatusOK, info, routes)
+		}
+	}
 }
