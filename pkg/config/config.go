@@ -84,8 +84,8 @@ type LogConfig struct {
 type remoteSourceConfig struct {
 	Provider      string `mapstructure:"remoteConfigProvider"`      // remote configuration source ("consul", "etcd", "envvar")
 	Endpoint      string `mapstructure:"remoteConfigEndpoint"`      // remote configuration URL (ip:port)
-	Path          string `mapstructure:"remoteConfigPath"`          // remote configuration path where to search fo the configuration file ("/cli/numapidbsync")
-	SecretKeyring string `mapstructure:"remoteConfigSecretKeyring"` // path to the openpgp secret keyring used to decript the remote configuration data ("/etc/numapidbsync/configkey.gpg")
+	Path          string `mapstructure:"remoteConfigPath"`          // remote configuration path where to search fo the configuration file ("/cli/program")
+	SecretKeyring string `mapstructure:"remoteConfigSecretKeyring"` // path to the openpgp secret keyring used to decript the remote configuration data ("/etc/program/configkey.gpg")
 	Data          string `mapstructure:"remoteConfigData"`          // base64 encoded JSON configuration data to be used with the "envvar" provider
 }
 
