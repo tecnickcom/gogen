@@ -177,7 +177,8 @@ dbuild:
 # Tag the Git repository
 .PHONY: tag
 tag:
-	git tag -a v$(cat VERSION) -m "Version $(cat VERSION)"
+	echo git tag -a v$(VERSION) -m "Version $(VERSION)" && \
+	git push origin --tags
 
 # Build and test the example
 .PHONY: example
