@@ -6,10 +6,12 @@ import (
 	"os"
 	"regexp"
 	"testing"
+
+	"github.com/nexmoinc/gosrvlib-sample-service/internal/cli"
 )
 
 func TestProgramVersion(t *testing.T) {
-	os.Args = []string{Name, "version"}
+	os.Args = []string{cli.AppName, "version"}
 	out := getMainOutput(t)
 	match, err := regexp.MatchString("^[\\d]+\\.[\\d]+\\.[\\d]+[\\s]*$", out)
 	if err != nil {
