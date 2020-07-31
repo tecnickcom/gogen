@@ -25,10 +25,14 @@ type appConfig struct {
 	config.BaseConfig `mapstructure:",squash"`
 	MonitoringAddress string `mapstructure:"monitoring_address"`
 	ServerAddress     string `mapstructure:"server_address"`
+	Enabled           bool   `mapstructure:"enabled"`
 }
 
 // SetDefaults sets the default configuration values in Viper
 func (c *appConfig) SetDefaults(v config.Viper) {
+	v.SetDefault("enabled", true)
+
+	// Setting the default monitoring_address port to the same as service_port will start a single HTTP server
 	v.SetDefault("monitoring_address", ":8082")
 	v.SetDefault("server_address", ":8081")
 

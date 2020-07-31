@@ -205,7 +205,7 @@ coverage: ensuretarget
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
-	$(BINUTIL)/golangci-lint run --exclude-use-default=false $(SRCDIR)/...
+	$(BINUTIL)/golangci-lint run --exclude-use-default=false $(CMDDIR)/... $(SRCDIR)/...
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
 # Run all tests and static analysis tools

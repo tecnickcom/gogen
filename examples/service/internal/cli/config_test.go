@@ -14,9 +14,10 @@ func Test_appConfig_SetDefaults(t *testing.T) {
 	c := &appConfig{}
 	c.SetDefaults(v)
 
+	require.True(t, v.GetBool("enabled"))
 	require.NotEmpty(t, v.GetString("monitoring_address"))
 	require.NotEmpty(t, v.GetString("server_address"))
-	require.Equal(t, 2, len(v.AllKeys()))
+	require.Equal(t, 3, len(v.AllKeys()))
 }
 
 func Test_appConfig_Validate(t *testing.T) {

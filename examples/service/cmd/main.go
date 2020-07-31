@@ -7,7 +7,10 @@ import (
 )
 
 var (
+	// ProgramVersion contains the version of the application injected at compile time
 	ProgramVersion = "0.0.0"
+
+	// ProgramRelease contains the release of the application injected at compile time
 	ProgramRelease = "0"
 )
 
