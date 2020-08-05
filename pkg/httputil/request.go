@@ -2,6 +2,8 @@ package httputil
 
 import (
 	"net/http"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 // HeaderOrDefault returns the value of an HTTP header or a default value
@@ -11,4 +13,9 @@ func HeaderOrDefault(r *http.Request, key string, defaultValue string) string {
 		return defaultValue
 	}
 	return v
+}
+
+// PathParam returns the value from the named path segment
+func PathParam(r *http.Request, name string) string {
+	return httprouter.ParamsFromContext(r.Context()).ByName(name)[1:]
 }
