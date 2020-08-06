@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,10 +47,9 @@ func TestPProfHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := httprouter.New()
-			router.HandlerFunc(http.MethodGet, "/pprof/*option", PProfHandler)
+			r := testutil.RouterWithHandler(http.MethodGet, "/pprof/*option", PProfHandler)
 
-			ts := httptest.NewServer(router)
+			ts := httptest.NewServer(r)
 			defer ts.Close()
 
 			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", ts.URL, tt.path), nil)

@@ -79,7 +79,7 @@ func TestNew(t *testing.T) {
 
 			// execute the main function
 			var err error
-			out := testutil.CaptureOutput(func() {
+			out := testutil.CaptureOutput(t, func() {
 				err = cmd.Execute()
 			})
 

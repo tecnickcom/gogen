@@ -2,6 +2,7 @@ package httputil
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -17,5 +18,6 @@ func HeaderOrDefault(r *http.Request, key string, defaultValue string) string {
 
 // PathParam returns the value from the named path segment
 func PathParam(r *http.Request, name string) string {
-	return httprouter.ParamsFromContext(r.Context()).ByName(name)[1:]
+	v := httprouter.ParamsFromContext(r.Context()).ByName(name)
+	return strings.TrimLeft(v, "/")
 }

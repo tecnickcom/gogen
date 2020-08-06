@@ -1,18 +1,20 @@
 package main
 
 import (
-	"bytes"
-	"io"
 	"os"
 	"regexp"
 	"testing"
 
 	"github.com/nexmoinc/gosrvlib-sample-service/internal/cli"
+	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 )
 
 func TestProgramVersion(t *testing.T) {
 	os.Args = []string{cli.AppName, "version"}
-	out := getMainOutput(t)
+	out := testutil.CaptureOutput(t, func() {
+		main()
+	})
+
 	match, err := regexp.MatchString("^[\\d]+\\.[\\d]+\\.[\\d]+[\\s]*$", out)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -20,37 +22,4 @@ func TestProgramVersion(t *testing.T) {
 	if !match {
 		t.Errorf("The expected version has not been returned")
 	}
-}
-
-func getMainOutput(t *testing.T) string {
-	old := os.Stdout // keep backup of the real stdout
-	defer func() { os.Stdout = old }()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	os.Stdout = w
-
-	// execute the main function
-	main()
-
-	outC := make(chan string)
-	// copy the output in a separate goroutine so printing can't block indefinitely
-	go func() {
-		var buf bytes.Buffer
-		_, err := io.Copy(&buf, r)
-		if err != nil {
-			t.Errorf("Unexpected error: %v", err)
-		}
-		outC <- buf.String()
-	}()
-
-	// back to normal state
-	err = w.Close()
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	out := <-outC
-
-	return out
 }
