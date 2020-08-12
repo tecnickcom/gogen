@@ -49,16 +49,16 @@ ifeq ($(DOCKER),)
 endif
 
 # Common commands
-GO := GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) go
-GOFMT := gofmt
-GOTEST := GOPATH=$(GOPATH) gotest
-GODOC := GOPATH=$(GOPATH) godoc
+GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) go
+GOFMT=gofmt
+GOTEST=GOPATH=$(GOPATH) gotest
+GODOC=GOPATH=$(GOPATH) godoc
 
 # Directory containing the source code
 SRCDIR=./pkg
 
 # List of packages
-GOPKGS := $(shell $(GO) list $(SRCDIR)/...)
+GOPKGS=$(shell $(GO) list $(SRCDIR)/...)
 
 # Enable junit report when not in LOCAL mode
 ifeq ($(strip $(DEVMODE)),LOCAL)
