@@ -138,7 +138,7 @@ func Test_defaultRouteIndexHandler(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
-	expBody, _ := json.Marshal(routes)
+	expBody, _ := json.Marshal(&route.Index{Routes: routes})
 
 	require.Equal(t, string(expBody)+"\n", string(body))
 }

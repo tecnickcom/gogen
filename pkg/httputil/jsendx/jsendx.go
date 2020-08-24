@@ -96,7 +96,8 @@ func DefaultPingHandler(info *AppInfo) http.HandlerFunc {
 func DefaultRoutesIndexHandler(info *AppInfo) httpserver.RouteIndexHandlerFunc {
 	return func(routes []route.Route) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			Send(r.Context(), w, http.StatusOK, info, routes)
+			data := &route.Index{Routes: routes}
+			Send(r.Context(), w, http.StatusOK, info, data)
 		}
 	}
 }

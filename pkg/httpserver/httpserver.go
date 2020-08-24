@@ -151,6 +151,7 @@ func defaultPingHandler(w http.ResponseWriter, r *http.Request) {
 
 func defaultRouteIndexHandler(routes []route.Route) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		httputil.SendJSON(r.Context(), w, http.StatusOK, routes)
+		data := &route.Index{Routes: routes}
+		httputil.SendJSON(r.Context(), w, http.StatusOK, data)
 	}
 }

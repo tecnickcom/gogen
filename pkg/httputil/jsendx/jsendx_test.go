@@ -198,6 +198,6 @@ func TestDefaultRoutesIndexHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, `{"program":"Test","version":"0.0.0","release":"test","url":"","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":[{"method":"GET","path":"/get","description":"Get endpoint"},{"method":"POST","path":"/post","description":"Post endpoint"}]}
+	require.Equal(t, `{"program":"Test","version":"0.0.0","release":"test","url":"","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":{"routes":[{"method":"GET","path":"/get","description":"Get endpoint"},{"method":"POST","path":"/post","description":"Post endpoint"}]}}
 `, body)
 }

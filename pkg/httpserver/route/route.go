@@ -11,3 +11,8 @@ type Route struct {
 	Handler     http.HandlerFunc `json:"-"`           // Handler function
 	Description string           `json:"description"` // Description
 }
+
+// Index contains the list of routes attached to the current service
+type Index struct {
+	Routes []Route `json:"routes"`
+}
