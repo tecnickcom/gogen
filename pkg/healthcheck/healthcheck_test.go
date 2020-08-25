@@ -1,43 +1,42 @@
-// +build unit
-
-package healthcheck_test
+package healthcheck
 
 import (
+	"context"
 	"testing"
+	"time"
 
-	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
+	"github.com/stretchr/testify/require"
 )
 
-func TestStatus_String(t *testing.T) {
-	tests := []struct {
-		name   string
-		status healthcheck.Status
-		want   string
-	}{
-		{
-			name:   "Unavailable is N/A",
-			status: healthcheck.Unavailable,
-			want:   "N/A",
-		},
-		{
-			name:   "OK is OK",
-			status: healthcheck.OK,
-			want:   "OK",
-		},
-		{
-			name:   "Err is ERR",
-			status: healthcheck.Err,
-			want:   "ERR",
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+type testHealthChecker struct {
+	delay time.Duration
+	err   error
+}
 
-			if got := tt.status.String(); got != tt.want {
-				t.Errorf("String() = %v, want %v", got, tt.want)
-			}
-		})
+func (th *testHealthChecker) HealthCheck(ctx context.Context) error {
+	if th.delay != 0 {
+		time.Sleep(th.delay)
 	}
+	return th.err
+}
+
+func TestNew(t *testing.T) {
+	hc := &testHealthChecker{}
+	h := New("hc-id_1", hc)
+
+	require.NotNil(t, h)
+	require.Equal(t, h.ID, "hc-id_1")
+	require.Equal(t, h.Checker, hc)
+	require.Equal(t, h.Timeout, DefaultTimeout)
+}
+
+func TestNewWithTimeout(t *testing.T) {
+	hc := &testHealthChecker{}
+	to := 5 * time.Second
+	h := NewWithTimeout("hc-id_1", hc, to)
+
+	require.NotNil(t, h)
+	require.Equal(t, h.ID, "hc-id_1")
+	require.Equal(t, h.Checker, hc)
+	require.Equal(t, h.Timeout, to)
 }

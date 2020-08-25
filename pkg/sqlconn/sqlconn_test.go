@@ -6,12 +6,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -125,14 +123,12 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 		name                  string
 		configOpts            []Option
 		disconnectBeforeCheck bool
-		want                  healthcheck.Result
+		wantErr               bool
 	}{
 		{
 			name:                  "fail because unavailable",
 			disconnectBeforeCheck: true,
-			want: healthcheck.Result{
-				Status: healthcheck.Unavailable,
-			},
+			wantErr:               true,
 		},
 		{
 			name: "fail with check connection error",
@@ -141,10 +137,7 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 					return fmt.Errorf("check error")
 				}),
 			},
-			want: healthcheck.Result{
-				Status: healthcheck.Err,
-				Error:  fmt.Errorf("check error"),
-			},
+			wantErr: true,
 		},
 		{
 			name: "success",
@@ -153,9 +146,7 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 					return nil
 				}),
 			},
-			want: healthcheck.Result{
-				Status: healthcheck.OK,
-			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -188,8 +179,8 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 				time.Sleep(100 * time.Millisecond)
 			}
 
-			if got := conn.HealthCheck(testutil.Context()); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("HealthCheck() = %v, want %v", got, tt.want)
+			if err := conn.HealthCheck(testutil.Context()); (err != nil) != tt.wantErr {
+				t.Errorf("HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

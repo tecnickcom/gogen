@@ -35,30 +35,39 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 			//
 			serviceBinder = httphandler.New(nil)
 
-			// NOTE: Uncomment the following block to create a custom healthcheck handler
-			// healthCheckHandler := healthcheck.Handler(healthcheck.HealthCheckerMap{
-			// 	"<extCompName>": extCompInstance,
-			// }, appInfo)
+			// NOTE: Uncomment the following block use a custom healthcheck handler
 			//
-			// // override the default healthcheck handler if the
-			// defaultServerOpts = append(defaultServerOpts, httpserver.WithStatusHandlerFunc(healthCheckHandler))
+			// // NOTE: Uncomment to create a custom healthcheck handler with default response
+			// // healthCheckHandler := healthcheck.NewHandler(
+			// // 	[]healthcheck.HealthCheck{
+			// // 		healthcheck.New("<ID>", < HANDLER >),
+			// // 		healthcheck.NewWithTimeout("<ID>", <HANDLER>, <TIMEOUT>),
+			// // 	},
+			// // )
+			//
+			// // NOTE: Uncomment to create a custom healthcheck handler with JSendX response
+			// // healthCheckHandler := healthcheck.NewHandler(
+			// // 	[]healthcheck.HealthCheck{
+			// // 		healthcheck.New("<ID>", < HANDLER >),
+			// // 		healthcheck.NewWithTimeout("<ID>", <HANDLER>, <TIMEOUT>),
+			// // 	},
+			// // 	healthcheck.WithResultWriter(jsendx.HealthCheckResultWriter(appInfo)),
+			// // )
+			//
+			// // override the default healthcheck handler
+			// defaultServerOpts = append(defaultServerOpts, httpserver.WithStatusHandlerFunc(healthCheckHandler.ServeHTTP))
 		}
 
-		httpServiceOpts := append(defaultServerOpts, []httpserver.Option{
-			httpserver.WithServerAddr(cfg.ServerAddress),
-		}...)
+		httpServiceOpts := append(defaultServerOpts, httpserver.WithServerAddr(cfg.ServerAddress))
 
 		// Use a separate server for monitoring routes if monitor_address and server_address are different
 		if cfg.MonitoringAddress != cfg.ServerAddress {
 			// Disable default routes as the monitoring routes on a separate server instance
-			httpServiceOpts = append(httpServiceOpts, []httpserver.Option{
-				httpserver.WithDisableDefaultRoutes(),
-			}...)
+			httpServiceOpts = append(httpServiceOpts, httpserver.WithDisableDefaultRoutes())
 
 			// Prepare monitoring options
-			httpMonitoringOpts := append(defaultServerOpts, []httpserver.Option{
-				httpserver.WithServerAddr(cfg.MonitoringAddress),
-			}...)
+			httpMonitoringOpts := append(defaultServerOpts, httpserver.WithServerAddr(cfg.MonitoringAddress))
+
 			if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
 				return fmt.Errorf("error starting monitoring HTTP server: %w", err)
 			}

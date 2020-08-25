@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
@@ -99,5 +100,12 @@ func DefaultRoutesIndexHandler(info *AppInfo) httpserver.RouteIndexHandlerFunc {
 			data := &route.Index{Routes: routes}
 			Send(r.Context(), w, http.StatusOK, info, data)
 		}
+	}
+}
+
+// HealthCheckResultWriter returns a new healthcheck result writer
+func HealthCheckResultWriter(info *AppInfo) healthcheck.ResultWriter {
+	return func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
+		Send(ctx, w, statusCode, info, data)
 	}
 }

@@ -12,64 +12,80 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
+	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-type testHealthChecker struct {
-	delay  time.Duration
-	result Result
-}
+func TestNewHandler(t *testing.T) {
+	t.Parallel()
 
-func (th *testHealthChecker) HealthCheck(ctx context.Context) Result {
-	if th.delay != 0 {
-		time.Sleep(th.delay)
+	testChecks := []HealthCheck{
+		New("testcheck_1", &testHealthChecker{}),
+		New("testcheck_2", &testHealthChecker{}),
 	}
-	return th.result
+
+	// No options
+	h1 := NewHandler(testChecks)
+	require.Equal(t, 2, len(h1.checks))
+	require.Equal(t, 2, h1.checksCount)
+	require.Equal(t, reflect.ValueOf(httputil.SendJSON).Pointer(), reflect.ValueOf(h1.writeResult).Pointer())
+
+	// With options
+	rw := func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {}
+	h2 := NewHandler(testChecks, WithResultWriter(rw))
+	require.Equal(t, 2, len(h2.checks))
+	require.Equal(t, 2, h2.checksCount)
+	require.Equal(t, reflect.ValueOf(rw).Pointer(), reflect.ValueOf(h2.writeResult).Pointer())
 }
 
-func TestHandler(t *testing.T) {
+func TestHandler_ServeHTTP(t *testing.T) {
 	tests := []struct {
 		name           string
-		appInfo        *jsendx.AppInfo
-		checkers       []HealthChecker
+		checks         []HealthCheck
+		opts           []HandlerOption
+		wantStatus     int
 		wantBody       string
 		wantMaxElapsed time.Duration
 	}{
 		{
 			name: "success multiple OK",
-			checkers: []HealthChecker{
-				&testHealthChecker{delay: 100 * time.Millisecond, result: Result{Status: OK}},
-				&testHealthChecker{delay: 100 * time.Millisecond, result: Result{Status: OK}},
+			checks: []HealthCheck{
+				New("test_01", &testHealthChecker{delay: 100 * time.Millisecond, err: nil}),
+				New("test_02", &testHealthChecker{delay: 100 * time.Millisecond, err: nil}),
 			},
-			wantBody:       `{"0":{"status":"OK"},"1":{"status":"OK"}}`,
+			wantStatus:     http.StatusOK,
+			wantBody:       `{"test_01":"OK","test_02":"OK"}`,
 			wantMaxElapsed: 200 * time.Millisecond,
 		},
 		{
-			name: "success multiple OK (JSendX)",
-			appInfo: &jsendx.AppInfo{
-				ProgramName:    "Test",
-				ProgramVersion: "0.0.0",
-				ProgramRelease: "test",
+			name: "success multiple OK with custom response writer",
+			checks: []HealthCheck{
+				New("test_11", &testHealthChecker{delay: 100 * time.Millisecond, err: nil}),
+				New("test_12", &testHealthChecker{delay: 100 * time.Millisecond, err: nil}),
 			},
-			checkers: []HealthChecker{
-				&testHealthChecker{delay: 100 * time.Millisecond, result: Result{Status: OK}},
-				&testHealthChecker{delay: 100 * time.Millisecond, result: Result{Status: OK}},
+			opts: []HandlerOption{
+				WithResultWriter(func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
+					type wrapper struct {
+						Data interface{} `json:"data"`
+					}
+					httputil.SendJSON(ctx, w, statusCode, &wrapper{
+						Data: data,
+					})
+				}),
 			},
-			wantBody:       `{"program":"Test","version":"0.0.0","release":"test","url":"","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":{"0":{"status":"OK"},"1":{"status":"OK"}}}`,
+			wantStatus:     http.StatusOK,
+			wantBody:       `{"data":{"test_11":"OK","test_12":"OK"}}`,
 			wantMaxElapsed: 200 * time.Millisecond,
 		},
 		{
 			name: "success mixed results",
-			checkers: []HealthChecker{
-				&testHealthChecker{delay: 100 * time.Millisecond, result: Result{Status: OK}},
-				&testHealthChecker{
-					delay:  200 * time.Millisecond,
-					result: Result{Status: Err, Error: fmt.Errorf("check error")},
-				},
+			checks: []HealthCheck{
+				New("test_31", &testHealthChecker{delay: 100 * time.Millisecond, err: nil}),
+				New("test_32", &testHealthChecker{delay: 200 * time.Millisecond, err: fmt.Errorf("check error")}),
 			},
-			wantBody:       `{"0":{"status":"OK"},"1":{"status":"ERR","error":{}}}`,
+			wantStatus:     http.StatusServiceUnavailable,
+			wantBody:       `{"test_31":"OK","test_32":"check error"}`,
 			wantMaxElapsed: 300 * time.Millisecond,
 		},
 	}
@@ -78,70 +94,54 @@ func TestHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			checkers := make(map[string]HealthChecker)
-			for i, v := range tt.checkers {
-				checkers[fmt.Sprintf("%d", i)] = v
-			}
-
 			rr := httptest.NewRecorder()
 			req, err := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 			require.NoError(t, err, "no error expected reading body data")
 
-			handler := Handler(checkers, tt.appInfo)
+			h := NewHandler(tt.checks, tt.opts...)
 
 			st := time.Now()
-			handler(rr, req)
+			h.ServeHTTP(rr, req)
 			el := time.Since(st)
 
 			resp := rr.Result()
 			payloadData, _ := ioutil.ReadAll(resp.Body)
 			payload := string(payloadData)
 
-			if tt.appInfo != nil {
-				payload = testutil.ReplaceDateTime(payload, "<DT>")
-				payload = testutil.ReplaceUnixTimestamp(payload, "<TS>")
-			}
-
-			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.Equal(t, tt.wantStatus, resp.StatusCode)
 			require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 			require.Equal(t, tt.wantBody+"\n", payload)
 
 			// ensure we are running concurrently
-			t.Logf("check time = %s, want = <%s", el, tt.wantMaxElapsed)
-			require.True(t, el < tt.wantMaxElapsed, "the check took longer than %v", tt.wantMaxElapsed)
+			require.True(t, el < tt.wantMaxElapsed, "check time = %s, want < %s", el, tt.wantMaxElapsed)
 		})
 	}
 }
 
 func Test_runCheckWithTimeout(t *testing.T) {
 	tests := []struct {
-		name       string
-		checker    HealthChecker
-		timeout    time.Duration
-		wantResult Result
+		name    string
+		checker HealthChecker
+		timeout time.Duration
+		wantErr error
 	}{
 		{
-			name:       "check fails with timeout",
-			checker:    &testHealthChecker{delay: 100 * time.Millisecond},
-			timeout:    10 * time.Millisecond,
-			wantResult: Result{Status: Err, Error: context.DeadlineExceeded},
+			name:    "check fails with timeout",
+			checker: &testHealthChecker{delay: 100 * time.Millisecond},
+			timeout: 10 * time.Millisecond,
+			wantErr: context.DeadlineExceeded,
 		},
 		{
-			name: "check succeed with OK result",
-			checker: &testHealthChecker{delay: 100 * time.Millisecond, result: Result{
-				Status: OK,
-			}},
-			timeout:    500 * time.Millisecond,
-			wantResult: Result{Status: OK},
+			name:    "check succeed with OK result",
+			checker: &testHealthChecker{delay: 100 * time.Millisecond, err: nil},
+			timeout: 500 * time.Millisecond,
+			wantErr: nil,
 		},
 		{
-			name: "check succeed with ERR result",
-			checker: &testHealthChecker{delay: 100 * time.Millisecond, result: Result{
-				Status: Err,
-				Error:  fmt.Errorf("check failed"),
-			}},
-			timeout:    500 * time.Millisecond,
-			wantResult: Result{Status: Err, Error: fmt.Errorf("check failed")},
+			name:    "check succeed with ERR result",
+			checker: &testHealthChecker{delay: 100 * time.Millisecond, err: fmt.Errorf("check failed")},
+			timeout: 500 * time.Millisecond,
+			wantErr: fmt.Errorf("check failed"),
 		},
 	}
 	for _, tt := range tests {
@@ -151,8 +151,8 @@ func Test_runCheckWithTimeout(t *testing.T) {
 
 			ctx := testutil.Context()
 			got := runCheckWithTimeout(ctx, tt.checker, tt.timeout)
-			if !reflect.DeepEqual(got, tt.wantResult) {
-				t.Errorf("runCheck() = %#v, want %#v", got, tt.wantResult)
+			if !reflect.DeepEqual(got, tt.wantErr) {
+				t.Errorf("runCheck() = %#v, want = %#v", got, tt.wantErr)
 			}
 		})
 	}

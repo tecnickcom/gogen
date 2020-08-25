@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 )
@@ -74,26 +73,19 @@ func (c *SQLConn) DB() *sql.DB {
 }
 
 // HealthCheck performs a health check of the database connection
-func (c *SQLConn) HealthCheck(ctx context.Context) healthcheck.Result {
+func (c *SQLConn) HealthCheck(ctx context.Context) error {
 	c.dbLock.RLock()
 	defer c.dbLock.RUnlock()
 
 	if c.db == nil {
-		return healthcheck.Result{
-			Status: healthcheck.Unavailable,
-		}
+		return fmt.Errorf("database not unavailable")
 	}
 
 	if err := c.cfg.checkConnectionFunc(ctx, c.db); err != nil {
-		return healthcheck.Result{
-			Status: healthcheck.Err,
-			Error:  err,
-		}
+		return err
 	}
 
-	return healthcheck.Result{
-		Status: healthcheck.OK,
-	}
+	return nil
 }
 
 func (c *SQLConn) disconnect() {

@@ -121,8 +121,8 @@ func TestNewRouter(t *testing.T) {
 func TestDefaultStatusHandler(t *testing.T) {
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "0.0.0",
-		ProgramRelease: "test",
+		ProgramVersion: "3.4.5",
+		ProgramRelease: "1",
 	}
 
 	rr := httptest.NewRecorder()
@@ -138,14 +138,14 @@ func TestDefaultStatusHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"0.0.0\",\"release\":\"test\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.4.5\",\"release\":\"1\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 func TestDefaultPingHandler(t *testing.T) {
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "0.0.0",
-		ProgramRelease: "test",
+		ProgramVersion: "4.5.6",
+		ProgramRelease: "2",
 	}
 
 	rr := httptest.NewRecorder()
@@ -161,14 +161,14 @@ func TestDefaultPingHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"0.0.0\",\"release\":\"test\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"4.5.6\",\"release\":\"2\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 func TestDefaultRoutesIndexHandler(t *testing.T) {
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "0.0.0",
-		ProgramRelease: "test",
+		ProgramVersion: "5.6.7",
+		ProgramRelease: "3",
 	}
 
 	routes := []route.Route{
@@ -198,6 +198,28 @@ func TestDefaultRoutesIndexHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, `{"program":"Test","version":"0.0.0","release":"test","url":"","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":{"routes":[{"method":"GET","path":"/get","description":"Get endpoint"},{"method":"POST","path":"/post","description":"Post endpoint"}]}}
+	require.Equal(t, `{"program":"Test","version":"5.6.7","release":"3","url":"","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":{"routes":[{"method":"GET","path":"/get","description":"Get endpoint"},{"method":"POST","path":"/post","description":"Post endpoint"}]}}
 `, body)
+}
+
+func TestHealthCheckResultWriter(t *testing.T) {
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "6.7.8",
+		ProgramRelease: "4",
+	}
+
+	rr := httptest.NewRecorder()
+	HealthCheckResultWriter(appInfo)(testutil.Context(), rr, http.StatusOK, "test body")
+
+	resp := rr.Result()
+	bodyData, _ := ioutil.ReadAll(resp.Body)
+
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.7.8\",\"release\":\"4\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
 }

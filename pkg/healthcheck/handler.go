@@ -7,74 +7,85 @@ import (
 	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
-	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
 )
 
-const (
-	checkTimeout = 1 * time.Second
-)
+// ResultWriter is a type alias for a function in charge of writing the result of the health checks
+type ResultWriter func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{})
 
-// HealthCheckerMap is a type alias for a map of healthchecker instances
-type HealthCheckerMap map[string]HealthChecker
-
-// Handler returns an HTTP handler function performing the healthcheck
-// This is a basic fanout implementation, it could be smarter and run a background collection process
-// independent from how many times we call the status endpoint
-func Handler(checks HealthCheckerMap, appInfo *jsendx.AppInfo) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		checkCount := len(checks)
-
-		var wg sync.WaitGroup
-		wg.Add(checkCount)
-
-		type resultWrap struct {
-			id     string
-			result Result
-		}
-		resCh := make(chan resultWrap, checkCount)
-		defer close(resCh)
-
-		for id, hc := range checks {
-			go func(id string, hc HealthChecker) {
-				defer wg.Done()
-				resCh <- resultWrap{
-					id:     id,
-					result: runCheckWithTimeout(r.Context(), hc, checkTimeout),
-				}
-			}(id, hc)
-		}
-
-		wg.Wait()
-
-		data := make(map[string]Result, checkCount)
-		for i := 0; i < checkCount; i++ {
-			r := <-resCh
-			data[r.id] = r.result
-		}
-
-		if appInfo != nil {
-			jsendx.Send(r.Context(), w, http.StatusOK, appInfo, data)
-			return
-		}
-		httputil.SendJSON(r.Context(), w, http.StatusOK, data)
+// NewHandler creates a new instance of the healthcheck handler
+func NewHandler(checks []HealthCheck, opts ...HandlerOption) *Handler {
+	h := &Handler{
+		checks:      checks,
+		checksCount: len(checks),
+		writeResult: httputil.SendJSON,
 	}
+	for _, apply := range opts {
+		apply(h)
+	}
+
+	return h
 }
 
-func runCheckWithTimeout(ctx context.Context, c HealthChecker, timeout time.Duration) Result {
+// Handler is the struct containng the HTTP handler function that performs the healthchecks
+type Handler struct {
+	checks      []HealthCheck
+	checksCount int
+	writeResult ResultWriter
+}
+
+// ServeHTTP runs the configured health checks in parallel and collects their results
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	type checkResult struct {
+		id  string
+		err error
+	}
+	resCh := make(chan checkResult, h.checksCount)
+	defer close(resCh)
+
+	var wg sync.WaitGroup
+	wg.Add(h.checksCount)
+
+	for _, hc := range h.checks {
+		hc := hc
+		go func() {
+			defer wg.Done()
+
+			resCh <- checkResult{
+				id:  hc.ID,
+				err: runCheckWithTimeout(r.Context(), hc.Checker, hc.Timeout),
+			}
+		}()
+	}
+	wg.Wait()
+
+	status := http.StatusOK
+	data := make(map[string]string, h.checksCount)
+
+	for len(resCh) > 0 {
+		r := <-resCh
+		data[r.id] = "OK"
+
+		if r.err != nil {
+			status = http.StatusServiceUnavailable
+			data[r.id] = r.err.Error()
+		}
+	}
+
+	h.writeResult(r.Context(), w, status, data)
+}
+
+func runCheckWithTimeout(ctx context.Context, hc HealthChecker, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	resCh := make(chan Result)
+	resCh := make(chan error)
 	go func() {
-		resCh <- c.HealthCheck(ctx)
+		resCh <- hc.HealthCheck(ctx)
 	}()
 
 	select {
 	case <-ctx.Done():
-		return Result{
-			Status: Err,
-			Error:  ctx.Err(),
-		}
+		return ctx.Err()
 	case r := <-resCh:
 		return r
 	}
