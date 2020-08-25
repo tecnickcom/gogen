@@ -100,18 +100,14 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 	}
 
 	l, err := zapCfg.Build(zap.Hooks(loggingMetricsHook))
-	if err != nil {
-		return nil, fmt.Errorf("error building root logger")
+	if err == nil {
+		fields := cfg.fields
+		fields = append(fields, zap.Stringer("datetime", dateTimeField{}))
+		l = l.With(fields...)
+		// replace global logger with the configured root logger
+		zap.ReplaceGlobals(l)
 	}
-
-	fields := cfg.fields
-	fields = append(fields, zap.Stringer("datetime", dateTimeField{}))
-	l = l.With(fields...)
-
-	// replace global logger with the configured root logger
-	zap.ReplaceGlobals(l)
-
-	return l, nil
+	return l, err
 }
 
 type dateTimeField struct {

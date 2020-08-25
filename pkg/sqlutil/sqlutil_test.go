@@ -99,19 +99,25 @@ func TestCloseStatement(t *testing.T) {
 			name:      "fails with close error",
 			setupStmt: true,
 			setupMock: func(m sqlmock.Sqlmock) {
+				m.ExpectBegin()
 				m.ExpectPrepare("SELECT").
 					WillBeClosed().
 					WillReturnCloseError(fmt.Errorf("close error"))
 			},
-			// NOTE!!! This should be true, BUT there is a bug in sqlmock that doesn't return the Close() error
+			wantLog: true,
+		},
+		{
+			name: "nop with nil statement",
+			setupMock: func(m sqlmock.Sqlmock) {
+				m.ExpectBegin()
+			},
 			wantLog: false,
 		},
 		{
-			name:    "nop with nil statement",
-			wantLog: false,
-		},
-		{
-			name:    "succeed",
+			name: "succeed",
+			setupMock: func(m sqlmock.Sqlmock) {
+				m.ExpectBegin()
+			},
 			wantLog: false,
 		},
 	}
@@ -119,30 +125,26 @@ func TestCloseStatement(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db, mock, err := sqlmock.New()
 			require.NoError(t, err, "Unexpected error while creating sqlmock", err)
 			defer func() { _ = db.Close() }()
-
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}
-
+			tx, err := db.Begin()
+			require.NoError(t, err)
 			var stmt *sql.Stmt
 			if tt.setupStmt {
-				stmt, err = db.Prepare("SELECT")
+				stmt, err = tx.Prepare("SELECT")
 				require.NoError(t, err)
 			}
-
 			ctx, logs := testutil.ContextWithLogObserver(zap.ErrorLevel)
 			CloseStatement(ctx, stmt)
-
 			if tt.wantLog {
 				require.Equal(t, 1, logs.Len(), "missing expected logs")
 			} else {
 				require.Equal(t, 0, logs.Len(), "unexpected logs")
 			}
-
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Errorf("there were unfulfilled expectations: %s", err)
 			}
