@@ -92,3 +92,22 @@ func TestWithConnMaxLifetime(t *testing.T) {
 	WithConnMaxLifetime(v)(cfg)
 	require.Equal(t, v, cfg.connMaxLifetime)
 }
+
+func TestWithDefaultDriver(t *testing.T) {
+	t.Parallel()
+
+	// should set the default
+	v1 := "test_driver_1"
+	cfg1 := &config{}
+	WithDefaultDriver(v1)(cfg1)
+	require.Equal(t, v1, cfg1.driver)
+
+	// should not set the default
+	v2 := "test_driver_2"
+	cfg2 := &config{
+		driver: "original_driver",
+	}
+	WithDefaultDriver(v2)(cfg2)
+	require.NotEqual(t, v2, cfg2.driver)
+
+}

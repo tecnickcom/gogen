@@ -30,19 +30,24 @@ func TestConnect(t *testing.T) {
 		wantErr        bool
 	}{
 		{
+			name:       "fail with dsn error",
+			connectDSN: "driver1://driver2://connection_string",
+			wantErr:    true,
+		},
+		{
 			name:       "fail with config validation error",
 			connectDSN: "",
 			wantErr:    true,
 		},
 		{
 			name:       "fail to open DB connection",
-			connectDSN: "user:pass@tcp(127.0.0.1:1234)/testdb",
+			connectDSN: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
 			connectErr: fmt.Errorf("db open error"),
 			wantErr:    true,
 		},
 		{
 			name:       "success with close error",
-			connectDSN: "user:pass@tcp(127.0.0.1:1234)/testdb",
+			connectDSN: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
 			configMockFunc: func(mock sqlmock.Sqlmock) {
 				mock.ExpectClose().WillReturnError(fmt.Errorf("close error"))
 			},
@@ -50,7 +55,7 @@ func TestConnect(t *testing.T) {
 		},
 		{
 			name:       "success",
-			connectDSN: "user:pass@tcp(127.0.0.1:1234)/testdb",
+			connectDSN: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
 			configMockFunc: func(mock sqlmock.Sqlmock) {
 				mock.ExpectClose()
 			},
@@ -86,7 +91,7 @@ func TestConnect(t *testing.T) {
 				mockConnectFunc = newMockConnectFunc(nil, tt.connectErr)
 			}
 
-			conn, err := Connect(ctx, "testsql", tt.connectDSN, WithConnectFunc(mockConnectFunc))
+			conn, err := Connect(ctx, tt.connectDSN, WithConnectFunc(mockConnectFunc))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -108,7 +113,7 @@ func TestSQLConn_DB(t *testing.T) {
 	defer cancel()
 
 	mockConnectFunc := newMockConnectFunc(db, nil)
-	conn, err := Connect(ctx, "testsql", "user:pass@tcp(127.0.0.1:1234)/testdb", WithConnectFunc(mockConnectFunc))
+	conn, err := Connect(ctx, "testsql://user:pass@tcp(db.host.invalid:1234)/testdb", WithConnectFunc(mockConnectFunc))
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 	require.Equal(t, db, conn.DB())
@@ -167,7 +172,7 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 			}
 			opts = append(opts, tt.configOpts...)
 
-			conn, err := Connect(ctx, "testsql", "user:pass@tcp(127.0.0.1:1234)/testdb", opts...)
+			conn, err := Connect(ctx, "testsql://user:pass@tcp(db.host.invalid:1234)/testdb", opts...)
 			require.NoError(t, err)
 			require.NotNil(t, conn)
 			require.Equal(t, db, conn.DB())
@@ -307,6 +312,57 @@ func Test_connectWithBackoff(t *testing.T) {
 				return
 			}
 			require.Nil(t, got, "connectWithBackoff() expected nil DB")
+		})
+	}
+}
+
+func Test_parseConnectionURL(t *testing.T) {
+	tests := []struct {
+		name       string
+		url        string
+		wantDriver string
+		wantDSN    string
+		wantErr    bool
+	}{
+		{
+			name:       "empty",
+			url:        "",
+			wantDriver: "",
+			wantDSN:    "",
+		},
+		{
+			name:       "empty",
+			url:        "driver1://driver2://user:pass@tcp(db0.host.invalid)/db0",
+			wantDriver: "",
+			wantDSN:    "",
+			wantErr:    true,
+		},
+		{
+			name:       "missing driver",
+			url:        "user:pass@tcp(db1.host.invalid)/db1",
+			wantDriver: "",
+			wantDSN:    "user:pass@tcp(db1.host.invalid)/db1",
+		},
+		{
+			name:       "full connection URL",
+			url:        "testdriver://user:pass@tcp(db2.host.invalid)/db2",
+			wantDriver: "testdriver",
+			wantDSN:    "user:pass@tcp(db2.host.invalid)/db2",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDriver, gotDSN, err := parseConnectionURL(tt.url)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseConnectionURL() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotDriver != tt.wantDriver {
+				t.Errorf("parseConnectionURL() gotDriver = %v, want %v", gotDriver, tt.wantDriver)
+			}
+			if gotDSN != tt.wantDSN {
+				t.Errorf("parseConnectionURL() gotDSN = %v, want %v", gotDSN, tt.wantDSN)
+			}
 		})
 	}
 }

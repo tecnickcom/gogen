@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
@@ -21,9 +22,13 @@ type CheckConnectionFunc func(ctx context.Context, db *sql.DB) error
 type SQLOpenFunc func(driverName, dataSourceName string) (*sql.DB, error)
 
 // Connect attempts to connect to a SQL database
-func Connect(ctx context.Context, driver, dsn string, opts ...Option) (*SQLConn, error) {
-	cfg := defaultConfig(driver, dsn)
+func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) {
+	driver, dsn, err := parseConnectionURL(url)
+	if err != nil {
+		return nil, err
+	}
 
+	cfg := defaultConfig(driver, dsn)
 	for _, applyOpt := range opts {
 		applyOpt(cfg)
 	}
@@ -126,4 +131,23 @@ func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+// parseConnectionURL attempts to extract the driver/dsn pair from a string in the format <DRIVER>://<DSN>
+// if only the DSN part is set, the driver will need to be specified via a configuration option
+func parseConnectionURL(url string) (string, string, error) {
+	if url == "" {
+		return "", "", nil
+	}
+
+	parts := strings.Split(url, "://")
+	if len(parts) == 1 {
+		return "", parts[0], nil
+	}
+
+	if len(parts) == 2 {
+		return parts[0], parts[1], nil
+	}
+
+	return "", "", fmt.Errorf("invalid connection string: %q", url)
 }

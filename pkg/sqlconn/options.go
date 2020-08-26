@@ -62,3 +62,12 @@ func WithConnMaxOpen(maxOpen int) Option {
 		cfg.connMaxOpen = maxOpen
 	}
 }
+
+// WithDefaultDriver sets the default driver to use if not included in the DSN
+func WithDefaultDriver(driver string) Option {
+	return func(cfg *config) {
+		if cfg.driver == "" {
+			cfg.driver = driver
+		}
+	}
+}
