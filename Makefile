@@ -183,4 +183,6 @@ tag:
 # Build and test the example
 .PHONY: example
 example:
-	cd examples/service && make clean deps mod qa build
+	cd examples/service && \
+	rm -rf vendor && \
+	make clean deps mod qa build

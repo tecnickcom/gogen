@@ -5,10 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nexmoinc/gosrvlib/pkg/config"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:gocognit
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -57,34 +59,43 @@ func TestNew(t *testing.T) {
 			wantOutput: matchErrorOutput,
 		},
 		{
-			name:    "fails with incomplete valid config and invalid override of log format",
+			name:    "fails with valid config and invalid override of log format",
 			osArgs:  []string{AppName, "-c", "../../resources/test/etc/srvxmplname/", "--logFormat", "invalid"},
 			wantErr: true,
 		},
 		{
-			name:    "fails with incomplete valid config and invalid override of log level",
+			name:    "fails with valid config and invalid override of log level",
 			osArgs:  []string{AppName, "-c", "../../resources/test/etc/srvxmplname/", "--logLevel", "invalid"},
+			wantErr: true,
+		},
+		{
+			name:    "attempts bootstrap with invalid configuration",
+			osArgs:  []string{AppName, "-c", "../../resources/test/etc/invalid/"},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, _ := New("0.0.0-test", "0")
-			require.NotNil(t, cmd)
+			config.Reset()
 
 			oldOsArgs := os.Args
 			defer func() { os.Args = oldOsArgs }()
 			os.Args = tt.osArgs
 
 			// execute the main function
-			var err error
-			out := testutil.CaptureOutput(t, func() {
-				err = cmd.Execute()
-			})
+			var out string
+			cmd, err := New("0.0.0-test", "0")
+			if err == nil {
+				require.NotNil(t, cmd)
 
-			if tt.wantOutput != nil {
-				tt.wantOutput(t, out)
+				out = testutil.CaptureOutput(t, func() {
+					err = cmd.Execute()
+				})
+
+				if tt.wantOutput != nil {
+					tt.wantOutput(t, out)
+				}
 			}
 
 			if (err != nil) != tt.wantErr {

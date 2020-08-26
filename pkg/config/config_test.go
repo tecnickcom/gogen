@@ -1064,3 +1064,13 @@ func TestLoad(t *testing.T) {
 		})
 	}
 }
+
+func TestReset(t *testing.T) {
+	oldLocalViper := localViper
+	oldRemoteViper := remoteViper
+
+	Reset()
+
+	require.NotEqual(t, oldLocalViper, localViper)
+	require.NotEqual(t, oldRemoteViper, remoteViper)
+}
