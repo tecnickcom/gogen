@@ -1,6 +1,6 @@
 module github.com/nexmoinc/gosrvlib-sample-service
 
-go 1.14
+go 1.15
 
 replace github.com/nexmoinc/gosrvlib => ../..
 
