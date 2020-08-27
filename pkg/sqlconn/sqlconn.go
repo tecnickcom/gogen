@@ -10,8 +10,6 @@ import (
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
-
-	_ "github.com/go-sql-driver/mysql" // required for the MySQL driver
 )
 
 // ConnectFunc is the function called to perform the actual DB connection
