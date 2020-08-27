@@ -40,7 +40,7 @@ func BuildInClauseInt(field string, in []int) string {
 	for i, v := range in {
 		values[i] = strconv.Itoa(v)
 	}
-	return "'" + field + "' IN (" + strings.Join(values, ",") + ")"
+	return "`" + field + "` IN (" + strings.Join(values, ",") + ")"
 }
 
 // BuildInClauseString prepares a SQL IN clause with the given list of string values
@@ -53,5 +53,5 @@ func BuildInClauseString(field string, in []string) string {
 	for _, v := range in {
 		values = append(values, "'"+v+"'")
 	}
-	return "'" + field + "' IN (" + strings.Join(values, ",") + ")"
+	return "`" + field + "` IN (" + strings.Join(values, ",") + ")"
 }
