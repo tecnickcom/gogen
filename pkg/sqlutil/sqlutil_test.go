@@ -169,13 +169,13 @@ func TestBuildInClauseInt(t *testing.T) {
 			name:   "expect single value",
 			field:  "test_2",
 			values: []int{99},
-			want:   "'test_2' IN (99)",
+			want:   "`test_2` IN (99)",
 		},
 		{
 			name:   "expect multiple values",
 			field:  "test_3",
-			values: []int{10, 20},
-			want:   "'test_3' IN (10,20)",
+			values: []int{11, 13, 17},
+			want:   "`test_3` IN (11,13,17)",
 		},
 	}
 	for _, tt := range tests {
@@ -206,13 +206,13 @@ func TestBuildInClauseString(t *testing.T) {
 			name:   "expect single value",
 			field:  "test_2",
 			values: []string{"A"},
-			want:   "'test_2' IN ('A')",
+			want:   "`test_2` IN ('A')",
 		},
 		{
 			name:   "expect multiple values",
 			field:  "test_3",
 			values: []string{"B", "C"},
-			want:   "'test_3' IN ('B','C')",
+			want:   "`test_3` IN ('B','C')",
 		},
 	}
 	for _, tt := range tests {
