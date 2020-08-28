@@ -15,16 +15,10 @@ import (
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 	return func(ctx context.Context, l *zap.Logger) error {
 		defaultServerOpts := []httpserver.Option{
-			// NOTE: Uncomment to use the JSendX router for 404, 405 and panic handlers
-			// httpserver.WithRouter(jsendx.NewRouter(appInfo)),
-
 			httpserver.WithRoutesIndexHandlerFunc(jsendx.DefaultRoutesIndexHandler(appInfo)),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
-
-			// NOTE: Uncomment this line to enable custom health check reporting
-			// httpserver.WithStatusHandlerFunc(healthCheckHandler),
-			httpserver.WithStatusHandlerFunc(jsendx.DefaultStatusHandler(appInfo)),
 		}
+		statusHandler := httpserver.WithStatusHandlerFunc(jsendx.DefaultStatusHandler(appInfo))
 
 		// We assume the service is disabled and override the service binder if required
 		serviceBinder := httpserver.NopBinder()
@@ -55,24 +49,25 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 			// // )
 			//
 			// // override the default healthcheck handler
-			// defaultServerOpts = append(defaultServerOpts, httpserver.WithStatusHandlerFunc(healthCheckHandler.ServeHTTP))
+			// statusHandler = httpserver.WithStatusHandlerFunc(healthCheckHandler.ServeHTTP)
 		}
 
+		defaultServerOpts = append(defaultServerOpts, statusHandler)
 		httpServiceOpts := append(defaultServerOpts, httpserver.WithServerAddr(cfg.ServerAddress))
 
 		// Use a separate server for monitoring routes if monitor_address and server_address are different
 		if cfg.MonitoringAddress != cfg.ServerAddress {
-			// Disable default routes as the monitoring routes on a separate server instance
+			// Disable default routes as the monitoring routes are on a separate server instance
 			httpServiceOpts = append(httpServiceOpts, httpserver.WithDisableDefaultRoutes())
 
-			// Prepare monitoring options
+			// start monitoring server
 			httpMonitoringOpts := append(defaultServerOpts, httpserver.WithServerAddr(cfg.MonitoringAddress))
-
 			if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
 				return fmt.Errorf("error starting monitoring HTTP server: %w", err)
 			}
 		}
 
+		// start service server
 		if err := httpserver.Start(ctx, serviceBinder, httpServiceOpts...); err != nil {
 			return fmt.Errorf("error starting service HTTP server: %w", err)
 		}
