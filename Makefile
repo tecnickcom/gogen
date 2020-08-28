@@ -128,6 +128,7 @@ test: ensuretarget
 .PHONY: format
 format:
 	@find $(SRCDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
+	cd examples/service && make format
 
 # Generate the coverage report
 .PHONY: coverage
