@@ -33,13 +33,13 @@ func TestWithEnableDefaultRoutes(t *testing.T) {
 	require.Equal(t, []defaultRoute{IndexRoute, MetricsRoute}, cfg.defaultEnabledRoutes)
 }
 
-func TestWithDisableDefaultRoutes(t *testing.T) {
+func TestWithEnableAllDefaultRoutes(t *testing.T) {
 	t.Parallel()
 
 	cfg := &config{}
-	err := WithDisableDefaultRoutes()(cfg)
+	err := WithEnableAllDefaultRoutes()(cfg)
 	require.NoError(t, err)
-	require.Nil(t, cfg.defaultEnabledRoutes)
+	require.Equal(t, allDefaultRoutes, cfg.defaultEnabledRoutes)
 }
 
 func TestWithRouter(t *testing.T) {

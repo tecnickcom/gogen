@@ -23,7 +23,6 @@ func TestSend(t *testing.T) {
 		ProgramName:    "test",
 		ProgramVersion: "1.2.3",
 		ProgramRelease: "12345",
-		ServerAddress:  "/api/test",
 	}
 
 	rr := httptest.NewRecorder()
@@ -38,12 +37,11 @@ func TestSend(t *testing.T) {
 	var okResp Response
 	_ = json.Unmarshal(body, &okResp)
 
-	require.Equal(t, "test", okResp.Program, "uncexpected response: %s", body)
-	require.Equal(t, "1.2.3", okResp.Version, "uncexpected response: %s", body)
-	require.Equal(t, "12345", okResp.Release, "uncexpected response: %s", body)
-	require.Equal(t, "/api/test", okResp.URL, "uncexpected response: %s", body)
-	require.Equal(t, "OK", okResp.Message, "uncexpected response: %s", body)
-	require.Equal(t, "hello test", okResp.Data, "uncexpected response: %s", body)
+	require.Equal(t, "test", okResp.Program, "unexpected response: %s", body)
+	require.Equal(t, "1.2.3", okResp.Version, "unexpected response: %s", body)
+	require.Equal(t, "12345", okResp.Release, "unexpected response: %s", body)
+	require.Equal(t, "OK", okResp.Message, "unexpected response: %s", body)
+	require.Equal(t, "hello test", okResp.Data, "unexpected response: %s", body)
 
 	// add coverage for error handling
 	mockWriter := mocks.NewMockTestHTTPResponseWriter(gomock.NewController(t))
@@ -101,7 +99,6 @@ func TestNewRouter(t *testing.T) {
 				ProgramName:    "test",
 				ProgramVersion: "1.2.3",
 				ProgramRelease: "12345",
-				ServerAddress:  "/api/test",
 			}
 			r := NewRouter(params)
 
@@ -138,7 +135,7 @@ func TestDefaultStatusHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.4.5\",\"release\":\"1\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.4.5\",\"release\":\"1\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 func TestDefaultPingHandler(t *testing.T) {
@@ -161,7 +158,7 @@ func TestDefaultPingHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"4.5.6\",\"release\":\"2\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"4.5.6\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 func TestDefaultRoutesIndexHandler(t *testing.T) {
@@ -198,7 +195,7 @@ func TestDefaultRoutesIndexHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, `{"program":"Test","version":"5.6.7","release":"3","url":"","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":{"routes":[{"method":"GET","path":"/get","description":"Get endpoint"},{"method":"POST","path":"/post","description":"Post endpoint"}]}}
+	require.Equal(t, `{"program":"Test","version":"5.6.7","release":"3","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":{"routes":[{"method":"GET","path":"/get","description":"Get endpoint"},{"method":"POST","path":"/post","description":"Post endpoint"}]}}
 `, body)
 }
 
@@ -221,5 +218,5 @@ func TestHealthCheckResultWriter(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.7.8\",\"release\":\"4\",\"url\":\"\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.7.8\",\"release\":\"4\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
 }

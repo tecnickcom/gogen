@@ -176,7 +176,7 @@ func TestStart(t *testing.T) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
 			},
 			setupRouter: func(r *mocks.MockRouter) {
-				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(5)
+				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			failListenPort: 12345,
 			wantErr:        true,
@@ -186,6 +186,7 @@ func TestStart(t *testing.T) {
 			opts: []Option{
 				WithServerAddr(":11111"),
 				WithShutdownTimeout(1 * time.Millisecond),
+				WithEnableAllDefaultRoutes(),
 			},
 			setupBinder: func(b *mocks.MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
@@ -228,6 +229,7 @@ YlAqGKDZ+A+l
 -----END PRIVATE KEY-----`)),
 				WithServerAddr(":22222"),
 				WithShutdownTimeout(1 * time.Millisecond),
+				WithEnableAllDefaultRoutes(),
 			},
 			setupBinder: func(b *mocks.MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)

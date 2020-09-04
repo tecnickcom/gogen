@@ -31,12 +31,6 @@ func New(version, release string) (*cobra.Command, error) {
 		// initialize seed for random ID generator
 		_ = uid.InitRandSeed()
 
-		appInfo := &jsendx.AppInfo{
-			ProgramName:    AppName,
-			ProgramVersion: version,
-			ProgramRelease: release,
-		}
-
 		// Read CLI configuration
 		cfg := &appConfig{}
 		if err := config.Load(AppName, argConfigDir, appEnvPrefix, cfg); err != nil {
@@ -55,6 +49,12 @@ func New(version, release string) (*cobra.Command, error) {
 		l, err := logging.NewDefaultLogger(AppName, version, release, cfg.Log.Format, cfg.Log.Level)
 		if err != nil {
 			return fmt.Errorf("failed configuring logger: %w", err)
+		}
+
+		appInfo := &jsendx.AppInfo{
+			ProgramName:    AppName,
+			ProgramVersion: version,
+			ProgramRelease: release,
 		}
 
 		// Boostrap application

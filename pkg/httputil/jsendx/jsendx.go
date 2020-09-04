@@ -18,7 +18,6 @@ type Response struct {
 	Program   string          `json:"program"`   // Program name
 	Version   string          `json:"version"`   // Program version
 	Release   string          `json:"release"`   // Program release number
-	URL       string          `json:"url"`       // Public URL of this service
 	DateTime  string          `json:"datetime"`  // Human-readable date and time when the event occurred
 	Timestamp int64           `json:"timestamp"` // Machine-readable UTC timestamp in nanoseconds since EPOCH
 	Status    httputil.Status `json:"status"`    // Status code (error|fail|success)
@@ -32,7 +31,6 @@ type AppInfo struct {
 	ProgramName    string
 	ProgramVersion string
 	ProgramRelease string
-	ServerAddress  string
 }
 
 // Wrap sends an Response object.
@@ -43,7 +41,6 @@ func Wrap(statusCode int, info *AppInfo, data interface{}) *Response {
 		Program:   info.ProgramName,
 		Version:   info.ProgramVersion,
 		Release:   info.ProgramRelease,
-		URL:       info.ServerAddress,
 		DateTime:  now.Format(time.RFC3339),
 		Timestamp: now.UnixNano(),
 		Status:    httputil.Status(statusCode),

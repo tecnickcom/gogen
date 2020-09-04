@@ -25,6 +25,8 @@ const (
 	StatusRoute defaultRoute = "status"
 )
 
+var allDefaultRoutes = []defaultRoute{IndexRoute, MetricsRoute, PingRoute, PprofRoute, StatusRoute}
+
 func newDefaultRoutes(cfg *config) []route.Route {
 	routes := make([]route.Route, 0)
 

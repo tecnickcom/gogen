@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/nexmoinc/gosrvlib-sample-service/internal/httphandler"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
@@ -15,7 +16,7 @@ import (
 // bind is the entry point of the service, this is where the wiring of all components happens
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 	return func(ctx context.Context, l *zap.Logger) error {
-		var statusHandler httpserver.Option
+		var statusHandler http.HandlerFunc
 
 		// We assume the service is disabled and override the service binder if required
 		serviceBinder := httpserver.NopBinder()
@@ -34,32 +35,28 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 				},
 				healthcheck.WithResultWriter(jsendx.HealthCheckResultWriter(appInfo)),
 			)
-			statusHandler = httpserver.WithStatusHandlerFunc(healthCheckHandler.ServeHTTP)
+			statusHandler = healthCheckHandler.ServeHTTP
 		} else {
-			statusHandler = httpserver.WithStatusHandlerFunc(jsendx.DefaultStatusHandler(appInfo))
+			statusHandler = jsendx.DefaultStatusHandler(appInfo)
 		}
 
-		defaultServerOpts := []httpserver.Option{
+		// start monitoring server
+		httpMonitoringOpts := []httpserver.Option{
+			httpserver.WithServerAddr(cfg.MonitoringAddress),
+			httpserver.WithEnableAllDefaultRoutes(),
+			httpserver.WithRouter(jsendx.NewRouter(appInfo)), // set default 404, 405 and panic handlers
 			httpserver.WithRoutesIndexHandlerFunc(jsendx.DefaultRoutesIndexHandler(appInfo)),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
-			statusHandler,
+			httpserver.WithStatusHandlerFunc(statusHandler),
 		}
-
-		httpServiceOpts := append(defaultServerOpts, httpserver.WithServerAddr(cfg.ServerAddress))
-
-		// Use a separate server for monitoring routes if monitor_address and server_address are different
-		if cfg.MonitoringAddress != cfg.ServerAddress {
-			// Disable default routes as the monitoring routes are on a separate server instance
-			httpServiceOpts = append(httpServiceOpts, httpserver.WithDisableDefaultRoutes())
-
-			// start monitoring server
-			httpMonitoringOpts := append(defaultServerOpts, httpserver.WithServerAddr(cfg.MonitoringAddress))
-			if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
-				return fmt.Errorf("error starting monitoring HTTP server: %w", err)
-			}
+		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
+			return fmt.Errorf("error starting monitoring HTTP server: %w", err)
 		}
 
 		// start service server
+		httpServiceOpts := []httpserver.Option{
+			httpserver.WithServerAddr(cfg.ServerAddress),
+		}
 		if err := httpserver.Start(ctx, serviceBinder, httpServiceOpts...); err != nil {
 			return fmt.Errorf("error starting service HTTP server: %w", err)
 		}

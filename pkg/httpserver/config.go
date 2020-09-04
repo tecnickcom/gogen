@@ -24,7 +24,6 @@ const (
 var (
 	defaultMetricsHandler = promhttp.Handler().ServeHTTP
 	defaultPprofHandler   = profiling.PProfHandler
-	defaultEnabledRoutes  = []defaultRoute{IndexRoute, MetricsRoute, PingRoute, PprofRoute, StatusRoute}
 )
 
 // RouteIndexHandlerFunc is a type alias for the route index function
@@ -32,7 +31,7 @@ type RouteIndexHandlerFunc func(routes []route.Route) http.HandlerFunc
 
 func defaultConfig() *config {
 	return &config{
-		defaultEnabledRoutes:  defaultEnabledRoutes,
+		defaultEnabledRoutes:  nil,
 		metricsHandlerFunc:    defaultMetricsHandler,
 		pingHandlerFunc:       defaultPingHandler,
 		pprofHandlerFunc:      defaultPprofHandler,

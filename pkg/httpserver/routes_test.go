@@ -10,7 +10,7 @@ import (
 
 func Test_newDefaultRoutes(t *testing.T) {
 	cfg := &config{
-		defaultEnabledRoutes: defaultEnabledRoutes,
+		defaultEnabledRoutes: allDefaultRoutes,
 		metricsHandlerFunc:   func(w http.ResponseWriter, r *http.Request) {},
 		pingHandlerFunc:      func(w http.ResponseWriter, r *http.Request) {},
 		pprofHandlerFunc:     func(w http.ResponseWriter, r *http.Request) {},
