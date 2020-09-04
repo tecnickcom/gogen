@@ -3,6 +3,7 @@ package testutil
 import (
 	"context"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -19,4 +20,13 @@ func ContextWithLogObserver(level zapcore.Level) (context.Context, *observer.Obs
 	core, logs := observer.New(level)
 	l := zap.New(core)
 	return logging.WithLogger(context.Background(), l), logs
+}
+
+// ContextWithHTTPRouterParams creates a context copy containing map of URL path segments
+func ContextWithHTTPRouterParams(ctx context.Context, params map[string]string) context.Context {
+	var m httprouter.Params
+	for k, v := range params {
+		m = append(m, httprouter.Param{Key: k, Value: v})
+	}
+	return context.WithValue(ctx, httprouter.ParamsKey, m)
 }
