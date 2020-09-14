@@ -16,14 +16,13 @@ var (
 
 func main() {
 	_, _ = logging.NewDefaultLogger(cli.AppName, ProgramVersion, ProgramRelease, "json", "debug")
-
 	rootCmd, err := cli.New(ProgramVersion, ProgramRelease)
 	if err != nil {
-		zap.L().Fatal("UNABLE TO START THE PROGRAM", zap.Error(err))
+		logging.LogFatal("UNABLE TO START THE PROGRAM", zap.Error(err))
 		return
 	}
 	// execute the root command and log errors (if any)
 	if err = rootCmd.Execute(); err != nil {
-		zap.L().Fatal("UNABLE TO RUN THE COMMAND", zap.Error(err))
+		logging.LogFatal("UNABLE TO RUN THE COMMAND", zap.Error(err))
 	}
 }
