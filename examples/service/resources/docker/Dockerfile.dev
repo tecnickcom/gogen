@@ -11,6 +11,6 @@ rpm \
 dh-make \
 dh-golang \
 upx-ucl \
-python \
-python-pip \
-&& pip install --upgrade --user jsonschema
+python3 \
+python3-pip \
+&& pip3 install --upgrade --user jsonschema
