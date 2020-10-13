@@ -10,12 +10,13 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
 // bind is the entry point of the service, this is where the wiring of all components happens
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
-	return func(ctx context.Context, l *zap.Logger) error {
+	return func(ctx context.Context, l *zap.Logger, r prometheus.Registerer) error {
 		var statusHandler http.HandlerFunc
 
 		// We assume the service is disabled and override the service binder if required

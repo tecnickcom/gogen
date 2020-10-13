@@ -11,6 +11,7 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -35,14 +36,14 @@ func TestBootstrap(t *testing.T) {
 		},
 		{
 			name: "should fail due to bind function",
-			bindFunc: func(context.Context, *zap.Logger) error {
+			bindFunc: func(context.Context, *zap.Logger, prometheus.Registerer) error {
 				return fmt.Errorf("bind error")
 			},
 			wantErr: true,
 		},
 		{
 			name: "should succeed",
-			bindFunc: func(context.Context, *zap.Logger) error {
+			bindFunc: func(context.Context, *zap.Logger, prometheus.Registerer) error {
 				return nil
 			},
 			stopAfter: 500 * time.Millisecond,

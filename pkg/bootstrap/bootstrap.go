@@ -10,14 +10,18 @@ import (
 	"syscall"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
 // BindFunc represents the function responsible to wire up all components of the application
-type BindFunc func(context.Context, *zap.Logger) error
+type BindFunc func(context.Context, *zap.Logger, prometheus.Registerer) error
 
 // CreateLoggerFunc creates a new logger
 type CreateLoggerFunc func() (*zap.Logger, error)
+
+// CreateMetricRegisterFunc creates a new metrics register
+type CreateMetricRegisterFunc func() prometheus.Registerer
 
 // Bootstrap is the function in charge of configuring the core components
 // of an application and handling the lifecycle of its context
@@ -42,7 +46,7 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	defer logging.Sync(l)
 
 	l.Info("binding application components")
-	if err := bindFn(ctx, l); err != nil {
+	if err := bindFn(ctx, l, cfg.createMetricRegisterFunc()); err != nil {
 		return fmt.Errorf("application bootstrap error: %w", err)
 	}
 	l.Info("application started")

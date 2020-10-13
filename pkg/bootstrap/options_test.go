@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -43,4 +44,15 @@ func TestWithCreateLoggerFunc(t *testing.T) {
 	cfg := &config{}
 	WithCreateLoggerFunc(v)(cfg)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createLoggerFunc).Pointer())
+}
+
+func TestWithCreateMetricRegisterFunc(t *testing.T) {
+	t.Parallel()
+
+	v := func() prometheus.Registerer {
+		return nil
+	}
+	cfg := &config{}
+	WithCreateMetricRegisterFunc(v)(cfg)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createMetricRegisterFunc).Pointer())
 }

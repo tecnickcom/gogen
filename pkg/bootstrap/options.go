@@ -31,3 +31,10 @@ func WithCreateLoggerFunc(fn CreateLoggerFunc) Option {
 		cfg.createLoggerFunc = fn
 	}
 }
+
+// WithCreateMetricRegisterFunc overrides the default metrics register (useful for testing)
+func WithCreateMetricRegisterFunc(fn CreateMetricRegisterFunc) Option {
+	return func(cfg *config) {
+		cfg.createMetricRegisterFunc = fn
+	}
+}
