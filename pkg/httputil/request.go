@@ -1,6 +1,7 @@
 package httputil
 
 import (
+	"encoding/base64"
 	"net/http"
 	"strings"
 
@@ -20,4 +21,9 @@ func HeaderOrDefault(r *http.Request, key string, defaultValue string) string {
 func PathParam(r *http.Request, name string) string {
 	v := httprouter.ParamsFromContext(r.Context()).ByName(name)
 	return strings.TrimLeft(v, "/")
+}
+
+// AddBasicAuth decorates the provided http.Request with Basic Authorization
+func AddBasicAuth(apiKey, apiSecret string, r *http.Request) {
+	r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(apiKey+":"+apiSecret)))
 }

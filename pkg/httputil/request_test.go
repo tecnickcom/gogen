@@ -73,3 +73,14 @@ func TestPathParam(t *testing.T) {
 		})
 	}
 }
+
+func TestAddBasicAuth(t *testing.T) {
+	t.Parallel()
+
+	r, _ := http.NewRequest(http.MethodGet, "", nil)
+	httputil.AddBasicAuth("key", "secret", r)
+
+	wanted, _ := http.NewRequest(http.MethodGet, "", nil)
+	wanted.Header.Set("Authorization", "Basic a2V5OnNlY3JldA==")
+	require.Equal(t, r, wanted)
+}
