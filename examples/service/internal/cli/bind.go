@@ -57,6 +57,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 		// start service server
 		httpServiceOpts := []httpserver.Option{
 			httpserver.WithServerAddr(cfg.ServerAddress),
+			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
 		}
 		if err := httpserver.Start(ctx, serviceBinder, httpServiceOpts...); err != nil {
 			return fmt.Errorf("error starting service HTTP server: %w", err)
