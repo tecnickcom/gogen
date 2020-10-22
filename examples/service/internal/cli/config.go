@@ -8,16 +8,16 @@ import (
 
 const (
 	// AppName is the name of the application executable
-	AppName = "srvxmplname"
+	AppName = "gosrvlibexample"
 
 	// appEnvPrefix is the prefix of the configuration environment variables
-	appEnvPrefix = "SRVXMPLENVPREFIX"
+	appEnvPrefix = "GOSRVLIBEXAMPLE"
 
 	// appShortDesc is the short description of the application
-	appShortDesc = "srvxmplshortdesc"
+	appShortDesc = "gosrvlibexampleshortdesc"
 
 	// appLongDesc is the long description of the application
-	appLongDesc = "srvxmpllongdesc"
+	appLongDesc = "gosrvlibexamplelongdesc"
 )
 
 // appConfig contains the full application configuration

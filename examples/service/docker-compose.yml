@@ -1,0 +1,24 @@
+version: '3.3'
+
+services:
+  gosrvlibexample_integration:
+    container_name: gosrvlibexample_integration
+    build:
+      context: .
+      dockerfile: test.integration.Dockerfile
+    environment:
+      DEPLOY_ENV: "int"
+    depends_on:
+      - gosrvlibexample
+    volumes:
+      - ./target/binutil/dockerize:/usr/bin/dockerize
+
+  gosrvlibexample:
+    image: gosrvlibexample/gosrvlibexample:latest
+    container_name: gosrvlibexample
+    restart: always
+    env_file:
+      - target/gosrvlibexample.integration.env
+    entrypoint: ["/usr/bin/dockerize", "/usr/bin/gosrvlibexample"]
+    volumes:
+      - ./target/binutil/dockerize:/usr/bin/dockerize

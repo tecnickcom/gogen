@@ -1,11 +1,11 @@
-# srvxmplname
+# gosrvlibexample
 
-*srvxmplshortdesc*
+*gosrvlibexampleshortdesc*
 
 * **category**    Application
-* **copyright**   2020 Vonage
+* **copyright**   2020 Author
 * **license**     see [LICENSE](LICENSE)
-* **link**        https://github.com/nexmoinc/srvxmplname
+* **link**        https://github.com/gosrvlibexample/gosrvlibexample
 
 -----------------------------------------------------------------
 
@@ -30,7 +30,7 @@
 <a name="description"></a>
 ## Description
 
-srvxmpllongdesc
+gosrvlibexamplelongdesc
 
 -----------------------------------------------------------------
 
@@ -100,7 +100,7 @@ make qa
 ## Usage
 
 ```bash
-srvxmplname [flags]
+gosrvlibexample [flags]
 
 Flags:
 
@@ -124,7 +124,7 @@ See [CONFIG.md](CONFIG.md).
 Once the application has being compiled with `make build`, it can be quickly tested:
 
 ```bash
-target/usr/bin/srvxmplname -c resources/test/etc/srvxmplname
+target/usr/bin/gosrvlibexample -c resources/test/etc/gosrvlibexample
 ```
 
 -----------------------------------------------------------------
@@ -140,7 +140,7 @@ This program logs the log messages in JSON format:
 	"datetime": "2020-07-28T13:24:58Z",
 	"timestamp": 1595942715776382171,
 	"msg": "Request",
-	"program": "srvxmplname",
+	"program": "gosrvlibexample",
 	"version": "0.0.0",
 	"release": "0",
     "hostname":"myserver",
@@ -190,10 +190,25 @@ pprof -seconds 10 -http=localhost:8182 http://INSTANCE_URL:PORT/pprof/profile
 
 -----------------------------------------------------------------
 
+<a name="openapi"></a>
+## OpenAPI
+
+The numberpools API is specified via the [OpenAPI 3](https://www.openapis.org/) file: `openapi.yaml`.
+
+The openapi file can be edited using the Swagger Editor:
+
+```
+docker pull swaggerapi/swagger-editor
+docker run -p 8056:8080 swaggerapi/swagger-editor
+```
+
+and pointing the Web browser to http://localhost:8056
+
+-----------------------------------------------------------------
 <a name="docker"></a>
 ## Docker
 
-To build a Docker scratch container for the srvxmplname executable binary execute the following command:
+To build a Docker scratch container for the gosrvlibexample executable binary execute the following command:
 ```
 make docker
 ```
@@ -202,17 +217,17 @@ make docker
 
 To manually create the container you can execute:
 ```
-docker build --tag="vonage/srvxmplnamedev" .
+docker build --tag="gosrvlibexample/gosrvlibexampledev" .
 ```
 
 To log into the newly created container:
 ```
-docker run -t -i vonage/srvxmplnamedev /bin/bash
+docker run -t -i gosrvlibexample/gosrvlibexampledev /bin/bash
 ```
 
 To get the container ID:
 ```
-CONTAINER_ID=`docker ps -a | grep vonage/srvxmplnamedev | cut -c1-12`
+CONTAINER_ID=`docker ps -a | grep gosrvlibexample/gosrvlibexampledev | cut -c1-12`
 ```
 
 To delete the newly created docker container:
@@ -222,7 +237,7 @@ docker rm -f $CONTAINER_ID
 
 To delete the docker image:
 ```
-docker rmi -f vonage/srvxmplnamedev
+docker rmi -f gosrvlibexample/gosrvlibexampledev
 ```
 
 To delete all containers

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "srvxmplname config",
-  "description": "JSON schema for srvxmplname configuration",
+  "title": "gosrvlibexample config",
+  "description": "JSON schema for gosrvlibexample configuration",
   "type": "object",
   "properties": {
     "remoteConfigProvider": {
@@ -21,12 +21,12 @@
       "default": ""
     },
     "remoteConfigPath": {
-      "description": "Remote configuration path in which to search for the configuration file (e.g. '/config/srvxmplname')",
+      "description": "Remote configuration path in which to search for the configuration file (e.g. '/config/gosrvlibexample')",
       "type": "string",
       "default": ""
     },
     "remoteConfigSecretKeyring": {
-      "description": "Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. '/etc/srvxmplname/configkey.gpg'); if empty a non secure connection will be used instead",
+      "description": "Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. '/etc/gosrvlibexample/configkey.gpg'); if empty a non secure connection will be used instead",
       "type": "string",
       "default": ""
     },

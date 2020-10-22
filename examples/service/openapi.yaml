@@ -1,0 +1,44 @@
+openapi: 3.0.3
+info:
+  title: gosrvlibexample
+  description: Public API
+  contact:
+    email: dev@example.com
+  license:
+    name: Internal use only. All rights reserved.
+    url: 'https://github.com/gosrvlibexample/gosrvlibexample/blob/main/LICENSE'
+  version: 1.0.0
+servers:
+  - url: 'https://gosrvlibexample:8081/'
+tags:
+  - name: ping
+    description: Ping this service
+  - name: uid
+    description: generate a random UID
+paths:
+  /ping:
+    get:
+      tags:
+        - ping
+      summary: Check if the service is reachable
+      responses:
+        '200':
+          description: The service is reachable
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: OK
+  /uid:
+    get:
+      tags:
+        - uid
+      summary: Generates a random UID
+      responses:
+        '200':
+          description: Random UID
+          content:
+            application/json:
+              schema:
+                type: string
+                description: UID

@@ -1,4 +1,4 @@
-module github.com/nexmoinc/gosrvlib-sample-service
+module github.com/gosrvlibexample/gosrvlibexample
 
 go 1.15
 

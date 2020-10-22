@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/nexmoinc/gosrvlib-sample-service/internal/httphandler"
+	"github.com/gosrvlibexample/gosrvlibexample/internal/httphandler"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"

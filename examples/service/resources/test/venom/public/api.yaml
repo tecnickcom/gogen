@@ -1,0 +1,34 @@
+version: "2"
+name: gosrvlibexample Public API tests
+vars:
+  gosrvlibexample.url: 'http://gosrvlibexample:8081'
+
+testcases:
+
+- name: wrong_endpoint
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gosrvlibexample.url}}/error'
+    assertions:
+    - result.statuscode ShouldEqual 404
+
+- name: ping
+  steps:
+    - type: http
+      ignore_verify_ssl optional: true
+      method: GET
+      url: '{{.gosrvlibexample.url}}/ping'
+      assertions:
+        - result.statuscode ShouldEqual 200
+
+- name: uid
+  steps:
+    - type: http
+      ignore_verify_ssl optional: true
+      method: GET
+      url: '{{.gosrvlibexample.url}}/uid'
+      assertions:
+        - result.statuscode ShouldEqual 200
+        - result.body ShouldNotBeEmpty

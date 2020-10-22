@@ -38,7 +38,7 @@ func (h *HTTPHandler) BindHTTP(_ context.Context) []route.Route {
 			Method:      http.MethodGet,
 			Path:        "/uid",
 			Handler:     h.handleGenUID,
-			Description: "Generates a random UID.",
+			Description: "Generates a random UID",
 		},
 	}
 }

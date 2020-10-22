@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/nexmoinc/gosrvlib-sample-service/internal/cli"
+	"github.com/gosrvlibexample/gosrvlibexample/internal/cli"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"

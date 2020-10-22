@@ -60,12 +60,12 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name:    "fails with valid config and invalid override of log format",
-			osArgs:  []string{AppName, "-c", "../../resources/test/etc/srvxmplname/", "--logFormat", "invalid"},
+			osArgs:  []string{AppName, "-c", "../../resources/test/etc/gosrvlibexample/", "--logFormat", "invalid"},
 			wantErr: true,
 		},
 		{
 			name:    "fails with valid config and invalid override of log level",
-			osArgs:  []string{AppName, "-c", "../../resources/test/etc/srvxmplname/", "--logLevel", "invalid"},
+			osArgs:  []string{AppName, "-c", "../../resources/test/etc/gosrvlibexample/", "--logLevel", "invalid"},
 			wantErr: true,
 		},
 		{

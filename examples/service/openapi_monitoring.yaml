@@ -1,0 +1,143 @@
+openapi: 3.0.3
+info:
+  title: gosrvlibexample
+  description: Monitoring API
+  contact:
+    email: dev@example.com
+  license:
+    name: Internal use only. All rights reserved.
+    url: 'https://github.com/gosrvlibexample/gosrvlibexample/blob/main/LICENSE'
+  version: 1.0.0
+servers:
+  - url: 'https://gosrvlibexample:8082/'
+tags:
+  - name: index
+    description: Service index
+  - name: ping
+    description: Ping this service
+  - name: status
+    description: Check this service health status
+  - name: metrics
+    description: Returns Prometheus metrics
+  - name: pprof
+    description: Returns pprof data
+paths:
+  /:
+    get:
+      tags:
+        - index
+      summary: Provides a summary of the service and available endpoints
+      responses:
+        '200':
+          description: The service is reachable
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        description: content
+                        properties:
+                          duration:
+                            type: number
+                            description: service uptime in seconds
+                          routes:
+                            type: array
+                            items:
+                              type: object
+  /ping:
+    get:
+      tags:
+        - ping
+      summary: Check if the service is reachable
+      responses:
+        '200':
+          description: The service is reachable
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/response'
+                  - type: object
+                    properties:
+                      data:
+                        type: string
+                        description: OK
+  /status:
+    get:
+      tags:
+        - status
+      summary: Returns the health status of this service
+      responses:
+        '200':
+          description: The service is healthy
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        description: content
+        '503':
+          description: One or more internal systems are not available
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        description: content
+  /metrics:
+    get:
+      tags:
+        - metrics
+      summary: Returns Prometheus metrics
+      responses:
+        '200':
+          description: Prometheus metrics
+  /pprof:
+    get:
+      tags:
+        - pprof
+      summary: Returns pprof profiling data
+      responses:
+        '200':
+          description: pprof profiling data
+components:
+  schemas:
+    response:
+      type: object
+      properties:
+        program:
+          type: string
+          description: program name (i.e. gosrvlibexample)
+        version:
+          type: string
+          description: service version number (e.g. "1.2.3")
+        release:
+          type: string
+          description: service release number (e.g. "13")
+        datetime:
+          type: string
+          description: readable date-time (RFC3339)
+        timestamp:
+          type: integer
+          description: timestamp in nanoseconds
+        status:
+          type: string
+          description: http status code description
+        code:
+          type: integer
+          description: http status code
+        message:
+          type: string
+          description: response message

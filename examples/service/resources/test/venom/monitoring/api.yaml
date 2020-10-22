@@ -1,0 +1,89 @@
+version: "2"
+name: gosrvlibexample monitoring API tests
+vars:
+  gosrvlibexample.url: 'http://gosrvlibexample:8082'
+
+testcases:
+
+- name: wrong_endpoint
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gosrvlibexample.url}}/error'
+    assertions:
+    - result.statuscode ShouldEqual 404
+    - result.bodyjson.status ShouldEqual "fail"
+    - result.bodyjson.code ShouldEqual 404
+    - result.bodyjson.message ShouldEqual "Not Found"
+
+- name: wrong_method
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: POST
+    url: '{{.gosrvlibexample.url}}/ping'
+    assertions:
+    - result.statuscode ShouldEqual 405
+    - result.bodyjson.status ShouldEqual "fail"
+    - result.bodyjson.code ShouldEqual 405
+    - result.bodyjson.message ShouldEqual "Method Not Allowed"
+
+- name: index
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gosrvlibexample.url}}'
+    assertions:
+    - result.statuscode ShouldEqual 200
+    - result.bodyjson.code ShouldEqual 200
+    - result.bodyjson.data ShouldNotBeEmpty
+    - result.body ShouldContainSubstring '"routes":[{'
+    - result.body ShouldContainSubstring '"method":"GET"'
+    - result.body ShouldContainSubstring '"path":"/ping"'
+    - result.body ShouldContainSubstring '"description":"'
+
+- name: metrics
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gosrvlibexample.url}}/metrics'
+    assertions:
+    - result.statuscode ShouldEqual 200
+    - result.body ShouldContainSubstring '# HELP'
+    - result.body ShouldContainSubstring '# TYPE'
+
+- name: ping
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gosrvlibexample.url}}/ping'
+    assertions:
+    - result.statuscode ShouldEqual 200
+    - result.bodyjson.program ShouldEqual "gosrvlibexample"
+    - result.bodyjson.status ShouldEqual "success"
+    - result.bodyjson.code ShouldEqual 200
+    - result.bodyjson.message ShouldEqual "OK"
+    - result.bodyjson.data ShouldEqual "OK"
+
+- name: status
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gosrvlibexample.url}}/status'
+    assertions:
+    - result.statuscode ShouldEqual 200
+    - result.bodyjson.code ShouldEqual 200
+
+- name: pprof
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gosrvlibexample.url}}/pprof'
+    assertions:
+    - result.statuscode ShouldEqual 200
