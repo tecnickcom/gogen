@@ -114,6 +114,7 @@ func WithTLSCertData(pemCert, pemKey []byte) Option {
 			return fmt.Errorf("failed configuring TLS: %w", err)
 		}
 		cfg.tlsConfig = &tls.Config{
+			MinVersion:   tls.VersionTLS12,
 			Certificates: []tls.Certificate{cert},
 		}
 		return nil

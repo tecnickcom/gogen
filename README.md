@@ -48,7 +48,7 @@ make dbuild
 
 An arbitrary make target can be executed inside a Docker container by specifying the "MAKETARGET" parameter:
 ```
-MAKETARGET='qa' make dbuild
+MAKETARGET='deps mod qa example' make dbuild
 ```
 The list of make targets can be obtained by typing ```make```
 
@@ -83,14 +83,9 @@ make format
 <a name="runtest"></a>
 ## Running all tests
 
-Before committing the code, please check if it passes all tests using
+Before committing the code, please format it and check if it passes all tests using
 ```bash
-make qa
-```
-
-To run the example service tests:
-```bash
-make example
+make format deps mod qa example
 ```
 
 -----------------------------------------------------------------

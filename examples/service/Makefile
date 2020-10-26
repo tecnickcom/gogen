@@ -242,7 +242,7 @@ mod:
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.27.0
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.32.0
 	(GO111MODULE=off $(GO) get github.com/jstemmer/go-junit-report)
 	(GO111MODULE=off $(GO) get github.com/rakyll/gotest)
 	(GO111MODULE=off $(GO) get github.com/golang/mock/mockgen)

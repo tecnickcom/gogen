@@ -144,7 +144,7 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 
 	// support environment variables for the remote configuration
 	v.AutomaticEnv()
-	v.SetEnvPrefix(strings.Replace(envPrefix, "-", "_", -1)) // will be uppercased automatically
+	v.SetEnvPrefix(strings.ReplaceAll(envPrefix, "-", "_")) // will be uppercased automatically
 	envVar := []string{
 		keyRemoteConfigProvider,
 		keyRemoteConfigEndpoint,
