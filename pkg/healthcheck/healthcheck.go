@@ -1,3 +1,6 @@
+// Package healthcheck provides a simple way to define health checks
+// for external services or components.
+// These checks will be aggregated in the /status endpoint.
 package healthcheck
 
 import (

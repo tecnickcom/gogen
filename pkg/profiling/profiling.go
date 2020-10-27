@@ -1,3 +1,4 @@
+// Package profiling is used to expose runtime profiling data (pprof).
 package profiling
 
 import (

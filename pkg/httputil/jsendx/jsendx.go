@@ -1,3 +1,4 @@
+// Package jsendx implements a custom JSEND model to wrap HTTP responses in a JSON object with default fields.
 package jsendx
 
 import (

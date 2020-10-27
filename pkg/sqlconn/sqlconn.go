@@ -1,4 +1,4 @@
-// Package sqlconn provides a simple way to manage a database connection
+// Package sqlconn provides a simple way to manage a SQL-based database connection.
 package sqlconn
 
 import (
@@ -139,15 +139,12 @@ func parseConnectionURL(url string) (string, string, error) {
 	if url == "" {
 		return "", "", nil
 	}
-
 	parts := strings.Split(url, "://")
-	if len(parts) == 1 {
+	switch len(parts) {
+	case 1:
 		return "", parts[0], nil
-	}
-
-	if len(parts) == 2 {
+	case 2:
 		return parts[0], parts[1], nil
 	}
-
 	return "", "", fmt.Errorf("invalid connection string: %q", url)
 }

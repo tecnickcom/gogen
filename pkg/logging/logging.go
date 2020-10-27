@@ -1,7 +1,7 @@
 //go:generate mockgen -package mocks -destination ../internal/mocks/logging_mocks.go . Syncer
 
 // Package logging provides an interface to configure and use the logging framework
-// in a consistent way across multiple applications
+// in a consistent way across multiple applications.
 package logging
 
 import (

@@ -1,3 +1,4 @@
+// Package route defines the endpoints for the HTTP server
 package route
 
 import (

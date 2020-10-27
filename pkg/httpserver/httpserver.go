@@ -1,5 +1,6 @@
 //go:generate mockgen -package mocks -destination ../internal/mocks/httpserver_mocks.go . Router,Binder
 
+// Package httpserver defines a default HTTP server with common routes.
 package httpserver
 
 import (

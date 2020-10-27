@@ -68,7 +68,6 @@ func Test_configureConfigSearchPath(t *testing.T) {
 			setupMocks: func(m *mocks.MockViper) {
 				m.EXPECT().AddConfigPath("../resources/test/etc/test/")
 				m.EXPECT().AddConfigPath("./")
-				m.EXPECT().AddConfigPath("cli/")
 				m.EXPECT().AddConfigPath("$HOME/.test/")
 				m.EXPECT().AddConfigPath("/etc/test/")
 			},
@@ -80,7 +79,6 @@ func Test_configureConfigSearchPath(t *testing.T) {
 				m.EXPECT().AddConfigPath("/config_source_test/")
 				m.EXPECT().AddConfigPath("../resources/test/etc/test/")
 				m.EXPECT().AddConfigPath("./")
-				m.EXPECT().AddConfigPath("cli/")
 				m.EXPECT().AddConfigPath("$HOME/.test/")
 				m.EXPECT().AddConfigPath("/etc/test/")
 			},

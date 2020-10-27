@@ -30,10 +30,10 @@ type Status int
 // MarshalJSON implements the custom marshaling function for the json encoder
 func (sc Status) MarshalJSON() ([]byte, error) {
 	s := StatusSuccess
-	if sc >= 400 {
+	if sc >= http.StatusBadRequest { // 400+
 		s = StatusFail
 	}
-	if sc >= 500 {
+	if sc >= http.StatusInternalServerError { // 500+
 		s = StatusError
 	}
 	return json.Marshal(s)
@@ -85,7 +85,7 @@ func logResponse(ctx context.Context, statusCode int, data interface{}) {
 		zap.Any("response_data", data),
 	)
 
-	if statusCode >= 400 {
+	if statusCode >= http.StatusBadRequest { // 400+
 		reqLog.Error("Request")
 	} else {
 		reqLog.Debug("Request")

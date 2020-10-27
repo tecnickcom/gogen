@@ -2,7 +2,10 @@
 
 *Go Service Library*
 
-[![Build Status](https://travis-ci.com/nexmoinc/gosrvlib.svg?token=YHpDM41jM29w1XFFg2HR&branch=main)](https://travis-ci.com/nexmoinc/gosrvlib?token=YHpDM41jM29w1XFFg2HR&branch=main)
+[![Build Status](https://travis-ci.org/nexmoinc/gosrvlib.svg?branch=main)](https://travis-ci.org/nexmoinc/gosrvlib?branch=main)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nexmoinc/gosrvlib)](https://goreportcard.com/report/github.com/nexmoinc/gosrvlib)
+[![GoDoc](https://godoc.org/github.com/nexmoinc/gosrvlib?status.svg)](https://godoc.org/github.com/nexmoinc/gosrvlib)
+
 
 * **category**    Library
 * **copyright**   2020 Vonage
