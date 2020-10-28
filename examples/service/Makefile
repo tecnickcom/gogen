@@ -52,9 +52,11 @@ BINPATH=usr/bin/
 # Path for configuration files
 CONFIGPATH=etc/$(PROJECT)/
 
-# Path for ssl root certs
-#SSLCONFIGPATH=etc/ssl/
-SSLCONFIGPATH=
+# Path for custom root CA certificates
+SSLCONFIGPATH=etc/ssl/
+
+# Search paths for system root CA certificates to include
+CACERTPATH=/etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/ca-bundle.pem /etc/pki/tls/cacert.pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/ssl/cert.pem
 
 # Path for init script
 INITPATH=
@@ -295,13 +297,21 @@ ifneq ($(strip $(MANPATH)),)
 	find $(PATHINSTMAN) -type f -exec chmod 644 {} \;
 endif
 
-# Install SSL certificates
+# Install TLS root CA certificates
 .PHONY: installssl
-installssl: 
+installssl:
 ifneq ($(strip $(SSLCONFIGPATH)),)
+	# add system root CA certificates
+	for CERT in ${CACERTPATH} ; do \
+		test -f $${CERT} && \
+		mkdir -p $${DESTDIR}$$(dirname $${CERT}) && \
+		cp $${CERT} $${DESTDIR}$${CERT} && \
+		break ; \
+	done
+	# add custom CA certificates
 	mkdir -p $(PATHINSTSSLCFG)
-	touch -c $(PATHINSTSSLCFG)*
-	cp -ru ./resources/${SSLCONFIGPATH}* $(PATHINSTSSLCFG)
+	cp -r ./resources/${SSLCONFIGPATH}* $(PATHINSTSSLCFG)
+	rm $(PATHINSTSSLCFG)certs/.keep
 	find $(PATHINSTSSLCFG) -type d -exec chmod 755 {} \;
 	find $(PATHINSTSSLCFG) -type f -exec chmod 644 {} \;
 endif
