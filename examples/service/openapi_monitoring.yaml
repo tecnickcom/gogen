@@ -112,6 +112,36 @@ paths:
       responses:
         '200':
           description: pprof profiling data
+  /ip:
+    get:
+      tags:
+        - status
+      summary: Returns the public IP address of this service instance
+      responses:
+        '200':
+          description: IP address of this service instance
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/response'
+                  - type: object
+                    properties:
+                      data:
+                        type: string
+                        description: Public IP address
+        '424':
+          description: Unable to connect to the ipify service
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        description: content
 components:
   schemas:
     response:

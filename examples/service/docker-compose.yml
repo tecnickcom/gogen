@@ -10,6 +10,7 @@ services:
       DEPLOY_ENV: "int"
     depends_on:
       - gosrvlibexample
+      - gosrvlibexample_smocker_ipify
     volumes:
       - ./target/binutil/dockerize:/usr/bin/dockerize
 
@@ -19,6 +20,14 @@ services:
     restart: always
     env_file:
       - target/gosrvlibexample.integration.env
-    entrypoint: ["/usr/bin/dockerize", "/usr/bin/gosrvlibexample"]
+    entrypoint: [
+        "/usr/bin/dockerize",
+        "-wait", "tcp://gosrvlibexample_smocker_ipify:8081",
+        "/usr/bin/gosrvlibexample"
+    ]
     volumes:
       - ./target/binutil/dockerize:/usr/bin/dockerize
+
+  gosrvlibexample_smocker_ipify:
+    container_name: gosrvlibexample_smocker_ipify
+    image: thiht/smocker

@@ -87,3 +87,12 @@ testcases:
     url: '{{.gosrvlibexample.url}}/pprof'
     assertions:
     - result.statuscode ShouldEqual 200
+
+- name: ip
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gosrvlibexample.url}}/ip'
+    assertions:
+    - result.statuscode ShouldEqual 200
