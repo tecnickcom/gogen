@@ -15,6 +15,7 @@ func Test_newDefaultRoutes(t *testing.T) {
 		pingHandlerFunc:      func(w http.ResponseWriter, r *http.Request) {},
 		pprofHandlerFunc:     func(w http.ResponseWriter, r *http.Request) {},
 		statusHandlerFunc:    func(w http.ResponseWriter, r *http.Request) {},
+		ipHandlerFunc:        func(w http.ResponseWriter, r *http.Request) {},
 	}
 
 	routes := newDefaultRoutes(cfg)
@@ -23,6 +24,7 @@ func Test_newDefaultRoutes(t *testing.T) {
 		cfg.pingHandlerFunc,
 		cfg.pprofHandlerFunc,
 		cfg.statusHandlerFunc,
+		cfg.ipHandlerFunc,
 	}
 
 	boundCount := 0
@@ -33,5 +35,5 @@ func Test_newDefaultRoutes(t *testing.T) {
 			}
 		}
 	}
-	require.Equal(t, 4, boundCount)
+	require.Equal(t, 5, boundCount)
 }

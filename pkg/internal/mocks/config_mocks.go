@@ -5,11 +5,12 @@
 package mocks
 
 import (
+	io "io"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	pflag "github.com/spf13/pflag"
 	viper "github.com/spf13/viper"
-	io "io"
-	reflect "reflect"
 )
 
 // MockViper is a mock of Viper interface.

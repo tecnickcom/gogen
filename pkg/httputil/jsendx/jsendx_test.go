@@ -1,6 +1,7 @@
 package jsendx
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/julienschmidt/httprouter"
+	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/internal/mocks"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
@@ -115,57 +117,11 @@ func TestNewRouter(t *testing.T) {
 	}
 }
 
-func TestDefaultStatusHandler(t *testing.T) {
+func TestDefaultIndexHandler(t *testing.T) {
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "3.4.5",
+		ProgramVersion: "1.2.3",
 		ProgramRelease: "1",
-	}
-
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultStatusHandler(appInfo)(rr, req)
-
-	resp := rr.Result()
-	bodyData, _ := ioutil.ReadAll(resp.Body)
-
-	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.4.5\",\"release\":\"1\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
-}
-
-func TestDefaultPingHandler(t *testing.T) {
-	appInfo := &AppInfo{
-		ProgramName:    "Test",
-		ProgramVersion: "4.5.6",
-		ProgramRelease: "2",
-	}
-
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultPingHandler(appInfo)(rr, req)
-
-	resp := rr.Result()
-	bodyData, _ := ioutil.ReadAll(resp.Body)
-
-	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"4.5.6\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
-}
-
-func TestDefaultRoutesIndexHandler(t *testing.T) {
-	appInfo := &AppInfo{
-		ProgramName:    "Test",
-		ProgramVersion: "5.6.7",
-		ProgramRelease: "3",
 	}
 
 	routes := []route.Route{
@@ -184,7 +140,105 @@ func TestDefaultRoutesIndexHandler(t *testing.T) {
 	}
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultRoutesIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
+	DefaultIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
+
+	resp := rr.Result()
+	bodyData, _ := ioutil.ReadAll(resp.Body)
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"1.2.3\",\"release\":\"1\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":{\"routes\":[{\"method\":\"GET\",\"path\":\"/get\",\"description\":\"Get endpoint\"},{\"method\":\"POST\",\"path\":\"/post\",\"description\":\"Post endpoint\"}]}}\n", body)
+}
+
+func TestDefaultIPHandler(t *testing.T) {
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "2.3.4",
+		ProgramRelease: "2",
+	}
+
+	tests := []struct {
+		name    string
+		ipFunc  httpserver.GetPublicIPFunc
+		wantIP  string
+		wantErr bool
+	}{
+		{
+			name:    "success response",
+			ipFunc:  func(ctx context.Context) (string, error) { return "0.0.0.0", nil },
+			wantIP:  "0.0.0.0",
+			wantErr: false,
+		},
+		{
+			name:    "error response",
+			ipFunc:  func(ctx context.Context) (string, error) { return "ERROR", fmt.Errorf("ERROR") },
+			wantIP:  "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rr := httptest.NewRecorder()
+			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+			DefaultIPHandler(appInfo, tt.ipFunc).ServeHTTP(rr, req)
+
+			resp := rr.Result()
+			bodyData, _ := ioutil.ReadAll(resp.Body)
+			body := string(bodyData)
+			body = testutil.ReplaceDateTime(body, "<DT>")
+			body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+			require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+			if tt.wantErr {
+				require.Equal(t, http.StatusFailedDependency, resp.StatusCode)
+				require.Equal(t, "{\"program\":\"Test\",\"version\":\"2.3.4\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":424,\"message\":\"Failed Dependency\",\"data\":\"ERROR\"}\n", body)
+			} else {
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				require.Equal(t, "{\"program\":\"Test\",\"version\":\"2.3.4\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"0.0.0.0\"}\n", body)
+			}
+		})
+	}
+}
+
+func TestDefaultPingHandler(t *testing.T) {
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "3.4.5",
+		ProgramRelease: "3",
+	}
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	DefaultPingHandler(appInfo)(rr, req)
+
+	resp := rr.Result()
+	bodyData, _ := ioutil.ReadAll(resp.Body)
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.4.5\",\"release\":\"3\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+}
+
+func TestDefaultStatusHandler(t *testing.T) {
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "5.6.7",
+		ProgramRelease: "4",
+	}
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	DefaultStatusHandler(appInfo)(rr, req)
 
 	resp := rr.Result()
 	bodyData, _ := ioutil.ReadAll(resp.Body)
@@ -195,15 +249,14 @@ func TestDefaultRoutesIndexHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, `{"program":"Test","version":"5.6.7","release":"3","datetime":"<DT>","timestamp":<TS>,"status":"success","code":200,"message":"OK","data":{"routes":[{"method":"GET","path":"/get","description":"Get endpoint"},{"method":"POST","path":"/post","description":"Post endpoint"}]}}
-`, body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"5.6.7\",\"release\":\"4\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 func TestHealthCheckResultWriter(t *testing.T) {
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
 		ProgramVersion: "6.7.8",
-		ProgramRelease: "4",
+		ProgramRelease: "5",
 	}
 
 	rr := httptest.NewRecorder()
@@ -218,5 +271,5 @@ func TestHealthCheckResultWriter(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.7.8\",\"release\":\"4\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.7.8\",\"release\":\"5\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
 }

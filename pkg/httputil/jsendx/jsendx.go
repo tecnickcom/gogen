@@ -14,6 +14,10 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 )
 
+const (
+	okMessage = "OK"
+)
+
 // Response wraps data into a JSend compliant response
 type Response struct {
 	Program   string          `json:"program"`   // Program name
@@ -77,27 +81,39 @@ func NewRouter(info *AppInfo) *httprouter.Router {
 	return r
 }
 
-// DefaultStatusHandler returns the server status in JSendX format
-func DefaultStatusHandler(info *AppInfo) http.HandlerFunc {
+// DefaultIndexHandler returns the route index in JSendX format
+func DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFunc {
+	return func(routes []route.Route) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			data := &route.Index{Routes: routes}
+			Send(r.Context(), w, http.StatusOK, info, data)
+		}
+	}
+}
+
+// DefaultIPHandler returns the route ip in JSendX format
+func DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		Send(r.Context(), w, http.StatusOK, info, "OK")
+		status := http.StatusOK
+		ip, err := fn(r.Context())
+		if err != nil {
+			status = http.StatusFailedDependency
+		}
+		Send(r.Context(), w, status, info, ip)
 	}
 }
 
 // DefaultPingHandler returns a ping request in JSendX format
 func DefaultPingHandler(info *AppInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		Send(r.Context(), w, http.StatusOK, info, "OK")
+		Send(r.Context(), w, http.StatusOK, info, okMessage)
 	}
 }
 
-// DefaultRoutesIndexHandler returns the route index in JSendX format
-func DefaultRoutesIndexHandler(info *AppInfo) httpserver.RouteIndexHandlerFunc {
-	return func(routes []route.Route) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			data := &route.Index{Routes: routes}
-			Send(r.Context(), w, http.StatusOK, info, data)
-		}
+// DefaultStatusHandler returns the server status in JSendX format
+func DefaultStatusHandler(info *AppInfo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		Send(r.Context(), w, http.StatusOK, info, okMessage)
 	}
 }
 

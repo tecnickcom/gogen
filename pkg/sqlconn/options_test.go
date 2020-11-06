@@ -60,7 +60,7 @@ func TestWithConnectMaxRetry(t *testing.T) {
 func TestWithConnectRetryInterval(t *testing.T) {
 	t.Parallel()
 
-	v := 99 * time.Second
+	v := 17 * time.Second
 	cfg := &config{}
 	WithConnectRetryInterval(v)(cfg)
 	require.Equal(t, v, cfg.connectRetryInterval)
@@ -69,7 +69,7 @@ func TestWithConnectRetryInterval(t *testing.T) {
 func TestWithConnMaxOpen(t *testing.T) {
 	t.Parallel()
 
-	v := 12345
+	v := 24683
 	cfg := &config{}
 	WithConnMaxOpen(v)(cfg)
 	require.Equal(t, v, cfg.connMaxOpen)
@@ -78,7 +78,7 @@ func TestWithConnMaxOpen(t *testing.T) {
 func TestWithConnMaxIdle(t *testing.T) {
 	t.Parallel()
 
-	v := 12345
+	v := 24697
 	cfg := &config{}
 	WithConnMaxIdle(v)(cfg)
 	require.Equal(t, v, cfg.connMaxIdle)
@@ -87,7 +87,7 @@ func TestWithConnMaxIdle(t *testing.T) {
 func TestWithConnMaxLifetime(t *testing.T) {
 	t.Parallel()
 
-	v := 99 * time.Second
+	v := 19 * time.Second
 	cfg := &config{}
 	WithConnMaxLifetime(v)(cfg)
 	require.Equal(t, v, cfg.connMaxLifetime)

@@ -87,33 +87,7 @@ func Test_defaultRouter(t *testing.T) {
 	}
 }
 
-func Test_defaultStatusHandler(t *testing.T) {
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	defaultStatusHandler(rr, req)
-
-	resp := rr.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "OK\n", string(body))
-}
-
-func Test_defaultPingHandler(t *testing.T) {
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	defaultPingHandler(rr, req)
-
-	resp := rr.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "OK\n", string(body))
-}
-
-func Test_defaultRouteIndexHandler(t *testing.T) {
+func Test_defaultIndexHandler(t *testing.T) {
 	routes := []route.Route{
 		{
 			Method:      "GET",
@@ -130,7 +104,7 @@ func Test_defaultRouteIndexHandler(t *testing.T) {
 	}
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	defaultRouteIndexHandler(routes).ServeHTTP(rr, req)
+	defaultIndexHandler(routes).ServeHTTP(rr, req)
 
 	resp := rr.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -141,6 +115,78 @@ func Test_defaultRouteIndexHandler(t *testing.T) {
 	expBody, _ := json.Marshal(&route.Index{Routes: routes})
 
 	require.Equal(t, string(expBody)+"\n", string(body))
+}
+
+func Test_defaultIPHandler(t *testing.T) {
+	tests := []struct {
+		name    string
+		ipFunc  GetPublicIPFunc
+		wantIP  string
+		wantErr bool
+	}{
+		{
+			name:    "success response",
+			ipFunc:  func(ctx context.Context) (string, error) { return "0.0.0.0", nil },
+			wantIP:  "0.0.0.0",
+			wantErr: false,
+		},
+		{
+			name:    "error response",
+			ipFunc:  func(ctx context.Context) (string, error) { return "ERROR", fmt.Errorf("ERROR") },
+			wantIP:  "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rr := httptest.NewRecorder()
+			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+			defaultIPHandler(tt.ipFunc).ServeHTTP(rr, req)
+
+			resp := rr.Result()
+			bodyData, _ := ioutil.ReadAll(resp.Body)
+			body := string(bodyData)
+
+			require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
+
+			if tt.wantErr {
+				require.Equal(t, http.StatusFailedDependency, resp.StatusCode)
+				require.Equal(t, "ERROR", body)
+			} else {
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				require.Equal(t, "0.0.0.0", body)
+			}
+		})
+	}
+}
+
+func Test_defaultPingHandler(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	defaultPingHandler(rr, req)
+
+	resp := rr.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "OK\n", string(body))
+}
+
+func Test_defaultStatusHandler(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	defaultStatusHandler(rr, req)
+
+	resp := rr.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "OK\n", string(body))
 }
 
 func TestStart(t *testing.T) {
@@ -192,7 +238,7 @@ func TestStart(t *testing.T) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
 			},
 			setupRouter: func(r *mocks.MockRouter) {
-				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(5)
+				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(6)
 			},
 			wantErr: false,
 		},
@@ -235,7 +281,7 @@ YlAqGKDZ+A+l
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
 			},
 			setupRouter: func(r *mocks.MockRouter) {
-				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(5)
+				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(6)
 			},
 			wantErr: false,
 		},

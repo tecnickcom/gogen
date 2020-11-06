@@ -46,7 +46,8 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 			httpserver.WithServerAddr(cfg.MonitoringAddress),
 			httpserver.WithEnableAllDefaultRoutes(),
 			httpserver.WithRouter(jsendx.NewRouter(appInfo)), // set default 404, 405 and panic handlers
-			httpserver.WithRoutesIndexHandlerFunc(jsendx.DefaultRoutesIndexHandler(appInfo)),
+			httpserver.WithIndexHandlerFunc(jsendx.DefaultIndexHandler(appInfo)),
+			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, httpserver.GetPublicIPDefaultFunc())),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
 		}

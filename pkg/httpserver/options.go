@@ -10,66 +10,10 @@ import (
 // Option is a type alias for a function that configures the HTTP httpServer instance
 type Option func(*config) error
 
-// WithEnableDefaultRoutes sets the default routes to be enabled on the server
-func WithEnableDefaultRoutes(ids ...defaultRoute) Option {
-	return func(cfg *config) error {
-		cfg.defaultEnabledRoutes = ids
-		return nil
-	}
-}
-
-// WithEnableAllDefaultRoutes enables all default routes on the server
-func WithEnableAllDefaultRoutes() Option {
-	return func(cfg *config) error {
-		cfg.defaultEnabledRoutes = allDefaultRoutes
-		return nil
-	}
-}
-
 // WithRouter replaces the default router used by the httpServer (mostly used for test purposes with a mock router)
 func WithRouter(r Router) Option {
 	return func(cfg *config) error {
 		cfg.router = r
-		return nil
-	}
-}
-
-// WithMetricsHandlerFunc replaces the default metrics handler function
-func WithMetricsHandlerFunc(handler http.HandlerFunc) Option {
-	return func(cfg *config) error {
-		cfg.metricsHandlerFunc = handler
-		return nil
-	}
-}
-
-// WithPingHandlerFunc replaces the default ping handler function
-func WithPingHandlerFunc(handler http.HandlerFunc) Option {
-	return func(cfg *config) error {
-		cfg.pingHandlerFunc = handler
-		return nil
-	}
-}
-
-// WithPProfHandlerFunc replaces the default pprof handler function
-func WithPProfHandlerFunc(handler http.HandlerFunc) Option {
-	return func(cfg *config) error {
-		cfg.pprofHandlerFunc = handler
-		return nil
-	}
-}
-
-// WithStatusHandlerFunc replaces the default status handler function
-func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
-	return func(cfg *config) error {
-		cfg.statusHandlerFunc = handler
-		return nil
-	}
-}
-
-// WithRoutesIndexHandlerFunc replaces the index handler
-func WithRoutesIndexHandlerFunc(handler RouteIndexHandlerFunc) Option {
-	return func(cfg *config) error {
-		cfg.routeIndexHandlerFunc = handler
 		return nil
 	}
 }
@@ -117,6 +61,70 @@ func WithTLSCertData(pemCert, pemKey []byte) Option {
 			MinVersion:   tls.VersionTLS12,
 			Certificates: []tls.Certificate{cert},
 		}
+		return nil
+	}
+}
+
+// WithEnableDefaultRoutes sets the default routes to be enabled on the server
+func WithEnableDefaultRoutes(ids ...defaultRoute) Option {
+	return func(cfg *config) error {
+		cfg.defaultEnabledRoutes = ids
+		return nil
+	}
+}
+
+// WithEnableAllDefaultRoutes enables all default routes on the server
+func WithEnableAllDefaultRoutes() Option {
+	return func(cfg *config) error {
+		cfg.defaultEnabledRoutes = allDefaultRoutes
+		return nil
+	}
+}
+
+// WithIndexHandlerFunc replaces the index handler
+func WithIndexHandlerFunc(handler IndexHandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.indexHandlerFunc = handler
+		return nil
+	}
+}
+
+// WithIPHandlerFunc replaces the default ip handler function
+func WithIPHandlerFunc(handler http.HandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.ipHandlerFunc = handler
+		return nil
+	}
+}
+
+// WithMetricsHandlerFunc replaces the default metrics handler function
+func WithMetricsHandlerFunc(handler http.HandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.metricsHandlerFunc = handler
+		return nil
+	}
+}
+
+// WithPingHandlerFunc replaces the default ping handler function
+func WithPingHandlerFunc(handler http.HandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.pingHandlerFunc = handler
+		return nil
+	}
+}
+
+// WithPProfHandlerFunc replaces the default pprof handler function
+func WithPProfHandlerFunc(handler http.HandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.pprofHandlerFunc = handler
+		return nil
+	}
+}
+
+// WithStatusHandlerFunc replaces the default status handler function
+func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.statusHandlerFunc = handler
 		return nil
 	}
 }

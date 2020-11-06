@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -55,7 +56,8 @@ func TestPProfHandler(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", ts.URL, tt.path), nil)
 			require.NoError(t, err, "unexpected error while creating request for path %q", tt.path)
 
-			resp, err := http.DefaultClient.Do(req)
+			c := &http.Client{Timeout: 2 * time.Second}
+			resp, err := c.Do(req)
 			require.NoError(t, err, "unexpected error while performing request %q", req.URL.String())
 			require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code %d", resp.StatusCode)
 		})

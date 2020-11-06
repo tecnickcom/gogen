@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"math"
@@ -10,15 +11,9 @@ import (
 	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
+	"github.com/nexmoinc/gosrvlib/pkg/ipify"
 	"github.com/nexmoinc/gosrvlib/pkg/profiling"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-)
-
-const (
-	metricsHandlerPath = "/metrics"
-	pingHandlerPath    = "/ping"
-	pprofHandlerPath   = "/pprof/*option"
-	statusHandlerPath  = "/status"
 )
 
 var (
@@ -26,38 +21,49 @@ var (
 	defaultPprofHandler   = profiling.PProfHandler
 )
 
-// RouteIndexHandlerFunc is a type alias for the route index function
-type RouteIndexHandlerFunc func(routes []route.Route) http.HandlerFunc
+// IndexHandlerFunc is a type alias for the route index function
+type IndexHandlerFunc func(routes []route.Route) http.HandlerFunc
+
+// GetPublicIPFunc is a type alias for function to get public IP of the service
+type GetPublicIPFunc func(ctx context.Context) (string, error)
+
+// GetPublicIPDefaultFunc returns the GetPublicIP function for a default ipify client
+func GetPublicIPDefaultFunc() GetPublicIPFunc {
+	c, _ := ipify.NewClient()
+	return c.GetPublicIP
+}
 
 func defaultConfig() *config {
 	return &config{
-		defaultEnabledRoutes:  nil,
-		metricsHandlerFunc:    defaultMetricsHandler,
-		pingHandlerFunc:       defaultPingHandler,
-		pprofHandlerFunc:      defaultPprofHandler,
-		routeIndexHandlerFunc: defaultRouteIndexHandler,
-		serverAddr:            ":8080",
-		serverReadTimeout:     1 * time.Minute,
-		serverWriteTimeout:    1 * time.Minute,
-		shutdownTimeout:       30 * time.Second,
-		statusHandlerFunc:     defaultStatusHandler,
-		router:                defaultRouter(),
+		router:               defaultRouter(),
+		serverAddr:           ":8017",
+		serverReadTimeout:    1 * time.Minute,
+		serverWriteTimeout:   1 * time.Minute,
+		shutdownTimeout:      30 * time.Second,
+		defaultEnabledRoutes: nil,
+		indexHandlerFunc:     defaultIndexHandler,
+		ipHandlerFunc:        defaultIPHandler(GetPublicIPDefaultFunc()),
+		metricsHandlerFunc:   defaultMetricsHandler,
+		pingHandlerFunc:      defaultPingHandler,
+		pprofHandlerFunc:     defaultPprofHandler,
+		statusHandlerFunc:    defaultStatusHandler,
 	}
 }
 
 type config struct {
-	defaultEnabledRoutes  []defaultRoute
-	metricsHandlerFunc    http.HandlerFunc
-	pingHandlerFunc       http.HandlerFunc
-	pprofHandlerFunc      http.HandlerFunc
-	routeIndexHandlerFunc RouteIndexHandlerFunc
-	router                Router
-	serverAddr            string
-	serverReadTimeout     time.Duration
-	serverWriteTimeout    time.Duration
-	shutdownTimeout       time.Duration
-	statusHandlerFunc     http.HandlerFunc
-	tlsConfig             *tls.Config
+	router               Router
+	serverAddr           string
+	serverReadTimeout    time.Duration
+	serverWriteTimeout   time.Duration
+	shutdownTimeout      time.Duration
+	tlsConfig            *tls.Config
+	defaultEnabledRoutes []defaultRoute
+	indexHandlerFunc     IndexHandlerFunc
+	ipHandlerFunc        http.HandlerFunc
+	metricsHandlerFunc   http.HandlerFunc
+	pingHandlerFunc      http.HandlerFunc
+	pprofHandlerFunc     http.HandlerFunc
+	statusHandlerFunc    http.HandlerFunc
 }
 
 func (c *config) isIndexRouteEnabled() bool {
@@ -80,6 +86,10 @@ func (c *config) validate() error {
 
 	if c.router == nil {
 		return fmt.Errorf("router is required")
+	}
+
+	if c.ipHandlerFunc == nil {
+		return fmt.Errorf("ip handler is required")
 	}
 
 	if c.metricsHandlerFunc == nil {

@@ -24,24 +24,6 @@ func (t testRouter) Handler(method, path string, handler http.Handler) {
 	// NOP
 }
 
-func TestWithEnableDefaultRoutes(t *testing.T) {
-	t.Parallel()
-
-	cfg := &config{}
-	err := WithEnableDefaultRoutes(IndexRoute, MetricsRoute)(cfg)
-	require.NoError(t, err)
-	require.Equal(t, []defaultRoute{IndexRoute, MetricsRoute}, cfg.defaultEnabledRoutes)
-}
-
-func TestWithEnableAllDefaultRoutes(t *testing.T) {
-	t.Parallel()
-
-	cfg := &config{}
-	err := WithEnableAllDefaultRoutes()(cfg)
-	require.NoError(t, err)
-	require.Equal(t, allDefaultRoutes, cfg.defaultEnabledRoutes)
-}
-
 func TestWithRouter(t *testing.T) {
 	t.Parallel()
 
@@ -50,68 +32,6 @@ func TestWithRouter(t *testing.T) {
 	err := WithRouter(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.router).Pointer())
-}
-
-func TestWithMetricsHandlerFunc(t *testing.T) {
-	t.Parallel()
-
-	v := func(_ http.ResponseWriter, _ *http.Request) {
-		// mock function
-	}
-	cfg := &config{}
-	err := WithMetricsHandlerFunc(v)(cfg)
-	require.NoError(t, err)
-	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.metricsHandlerFunc).Pointer())
-}
-
-func TestWithPingHandlerFunc(t *testing.T) {
-	t.Parallel()
-
-	v := func(_ http.ResponseWriter, _ *http.Request) {
-		// mock function
-	}
-	cfg := &config{}
-	err := WithPingHandlerFunc(v)(cfg)
-	require.NoError(t, err)
-	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.pingHandlerFunc).Pointer())
-}
-
-func TestWithPProfHandlerFunc(t *testing.T) {
-	t.Parallel()
-
-	v := func(_ http.ResponseWriter, _ *http.Request) {
-		// mock function
-	}
-	cfg := &config{}
-	err := WithPProfHandlerFunc(v)(cfg)
-	require.NoError(t, err)
-	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.pprofHandlerFunc).Pointer())
-}
-
-func TestWithStatusHandlerFunc(t *testing.T) {
-	t.Parallel()
-
-	v := func(_ http.ResponseWriter, _ *http.Request) {
-		// mock function
-	}
-	cfg := &config{}
-	err := WithStatusHandlerFunc(v)(cfg)
-	require.NoError(t, err)
-	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.statusHandlerFunc).Pointer())
-}
-
-func TestWithRoutesIndexHandlerFunc(t *testing.T) {
-	t.Parallel()
-
-	v := func(routes []route.Route) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			// mock function
-		}
-	}
-	cfg := &config{}
-	err := WithRoutesIndexHandlerFunc(v)(cfg)
-	require.NoError(t, err)
-	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.routeIndexHandlerFunc).Pointer())
 }
 
 func TestWithServerAddr(t *testing.T) {
@@ -127,7 +47,7 @@ func TestWithServerAddr(t *testing.T) {
 func TestWithServerReadTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 10 * time.Second
+	v := 13 * time.Second
 	cfg := &config{}
 	err := WithServerReadTimeout(v)(cfg)
 	require.NoError(t, err)
@@ -137,7 +57,7 @@ func TestWithServerReadTimeout(t *testing.T) {
 func TestWithServerWriteTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 10 * time.Second
+	v := 17 * time.Second
 	cfg := &config{}
 	err := WithServerWriteTimeout(v)(cfg)
 	require.NoError(t, err)
@@ -147,7 +67,7 @@ func TestWithServerWriteTimeout(t *testing.T) {
 func TestWithShutdownTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 10 * time.Second
+	v := 19 * time.Second
 	cfg := &config{}
 	err := WithShutdownTimeout(v)(cfg)
 	require.NoError(t, err)
@@ -218,4 +138,96 @@ YlAqGKDZ+A+l
 			}
 		})
 	}
+}
+
+func TestWithEnableDefaultRoutes(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+	err := WithEnableDefaultRoutes(IndexRoute, MetricsRoute)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, []defaultRoute{IndexRoute, MetricsRoute}, cfg.defaultEnabledRoutes)
+}
+
+func TestWithEnableAllDefaultRoutes(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+	err := WithEnableAllDefaultRoutes()(cfg)
+	require.NoError(t, err)
+	require.Equal(t, allDefaultRoutes, cfg.defaultEnabledRoutes)
+}
+
+func TestWithIndexHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	v := func(routes []route.Route) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// mock function
+		}
+	}
+	cfg := &config{}
+	err := WithIndexHandlerFunc(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.indexHandlerFunc).Pointer())
+}
+
+func TestWithIPHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	v := func(_ http.ResponseWriter, _ *http.Request) {
+		// mock function
+	}
+	cfg := &config{}
+	err := WithIPHandlerFunc(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.ipHandlerFunc).Pointer())
+}
+
+func TestWithMetricsHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	v := func(_ http.ResponseWriter, _ *http.Request) {
+		// mock function
+	}
+	cfg := &config{}
+	err := WithMetricsHandlerFunc(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.metricsHandlerFunc).Pointer())
+}
+
+func TestWithPingHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	v := func(_ http.ResponseWriter, _ *http.Request) {
+		// mock function
+	}
+	cfg := &config{}
+	err := WithPingHandlerFunc(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.pingHandlerFunc).Pointer())
+}
+
+func TestWithPProfHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	v := func(_ http.ResponseWriter, _ *http.Request) {
+		// mock function
+	}
+	cfg := &config{}
+	err := WithPProfHandlerFunc(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.pprofHandlerFunc).Pointer())
+}
+
+func TestWithStatusHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	v := func(_ http.ResponseWriter, _ *http.Request) {
+		// mock function
+	}
+	cfg := &config{}
+	err := WithStatusHandlerFunc(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.statusHandlerFunc).Pointer())
 }
