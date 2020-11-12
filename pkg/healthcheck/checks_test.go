@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testHTTPClient = &http.Client{Timeout: 2 * time.Second}
+
 // nolint:gocognit
 func TestCheckHttpStatus(t *testing.T) {
 	tests := []struct {
@@ -102,7 +104,7 @@ func TestCheckHttpStatus(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 
-			err := CheckHTTPStatus(tt.checkContext, tt.checkMethod, ts.URL, tt.checkWantStatus, tt.checkTimeout)
+			err := CheckHTTPStatus(tt.checkContext, testHTTPClient, tt.checkMethod, ts.URL, tt.checkWantStatus, tt.checkTimeout)
 			t.Logf("check error: %v", err)
 			if tt.wantErr {
 				require.Error(t, err, "CheckHTTPStatus() error = %v, wantErr %v", err, tt.wantErr)
