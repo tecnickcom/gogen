@@ -9,6 +9,11 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 )
 
+const (
+	// StatusOK represents an OK status.
+	StatusOK = "OK"
+)
+
 // ResultWriter is a type alias for a function in charge of writing the result of the health checks
 type ResultWriter func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{})
 
@@ -63,7 +68,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for len(resCh) > 0 {
 		r := <-resCh
-		data[r.id] = "OK"
+		data[r.id] = StatusOK
 
 		if r.err != nil {
 			status = http.StatusServiceUnavailable
@@ -80,7 +85,10 @@ func runCheckWithTimeout(ctx context.Context, hc HealthChecker, timeout time.Dur
 
 	resCh := make(chan error)
 	go func() {
-		resCh <- hc.HealthCheck(ctx)
+		select {
+		case resCh <- hc.HealthCheck(ctx):
+		case <-ctx.Done():
+		}
 	}()
 
 	select {
