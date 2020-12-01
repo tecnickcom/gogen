@@ -5,7 +5,7 @@ import (
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/nexmoinc/gosrvlib/pkg/traceid"
-	"github.com/nexmoinc/gosrvlib/pkg/uid"
+	"github.com/nexmoinc/gosrvlib/pkg/uidc"
 	"go.uber.org/zap"
 )
 
@@ -14,7 +14,7 @@ func requestInjectHandler(rootLogger *zap.Logger, next http.Handler) http.Handle
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		reqID := traceid.FromHTTPRequest(r, traceid.DefaultKey, uid.NewID128())
+		reqID := traceid.FromHTTPRequestHeader(r, traceid.DefaultHeader, uidc.NewID128())
 
 		reqLog := rootLogger.With(
 			zap.String("request_id", reqID),
@@ -27,7 +27,7 @@ func requestInjectHandler(rootLogger *zap.Logger, next http.Handler) http.Handle
 		)
 
 		ctx = logging.WithLogger(ctx, reqLog)
-		ctx = traceid.ToContext(ctx, reqID)
+		ctx = traceid.NewContext(ctx, reqID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}

@@ -10,17 +10,17 @@ import (
 )
 
 const (
-	// DefaultKey is the default header name for the trace ID
-	DefaultKey = "X-Request-ID"
+	// DefaultHeader is the default header name for the trace ID
+	DefaultHeader = "X-Request-ID"
+
 	// DefaultValue is the default trace ID value.
 	DefaultValue = ""
 )
 
-// ctxKey is the context key used to store the trace ID value
 type ctxKey struct{}
 
-// ToContext stores the trace ID value in the context if not already present.
-func ToContext(ctx context.Context, id string) context.Context {
+// NewContext stores the trace ID value in the context if not already present.
+func NewContext(ctx context.Context, id string) context.Context {
 	if _, ok := ctx.Value(ctxKey{}).(string); ok {
 		return ctx
 	}
@@ -29,24 +29,24 @@ func ToContext(ctx context.Context, id string) context.Context {
 
 // FromContext returns the trace ID associated with the context.
 // If no trace ID is associated, then the default value returned.
-func FromContext(ctx context.Context, def string) string {
+func FromContext(ctx context.Context, defaultValue string) string {
 	if v, ok := ctx.Value(ctxKey{}).(string); ok {
 		return v
 	}
-	return def
+	return defaultValue
 }
 
-// ToHTTPRequest set the trace ID HTTP Request Header with the value retrieved from the context.
+// SetHTTPRequestHeaderFromContext set the trace ID HTTP Request Header with the value retrieved from the context.
 // If the traceid is not found in the context, then the default value is set.
 // Returns the set ID.
-func ToHTTPRequest(ctx context.Context, r *http.Request, key, def string) string {
-	id := FromContext(ctx, def)
-	r.Header.Set(key, id)
+func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, header, defaultValue string) string {
+	id := FromContext(ctx, defaultValue)
+	r.Header.Set(header, id)
 	return id
 }
 
-// FromHTTPRequest retrieves the trace ID from an HTTP Request.
+// FromHTTPRequestHeader retrieves the trace ID from an HTTP Request.
 // If not found the default value is returned instead.
-func FromHTTPRequest(r *http.Request, key, def string) string {
-	return httputil.HeaderOrDefault(r, key, def)
+func FromHTTPRequestHeader(r *http.Request, header, defaultValue string) string {
+	return httputil.HeaderOrDefault(r, header, defaultValue)
 }
