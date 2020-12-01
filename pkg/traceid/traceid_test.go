@@ -45,8 +45,8 @@ func TestToHTTPRequest(t *testing.T) {
 	r1, err := http.NewRequest(http.MethodGet, "/", nil)
 	require.NoError(t, err)
 
-	usedDefault1 := ToHTTPRequest(context.Background(), r1, DefaultKey, DefaultValue)
-	require.Equal(t, usedDefault1, true)
+	id1 := ToHTTPRequest(context.Background(), r1, DefaultKey, DefaultValue)
+	require.Equal(t, id1, DefaultValue)
 	require.Equal(t, r1.Header.Get(DefaultKey), DefaultValue)
 
 	// header set
@@ -55,8 +55,8 @@ func TestToHTTPRequest(t *testing.T) {
 	ctx := ToContext(context.Background(), "test-904117")
 	r2 = r2.WithContext(ctx)
 
-	usedDefault2 := ToHTTPRequest(ctx, r2, DefaultKey, DefaultValue)
-	require.Equal(t, usedDefault2, false)
+	id2 := ToHTTPRequest(ctx, r2, DefaultKey, DefaultValue)
+	require.NotEqual(t, id2, DefaultValue)
 	require.Equal(t, "test-904117", r2.Header.Get(DefaultKey))
 }
 

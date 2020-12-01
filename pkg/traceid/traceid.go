@@ -38,15 +38,15 @@ func FromContext(ctx context.Context, def string) string {
 
 // ToHTTPRequest set the trace ID HTTP Request Header with the value retrieved from the context.
 // If the traceid is not found in the context, then the default value is set.
-// Returns true when the default value is used.
-func ToHTTPRequest(ctx context.Context, r *http.Request, key, def string) bool {
+// Returns the set ID.
+func ToHTTPRequest(ctx context.Context, r *http.Request, key, def string) string {
 	id := FromContext(ctx, def)
 	r.Header.Set(key, id)
-	return id == def
+	return id
 }
 
 // FromHTTPRequest retrieves the trace ID from an HTTP Request.
-// If not found the defaultValue is returned instead.
+// If not found the default value is returned instead.
 func FromHTTPRequest(r *http.Request, key, def string) string {
 	return httputil.HeaderOrDefault(r, key, def)
 }
