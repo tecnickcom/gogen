@@ -1,16 +1,9 @@
-package uid
+package uidc
 
 import (
 	"sync"
 	"testing"
 )
-
-func TestInitRandSeed(t *testing.T) {
-	err := InitRandSeed()
-	if err != nil {
-		t.Errorf("Unexpected error %#v", err)
-	}
-}
 
 func TestNewID64(t *testing.T) {
 	a := NewID64()

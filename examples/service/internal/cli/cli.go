@@ -8,7 +8,6 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/config"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/uid"
 	"github.com/spf13/cobra"
 )
 
@@ -28,9 +27,6 @@ func New(version, release string) (*cobra.Command, error) {
 	rootCmd.Flags().StringVarP(&argLogLevel, "logLevel", "o", "", "Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG")
 
 	rootCmd.RunE = func(_ *cobra.Command, _ []string) error {
-		// initialize seed for random ID generator
-		_ = uid.InitRandSeed()
-
 		// Read CLI configuration
 		cfg := &appConfig{}
 		if err := config.Load(AppName, argConfigDir, appEnvPrefix, cfg); err != nil {
