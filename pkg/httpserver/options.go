@@ -128,3 +128,11 @@ func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
 		return nil
 	}
 }
+
+// WithTraceIDHeaderName overrides the default trace id header name
+func WithTraceIDHeaderName(name string) Option {
+	return func(cfg *config) error {
+		cfg.traceIDHeaderName = name
+		return nil
+	}
+}

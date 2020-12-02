@@ -13,6 +13,7 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/ipify"
 	"github.com/nexmoinc/gosrvlib/pkg/profiling"
+	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -47,6 +48,7 @@ func defaultConfig() *config {
 		pingHandlerFunc:      defaultPingHandler,
 		pprofHandlerFunc:     defaultPprofHandler,
 		statusHandlerFunc:    defaultStatusHandler,
+		traceIDHeaderName:    traceid.DefaultHeader,
 	}
 }
 
@@ -64,6 +66,7 @@ type config struct {
 	pingHandlerFunc      http.HandlerFunc
 	pprofHandlerFunc     http.HandlerFunc
 	statusHandlerFunc    http.HandlerFunc
+	traceIDHeaderName    string
 }
 
 func (c *config) isIndexRouteEnabled() bool {

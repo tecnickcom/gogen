@@ -19,6 +19,7 @@ func Test_defaultConfig(t *testing.T) {
 	require.NotNil(t, cfg.router)
 	require.NotEmpty(t, cfg.serverAddr)
 	require.NotEqual(t, 0, cfg.shutdownTimeout)
+	require.NotEmpty(t, cfg.traceIDHeaderName)
 }
 
 func Test_config_validate(t *testing.T) {

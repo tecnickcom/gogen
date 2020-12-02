@@ -231,3 +231,13 @@ func TestWithStatusHandlerFunc(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.statusHandlerFunc).Pointer())
 }
+
+func TestWithTraceIDHeaderName(t *testing.T) {
+	t.Parallel()
+
+	v := "X-Test-Header"
+	cfg := &config{}
+	err := WithTraceIDHeaderName(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, v, cfg.traceIDHeaderName)
+}

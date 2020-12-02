@@ -10,11 +10,11 @@ import (
 )
 
 // requestInjectHandler wraps all incoming requests and injects a logger in the request scoped context
-func requestInjectHandler(rootLogger *zap.Logger, next http.Handler) http.Handler {
+func requestInjectHandler(rootLogger *zap.Logger, traceIDHeaderName string, next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		reqID := traceid.FromHTTPRequestHeader(r, traceid.DefaultHeader, uidc.NewID128())
+		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, uidc.NewID128())
 
 		reqLog := rootLogger.With(
 			zap.String("request_id", reqID),

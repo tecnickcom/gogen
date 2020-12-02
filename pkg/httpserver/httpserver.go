@@ -85,7 +85,7 @@ func startServer(ctx context.Context, cfg *config) error {
 	// create and start the http server
 	s := &http.Server{
 		Addr:         cfg.serverAddr,
-		Handler:      requestInjectHandler(l, cfg.router),
+		Handler:      requestInjectHandler(l, cfg.traceIDHeaderName, cfg.router),
 		ReadTimeout:  cfg.serverReadTimeout,
 		TLSConfig:    cfg.tlsConfig,
 		WriteTimeout: cfg.serverWriteTimeout,

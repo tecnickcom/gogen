@@ -9,6 +9,7 @@ import (
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
+	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 )
@@ -24,7 +25,7 @@ func Test_requestInjectHandler(t *testing.T) {
 	})
 
 	ctx, logs := testutil.ContextWithLogObserver(zapcore.DebugLevel)
-	handler := requestInjectHandler(logging.FromContext(ctx), nextHandler)
+	handler := requestInjectHandler(logging.FromContext(ctx), traceid.DefaultHeader, nextHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)
