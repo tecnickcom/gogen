@@ -136,6 +136,7 @@ func defaultRouter() *httprouter.Router {
 	})
 
 	r.PanicHandler = func(w http.ResponseWriter, r *http.Request, p interface{}) {
+		logging.FromContext(r.Context()).Error("panic", zap.Any("err", p))
 		httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
 	}
 
