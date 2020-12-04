@@ -30,7 +30,7 @@ type GetPublicIPFunc func(ctx context.Context) (string, error)
 
 // GetPublicIPDefaultFunc returns the GetPublicIP function for a default ipify client
 func GetPublicIPDefaultFunc() GetPublicIPFunc {
-	c, _ := ipify.NewClient()
+	c, _ := ipify.NewClient() // no errors are returned with default values
 	return c.GetPublicIP
 }
 

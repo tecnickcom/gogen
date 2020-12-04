@@ -85,7 +85,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 		{
 			name: "fails because of timeout",
 			getIPHandler: func(w http.ResponseWriter, r *http.Request) {
-				time.Sleep(3 * time.Second)
+				time.Sleep(5 * time.Second)
 				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
 			},
 			wantErr: true,

@@ -1,0 +1,10 @@
+#!/bin/sh
+# postrm script for gosrvlibexample
+
+set -e
+
+update-rc.d -f gosrvlibexample remove
+
+#DEBHELPER#
+
+exit 0

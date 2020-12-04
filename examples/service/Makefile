@@ -59,7 +59,7 @@ SSLCONFIGPATH=etc/ssl/
 CACERTPATH=/etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/ca-bundle.pem /etc/pki/tls/cacert.pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/ssl/cert.pem
 
 # Path for init script
-INITPATH=
+INITPATH=etc/init.d/
 
 # Path path for documentation
 DOCPATH=usr/share/doc/$(PKGNAME)/
@@ -87,6 +87,37 @@ PATHINSTMAN=$(DESTDIR)/$(MANPATH)
 
 # DOCKER Packaging path (where BZ2s will be stored)
 PATHDOCKERPKG=$(CURRENTDIR)/target/DOCKER
+
+# RPM Packaging path (where RPMs will be stored)
+PATHRPMPKG=$(CURRENTDIR)/target/RPM
+
+# DEB Packaging path (where DEBs will be stored)
+PATHDEBPKG=$(CURRENTDIR)/target/DEB
+
+# Prefix for the published docker container name
+DOCKERPREFIX=
+
+# Suffix for the published docker container name
+DOCKERSUFFIX=
+
+# Docker repository for the dev environment
+DOCKER_REGISTRY_DEV=
+
+# Docker repository for the prod environment
+DOCKER_REGISTRY_PROD=
+
+# Set default AWS region (if using AWS for deployments)
+ifeq ($(AWS_DEFAULT_REGION),)
+	AWS_DEFAULT_REGION=eu-west-1
+endif
+
+# AWS command to get the ECR Docker login for the current environment
+# AWS_ECR_GET_LOGIN_ENV="aws ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION} | sed 's|https://||'"
+AWS_ECR_GET_LOGIN_ENV="echo skip"
+
+# AWS command to get the ECR Docker login for DEV environment
+# AWS_ECR_GET_LOGIN_DEV="aws --profile YOURDEVPROFILE ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION} | sed 's|https://||'"
+AWS_ECR_GET_LOGIN_DEV="echo skip"
 
 # STATIC is a flag to indicate whether to build using static or dynamic linking
 STATIC=1
@@ -136,11 +167,27 @@ endif
 
 # Deployment environment
 ifeq ($(DEPLOY_ENV),)
-	DEPLOY_ENV=int
+	DEPLOY_ENV=dev
 endif
 
 # INT - integration environment via docker-compose
 ifeq ($(DEPLOY_ENV), int)
+	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8081
+	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8082
+	API_TEST_FILE=*.yaml
+endif
+
+# Development environment
+ifeq ($(DEPLOY_ENV), dev)
+	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
+	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8081
+	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8082
+	API_TEST_FILE=*.yaml
+endif
+
+# Production environment
+ifeq ($(DEPLOY_ENV), prod)
+	DOCKER_REGISTRY=${DOCKER_REGISTRY_PROD}
 	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8081
 	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8082
 	API_TEST_FILE=*.yaml
@@ -154,25 +201,29 @@ help:
 	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
-	@echo "    make apitest     : Execute API tests"
-	@echo "    make buildall    : Full build and test sequence"
-	@echo "    make build       : Compile the application"
-	@echo "    make cleandeps   : Remove all dependencies, including go.sum and go.mod entries"
-	@echo "    make clean       : Remove any build artifact"
-	@echo "    make confcheck  : Check the configuration files"
-	@echo "    make coverage    : Generate the coverage report"
-	@echo "    make dbuild      : Build everything inside a Docker container"
-	@echo "    make deps        : Get dependencies"
-	@echo "    make docker      : Build a scratch docker container to run this service"
-	@echo "    make dockertest  : Test the newly built docker container"
-	@echo "    make format      : Format the source code"
-	@echo "    make generate    : Generate go code automatically"
-	@echo "    make install     : Install this application"
-	@echo "    make linter      : Check code against multiple linters"
-	@echo "    make mod         : Download and vendor dependencies"
-	@echo "    make openapitest : Test the OpenAPI specification"
-	@echo "    make qa          : Run all tests and static analysis tools"
-	@echo "    make test        : Run unit tests"
+	@echo "    make apitest       : Execute API tests"
+	@echo "    make buildall      : Full build and test sequence"
+	@echo "    make build         : Compile the application"
+	@echo "    make cleandeps     : Remove all dependencies, including go.sum and go.mod entries"
+	@echo "    make clean         : Remove any build artifact"
+	@echo "    make confcheck     : Check the configuration files"
+	@echo "    make coverage      : Generate the coverage report"
+	@echo "    make dbuild        : Build everything inside a Docker container"
+	@echo "    make deb           : Build a DEB package"
+	@echo "    make deps          : Get dependencies"
+	@echo "    make docker        : Build a scratch docker container to run this service"
+	@echo "    make dockerpromote : Promote docker image from  DEV to PROD reporitory"
+	@echo "    make dockerpush    : Push docker container to a remote repository"
+	@echo "    make dockertest    : Test the newly built docker container"
+	@echo "    make format        : Format the source code"
+	@echo "    make generate      : Generate go code automatically"
+	@echo "    make install       : Install this application"
+	@echo "    make linter        : Check code against multiple linters"
+	@echo "    make mod           : Download and vendor dependencies"
+	@echo "    make openapitest   : Test the OpenAPI specification"
+	@echo "    make qa            : Run all tests and static analysis tools"
+	@echo "    make rpm           : Build an RPM package"
+	@echo "    make test          : Run unit tests"
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo "To test and build everything from scratch:"
@@ -236,6 +287,42 @@ dbuild:
 	CVSPATH=$(CVSPATH) VENDOR=$(VENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' $(CURRENTDIR)/dockerbuild.sh
 	@exit `cat $(TARGETDIR)/make.exit`
 
+# Build the DEB package for Debian-like Linux distributions
+.PHONY: deb
+deb:
+	rm -rf $(PATHDEBPKG)
+	$(MAKE) install DESTDIR=$(PATHDEBPKG)/$(PKGNAME)-$(VERSION)
+	rm -f $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/$(DOCPATH)LICENSE
+	tar -zcvf $(PATHDEBPKG)/$(PKGNAME)_$(VERSION).orig.tar.gz -C $(PATHDEBPKG)/ $(PKGNAME)-$(VERSION)
+	cp -rf ./resources/debian $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian
+	mkdir -p $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/missing-sources
+	echo "// fake source for lintian" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/missing-sources/$(PROJECT).c
+	find $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/ -type f -exec sed -i "s/~#DATE#~/`date -R`/" {} \;
+	find $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/ -type f -exec sed -i "s/~#PKGNAME#~/$(PKGNAME)/" {} \;
+	find $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/ -type f -exec sed -i "s/~#VERSION#~/$(VERSION)/" {} \;
+	find $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/ -type f -exec sed -i "s/~#RELEASE#~/$(RELEASE)/" {} \;
+	echo $(BINPATH) > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
+	echo "$(BINPATH)* $(BINPATH)" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+	echo $(DOCPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
+	echo "$(DOCPATH)* $(DOCPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+ifneq ($(strip $(INITPATH)),)
+	echo $(INITPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
+	echo "$(INITPATH)* $(INITPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+endif
+ifneq ($(strip $(CONFIGPATH)),)
+	echo $(CONFIGPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
+	echo "$(CONFIGPATH)* $(CONFIGPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+endif
+ifneq ($(strip $(MANPATH)),)
+	echo $(MANPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
+	echo "$(MANPATH)* $(MANPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
+endif
+	echo "statically-linked-binary usr/bin/$(PROJECT)" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
+	echo "new-package-should-close-itp-bug" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
+	echo "hardening-no-relro $(BINPATH)$(PROJECT)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
+	echo "embedded-library $(BINPATH)$(PROJECT): libyaml" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
+	cd $(PATHDEBPKG)/$(PKGNAME)-$(VERSION) && debuild -us -uc
+
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
@@ -265,6 +352,24 @@ dockerdir:
 	$(MAKE) install DESTDIR=$(PATHDOCKERPKG)
 	$(MAKE) installssl DESTDIR=$(PATHDOCKERPKG)
 	cp resources/docker/Dockerfile.run $(PATHDOCKERPKG)/Dockerfile
+
+# Promote docker image from DEV to PROD
+.PHONY: dockerpromote
+dockerpromote:
+	$(shell eval ${AWS_ECR_GET_LOGIN_ENV})
+	$(shell eval ${AWS_ECR_GET_LOGIN_DEV})
+	$(DOCKER) pull "${DOCKER_REGISTRY_DEV}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) tag "${DOCKER_REGISTRY_DEV}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)" "${DOCKER_REGISTRY_PROD}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) push "${DOCKER_REGISTRY_PROD}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+
+# Push docker container to the remote repository
+.PHONY: dockerpush
+dockerpush:
+	$(shell eval ${AWS_ECR_GET_LOGIN_ENV})
+	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) push "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
+	$(DOCKER) push "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 
 .PHONY: dockertest
 dockertest: dockertestenv
@@ -374,9 +479,39 @@ openapitest:
 	$(MAKE) schemathesistest API_TEST_URL=${GOSRVLIBEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
 	$(MAKE) schemathesistest API_TEST_URL=${GOSRVLIBEXAMPLE_URL} OPENAPI_FILE=openapi.yaml
 
+# Ping the deployed service to check if the correct deployed container is alive
+.PHONY: ping
+ping:
+	if [ "200_$(VERSION)_$(RELEASE)_" != "$(shell curl --silent --insecure '$(GOSRVLIBEXAMPLE_MONITORING_URL)/ping' | jq -r '.code,.version,.release' | tr '\n' '_')" ]; then exit 1; fi
+
 # Run all tests and static analysis tools
 .PHONY: qa
-qa: linter confcheck test coverage 
+qa: linter confcheck test coverage
+
+# Retry the ping command automatically (try 60 times every 5 sec = 5 min max)
+.PHONY: rping
+rping:
+	$(call make_retry,ping,60,5)
+
+# Build the RPM package for RedHat-like Linux distributions
+.PHONY: rpm
+rpm:
+	rm -rf $(PATHRPMPKG)
+	rpmbuild \
+	--define "_topdir $(PATHRPMPKG)" \
+	--define "_vendor $(VENDOR)" \
+	--define "_owner $(OWNER)" \
+	--define "_project $(PROJECT)" \
+	--define "_package $(PKGNAME)" \
+	--define "_version $(VERSION)" \
+	--define "_release $(RELEASE)" \
+	--define "_current_directory $(CURRENTDIR)" \
+	--define "_binpath /$(BINPATH)" \
+	--define "_docpath /$(DOCPATH)" \
+	--define "_configpath /$(CONFIGPATH)" \
+	--define "_initpath /$(INITPATH)" \
+	--define "_manpath /$(MANPATH)" \
+	-bb resources/rpm/rpm.spec
 
 # Test the OpenAPI specification against the real deployed service
 .PHONY: schemathesistest
@@ -423,5 +558,3 @@ venomtest:
 		--log=info \
 		--output-dir=$(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR) \
 		resources/test/venom/$(API_TEST_DIR)/$(API_TEST_FILE)
-
-

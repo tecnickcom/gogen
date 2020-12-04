@@ -28,7 +28,7 @@ func BenchmarkNewID64(b *testing.B) {
 }
 
 func TestNewID64_Collision(t *testing.T) {
-	collisionTest(t, NewID64, 10, 1000)
+	collisionTest(t, NewID64, 10, 100)
 }
 
 func TestNewID128(t *testing.T) {
@@ -47,7 +47,7 @@ func BenchmarkNewID128(b *testing.B) {
 }
 
 func TestNewID128_Collision(t *testing.T) {
-	collisionTest(t, NewID128, 100, 10_000)
+	collisionTest(t, NewID128, 100, 1000)
 }
 
 func collisionTest(t *testing.T, f func() string, concurrency, iterations int) {
