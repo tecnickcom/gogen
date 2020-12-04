@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultTimeout = 5 * time.Second
+	defaultTimeout = 4 * time.Second
 	defaultAPIURL  = "https://api.ipify.org" // use "https://api64.ipify.org" for IPv6 support
 	defaultErrorIP = ""
 )
