@@ -154,32 +154,67 @@ help:
 	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
-	@echo "    make qa          : Run all tests and static analysis tools"
-	@echo "    make test        : Run unit tests"
-	@echo "    make coverage    : Generate the coverage report"
-	@echo ""                    
-	@echo "    make format      : Format the source code"
-	@echo "    make generate    : Generate go code automatically"
-	@echo "    make linter      : Check code against multiple linters"
-	@echo ""                    
-	@echo "    make deps        : Get dependencies"
-	@echo "    make mod         : Download and vendor dependencies"
-	@echo "    make clean       : Remove any build artifact"
-	@echo ""
-	@echo "    make build       : Compile the application"
-	@echo "    make install     : Install this application"
+	@echo "    make apitest     : Execute API tests"
 	@echo "    make buildall    : Full build and test sequence"
+	@echo "    make build       : Compile the application"
+	@echo "    make cleandeps   : Remove all dependencies, including go.sum and go.mod entries"
+	@echo "    make clean       : Remove any build artifact"
+	@echo "    make confcheck  : Check the configuration files"
+	@echo "    make coverage    : Generate the coverage report"
 	@echo "    make dbuild      : Build everything inside a Docker container"
-	@echo ""
+	@echo "    make deps        : Get dependencies"
 	@echo "    make docker      : Build a scratch docker container to run this service"
 	@echo "    make dockertest  : Test the newly built docker container"
-	@echo ""
+	@echo "    make format      : Format the source code"
+	@echo "    make generate    : Generate go code automatically"
+	@echo "    make install     : Install this application"
+	@echo "    make linter      : Check code against multiple linters"
+	@echo "    make mod         : Download and vendor dependencies"
 	@echo "    make openapitest : Test the OpenAPI specification"
-	@echo "    make apitest     : Execute API tests"
+	@echo "    make qa          : Run all tests and static analysis tools"
+	@echo "    make test        : Run unit tests"
+	@echo ""
+	@echo "Use DEVMODE=LOCAL for human friendly output."
+	@echo "To test and build everything from scratch:"
+	@echo "DEVMODE=LOCAL make clean cleandeps deps generate mod qa example"
 	@echo ""
 
 # Alias for help target
 all: help
+
+# Run venom tests (https://github.com/ovh/venom)
+.PHONY: apitest
+apitest:
+	$(MAKE) venomtest API_TEST_DIR=monitoring API_TEST_URL=${GOSRVLIBEXAMPLE_MONITORING_URL} API_TEST_FILE=api.yaml
+	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${GOSRVLIBEXAMPLE_URL} API_TEST_FILE=${API_TEST_FILE}
+
+# Full build and test sequence
+# You may want to change this and remove the options you don't need
+#buildall: deps qa rpm deb bz2 crossbuild
+.PHONY: buildall
+buildall: build qa docker
+
+# Compile the application
+.PHONY: build
+build:
+	CGO_ENABLED=0 \
+	$(GO) build \
+	-tags ${STATIC_TAG} \
+	-ldflags '-w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
+	-mod=vendor \
+	-o ./target/${BINPATH}$(PROJECT) $(CMDDIR)
+
+# Remove any build artifact
+.PHONY: cleandeps
+cleandeps:
+	rm -rf vendor
+	rm -f go.sum
+	sed -i '/require (/,/)/crequire ()' go.mod
+
+# Remove any build artifact
+.PHONY: clean
+clean:
+	rm -rf $(TARGETDIR)
 
 # Validate JSON configuration files against the JSON schema
 .PHONY: confcheck
@@ -187,73 +222,10 @@ confcheck:
 	jsonschema -i resources/test/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
 	jsonschema -i resources/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
 
-# Create the trget directories if missing
-.PHONY: ensuretarget
-ensuretarget:
-	@mkdir -p $(TARGETDIR)/test
-	@mkdir -p $(TARGETDIR)/report
-	@mkdir -p $(TARGETDIR)/binutil
-
-# Generate test mocks
-.PHONY: generate
-generate:
-	$(GO) generate $(GOPKGS)
-
-# Run the unit tests
-.PHONY: test
-test: ensuretarget
-	@echo -e "\n\n>>> START: Unit Tests <<<\n\n"
-	$(GOTEST) \
-	-tags=unit \
-	-covermode=atomic \
-	-bench=. \
-	-race \
-	-failfast \
-	-coverprofile=$(TARGETDIR)/report/coverage.out \
-	-v $(GOPKGS) $(TESTEXTRACMD)
-	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
-
-# Format the source code
-.PHONY: format
-format:
-	@find $(CMDDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
-	@find $(SRCDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
-
 # Generate the coverage report
 .PHONY: coverage
 coverage: ensuretarget
 	$(GO) tool cover -html=$(TARGETDIR)/report/coverage.out -o $(TARGETDIR)/report/coverage.html
-
-# Execute multiple linter tools
-.PHONY: linter
-linter:
-	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
-	$(BINUTIL)/golangci-lint run --exclude-use-default=false $(CMDDIR)/... $(SRCDIR)/...
-	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
-
-# Run all tests and static analysis tools
-.PHONY: qa
-qa: linter confcheck test coverage 
-
-.PHONY: mod
-mod:
-	$(GO) mod download
-	$(GO) mod vendor
-	rm -f vendor/github.com/coreos/etcd/client/keys.generated.go || true
-
-# Get the test dependencies
-.PHONY: deps
-deps: ensuretarget
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.32.0
-	(GO111MODULE=off $(GO) get github.com/jstemmer/go-junit-report)
-	(GO111MODULE=off $(GO) get github.com/rakyll/gotest)
-	(GO111MODULE=off $(GO) get github.com/golang/mock/mockgen)
-
-# Remove any build artifact
-.PHONY: clean
-clean:
-	rm -rf $(TARGETDIR)
-	$(GO) clean -i ./...
 
 # Build everything inside a Docker container
 .PHONY: dbuild
@@ -263,6 +235,72 @@ dbuild:
 	@echo 0 > $(TARGETDIR)/make.exit
 	CVSPATH=$(CVSPATH) VENDOR=$(VENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' $(CURRENTDIR)/dockerbuild.sh
 	@exit `cat $(TARGETDIR)/make.exit`
+
+# Get the test dependencies
+.PHONY: deps
+deps: ensuretarget
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.33.0
+	(GO111MODULE=off $(GO) get -u github.com/jstemmer/go-junit-report)
+	(GO111MODULE=off $(GO) get -u github.com/rakyll/gotest)
+	(GO111MODULE=off $(GO) get -u github.com/golang/mock/mockgen)
+
+# Build a docker container to run this service
+.PHONY: docker
+docker: dockerdir dockerbuild
+
+# Build the docker container in the target/DOCKER directory
+.PHONY: dockerbuild
+dockerbuild:
+	$(DOCKER) build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
+
+# Delete the Docker image
+.PHONY: dockerdelete
+dockerdelete:
+	$(DOCKER) rmi -f `docker images "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" -q`
+
+# Create the directory with docker files to be packaged
+.PHONY: dockerdir
+dockerdir:
+	rm -rf $(PATHDOCKERPKG)
+	$(MAKE) install DESTDIR=$(PATHDOCKERPKG)
+	$(MAKE) installssl DESTDIR=$(PATHDOCKERPKG)
+	cp resources/docker/Dockerfile.run $(PATHDOCKERPKG)/Dockerfile
+
+.PHONY: dockertest
+dockertest: dockertestenv
+ifeq ("$(wildcard $(BINUTIL)/dockerize)","")
+	curl -sSfL https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
+endif
+	@echo 0 > $(TARGETDIR)/make.exit
+	docker-compose down --volumes || true
+	docker-compose up --build --exit-code-from gosrvlibexample_integration || echo $${?} > $(TARGETDIR)/make.exit
+	docker-compose down --rmi local --volumes --remove-orphans || true
+	@exit `cat $(TARGETDIR)/make.exit`
+
+# Run the integration tests; locally we need to execute 'build' and 'docker' targets first
+.PHONY: dockertestenv
+dockertestenv: ensuretarget
+	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gosrvlibexample.integration.env
+	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/integration/gosrvlibexample/config.json | base64 -w0)" >> $(TARGETDIR)/gosrvlibexample.integration.env
+
+# Create the trget directories if missing
+.PHONY: ensuretarget
+ensuretarget:
+	@mkdir -p $(TARGETDIR)/test
+	@mkdir -p $(TARGETDIR)/report
+	@mkdir -p $(TARGETDIR)/binutil
+
+# Format the source code
+.PHONY: format
+format:
+	@find $(CMDDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
+	@find $(SRCDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
+
+# Generate test mocks
+.PHONY: generate
+generate:
+	rm -f internal/mocks/*.go
+	$(GO) generate $(GOPKGS)
 
 # Install this application
 .PHONY: install
@@ -316,66 +354,29 @@ ifneq ($(strip $(SSLCONFIGPATH)),)
 	find $(PATHINSTSSLCFG) -type f -exec chmod 644 {} \;
 endif
 
-# Remove all installed files (excluding configuration files)
-.PHONY: uninstall
-uninstall:
-	rm -rf $(PATHINSTBIN)$(PROJECT)
-	rm -rf $(PATHINSTDOC)
+# Execute multiple linter tools
+.PHONY: linter
+linter:
+	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
+	$(BINUTIL)/golangci-lint run --exclude-use-default=false $(CMDDIR)/... $(SRCDIR)/...
+	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
-# Compile the application
-.PHONY: build
-build:
-	CGO_ENABLED=0 \
-	$(GO) build \
-	-tags ${STATIC_TAG} \
-	-ldflags '-w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
-	-mod=vendor \
-	-o ./target/${BINPATH}$(PROJECT) $(CMDDIR)
+# Download and vendor dependencies
+.PHONY: mod
+mod:
+	$(GO) mod download
+	$(GO) mod vendor
+	rm -f vendor/github.com/coreos/etcd/client/keys.generated.go || true
 
-# Create the directory with docker files to be packaged
-.PHONY: dockerdir
-dockerdir:
-	rm -rf $(PATHDOCKERPKG)
-	$(MAKE) install DESTDIR=$(PATHDOCKERPKG)
-	$(MAKE) installssl DESTDIR=$(PATHDOCKERPKG)
-	cp resources/docker/Dockerfile.run $(PATHDOCKERPKG)/Dockerfile
+# Test the OpenAPI specification against the real deployed service
+.PHONY: openapitest
+openapitest:
+	$(MAKE) schemathesistest API_TEST_URL=${GOSRVLIBEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
+	$(MAKE) schemathesistest API_TEST_URL=${GOSRVLIBEXAMPLE_URL} OPENAPI_FILE=openapi.yaml
 
-# Build the docker container in the target/DOCKER directory
-.PHONY: dockerbuild
-dockerbuild:
-	$(DOCKER) build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
-
-# Delete the Docker image
-.PHONY: dockerdelete
-dockerdelete:
-	$(DOCKER) rmi -f `docker images "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" -q`
-
-# Build a docker container to run this service
-.PHONY: docker
-docker: dockerdir dockerbuild
-
-# Full build and test sequence
-# You may want to change this and remove the options you don't need
-#buildall: deps qa rpm deb bz2 crossbuild
-.PHONY: buildall
-buildall: build qa docker
-
-# Run the integration tests; locally we need to execute 'build' and 'docker' targets first
-.PHONY: dockertestenv
-dockertestenv: ensuretarget
-	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gosrvlibexample.integration.env
-	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/integration/gosrvlibexample/config.json | base64 -w0)" >> $(TARGETDIR)/gosrvlibexample.integration.env
-
-.PHONY: dockertest
-dockertest: dockertestenv
-ifeq ("$(wildcard $(BINUTIL)/dockerize)","")
-	curl -sSfL https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
-endif
-	@echo 0 > $(TARGETDIR)/make.exit
-	docker-compose down --volumes || true
-	docker-compose up --build --exit-code-from gosrvlibexample_integration || echo $${?} > $(TARGETDIR)/make.exit
-	docker-compose down --rmi local --volumes --remove-orphans || true
-	@exit `cat $(TARGETDIR)/make.exit`
+# Run all tests and static analysis tools
+.PHONY: qa
+qa: linter confcheck test coverage 
 
 # Test the OpenAPI specification against the real deployed service
 .PHONY: schemathesistest
@@ -390,11 +391,25 @@ schemathesistest:
 	--base-url='${API_TEST_URL}' \
 	${OPENAPI_FILE}
 
-# Test the OpenAPI specification against the real deployed service
-.PHONY: openapitest
-openapitest:
-	$(MAKE) schemathesistest API_TEST_URL=${GOSRVLIBEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
-	$(MAKE) schemathesistest API_TEST_URL=${GOSRVLIBEXAMPLE_URL} OPENAPI_FILE=openapi.yaml
+# Run the unit tests
+.PHONY: test
+test: ensuretarget
+	@echo -e "\n\n>>> START: Unit Tests <<<\n\n"
+	$(GOTEST) \
+	-tags=unit \
+	-covermode=atomic \
+	-bench=. \
+	-race \
+	-failfast \
+	-coverprofile=$(TARGETDIR)/report/coverage.out \
+	-v $(GOPKGS) $(TESTEXTRACMD)
+	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
+
+# Remove all installed files (excluding configuration files)
+.PHONY: uninstall
+uninstall:
+	rm -rf $(PATHINSTBIN)$(PROJECT)
+	rm -rf $(PATHINSTDOC)
 
 # Run venom tests (https://github.com/ovh/venom)
 .PHONY: venomtest
@@ -409,8 +424,4 @@ venomtest:
 		--output-dir=$(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR) \
 		resources/test/venom/$(API_TEST_DIR)/$(API_TEST_FILE)
 
-# Run venom tests (https://github.com/ovh/venom)
-.PHONY: apitest
-apitest:
-	$(MAKE) venomtest API_TEST_DIR=monitoring API_TEST_URL=${GOSRVLIBEXAMPLE_MONITORING_URL} API_TEST_FILE=api.yaml
-	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${GOSRVLIBEXAMPLE_URL} API_TEST_FILE=${API_TEST_FILE}
+
