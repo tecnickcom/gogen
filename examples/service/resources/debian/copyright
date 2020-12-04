@@ -1,0 +1,11 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: gosrvlibexample
+Upstream-Contact: gosrvlibexampleowner <gosrvlibexampleemail>
+Source: gosrvlibexampleprojectlink
+
+Files: *
+Copyright: Copyright 2020 gosrvlibexampleowner <gosrvlibexampleemail>
+License: RESERVED
+
+License: RESERVED
+ ALL RIGHTS RESERVED

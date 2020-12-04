@@ -67,6 +67,14 @@ else
 	TESTEXTRACMD=2>&1 | tee >(PATH=$(GOPATH)/bin:$(PATH) go-junit-report > $(TARGETDIR)/test/report.xml); test $${PIPESTATUS[0]} -eq 0
 endif
 
+# Set default configuration file to generate a new project from the example service
+ifeq ($(CONFIG),)
+	CONFIG=project.cfg
+endif
+
+# Include the configuration file
+include $(CONFIG)
+
 # --- MAKE TARGETS ---
 
 # Display general help about this command
@@ -87,6 +95,7 @@ help:
 	@echo "    make generate  : Generate go code automatically"
 	@echo "    make linter    : Check code against multiple linters"
 	@echo "    make mod       : Download dependencies"
+	@echo "    make project   : Generate a new project from the example using the data set via CONFIG=project.cfg"
 	@echo "    make qa        : Run all tests and static analysis tools"
 	@echo "    make tag       : Tag the Git repository"
 	@echo "    make test      : Run unit tests"
@@ -171,6 +180,26 @@ mod:
 	$(GO) mod download
 	#$(GO) mod vendor
 	#rm -f vendor/github.com/coreos/etcd/client/keys.generated.go || true
+
+# Create a new project based on the example template
+.PHONY: project
+project:
+	cd examples/service && make clean cleandeps
+	@mkdir -p ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)
+	@rm -rf ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)/*
+	@cp -rf examples/service/. ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)/
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -name 'gosrvlibexample.1' -type f -execdir mv {} $(gosrvlibexample).1 \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -name 'gosrvlibexample' -exec mv {} $$(dirname {}/$(gosrvlibexample)) \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleshortdesc|$(gosrvlibexampleshortdesc)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexamplelongdesc|$(gosrvlibexamplelongdesc)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleauthor|$(gosrvlibexampleauthor)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleemail|$(gosrvlibexampleemail)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexamplecvspath|$(gosrvlibexamplecvspath)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleprojectlink|$(gosrvlibexampleprojectlink)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleowner|$(gosrvlibexampleowner)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexamplevcsgit|$(gosrvlibexamplevcsgit)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexample|$(gosrvlibexample)|g" {} \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|GOSRVLIBEXAMPLE|$(GOSRVLIBEXAMPLE)|g" {} \;
 
 # Run all tests and static analysis tools
 .PHONY: qa
