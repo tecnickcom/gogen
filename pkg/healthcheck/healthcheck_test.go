@@ -27,16 +27,4 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, h)
 	require.Equal(t, h.ID, "hc-id_1")
 	require.Equal(t, h.Checker, hc)
-	require.Equal(t, h.Timeout, DefaultTimeout)
-}
-
-func TestNewWithTimeout(t *testing.T) {
-	hc := &testHealthChecker{}
-	to := 5 * time.Second
-	h := NewWithTimeout("hc-id_1", hc, to)
-
-	require.NotNil(t, h)
-	require.Equal(t, h.ID, "hc-id_1")
-	require.Equal(t, h.Checker, hc)
-	require.Equal(t, h.Timeout, to)
 }

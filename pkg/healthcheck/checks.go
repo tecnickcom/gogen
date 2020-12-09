@@ -14,6 +14,9 @@ type HTTPClient interface {
 
 // CheckHTTPStatus checks if the given HTTP request responds with the expected status code
 func CheckHTTPStatus(ctx context.Context, httpClient HTTPClient, method string, url string, wantStatusCode int, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return fmt.Errorf("build request: %v", err)

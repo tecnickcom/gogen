@@ -23,16 +23,28 @@ func TestCheckHttpStatus(t *testing.T) {
 		handlerStatusCode int
 		checkContext      context.Context
 		checkMethod       string
+		checkExtraPath    string
 		checkTimeout      time.Duration
 		checkWantStatus   int
 		wantErr           bool
 	}{
 		{
 			name:              "fails with invalid context",
-			checkContext:      nil,
+			checkContext:      testutil.Context(),
 			checkMethod:       http.MethodGet,
+			checkExtraPath:    "/!@£$%^",
 			handlerMethod:     http.MethodGet,
 			handlerStatusCode: http.StatusOK,
+			wantErr:           true,
+		},
+		{
+			name:              "fails with wrong status code response",
+			checkContext:      testutil.Context(),
+			checkMethod:       http.MethodGet,
+			checkTimeout:      1 * time.Second,
+			checkWantStatus:   http.StatusOK,
+			handlerMethod:     http.MethodGet,
+			handlerStatusCode: http.StatusTeapot,
 			wantErr:           true,
 		},
 		{
@@ -96,7 +108,7 @@ func TestCheckHttpStatus(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 
-			err := CheckHTTPStatus(tt.checkContext, testHTTPClient, tt.checkMethod, ts.URL, tt.checkWantStatus, tt.checkTimeout)
+			err := CheckHTTPStatus(tt.checkContext, testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout)
 			t.Logf("check error: %v", err)
 			if tt.wantErr {
 				require.Error(t, err, "CheckHTTPStatus() error = %v, wantErr %v", err, tt.wantErr)

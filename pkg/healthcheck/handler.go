@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 )
@@ -57,7 +56,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			resCh <- checkResult{
 				id:  hc.ID,
-				err: runCheckWithTimeout(r.Context(), hc.Checker, hc.Timeout),
+				err: hc.Checker.HealthCheck(r.Context()),
 			}
 		}()
 	}
@@ -77,24 +76,4 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeResult(r.Context(), w, status, data)
-}
-
-func runCheckWithTimeout(ctx context.Context, hc HealthChecker, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	resCh := make(chan error)
-	go func() {
-		select {
-		case resCh <- hc.HealthCheck(ctx):
-		case <-ctx.Done():
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case r := <-resCh:
-		return r
-	}
 }

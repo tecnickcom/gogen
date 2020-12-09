@@ -5,12 +5,6 @@ package healthcheck
 
 import (
 	"context"
-	"time"
-)
-
-const (
-	// DefaultTimeout is the default timeout value for a single healthcheck
-	DefaultTimeout = 1 * time.Second
 )
 
 // HealthChecker is the interface that wraps the HealthCheck method.
@@ -22,7 +16,6 @@ type HealthChecker interface {
 type HealthCheck struct {
 	ID      string
 	Checker HealthChecker
-	Timeout time.Duration
 }
 
 // New creates a new instance of a health check configuration with default timeout
@@ -30,15 +23,5 @@ func New(id string, checker HealthChecker) HealthCheck {
 	return HealthCheck{
 		ID:      id,
 		Checker: checker,
-		Timeout: DefaultTimeout,
-	}
-}
-
-// NewWithTimeout creates a new instance of a health check configuration
-func NewWithTimeout(id string, checker HealthChecker, timeout time.Duration) HealthCheck {
-	return HealthCheck{
-		ID:      id,
-		Checker: checker,
-		Timeout: timeout,
 	}
 }
