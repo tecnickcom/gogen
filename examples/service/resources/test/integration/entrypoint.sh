@@ -5,7 +5,7 @@ set -e
 # wait for resources to be available and run integration tests
 dockerize \
     -timeout 30s \
-    -wait tcp://gosrvlibexample:8082 \
+    -wait tcp://gosrvlibexample:8072/ping \
     -wait http://gosrvlibexample_smocker_ipify:8081/version \
     echo
 

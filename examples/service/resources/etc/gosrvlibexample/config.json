@@ -3,13 +3,17 @@
   "remoteConfigEndpoint": "",
   "remoteConfigPath": "",
   "remoteConfigSecretKeyring": "",
+  "enabled": true,
   "log": {
     "format": "JSON",
     "level": "INFO",
     "network": "",
     "address": ""
   },
-  "enabled": true,
   "monitoring_address": "",
-  "server_address": ""
+  "public_address": "",
+  "ipify": {
+    "address": "",
+    "timeout": 1
+  }
 }

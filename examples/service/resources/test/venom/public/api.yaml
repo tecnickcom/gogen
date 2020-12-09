@@ -1,7 +1,7 @@
 version: "2"
 name: gosrvlibexample Public API tests
 vars:
-  gosrvlibexample.url: 'http://gosrvlibexample:8081'
+  gosrvlibexample.url: 'http://gosrvlibexample:8071'
 
 testcases:
 

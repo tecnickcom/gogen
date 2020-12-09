@@ -172,24 +172,24 @@ endif
 
 # INT - integration environment via docker-compose
 ifeq ($(DEPLOY_ENV), int)
-	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8081
-	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8082
+	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
+	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
 	API_TEST_FILE=*.yaml
 endif
 
 # Development environment
 ifeq ($(DEPLOY_ENV), dev)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
-	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8081
-	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8082
+	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
+	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
 	API_TEST_FILE=*.yaml
 endif
 
 # Production environment
 ifeq ($(DEPLOY_ENV), prod)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_PROD}
-	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8081
-	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8082
+	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
+	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
 	API_TEST_FILE=*.yaml
 endif
 
@@ -227,7 +227,7 @@ help:
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo "To test and build everything from scratch:"
-	@echo "DEVMODE=LOCAL make format clean cleandeps deps generate mod qa example"
+	@echo "DEVMODE=LOCAL make format clean cleandeps deps generate mod qa build docker dockertest"
 	@echo ""
 
 # Alias for help target

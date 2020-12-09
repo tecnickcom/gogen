@@ -9,7 +9,7 @@ info:
     url: 'https://github.com/gosrvlibexample/gosrvlibexample/blob/main/LICENSE'
   version: 1.0.0
 servers:
-  - url: 'https://gosrvlibexample:8081/'
+  - url: 'https://gosrvlibexample:8071/'
 tags:
   - name: ping
     description: Ping this service

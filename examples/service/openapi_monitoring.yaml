@@ -9,7 +9,7 @@ info:
     url: 'https://github.com/gosrvlibexample/gosrvlibexample/blob/main/LICENSE'
   version: 1.0.0
 servers:
-  - url: 'https://gosrvlibexample:8082/'
+  - url: 'https://gosrvlibexample:8072/'
 tags:
   - name: index
     description: Service index
@@ -140,8 +140,9 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: object
-                        description: content
+                      data:
+                        type: string
+                        description: Error
 components:
   schemas:
     response:

@@ -49,15 +49,18 @@ The configuration format is a single JSON structure with the following fields:
 
 * **enabled**: Enable or disable the service
 
-* **monitoring_address**: Monitoring HTTP address (ip:port) or just (:port)
-* **server_address**: Service HTTP address (ip:port) or just (:port)
-
 * **log**:  *Logging settings*
     * **format**:  Logging format: CONSOLE, JSON
     * **level**:   Defines the default log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
     * **network**: (OPTIONAL) Network type used by the Syslog (i.e. udp or tcp)
     * **address**: (OPTIONAL) Network address of the Syslog daemon (ip:port) or just (:port)
 
+* **monitoring_address**: Monitoring HTTP address (ip:port) or just (:port)
+* **public_address**: Public service HTTP address (ip:port) or just (:port)
+
+* **ipify**:  *ipify service client*
+    * **address**:  *Base URL of the service*
+    * **timeout**:  *HTTP client timeout [seconds]*
 
 ## Validate Configuration
 

@@ -91,10 +91,44 @@
       "type": "string",
       "default": ":8082"
     },
-    "server_address": {
-      "description": "Service HTTP address (ip:port) or just (:port)",
+    "public_address": {
+      "description": "Public service HTTP address (ip:port) or just (:port)",
       "type": "string",
       "default": ":8081"
+    },
+    "ipify": {
+      "type": "object",
+      "title": "ipify service client",
+      "description": "Configuration of the ipify service client",
+      "examples": [
+        {
+          "address": "https://api.ipify.org",
+          "timeout": 5
+        }
+      ],
+      "required": [
+        "address",
+        "timeout"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Base URL of the service",
+          "default": "",
+          "examples": [
+            "https://api.ipify.org"
+          ]
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "HTTP client timeout [seconds]",
+          "default": 1,
+          "examples": [
+            1
+          ]
+        }
+      }
     }
   },
   "additionalProperties": false,
@@ -102,6 +136,7 @@
     "log",
     "enabled",
     "monitoring_address",
-    "server_address"
+    "public_address",
+    "ipify"
   ]
 }

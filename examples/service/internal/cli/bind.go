@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gosrvlibexample/gosrvlibexample/internal/httphandler"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
+	"github.com/nexmoinc/gosrvlib/pkg/ipify"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
@@ -41,13 +43,23 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 			statusHandler = jsendx.DefaultStatusHandler(appInfo)
 		}
 
+		// ipify client
+		ipifyOpts := []ipify.ClientOption{
+			ipify.WithTimeout(time.Duration(cfg.Ipify.Timeout) * time.Second),
+			ipify.WithURL(cfg.Ipify.Address),
+		}
+		ipifyClient, err := ipify.NewClient(ipifyOpts...)
+		if err != nil {
+			return fmt.Errorf("failed to build ipify client: %w", err)
+		}
+
 		// start monitoring server
 		httpMonitoringOpts := []httpserver.Option{
 			httpserver.WithServerAddr(cfg.MonitoringAddress),
 			httpserver.WithEnableAllDefaultRoutes(),
 			httpserver.WithRouter(jsendx.NewRouter(appInfo)), // set default 404, 405 and panic handlers
 			httpserver.WithIndexHandlerFunc(jsendx.DefaultIndexHandler(appInfo)),
-			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, httpserver.GetPublicIPDefaultFunc())),
+			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, ipifyClient.GetPublicIP)),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
 		}
@@ -57,7 +69,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 
 		// start service server
 		httpServiceOpts := []httpserver.Option{
-			httpserver.WithServerAddr(cfg.ServerAddress),
+			httpserver.WithServerAddr(cfg.PublicAddress),
 			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
 		}
 		if err := httpserver.Start(ctx, serviceBinder, httpServiceOpts...); err != nil {

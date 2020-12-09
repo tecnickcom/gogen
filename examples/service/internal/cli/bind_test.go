@@ -29,9 +29,23 @@ func Test_bind(t *testing.T) {
 			cfg: &appConfig{
 				Enabled:           false,
 				MonitoringAddress: ":30040",
-				ServerAddress:     ":30041",
+				PublicAddress:     ":30041",
 			},
 			preBindAddr:    ":30040",
+			wantErr:        true,
+			wantTimeoutErr: false,
+		},
+		{
+			name: "fails with bad ipify address",
+			cfg: &appConfig{
+				Enabled:           true,
+				MonitoringAddress: ":30040",
+				PublicAddress:     ":30041",
+				Ipify: ipifyConfig{
+					Address: "test.ipify.url.invalid\u007F",
+					Timeout: 1,
+				},
+			},
 			wantErr:        true,
 			wantTimeoutErr: false,
 		},
@@ -40,7 +54,7 @@ func Test_bind(t *testing.T) {
 			cfg: &appConfig{
 				Enabled:           false,
 				MonitoringAddress: ":30040",
-				ServerAddress:     ":30041",
+				PublicAddress:     ":30041",
 			},
 			preBindAddr:    ":30041",
 			wantErr:        true,
@@ -51,7 +65,7 @@ func Test_bind(t *testing.T) {
 			cfg: &appConfig{
 				Enabled:           false,
 				MonitoringAddress: ":30040",
-				ServerAddress:     ":30041",
+				PublicAddress:     ":30041",
 			},
 			wantErr: false,
 		},
@@ -60,7 +74,7 @@ func Test_bind(t *testing.T) {
 			cfg: &appConfig{
 				Enabled:           false,
 				MonitoringAddress: ":30040",
-				ServerAddress:     ":30040",
+				PublicAddress:     ":30040",
 			},
 			wantErr: false,
 		},
@@ -69,7 +83,7 @@ func Test_bind(t *testing.T) {
 			cfg: &appConfig{
 				Enabled:           true,
 				MonitoringAddress: ":30040",
-				ServerAddress:     ":30040",
+				PublicAddress:     ":30040",
 			},
 			wantErr: false,
 		},

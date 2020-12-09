@@ -3,13 +3,17 @@
   "remoteConfigEndpoint": "",
   "remoteConfigPath": "",
   "remoteConfigSecretKeyring": "",
+  "enabled": true,
   "log": {
     "format": "JSON",
     "level": "DEBUG",
     "network": "",
     "address": ""
   },
-  "enabled": true,
   "monitoring_address": ":invalid",
-  "server_address": ":8081"
+  "public_address": ":8071",
+  "ipify": {
+    "address": "https://test.ipify.url.invalid",
+    "timeout": 1
+  }
 }
