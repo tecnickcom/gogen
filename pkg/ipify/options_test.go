@@ -1,6 +1,8 @@
 package ipify
 
 import (
+	"net/http"
+	"reflect"
 	"testing"
 	"time"
 
@@ -32,4 +34,17 @@ func TestWithErrorIP(t *testing.T) {
 	c := &Client{}
 	WithErrorIP(want)(c)
 	require.Equal(t, want, c.errorIP, "WithErrorIP() = %want, want %want", c.errorIP, want)
+}
+
+type testHTTPClient struct{}
+
+func (thc *testHTTPClient) Do(r *http.Request) (*http.Response, error) { return nil, nil }
+
+func TestWithHTTPClient(t *testing.T) {
+	t.Parallel()
+
+	v := &testHTTPClient{}
+	c := &Client{}
+	WithHTTPClient(v)(c)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(c.httpClient).Pointer())
 }

@@ -27,3 +27,10 @@ func WithErrorIP(s string) ClientOption {
 		c.errorIP = s
 	}
 }
+
+// WithHTTPClient overrides the default HTTP client
+func WithHTTPClient(hc HTTPClient) ClientOption {
+	return func(c *Client) {
+		c.httpClient = hc
+	}
+}

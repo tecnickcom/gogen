@@ -15,9 +15,14 @@ const (
 	defaultErrorIP = ""
 )
 
+// HTTPClient contains the function to perform the actual HTTP request
+type HTTPClient interface {
+	Do(*http.Request) (*http.Response, error)
+}
+
 // Client represents the config options required by this client
 type Client struct {
-	httpClient *http.Client
+	httpClient HTTPClient
 	timeout    time.Duration
 	apiURL     string
 	errorIP    string
@@ -33,7 +38,9 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	for _, applyOpt := range opts {
 		applyOpt(c)
 	}
-	c.httpClient = &http.Client{Timeout: c.timeout}
+	if c.httpClient == nil {
+		c.httpClient = &http.Client{Timeout: c.timeout}
+	}
 
 	if _, err := url.Parse(c.apiURL); err != nil {
 		return nil, fmt.Errorf("invalid service address: %s", c.apiURL)

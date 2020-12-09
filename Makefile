@@ -102,7 +102,7 @@ help:
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo "To test and build everything from scratch:"
-	@echo "DEVMODE=LOCAL make clean cleandeps deps generate mod qa example"
+	@echo "DEVMODE=LOCAL make format clean cleandeps deps generate mod qa example"
 	@echo ""
 
 # Alias for help target
