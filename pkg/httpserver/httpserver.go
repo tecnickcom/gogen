@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
@@ -136,7 +137,10 @@ func defaultRouter() *httprouter.Router {
 	})
 
 	r.PanicHandler = func(w http.ResponseWriter, r *http.Request, p interface{}) {
-		logging.FromContext(r.Context()).Error("panic", zap.Any("err", p))
+		logging.FromContext(r.Context()).Error("panic",
+			zap.Any("err", p),
+			zap.String("stacktrace", string(debug.Stack())),
+		)
 		httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
 	}
 

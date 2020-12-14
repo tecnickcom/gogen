@@ -4,6 +4,7 @@ package jsendx
 import (
 	"context"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -11,7 +12,9 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
+	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/nexmoinc/gosrvlib/pkg/metrics"
+	"go.uber.org/zap"
 )
 
 const (
@@ -75,6 +78,10 @@ func NewRouter(info *AppInfo) *httprouter.Router {
 	})
 
 	r.PanicHandler = func(w http.ResponseWriter, r *http.Request, p interface{}) {
+		logging.FromContext(r.Context()).Error("panic",
+			zap.Any("err", p),
+			zap.String("stacktrace", string(debug.Stack())),
+		)
 		Send(r.Context(), w, http.StatusInternalServerError, info, "internal error")
 	}
 
