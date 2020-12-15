@@ -57,6 +57,17 @@ func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data i
 	}
 }
 
+// SendJSONText sends a pre-formatted JSON string to the response.
+func SendJSONText(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
+	defer logResponse(ctx, statusCode, data)
+
+	writeHeaders(w, statusCode, MimeApplicationJSON)
+
+	if _, err := w.Write([]byte(data)); err != nil {
+		logging.FromContext(ctx).Error("httputil.SendText()", zap.Error(err))
+	}
+}
+
 // SendText sends a JSON marshaled object to the response.
 func SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
 	defer logResponse(ctx, statusCode, data)

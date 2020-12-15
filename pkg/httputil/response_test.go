@@ -75,6 +75,29 @@ func TestSendJSON(t *testing.T) {
 	httputil.SendJSON(testutil.Context(), mockWriter, http.StatusOK, "message")
 }
 
+func TestSendJSONText(t *testing.T) {
+	t.Parallel()
+
+	testData := `{"key1":"value1","key2":"value2"}`
+
+	rr := httptest.NewRecorder()
+	httputil.SendJSONText(testutil.Context(), rr, http.StatusOK, testData)
+
+	resp := rr.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.JSONEq(t, testData, string(body))
+
+	// add coverage for error handling
+	mockWriter := mocks.NewMockTestHTTPResponseWriter(gomock.NewController(t))
+	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
+	mockWriter.EXPECT().WriteHeader(http.StatusOK)
+	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
+	httputil.SendJSONText(testutil.Context(), mockWriter, http.StatusOK, "message")
+}
+
 func TestSendText(t *testing.T) {
 	t.Parallel()
 
