@@ -17,6 +17,7 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/internal/mocks"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
+	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -72,7 +73,7 @@ func Test_defaultRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			r := defaultRouter()
+			r := defaultRouter(testutil.Context(), traceid.DefaultHeader)
 
 			if tt.setupRouter != nil {
 				tt.setupRouter(r)
@@ -201,7 +202,7 @@ func TestStart(t *testing.T) {
 		{
 			name: "fail with invalid config",
 			opts: []Option{
-				WithRouter(nil),
+				WithTraceIDHeaderName(""),
 			},
 			wantErr: true,
 		},

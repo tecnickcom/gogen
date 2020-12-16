@@ -5,6 +5,8 @@ package httpserver
 import (
 	"testing"
 
+	"github.com/nexmoinc/gosrvlib/pkg/testutil"
+	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +18,6 @@ func Test_defaultConfig(t *testing.T) {
 	require.NotNil(t, cfg.pprofHandlerFunc)
 	require.NotNil(t, cfg.statusHandlerFunc)
 	require.NotNil(t, cfg.ipHandlerFunc)
-	require.NotNil(t, cfg.router)
 	require.NotEmpty(t, cfg.serverAddr)
 	require.NotEqual(t, 0, cfg.shutdownTimeout)
 	require.NotEmpty(t, cfg.traceIDHeaderName)
@@ -24,83 +25,78 @@ func Test_defaultConfig(t *testing.T) {
 
 func Test_config_validate(t *testing.T) {
 	tests := []struct {
-		name    string
-		cfg     *config
-		wantErr bool
+		name        string
+		setupConfig func(c *config)
+		wantErr     bool
 	}{
 		{
 			name: "fail with invalid httpServer address",
-			cfg: func() *config {
-				cfg := defaultConfig()
+			setupConfig: func(cfg *config) {
 				cfg.serverAddr = "::"
-				return cfg
-			}(),
+			},
 			wantErr: true,
 		},
 		{
 			name: "fail with invalid shutdown timeout",
-			cfg: func() *config {
-				cfg := defaultConfig()
+			setupConfig: func(cfg *config) {
 				cfg.shutdownTimeout = 0
-				return cfg
-			}(),
+			},
 			wantErr: true,
 		},
 		{
 			name: "fail with missing router",
-			cfg: func() *config {
-				cfg := defaultConfig()
+			setupConfig: func(cfg *config) {
 				cfg.router = nil
-				return cfg
-			}(),
+			},
 			wantErr: true,
 		},
 		{
 			name: "fail with missing metrics handler",
-			cfg: func() *config {
-				cfg := defaultConfig()
+			setupConfig: func(cfg *config) {
 				cfg.metricsHandlerFunc = nil
-				return cfg
-			}(),
+			},
 			wantErr: true,
 		},
 		{
 			name: "fail with missing ping handler",
-			cfg: func() *config {
-				cfg := defaultConfig()
+			setupConfig: func(cfg *config) {
 				cfg.pingHandlerFunc = nil
-				return cfg
-			}(),
+			},
 			wantErr: true,
 		},
 		{
 			name: "fail with missing pprof handler",
-			cfg: func() *config {
-				cfg := defaultConfig()
+			setupConfig: func(cfg *config) {
 				cfg.pprofHandlerFunc = nil
-				return cfg
-			}(),
-			wantErr: true,
-		}, {
-			name: "fail with missing status handler",
-			cfg: func() *config {
-				cfg := defaultConfig()
-				cfg.statusHandlerFunc = nil
-				return cfg
-			}(),
-			wantErr: true,
-		}, {
-			name: "fail with missing ip handler",
-			cfg: func() *config {
-				cfg := defaultConfig()
-				cfg.ipHandlerFunc = nil
-				return cfg
-			}(),
+			},
 			wantErr: true,
 		},
 		{
-			name:    "succeed with valid configuration",
-			cfg:     defaultConfig(),
+			name: "fail with missing status handler",
+			setupConfig: func(cfg *config) {
+				cfg.statusHandlerFunc = nil
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail with missing ip handler",
+			setupConfig: func(cfg *config) {
+				cfg.ipHandlerFunc = nil
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail with empty trace id header name",
+			setupConfig: func(cfg *config) {
+				cfg.traceIDHeaderName = ""
+			},
+			wantErr: true,
+		},
+		{
+			name: "succeed with valid configuration",
+			setupConfig: func(cfg *config) {
+				cfg.router = defaultRouter(testutil.Context(), traceid.DefaultHeader)
+			},
 			wantErr: false,
 		},
 	}
@@ -109,7 +105,12 @@ func Test_config_validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if err := tt.cfg.validate(); (err != nil) != tt.wantErr {
+			cfg := defaultConfig()
+			if tt.setupConfig != nil {
+				tt.setupConfig(cfg)
+			}
+
+			if err := cfg.validate(); (err != nil) != tt.wantErr {
 				t.Errorf("validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

@@ -36,7 +36,6 @@ func GetPublicIPDefaultFunc() GetPublicIPFunc {
 
 func defaultConfig() *config {
 	return &config{
-		router:               defaultRouter(),
 		serverAddr:           ":8017",
 		serverReadTimeout:    1 * time.Minute,
 		serverWriteTimeout:   1 * time.Minute,
@@ -87,10 +86,6 @@ func (c *config) validate() error {
 		return fmt.Errorf("invalid shutdown timeout")
 	}
 
-	if c.router == nil {
-		return fmt.Errorf("router is required")
-	}
-
 	if c.ipHandlerFunc == nil {
 		return fmt.Errorf("ip handler is required")
 	}
@@ -109,6 +104,14 @@ func (c *config) validate() error {
 
 	if c.statusHandlerFunc == nil {
 		return fmt.Errorf("status handler is required")
+	}
+
+	if c.traceIDHeaderName == "" {
+		return fmt.Errorf("trace id header name is required")
+	}
+
+	if c.router == nil {
+		return fmt.Errorf("router is required")
 	}
 
 	return nil

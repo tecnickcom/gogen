@@ -49,6 +49,9 @@ func Start(ctx context.Context, binder Binder, opts ...Option) error {
 			return err
 		}
 	}
+	if cfg.router == nil {
+		cfg.router = defaultRouter(ctx, cfg.traceIDHeaderName)
+	}
 
 	if err := cfg.validate(); err != nil {
 		return err
@@ -86,7 +89,7 @@ func startServer(ctx context.Context, cfg *config) error {
 	// create and start the http server
 	s := &http.Server{
 		Addr:         cfg.serverAddr,
-		Handler:      requestInjectHandler(l, cfg.traceIDHeaderName, cfg.router),
+		Handler:      RequestInjectHandler(l, cfg.traceIDHeaderName, cfg.router),
 		ReadTimeout:  cfg.serverReadTimeout,
 		TLSConfig:    cfg.tlsConfig,
 		WriteTimeout: cfg.serverWriteTimeout,
@@ -125,23 +128,26 @@ func startServer(ctx context.Context, cfg *config) error {
 	return nil
 }
 
-func defaultRouter() *httprouter.Router {
+func defaultRouter(ctx context.Context, traceIDHeaderName string) *httprouter.Router {
 	r := httprouter.New()
+	l := logging.FromContext(ctx)
 
-	r.NotFound = metrics.Handler("404", func(w http.ResponseWriter, r *http.Request) {
+	r.NotFound = RequestInjectHandler(l, traceIDHeaderName, metrics.Handler("404", func(w http.ResponseWriter, r *http.Request) {
 		httputil.SendStatus(r.Context(), w, http.StatusNotFound)
-	})
+	}))
 
-	r.MethodNotAllowed = metrics.Handler("405", func(w http.ResponseWriter, r *http.Request) {
+	r.MethodNotAllowed = RequestInjectHandler(l, traceIDHeaderName, metrics.Handler("405", func(w http.ResponseWriter, r *http.Request) {
 		httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
-	})
+	}))
 
 	r.PanicHandler = func(w http.ResponseWriter, r *http.Request, p interface{}) {
-		logging.FromContext(r.Context()).Error("panic",
-			zap.Any("err", p),
-			zap.String("stacktrace", string(debug.Stack())),
-		)
-		httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+		RequestInjectHandler(l, traceIDHeaderName, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logging.FromContext(r.Context()).Error("panic",
+				zap.Any("err", p),
+				zap.String("stacktrace", string(debug.Stack())),
+			)
+			httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+		})).ServeHTTP(w, r)
 	}
 
 	return r
