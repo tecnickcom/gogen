@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gosrvlibexample/gosrvlibexample/internal/cli"
+	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 )
@@ -16,7 +17,7 @@ var (
 
 func main() {
 	_, _ = logging.NewDefaultLogger(cli.AppName, ProgramVersion, ProgramRelease, "json", "debug")
-	rootCmd, err := cli.New(ProgramVersion, ProgramRelease)
+	rootCmd, err := cli.New(ProgramVersion, ProgramRelease, bootstrap.Bootstrap)
 	if err != nil {
 		logging.LogFatal("UNABLE TO START THE PROGRAM", zap.Error(err))
 		return

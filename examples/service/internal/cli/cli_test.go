@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/config"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -13,10 +14,11 @@ import (
 // nolint:gocognit
 func TestNew(t *testing.T) {
 	tests := []struct {
-		name       string
-		osArgs     []string
-		wantOutput func(t *testing.T, out string)
-		wantErr    bool
+		name         string
+		osArgs       []string
+		boostrapFunc bootstrapFunc
+		wantOutput   func(t *testing.T, out string)
+		wantErr      bool
 	}{
 		{
 			name:       "call version subcommand",
@@ -73,6 +75,14 @@ func TestNew(t *testing.T) {
 			osArgs:  []string{AppName, "-c", "../../resources/test/etc/invalid/"},
 			wantErr: true,
 		},
+		{
+			name:   "bootstrap with valid configuration",
+			osArgs: []string{AppName, "-c", "../../resources/test/etc/gosrvlibexample/"},
+			boostrapFunc: func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error {
+				return nil
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -83,9 +93,14 @@ func TestNew(t *testing.T) {
 			defer func() { os.Args = oldOsArgs }()
 			os.Args = tt.osArgs
 
+			bootstrapFunc := bootstrap.Bootstrap
+			if tt.boostrapFunc != nil {
+				bootstrapFunc = tt.boostrapFunc
+			}
+
 			// execute the main function
 			var out string
-			cmd, err := New("0.0.0-test", "0")
+			cmd, err := New("0.0.0-test", "0", bootstrapFunc)
 			if err == nil {
 				require.NotNil(t, cmd)
 

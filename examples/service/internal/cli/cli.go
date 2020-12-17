@@ -11,8 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type bootstrapFunc func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error
+
 // New creates an new CLI instance
-func New(version, release string) (*cobra.Command, error) {
+func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, error) {
 	var argConfigDir string
 	var argLogFormat string
 	var argLogLevel string
@@ -54,7 +56,7 @@ func New(version, release string) (*cobra.Command, error) {
 		}
 
 		// Boostrap application
-		return bootstrap.Bootstrap(bind(cfg, appInfo), bootstrap.WithLogger(l))
+		return bootstrapFn(bind(cfg, appInfo), bootstrap.WithLogger(l))
 	}
 
 	// sub-command to print the version
