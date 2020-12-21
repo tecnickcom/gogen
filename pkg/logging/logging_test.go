@@ -3,8 +3,13 @@
 package logging
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"net/url"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/nexmoinc/gosrvlib/pkg/internal/mocks"
@@ -174,4 +179,76 @@ func testLogContext(level zapcore.Level) (context.Context, *observer.ObservedLog
 	core, logs := observer.New(level)
 	l := zap.New(core)
 	return WithLogger(context.Background(), l), logs
+}
+
+// MemorySink implements zap.Sink by writing all messages to a buffer.
+type MemorySink struct {
+	*bytes.Buffer
+}
+
+// Implement Close and Sync as no-ops to satisfy the interface. The Write
+// method is provided by the embedded buffer.
+
+func (s *MemorySink) Close() error { return nil }
+func (s *MemorySink) Sync() error  { return nil }
+
+func TestLogDifferences(t *testing.T) {
+	// Create a sink instance, and register it with zap for the "memory" protocol.
+	sink := &MemorySink{new(bytes.Buffer)}
+	zap.RegisterSink("memory", func(*url.URL) (zap.Sink, error) {
+		return sink, nil
+	})
+
+	l, err := NewLogger(
+		WithFields(
+			zap.String("program", "test_log_diff"),
+			zap.String("version", "2.3.5"),
+			zap.String("release", "7"),
+		),
+		WithFormatStr("json"),
+		WithLevelStr("info"),
+		WithOutputPaths([]string{"memory://"}),      // Redirect all messages to the MemorySink.
+		WithErrorOutputPaths([]string{"memory://"}), // Redirect all errors to the MemorySink.
+	)
+	require.NoError(t, err)
+	require.NotNil(t, l)
+
+	l.Info("A")
+	time.Sleep(time.Second)
+	l.Info("B")
+	l.Sync()
+
+	out := sink.String()
+	require.NotEmpty(t, out, "captured log output")
+
+	logs := strings.SplitN(out, "\n", 2)
+	require.Equal(t, len(logs), 2, "there should be 2 logs")
+
+	type LogData struct {
+		Level     string `json:"level"`
+		Timestamp int64  `json:"timestamp"`
+		Msg       string `json:"msg"`
+		Hostname  string `json:"hostname"`
+		Program   string `json:"program"`
+		Version   string `json:"version"`
+		Release   string `json:"release"`
+	}
+
+	var log1, log2 LogData
+	err = json.Unmarshal([]byte(logs[0]), &log1)
+	require.NoError(t, err)
+	err = json.Unmarshal([]byte(logs[1]), &log2)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, log1.Program, "program should not be empty")
+	require.NotEmpty(t, log1.Version, "version should not be empty")
+	require.NotEmpty(t, log1.Release, "release should not be empty")
+
+	require.Equal(t, log1.Level, log2.Level, "Logs should have the same level")
+	require.NotEqual(t, log1.Timestamp, log2.Timestamp, "Logs should have different timestamp")
+	require.NotEqual(t, log1.Msg, log2.Msg, "Logs should have different msg")
+	require.Equal(t, log1.Hostname, log2.Hostname, "Logs should have the same hostname")
+	require.Equal(t, log1.Program, log2.Program, "Logs should have the same program")
+	require.Equal(t, log1.Version, log2.Version, "Logs should have the same version")
+	require.Equal(t, log1.Release, log2.Release, "Logs should have the same release")
 }

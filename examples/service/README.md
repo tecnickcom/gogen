@@ -137,7 +137,6 @@ This program logs the log messages in JSON format:
 ```
 {
 	"level": "info",
-	"datetime": "2020-07-28T13:24:58Z",
 	"timestamp": 1595942715776382171,
 	"msg": "Request",
 	"program": "gosrvlibexample",

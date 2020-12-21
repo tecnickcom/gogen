@@ -63,3 +63,19 @@ func WithIncrementLogMetricsFunc(fn IncrementLogMetricsFunc) Option {
 		return nil
 	}
 }
+
+// WithOutputPaths manually overrides the OutputPaths option
+func WithOutputPaths(paths []string) Option {
+	return func(cfg *config) error {
+		cfg.outputPaths = paths
+		return nil
+	}
+}
+
+// WithErrorOutputPaths manually overrides the ErrorOutputPaths option
+func WithErrorOutputPaths(paths []string) Option {
+	return func(cfg *config) error {
+		cfg.errorOutputPaths = paths
+		return nil
+	}
+}

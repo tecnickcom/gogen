@@ -15,4 +15,6 @@ func Test_defaultConfig(t *testing.T) {
 	require.NotNil(t, cfg)
 	require.NotEqual(t, 0, cfg.format)
 	require.NotEqual(t, 0, cfg.level)
+	require.NotEmpty(t, cfg.outputPaths)
+	require.NotEmpty(t, cfg.errorOutputPaths)
 }
