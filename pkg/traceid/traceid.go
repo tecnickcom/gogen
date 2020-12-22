@@ -5,8 +5,6 @@ package traceid
 import (
 	"context"
 	"net/http"
-
-	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 )
 
 const (
@@ -48,5 +46,9 @@ func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, heade
 // FromHTTPRequestHeader retrieves the trace ID from an HTTP Request.
 // If not found the default value is returned instead.
 func FromHTTPRequestHeader(r *http.Request, header, defaultValue string) string {
-	return httputil.HeaderOrDefault(r, header, defaultValue)
+	id := r.Header.Get(header)
+	if id == "" {
+		return defaultValue
+	}
+	return id
 }
