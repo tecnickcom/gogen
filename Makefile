@@ -164,7 +164,7 @@ format:
 # Generate test mocks
 .PHONY: generate
 generate:
-	rm -f internal/mocks/*.go
+	@find $(SRCDIR) -type f -name "*mock_test.go" -exec rm {} \;
 	$(GO) generate $(GOPKGS)
 
 # Execute multiple linter tools

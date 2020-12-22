@@ -1,5 +1,3 @@
-//go:generate mockgen -package mocks -destination ../internal/mocks/httpresp_mocks.go . TestHTTPResponseWriter
-
 // Package testutil contains a set of utility functions used for testing
 package testutil
 

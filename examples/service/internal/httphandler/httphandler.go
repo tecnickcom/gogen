@@ -1,5 +1,3 @@
-//go:generate mockgen -package mocks -destination ../mocks/httphandler_mocks.go . Service
-
 package httphandler
 
 import (

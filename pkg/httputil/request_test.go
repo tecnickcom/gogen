@@ -1,6 +1,4 @@
-// +build unit
-
-package httputil_test
+package httputil
 
 import (
 	"io/ioutil"
@@ -8,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -21,10 +18,10 @@ func TestHeaderOrDefault(t *testing.T) {
 
 	r.Header.Add("set-header", "test")
 
-	v1 := httputil.HeaderOrDefault(r, "unset-header", "default")
+	v1 := HeaderOrDefault(r, "unset-header", "default")
 	require.Equal(t, "default", v1)
 
-	v2 := httputil.HeaderOrDefault(r, "set-header", "default")
+	v2 := HeaderOrDefault(r, "set-header", "default")
 	require.Equal(t, "test", v2)
 }
 
@@ -54,8 +51,8 @@ func TestPathParam(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := testutil.RouterWithHandler(http.MethodGet, tt.mappedPath, func(w http.ResponseWriter, r *http.Request) {
-				val := httputil.PathParam(r, tt.paramName)
-				httputil.SendText(r.Context(), w, http.StatusOK, val)
+				val := PathParam(r, tt.paramName)
+				SendText(r.Context(), w, http.StatusOK, val)
 			})
 
 			rr := httptest.NewRecorder()
@@ -78,7 +75,7 @@ func TestAddBasicAuth(t *testing.T) {
 	t.Parallel()
 
 	r, _ := http.NewRequest(http.MethodGet, "", nil)
-	httputil.AddBasicAuth("key", "secret", r)
+	AddBasicAuth("key", "secret", r)
 
 	wanted, _ := http.NewRequest(http.MethodGet, "", nil)
 	wanted.Header.Set("Authorization", "Basic a2V5OnNlY3JldA==")

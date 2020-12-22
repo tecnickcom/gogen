@@ -13,7 +13,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
-	"github.com/nexmoinc/gosrvlib/pkg/internal/mocks"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +45,7 @@ func TestSend(t *testing.T) {
 	require.Equal(t, "hello test", okResp.Data, "unexpected response: %s", body)
 
 	// add coverage for error handling
-	mockWriter := mocks.NewMockTestHTTPResponseWriter(gomock.NewController(t))
+	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))

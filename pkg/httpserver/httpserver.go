@@ -1,4 +1,4 @@
-//go:generate mockgen -package mocks -destination ../internal/mocks/httpserver_mocks.go . Router,Binder
+//go:generate mockgen -package httpserver -destination ./mock_test.go . Router,Binder
 
 // Package httpserver defines a default HTTP server with common routes.
 package httpserver

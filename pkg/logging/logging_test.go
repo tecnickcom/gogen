@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/nexmoinc/gosrvlib/pkg/internal/mocks"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -84,7 +83,7 @@ func TestSync(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockSyncer := mocks.NewMockSyncer(mockCtrl)
+	mockSyncer := NewMockSyncer(mockCtrl)
 	mockSyncer.EXPECT().Sync().Times(1)
 
 	Sync(mockSyncer)

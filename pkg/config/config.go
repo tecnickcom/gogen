@@ -1,4 +1,4 @@
-//go:generate mockgen -package mocks -destination ../internal/mocks/config_mocks.go . Viper
+//go:generate mockgen -package config -destination ./mock_test.go . Viper
 
 // Package config handles the configuration of the program.
 // The configuration contains the set of initial parameter settings that are read at run-time by the program.

@@ -1,6 +1,6 @@
 // +build unit
 
-package bootstrap_test
+package bootstrap
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,10 +18,10 @@ import (
 // nolint:gocognit
 func TestBootstrap(t *testing.T) {
 	tests := []struct {
-		opts             []bootstrap.Option
+		opts             []Option
 		name             string
-		bindFunc         bootstrap.BindFunc
-		createLoggerFunc bootstrap.CreateLoggerFunc
+		bindFunc         BindFunc
+		createLoggerFunc CreateLoggerFunc
 		stopAfter        time.Duration
 		checkLogs        bool
 		wantErr          bool
@@ -65,21 +64,21 @@ func TestBootstrap(t *testing.T) {
 				ctx = stopCtx
 			}
 
-			opts := []bootstrap.Option{
-				bootstrap.WithContext(ctx),
+			opts := []Option{
+				WithContext(ctx),
 			}
 			opts = append(opts, tt.opts...)
 
 			if tt.createLoggerFunc != nil {
-				opts = append(opts, bootstrap.WithCreateLoggerFunc(tt.createLoggerFunc))
+				opts = append(opts, WithCreateLoggerFunc(tt.createLoggerFunc))
 			} else {
 				fn := func() (*zap.Logger, error) {
 					return logging.FromContext(ctx), nil
 				}
-				opts = append(opts, bootstrap.WithCreateLoggerFunc(fn))
+				opts = append(opts, WithCreateLoggerFunc(fn))
 			}
 
-			if err := bootstrap.Bootstrap(tt.bindFunc, opts...); (err != nil) != tt.wantErr {
+			if err := Bootstrap(tt.bindFunc, opts...); (err != nil) != tt.wantErr {
 				t.Errorf("Bootstrap() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
