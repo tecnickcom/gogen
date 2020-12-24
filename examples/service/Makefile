@@ -531,7 +531,7 @@ schemathesistest:
 test: ensuretarget
 	@echo -e "\n\n>>> START: Unit Tests <<<\n\n"
 	$(GOTEST) \
-	-tags=unit \
+	-tags=unit,benchmark \
 	-covermode=atomic \
 	-bench=. \
 	-race \

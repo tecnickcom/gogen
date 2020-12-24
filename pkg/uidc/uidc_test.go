@@ -1,3 +1,5 @@
+// +build unit
+
 package uidc
 
 import (
@@ -13,13 +15,6 @@ func TestNewID64(t *testing.T) {
 	}
 }
 
-func BenchmarkNewID64(b *testing.B) {
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = NewID64()
-	}
-}
-
 func TestNewID64_Collision(t *testing.T) {
 	collisionTest(t, NewID64, 10, 100)
 }
@@ -29,13 +24,6 @@ func TestNewID128(t *testing.T) {
 	b := NewID128()
 	if a == b {
 		t.Errorf("Two UID should be different")
-	}
-}
-
-func BenchmarkNewID128(b *testing.B) {
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = NewID128()
 	}
 }
 
