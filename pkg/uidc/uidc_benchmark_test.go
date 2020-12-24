@@ -3,7 +3,6 @@
 package uidc
 
 import (
-	"sync"
 	"testing"
 )
 

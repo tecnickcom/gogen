@@ -3,7 +3,6 @@
 package uid
 
 import (
-	"sync"
 	"testing"
 )
 
