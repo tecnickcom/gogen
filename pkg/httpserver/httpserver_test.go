@@ -1,5 +1,3 @@
-// +build unit
-
 package httpserver
 
 import (
@@ -25,7 +23,7 @@ func TestNopBinder(t *testing.T) {
 }
 
 func Test_nopBinder_BindHTTP(t *testing.T) {
-	require.Nil(t, NopBinder().BindHTTP(nil))
+	require.Nil(t, NopBinder().BindHTTP(context.Background()))
 }
 
 func Test_defaultRouter(t *testing.T) {
@@ -189,6 +187,7 @@ func Test_defaultStatusHandler(t *testing.T) {
 	require.Equal(t, "OK\n", string(body))
 }
 
+// nolint:gocognit
 func TestStart(t *testing.T) {
 	tests := []struct {
 		name           string

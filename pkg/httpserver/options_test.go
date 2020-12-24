@@ -1,5 +1,3 @@
-// +build unit
-
 package httpserver
 
 import (
@@ -12,17 +10,6 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/stretchr/testify/require"
 )
-
-type testRouter struct {
-}
-
-func (t testRouter) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	// NOP
-}
-
-func (t testRouter) Handler(method, path string, handler http.Handler) {
-	// NOP
-}
 
 func TestWithRouter(t *testing.T) {
 	t.Parallel()

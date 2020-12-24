@@ -1,5 +1,3 @@
-// +build unit
-
 package logging
 
 import (
@@ -171,7 +169,6 @@ func TestNewDefaultLogger(t *testing.T) {
 	l2, err := NewDefaultLogger("test", "0.0.0", "1", "unicorn", "info")
 	require.Error(t, err)
 	require.Nil(t, l2)
-
 }
 
 func testLogContext(level zapcore.Level) (context.Context, *observer.ObservedLogs) {
@@ -194,9 +191,10 @@ func (s *MemorySink) Sync() error  { return nil }
 func TestLogDifferences(t *testing.T) {
 	// Create a sink instance, and register it with zap for the "memory" protocol.
 	sink := &MemorySink{new(bytes.Buffer)}
-	zap.RegisterSink("memory", func(*url.URL) (zap.Sink, error) {
+	err := zap.RegisterSink("memory", func(*url.URL) (zap.Sink, error) {
 		return sink, nil
 	})
+	require.NoError(t, err)
 
 	l, err := NewLogger(
 		WithFields(
@@ -215,7 +213,9 @@ func TestLogDifferences(t *testing.T) {
 	l.Info("A")
 	time.Sleep(time.Second)
 	l.Info("B")
-	l.Sync()
+
+	err = l.Sync()
+	require.NoError(t, err)
 
 	out := sink.String()
 	require.NotEmpty(t, out, "captured log output")

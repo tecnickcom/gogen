@@ -1,5 +1,3 @@
-// +build unit
-
 package sqlconn
 
 import (
@@ -20,6 +18,7 @@ func newMockConnectFunc(db *sql.DB, err error) ConnectFunc {
 	}
 }
 
+// nolint:gocognit
 func TestConnect(t *testing.T) {
 	tests := []struct {
 		name           string

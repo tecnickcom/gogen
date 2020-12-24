@@ -1,5 +1,3 @@
-// +build benchmark
-
 package uid
 
 import (

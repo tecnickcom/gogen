@@ -1,5 +1,3 @@
-// +build unit
-
 package sqlconn
 
 import (
@@ -109,5 +107,4 @@ func TestWithDefaultDriver(t *testing.T) {
 	}
 	WithDefaultDriver(v2)(cfg2)
 	require.NotEqual(t, v2, cfg2.driver)
-
 }
