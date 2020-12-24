@@ -1,3 +1,5 @@
+// +build unit
+
 package config
 
 import (
@@ -65,7 +67,6 @@ func Test_configureConfigSearchPath(t *testing.T) {
 		{
 			name: "without config dir",
 			setupMocks: func(m *MockViper) {
-				m.EXPECT().AddConfigPath("../resources/test/etc/test/")
 				m.EXPECT().AddConfigPath("./")
 				m.EXPECT().AddConfigPath("$HOME/.test/")
 				m.EXPECT().AddConfigPath("/etc/test/")
@@ -76,7 +77,6 @@ func Test_configureConfigSearchPath(t *testing.T) {
 			configDir: "/config_source_test/",
 			setupMocks: func(m *MockViper) {
 				m.EXPECT().AddConfigPath("/config_source_test/")
-				m.EXPECT().AddConfigPath("../resources/test/etc/test/")
 				m.EXPECT().AddConfigPath("./")
 				m.EXPECT().AddConfigPath("$HOME/.test/")
 				m.EXPECT().AddConfigPath("/etc/test/")

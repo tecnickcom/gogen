@@ -273,7 +273,6 @@ func configureSearchPath(v Viper, cmdName, configDir string) {
 
 	// add default search directories for the configuration file
 	configSearchPath = append(configSearchPath, []string{
-		"../resources/test/etc/" + cmdName + "/",
 		"./",
 		"$HOME/." + cmdName + "/",
 		"/etc/" + cmdName + "/",
