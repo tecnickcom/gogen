@@ -233,15 +233,25 @@ func TestLogDifferences(t *testing.T) {
 		Release   string `json:"release"`
 	}
 
-	var log1, log2 LogData
+	var log1 LogData
 	err = json.Unmarshal([]byte(logs[0]), &log1)
 	require.NoError(t, err)
+	require.NotEmpty(t, log1.Level, "first log level should not be empty")
+	require.NotEmpty(t, log1.Timestamp, "first log timestamp should not be empty")
+	require.NotEmpty(t, log1.Msg, "first log msg should not be empty")
+	require.NotEmpty(t, log1.Program, "first log program should not be empty")
+	require.NotEmpty(t, log1.Version, "first log version should not be empty")
+	require.NotEmpty(t, log1.Release, "first log release should not be empty")
+
+	var log2 LogData
 	err = json.Unmarshal([]byte(logs[1]), &log2)
 	require.NoError(t, err)
-
-	require.NotEmpty(t, log1.Program, "program should not be empty")
-	require.NotEmpty(t, log1.Version, "version should not be empty")
-	require.NotEmpty(t, log1.Release, "release should not be empty")
+	require.NotEmpty(t, log2.Level, "second log level should not be empty")
+	require.NotEmpty(t, log2.Timestamp, "second log timestamp should not be empty")
+	require.NotEmpty(t, log2.Msg, "second log msg should not be empty")
+	require.NotEmpty(t, log2.Program, "second log program should not be empty")
+	require.NotEmpty(t, log2.Version, "second log version should not be empty")
+	require.NotEmpty(t, log2.Release, "second log release should not be empty")
 
 	require.Equal(t, log1.Level, log2.Level, "Logs should have the same level")
 	require.NotEqual(t, log1.Timestamp, log2.Timestamp, "Logs should have different timestamp")
