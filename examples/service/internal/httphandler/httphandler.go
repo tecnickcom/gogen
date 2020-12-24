@@ -11,10 +11,11 @@ import (
 
 // Service is the interface representing the business logic of the service
 type Service interface {
-	// NOTE: This is a sample Service interface. It is meant to demonstrate where the business logic of a service should
-	// reside. Also, it adds the capability of mocking the HTTP Handler independently from the rest of the code
-
-	// NOTE: Add service functions here
+	// NOTE
+	// This is a sample Service interface.
+	// It is meant to demonstrate where the business logic of a service should reside.
+	// It adds the capability of mocking the HTTP Handler independently from the rest of the code.
+	// Add service functions here.
 }
 
 // New creates a new instance of the HTTP handler
