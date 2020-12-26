@@ -1,3 +1,5 @@
+//go:generate mockgen -package logging -destination ./mock_test.go . Syncer
+
 package logging
 
 import (

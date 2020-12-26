@@ -1,3 +1,5 @@
+//go:generate mockgen -package config -destination ./mock_test.go . Viper
+
 package config
 
 import (

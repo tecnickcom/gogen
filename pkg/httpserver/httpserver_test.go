@@ -1,3 +1,5 @@
+//go:generate mockgen -package httpserver -destination ./mock_test.go . Router,Binder
+
 package httpserver
 
 import (
