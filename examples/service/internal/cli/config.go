@@ -31,7 +31,7 @@ type ipifyConfig struct {
 // appConfig contains the full application configuration
 type appConfig struct {
 	config.BaseConfig `mapstructure:",squash" validate:"required"`
-	Enabled           bool        `mapstructure:"enabled" validate:"required"`
+	Enabled           bool        `mapstructure:"enabled"`
 	MonitoringAddress string      `mapstructure:"monitoring_address" validate:"required,hostname_port"`
 	PublicAddress     string      `mapstructure:"public_address" validate:"required,hostname_port"`
 	Ipify             ipifyConfig `mapstructure:"ipify" validate:"required"`
