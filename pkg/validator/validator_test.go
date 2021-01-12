@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidationError_Error(t *testing.T) {
+func TestError_Error(t *testing.T) {
 	t.Parallel()
 	want := "mock_error"
-	e := &ValidationError{Err: "mock_error"}
+	e := &Error{Err: "mock_error"}
 	got := e.Error()
 	require.Equal(t, want, got, "Error() = %v, want %v", got, want)
 }
@@ -30,18 +30,27 @@ func TestNew(t *testing.T) {
 		{
 			name: "applied opts returns error",
 			opts: []Option{
-				WithDefaultTranslations(),
 				WithFieldNameTag("test_tag"),
+				WithDefaultTranslations(),
 				WithValidationTranslated("test_tag", nil, nil, nil),
 			},
 			want:    false,
 			wantErr: true,
 		},
 		{
-			name: "success with opts applied",
+			name: "success with default translations",
 			opts: []Option{
-				WithDefaultTranslations(),
 				WithFieldNameTag("test_tag"),
+				WithDefaultTranslations(),
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "success with error templates",
+			opts: []Option{
+				WithFieldNameTag("test_tag"),
+				WithErrorTemplates(ErrorTemplates),
 			},
 			want:    true,
 			wantErr: false,
@@ -52,7 +61,6 @@ func TestNew(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := New(tt.opts...)
-
 			if tt.wantErr {
 				require.Nil(t, got, "New() returned Validator should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
@@ -70,38 +78,79 @@ func TestValidator_ValidateStruct(t *testing.T) {
 		IntField int    `json:"sub_int" validate:"required,min=2"`
 	}
 	type rootStruct struct {
-		BoolField    bool       `json:"bool_field" validate:"required"`
+		BoolField    bool       `json:"bool_field"`
 		SubStruct    subStruct  `json:"sub_struct" validate:"required"`
 		SubStructPtr *subStruct `json:"sub_struct_ptr" validate:"required"`
 		StringField  string     `json:"string_field" validate:"required"`
 		NoNameField  string     `json:"-" validate:"required"`
 	}
-
+	validObj := rootStruct{
+		BoolField: true,
+		SubStruct: subStruct{
+			URLField: "http://first.test.invalid",
+			IntField: 3,
+		},
+		SubStructPtr: &subStruct{
+			URLField: "http://second.test.invalid",
+			IntField: 123,
+		},
+		StringField: "hello world",
+		NoNameField: "test",
+	}
 	tests := []struct {
 		name    string
 		obj     interface{}
+		opts    []Option
 		wantErr bool
 	}{
 		{
-			name: "success struct validated",
-			obj: rootStruct{
-				BoolField: true,
-				SubStruct: subStruct{
-					URLField: "http://first.test.invalid",
-					IntField: 3,
-				},
-				SubStructPtr: &subStruct{
-					URLField: "http://second.test.invalid",
-					IntField: 123,
-				},
-				StringField: "hello world",
-				NoNameField: "test",
+			name: "success with no translations",
+			obj:  validObj,
+			opts: []Option{
+				WithFieldNameTag("json"),
 			},
 			wantErr: false,
 		},
 		{
-			name:    "failed in validation with empty struct",
+			name: "success with default error templates",
+			obj:  validObj,
+			opts: []Option{
+				WithFieldNameTag("json"),
+				WithErrorTemplates(ErrorTemplates),
+			},
+			wantErr: false,
+		},
+		{
+			name: "success with default translator",
+			obj:  validObj,
+			opts: []Option{
+				WithFieldNameTag("json"),
+				WithDefaultTranslations(),
+			},
+			wantErr: false,
+		},
+		{
+			name:    "fail with no options",
 			obj:     rootStruct{},
+			opts:    []Option{},
+			wantErr: true,
+		},
+		{
+			name: "fail with error templates",
+			obj:  rootStruct{},
+			opts: []Option{
+				WithFieldNameTag("json"),
+				WithErrorTemplates(ErrorTemplates),
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail with default translations",
+			obj:  rootStruct{},
+			opts: []Option{
+				WithFieldNameTag("json"),
+				WithDefaultTranslations(),
+			},
 			wantErr: true,
 		},
 	}
@@ -109,12 +158,9 @@ func TestValidator_ValidateStruct(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			opts := []Option{
-				WithFieldNameTag("json"),
-				WithDefaultTranslations(),
-			}
-			v, _ := New(opts...)
-			err := v.ValidateStruct(tt.obj)
+			v, err := New(tt.opts...)
+			require.NoError(t, err, "New() unexpected error = %v", err)
+			err = v.ValidateStruct(tt.obj)
 			require.Equal(t, tt.wantErr, err != nil, "ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
 		})
 	}

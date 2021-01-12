@@ -1,6 +1,8 @@
 package validator
 
 import (
+	"fmt"
+	"html/template"
 	"reflect"
 	"strings"
 
@@ -30,7 +32,24 @@ func WithFieldNameTag(tag string) Option {
 	}
 }
 
-// WithDefaultTranslations sets the default English translations.
+// WithErrorTemplates sets basic template-based error message translations.
+// The argument t maps tags to html templates that uses the Error data.
+// These translations takes precedence over the parent library translation object.
+func WithErrorTemplates(t map[string]string) Option {
+	return func(v *Validator) error {
+		v.tpl = make(map[string]*template.Template, len(t))
+		for tag, tpl := range t {
+			t, err := template.New(tag).Parse(tpl)
+			if err != nil {
+				return err
+			}
+			v.tpl[tag] = t
+		}
+		return nil
+	}
+}
+
+// WithDefaultTranslations sets the default English translations using the parent library translator.
 func WithDefaultTranslations() Option {
 	return func(v *Validator) error {
 		en := lc.New()
@@ -49,6 +68,9 @@ func WithValidationTranslated(tag string, fn vt.Func, registerFn vt.RegisterTran
 	return func(v *Validator) error {
 		if err := v.V.RegisterValidation(tag, fn); err != nil {
 			return err
+		}
+		if v.T == nil {
+			return fmt.Errorf("the Translator object is nil")
 		}
 		if err := v.V.RegisterTranslation(tag, v.T, registerFn, translationFn); err != nil {
 			return err

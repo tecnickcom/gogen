@@ -3,6 +3,8 @@
 package validator
 
 import (
+	"bytes"
+	"html/template"
 	"strings"
 
 	ut "github.com/go-playground/universal-translator"
@@ -10,58 +12,16 @@ import (
 	"go.uber.org/multierr"
 )
 
-// ValidationError is a custom error adding a Field member.
-type ValidationError struct {
-	// Tag is the validation tag that failed.
-	// If the validation was an alias, this will return the alias name and not the underlying tag that failed.
-	//
-	// eg. alias "iscolor": "hexcolor|rgb|rgba|hsl|hsla"
-	// will return "iscolor"
-	Tag string
-
-	// ActualTag is the validation tag that failed,
-	// even if an alias the actual tag within the alias will be returned.
-	// If an 'or' validation fails the entire or will be returned.
-	//
-	// eg. alias "iscolor": "hexcolor|rgb|rgba|hsl|hsla"
-	// will return "hexcolor|rgb|rgba|hsl|hsla"
-	ActualTag string
-
-	// Namespace for the field error,
-	// with the tag name taking precedence over the field's actual name.
-	Namespace string
-
-	// StructNamespace is the namespace for the field error,
-	// with the field's actual name.
-	StructNamespace string
-
-	// Field is the field name with the tag name taking precedence over the field's actual name.
-	Field string
-
-	// StructField is the field's actual name from the struct, when able to determine.
-	StructField string
-
-	// Value the actual field's value
-	Value interface{}
-
-	// Param is the param value
-	Param string
-
-	// Error returns the translated error message
-	Err string
-}
-
-// Error returns a string representation of the error.
-func (e *ValidationError) Error() string {
-	return e.Err
-}
-
 // Validator contains the validator object fields.
 type Validator struct {
-	// V is the validate object
+	// V is the validate object.
 	V *vt.Validate
-	// Trans is the translator object
+
+	// Trans is the translator object used by the parent library.
 	T ut.Translator
+
+	// tpl contains the map of basic translation templates indexed by tag.
+	tpl map[string]*template.Template
 }
 
 // New returns a new validator with the specified options.
@@ -78,29 +38,46 @@ func New(opts ...Option) (*Validator, error) {
 }
 
 // ValidateStruct validates the structure fields tagged with "validate".
-func (v *Validator) ValidateStruct(obj interface{}) error {
-	err := v.V.Struct(obj)
-	if err == nil {
+func (v *Validator) ValidateStruct(obj interface{}) (err error) {
+	vErr := v.V.Struct(obj)
+	if vErr == nil {
 		return nil
 	}
-	for _, e := range err.(vt.ValidationErrors) {
+	for _, e := range vErr.(vt.ValidationErrors) {
 		if e != nil {
-			ns := e.Namespace()
-			if idx := strings.Index(ns, "."); idx != -1 {
-				ns = ns[idx+1:] // remove root struct name
-			}
-			err = multierr.Append(err, &ValidationError{
+			ve := &Error{
 				Tag:             e.Tag(),
 				ActualTag:       e.ActualTag(),
-				Namespace:       ns,
+				Namespace:       e.Namespace(),
 				StructNamespace: e.StructNamespace(),
 				Field:           e.Field(),
 				StructField:     e.StructField(),
 				Value:           e.Value(),
 				Param:           e.Param(),
-				Err:             strings.Replace(e.Translate(v.T), e.Field(), ns, 1),
-			})
+				Kind:            e.Kind().String(),
+				Type:            e.Type().String(),
+				OrigErr:         e.Error(),
+			}
+			ve.Err = v.translate(e, ve)
+			err = multierr.Append(err, ve)
 		}
 	}
 	return err
+}
+
+func (v *Validator) translate(fe vt.FieldError, ve *Error) string {
+	t, ok := v.tpl[ve.Tag]
+	if ok {
+		if idx := strings.Index(ve.Namespace, "."); idx != -1 {
+			ve.Namespace = ve.Namespace[idx+1:] // remove root struct name
+		}
+		var out bytes.Buffer
+		if err := t.Execute(&out, ve); err == nil {
+			return out.String()
+		}
+	}
+	if v.T != nil {
+		return fe.Translate(v.T)
+	}
+	return ve.OrigErr
 }
