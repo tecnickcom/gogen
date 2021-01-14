@@ -22,7 +22,7 @@ func TestNew(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "empty option success",
+			name:    "success with empty options",
 			opts:    nil,
 			want:    true,
 			wantErr: false,
@@ -50,6 +50,16 @@ func TestNew(t *testing.T) {
 			name: "success with error templates",
 			opts: []Option{
 				WithFieldNameTag("test_tag"),
+				WithErrorTemplates(ErrorTemplates),
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "success with custom tags",
+			opts: []Option{
+				WithFieldNameTag("test_tag"),
+				WithCustomValidationTags(CustomValidationTags),
 				WithErrorTemplates(ErrorTemplates),
 			},
 			want:    true,

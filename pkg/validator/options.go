@@ -32,6 +32,18 @@ func WithFieldNameTag(tag string) Option {
 	}
 }
 
+// WithCustomValidationTags register custom tags and validation functions.
+func WithCustomValidationTags(t map[string]vt.Func) Option {
+	return func(v *Validator) error {
+		for tag, fn := range t {
+			if err := v.V.RegisterValidation(tag, fn); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
 // WithErrorTemplates sets basic template-based error message translations.
 // The argument t maps tags to html templates that uses the Error data.
 // These translations takes precedence over the parent library translation object.

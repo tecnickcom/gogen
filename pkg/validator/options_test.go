@@ -37,6 +37,43 @@ func TestWithFieldNameTag(t *testing.T) {
 	}
 }
 
+func TestWithCustomValidationTags(t *testing.T) {
+	tests := []struct {
+		name    string
+		arg     map[string]vt.Func
+		wantErr bool
+	}{
+		{
+			name:    "success with default custom tags",
+			arg:     CustomValidationTags,
+			wantErr: false,
+		},
+		{
+			name:    "success with empty tags",
+			arg:     map[string]vt.Func{},
+			wantErr: false,
+		},
+		{
+			name:    "error with invalid tag",
+			arg:     map[string]vt.Func{"error": nil},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			v := &Validator{V: vt.New()}
+			err := WithCustomValidationTags(tt.arg)(v)
+			if tt.wantErr {
+				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
+			} else {
+				require.Nil(t, err, "unexpected error = %v", err)
+			}
+		})
+	}
+}
+
 func TestWithErrorTemplates(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -71,9 +108,9 @@ func TestWithErrorTemplates(t *testing.T) {
 			v := &Validator{V: vt.New()}
 			err := WithErrorTemplates(tt.arg)(v)
 			if tt.wantErr {
-				require.Error(t, err, "WithErrorTemplates() error = %v, wantErr %v", err, tt.wantErr)
+				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				require.Nil(t, err, "WithErrorTemplates() unexpected error = %v", err)
+				require.Nil(t, err, "unexpected error = %v", err)
 				require.Equal(t, len(tt.arg), len(v.tpl), "Not all templates were imported")
 			}
 		})
@@ -176,9 +213,9 @@ func TestWithValidationTranslated(t *testing.T) {
 			}
 			err := WithValidationTranslated(tt.args.tag, tt.args.fn, tt.args.registerFn, tt.args.translationFn)(v)
 			if tt.wantErr {
-				require.Error(t, err, "WithValidationTranslated() error = %v, wantErr %v", err, tt.wantErr)
+				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				require.Nil(t, err, "WithValidationTranslated() unexpected error = %v", err)
+				require.Nil(t, err, "unexpected error = %v", err)
 			}
 		})
 	}
