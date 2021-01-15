@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/multierr"
 )
 
 type testCustomTagStruct struct {
@@ -34,6 +35,7 @@ type testCustomTagStruct struct {
 	FalseIfBool      string      `json:"falseif_bool" validate:"falseif=FieldBool true|alpha"`
 	FalseIfReqArray  string      `json:"falseif_req_array" validate:"falseif=FieldArray|alpha"`
 	FalseIfInterface string      `json:"falseif_interface" validate:"falseif=FieldInterface 1|alpha"`
+	FieldOrTest      string      `json:"field_or_test" validate:"max=3|alpha"`
 }
 
 func getTestCustomTagData() testCustomTagStruct {
@@ -63,44 +65,58 @@ func getTestCustomTagData() testCustomTagStruct {
 		FalseIfBool:      "E",
 		FalseIfReqArray:  "F",
 		FalseIfInterface: "G",
+		FieldOrTest:      "123",
 	}
 }
 
 func TestCustomTags(t *testing.T) {
 	tests := []struct {
-		name    string
-		fobj    func(obj testCustomTagStruct) testCustomTagStruct
-		wantErr bool
+		name         string
+		fobj         func(obj testCustomTagStruct) testCustomTagStruct
+		wantErr      bool
+		wantErrCount int
 	}{
 		{
-			name:    "success",
-			fobj:    func(obj testCustomTagStruct) testCustomTagStruct { return obj },
-			wantErr: false,
+			name:         "success",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { return obj },
+			wantErr:      false,
+			wantErrCount: 0,
 		},
 		{
-			name:    "fail with invalid e164",
-			fobj:    func(obj testCustomTagStruct) testCustomTagStruct { obj.E164 = "012345678"; return obj },
-			wantErr: true,
+			name:         "fail with invalid e164",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.E164 = "012345678"; return obj },
+			wantErr:      true,
+			wantErrCount: 1,
 		},
 		{
-			name:    "fail with invalid ein",
-			fobj:    func(obj testCustomTagStruct) testCustomTagStruct { obj.EIN = "12-345-56789"; return obj },
-			wantErr: true,
+			name:         "fail with invalid ein",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.EIN = "12-345-56789"; return obj },
+			wantErr:      true,
+			wantErrCount: 1,
 		},
 		{
-			name:    "fail with invalid zip code",
-			fobj:    func(obj testCustomTagStruct) testCustomTagStruct { obj.USZIPCode = "1234"; return obj },
-			wantErr: true,
+			name:         "fail with invalid zip code",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.USZIPCode = "1234"; return obj },
+			wantErr:      true,
+			wantErrCount: 1,
 		},
 		{
-			name:    "fail with invalid US state",
-			fobj:    func(obj testCustomTagStruct) testCustomTagStruct { obj.State = "XX"; return obj },
-			wantErr: true,
+			name:         "fail with invalid US state",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.State = "XX"; return obj },
+			wantErr:      true,
+			wantErrCount: 1,
 		},
 		{
-			name:    "fail with invalid US state when country is not set",
-			fobj:    func(obj testCustomTagStruct) testCustomTagStruct { obj.Country = ""; obj.StateB = "XX"; return obj },
-			wantErr: true,
+			name:         "fail with invalid required US state",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.StateB = "XX"; return obj },
+			wantErr:      true,
+			wantErrCount: 1,
+		},
+		{
+			name:         "fail with invalid US state when country is not set",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.Country = ""; obj.StateB = "XX"; return obj },
+			wantErr:      true,
+			wantErrCount: 1,
 		},
 		{
 			name: "pass with non US state",
@@ -109,7 +125,8 @@ func TestCustomTags(t *testing.T) {
 				obj.StateC = "England"
 				return obj
 			},
-			wantErr: false,
+			wantErr:      false,
+			wantErrCount: 0,
 		},
 		{
 			name: "pass with US state and non-US country",
@@ -118,7 +135,14 @@ func TestCustomTags(t *testing.T) {
 				obj.StateC = "NY"
 				return obj
 			},
-			wantErr: false,
+			wantErr:      false,
+			wantErrCount: 0,
+		},
+		{
+			name:         "fail with or tags",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.FieldOrTest = "1234"; return obj },
+			wantErr:      true,
+			wantErrCount: 2,
 		},
 	}
 	opts := []Option{
@@ -135,6 +159,8 @@ func TestCustomTags(t *testing.T) {
 			s := tt.fobj(getTestCustomTagData())
 			err := v.ValidateStruct(s)
 			require.Equal(t, tt.wantErr, err != nil, "error = %v, wantErr %v", err, tt.wantErr)
+			errs := multierr.Errors(err)
+			require.Equal(t, tt.wantErrCount, len(errs), "errors: %+v", errs)
 		})
 	}
 }

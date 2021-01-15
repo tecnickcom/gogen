@@ -38,6 +38,7 @@ func New(opts ...Option) (*Validator, error) {
 }
 
 // ValidateStruct validates the structure fields tagged with "validate".
+// nolint: gocognit,gocyclo
 func (v *Validator) ValidateStruct(obj interface{}) (err error) {
 	vErr := v.V.Struct(obj)
 	if vErr == nil {
@@ -45,21 +46,35 @@ func (v *Validator) ValidateStruct(obj interface{}) (err error) {
 	}
 	for _, e := range vErr.(vt.ValidationErrors) {
 		if e != nil {
-			ve := &Error{
-				Tag:             e.Tag(),
-				ActualTag:       e.ActualTag(),
-				Namespace:       e.Namespace(),
-				StructNamespace: e.StructNamespace(),
-				Field:           e.Field(),
-				StructField:     e.StructField(),
-				Value:           e.Value(),
-				Param:           e.Param(),
-				Kind:            e.Kind().String(),
-				Type:            e.Type().String(),
-				OrigErr:         e.Error(),
+			tags := strings.Split(e.Tag(), "|")
+			for _, tag := range tags {
+				if strings.HasPrefix(tag, "falseif") {
+					continue
+				}
+				tagParts := strings.SplitN(tag, "=", 2)
+				tagKey := tagParts[0]
+				var tagParam string
+				if len(tagParts) == 2 {
+					tagParam = tagParts[1]
+				} else {
+					tagParam = e.Param()
+				}
+				ve := &Error{
+					Tag:             tagKey,
+					ActualTag:       e.ActualTag(),
+					Namespace:       e.Namespace(),
+					StructNamespace: e.StructNamespace(),
+					Field:           e.Field(),
+					StructField:     e.StructField(),
+					Value:           e.Value(),
+					Param:           tagParam,
+					Kind:            e.Kind().String(),
+					Type:            e.Type().String(),
+					OrigErr:         e.Error(),
+				}
+				ve.Err = v.translate(e, ve)
+				err = multierr.Append(err, ve)
 			}
-			ve.Err = v.translate(e, ve)
-			err = multierr.Append(err, ve)
 		}
 	}
 	return err
