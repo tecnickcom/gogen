@@ -36,6 +36,7 @@ var ErrorTemplates = map[string]string{
 	"excludes":                "{{.Namespace}} cannot contain the text '{{.Param}}'",
 	"excludesall":             "{{.Namespace}} cannot contain any of the following characters '{{.Param}}'",
 	"excludesrune":            "{{.Namespace}} cannot contain the following '{{.Param}}'",
+	"falseif":                 "{{.Namespace}} is missing a check",
 	"fieldcontains":           "{{.Namespace}} must contain the field {{.Param}}",
 	"fieldexcludes":           "{{.Namespace}} must not contain the field {{.Param}}",
 	"file":                    "{{.Namespace}} must be a valid file path",
