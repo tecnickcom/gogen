@@ -1,15 +1,11 @@
 package validator
 
 import (
-	"fmt"
 	"html/template"
 	"reflect"
 	"strings"
 
-	lc "github.com/go-playground/locales/en"
-	ut "github.com/go-playground/universal-translator"
 	vt "github.com/go-playground/validator/v10"
-	tr "github.com/go-playground/validator/v10/translations/en"
 )
 
 // Option is the interface that allows to set options.
@@ -21,7 +17,7 @@ func WithFieldNameTag(tag string) Option {
 		if tag == "" {
 			return nil
 		}
-		v.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		v.v.RegisterTagNameFunc(func(fld reflect.StructField) string {
 			name := strings.SplitN(fld.Tag.Get(tag), ",", 2)[0]
 			if name == "-" {
 				return ""
@@ -36,7 +32,7 @@ func WithFieldNameTag(tag string) Option {
 func WithCustomValidationTags(t map[string]vt.Func) Option {
 	return func(v *Validator) error {
 		for tag, fn := range t {
-			if err := v.V.RegisterValidation(tag, fn); err != nil {
+			if err := v.v.RegisterValidation(tag, fn); err != nil {
 				return err
 			}
 		}
@@ -56,36 +52,6 @@ func WithErrorTemplates(t map[string]string) Option {
 				return err
 			}
 			v.tpl[tag] = t
-		}
-		return nil
-	}
-}
-
-// WithDefaultTranslations sets the default English translations using the parent library translator.
-func WithDefaultTranslations() Option {
-	return func(v *Validator) error {
-		en := lc.New()
-		uni := ut.New(en, en)
-		trans, ok := uni.GetTranslator("en")
-		if ok {
-			_ = tr.RegisterDefaultTranslations(v.V, trans)
-			v.T = trans
-		}
-		return nil
-	}
-}
-
-// WithValidationTranslated allows to register a validation func and a translation for the provided tag.
-func WithValidationTranslated(tag string, fn vt.Func, registerFn vt.RegisterTranslationsFunc, translationFn vt.TranslationFunc) Option {
-	return func(v *Validator) error {
-		if err := v.V.RegisterValidation(tag, fn); err != nil {
-			return err
-		}
-		if v.T == nil {
-			return fmt.Errorf("the Translator object is nil")
-		}
-		if err := v.V.RegisterTranslation(tag, v.T, registerFn, translationFn); err != nil {
-			return err
 		}
 		return nil
 	}

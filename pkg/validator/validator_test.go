@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/multierr"
 )
 
 func TestError_Error(t *testing.T) {
@@ -18,52 +19,43 @@ func TestNew(t *testing.T) {
 	tests := []struct {
 		name    string
 		opts    []Option
-		want    bool
 		wantErr bool
 	}{
 		{
 			name:    "success with empty options",
 			opts:    nil,
-			want:    true,
 			wantErr: false,
 		},
 		{
-			name: "applied opts returns error",
+			name: "success with custom tag name option",
 			opts: []Option{
 				WithFieldNameTag("test_tag"),
-				WithDefaultTranslations(),
-				WithValidationTranslated("test_tag", nil, nil, nil),
 			},
-			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "success with default translations",
-			opts: []Option{
-				WithFieldNameTag("test_tag"),
-				WithDefaultTranslations(),
-			},
-			want:    true,
 			wantErr: false,
 		},
 		{
-			name: "success with error templates",
+			name: "success with custom tag name and error templates options",
 			opts: []Option{
 				WithFieldNameTag("test_tag"),
 				WithErrorTemplates(ErrorTemplates),
 			},
-			want:    true,
 			wantErr: false,
 		},
 		{
-			name: "success with custom tags",
+			name: "success with custom tag name, custom validation and error templates options",
 			opts: []Option{
 				WithFieldNameTag("test_tag"),
 				WithCustomValidationTags(CustomValidationTags),
 				WithErrorTemplates(ErrorTemplates),
 			},
-			want:    true,
 			wantErr: false,
+		},
+		{
+			name: "fail with invalid error template",
+			opts: []Option{
+				WithErrorTemplates(map[string]string{"error": "{{.ERROR} ---"}),
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -94,6 +86,7 @@ func TestValidator_ValidateStruct(t *testing.T) {
 		StringField  string     `json:"string_field" validate:"required"`
 		NoNameField  string     `json:"-" validate:"required"`
 	}
+
 	validObj := rootStruct{
 		BoolField: true,
 		SubStruct: subStruct{
@@ -107,63 +100,52 @@ func TestValidator_ValidateStruct(t *testing.T) {
 		StringField: "hello world",
 		NoNameField: "test",
 	}
+
 	tests := []struct {
-		name    string
-		obj     interface{}
-		opts    []Option
-		wantErr bool
+		name         string
+		obj          interface{}
+		opts         []Option
+		wantErr      bool
+		wantErrCount int
 	}{
 		{
-			name: "success with no translations",
+			name: "success with custom tag",
 			obj:  validObj,
 			opts: []Option{
 				WithFieldNameTag("json"),
 			},
-			wantErr: false,
+			wantErr:      false,
+			wantErrCount: 0,
 		},
 		{
-			name: "success with default error templates",
+			name: "success with custom tag name and error templates options",
 			obj:  validObj,
 			opts: []Option{
 				WithFieldNameTag("json"),
 				WithErrorTemplates(ErrorTemplates),
 			},
-			wantErr: false,
+			wantErr:      false,
+			wantErrCount: 0,
 		},
 		{
-			name: "success with default translator",
-			obj:  validObj,
-			opts: []Option{
-				WithFieldNameTag("json"),
-				WithDefaultTranslations(),
-			},
-			wantErr: false,
+			name:         "fail with empty data and no options",
+			obj:          rootStruct{},
+			opts:         []Option{},
+			wantErr:      true,
+			wantErrCount: 5,
 		},
 		{
-			name:    "fail with no options",
-			obj:     rootStruct{},
-			opts:    []Option{},
-			wantErr: true,
-		},
-		{
-			name: "fail with error templates",
+			name: "fail with empty data error templates",
 			obj:  rootStruct{},
 			opts: []Option{
 				WithFieldNameTag("json"),
 				WithErrorTemplates(ErrorTemplates),
 			},
-			wantErr: true,
-		},
-		{
-			name: "fail with default translations",
-			obj:  rootStruct{},
-			opts: []Option{
-				WithFieldNameTag("json"),
-				WithDefaultTranslations(),
-			},
-			wantErr: true,
+			wantErr:      true,
+			wantErrCount: 5,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -172,6 +154,8 @@ func TestValidator_ValidateStruct(t *testing.T) {
 			require.NoError(t, err, "New() unexpected error = %v", err)
 			err = v.ValidateStruct(tt.obj)
 			require.Equal(t, tt.wantErr, err != nil, "ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			errs := multierr.Errors(err)
+			require.Equal(t, tt.wantErrCount, len(errs), "errors: %+v", errs)
 		})
 	}
 }

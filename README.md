@@ -3,6 +3,7 @@
 *Go Service Library*
 
 [![Build Status](https://travis-ci.org/nexmoinc/gosrvlib.svg?branch=main)](https://travis-ci.org/nexmoinc/gosrvlib?branch=main)
+[![Coverage](https://coveralls.io/repos/nexmoinc/gosrvlib/badge.svg?branch=main&service=github)](https://coveralls.io/github/nexmoinc/gosrvlib?branch=main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nexmoinc/gosrvlib)](https://goreportcard.com/report/github.com/nexmoinc/gosrvlib)
 [![Go Reference](https://pkg.go.dev/badge/github.com/nexmoinc/gosrvlib.svg)](https://pkg.go.dev/github.com/nexmoinc/gosrvlib)
 
