@@ -4,6 +4,7 @@ package validator
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"strings"
@@ -32,10 +33,14 @@ func New(opts ...Option) (*Validator, error) {
 	return v, nil
 }
 
-// ValidateStruct validates the structure fields tagged with "validate"
-// and returns a multierror.
+// ValidateStruct validates the structure fields tagged with "validate" and returns a multierror.
 func (v *Validator) ValidateStruct(obj interface{}) (err error) {
-	vErr := v.v.Struct(obj)
+	return v.ValidateStructCtx(context.Background(), obj)
+}
+
+// ValidateStructCtx validates the structure fields tagged with "validate" and returns a multierror.
+func (v *Validator) ValidateStructCtx(ctx context.Context, obj interface{}) (err error) {
+	vErr := v.v.StructCtx(ctx, obj)
 	if vErr == nil {
 		return nil
 	}

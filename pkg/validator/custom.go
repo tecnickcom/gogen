@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -22,7 +23,7 @@ var (
 )
 
 // CustomValidationTags maps custom tags with validation function
-var CustomValidationTags = map[string]vt.Func{
+var CustomValidationTags = map[string]vt.FuncCtx{
 	"falseif":    isFalseIf,
 	"e164noplus": isE164NoPlus,
 	"ein":        isEIN,
@@ -31,25 +32,25 @@ var CustomValidationTags = map[string]vt.Func{
 }
 
 // isE164 checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345)
-func isE164NoPlus(fl vt.FieldLevel) bool {
+func isE164NoPlus(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexE164NoPlus.MatchString(field.String())
 }
 
 // isEIN checks if the fields value is a valid EIN US tax code (e.g.: 12-3456789 or 123456789)
-func isEIN(fl vt.FieldLevel) bool {
+func isEIN(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexEIN.MatchString(field.String())
 }
 
 // isUSZIPCode checks if the fields value is a valid US ZIP code (e.g.: 12345 or 12345-6789)
-func isUSZIPCode(fl vt.FieldLevel) bool {
+func isUSZIPCode(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexUSZIPCode.MatchString(field.String())
 }
 
 // isUSState checks if the fields value is a valid 2-letter US state
-func isUSState(fl vt.FieldLevel) bool {
+func isUSState(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	if field.Kind() == reflect.String {
 		switch field.String() {
@@ -67,7 +68,7 @@ func isUSState(fl vt.FieldLevel) bool {
 // Examples:
 //     "falseif=Country US|usstate" checks if the field is a valid US state only if the Country field is set to "US".
 //     "falseif=Country|usstate" checks if the field is a valid US state only if the Country field is set and not empty.
-func isFalseIf(fl vt.FieldLevel) bool {
+func isFalseIf(ctx context.Context, fl vt.FieldLevel) bool {
 	param := strings.TrimSpace(fl.Param())
 	if param == "" {
 		return true

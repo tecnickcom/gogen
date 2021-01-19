@@ -35,7 +35,7 @@ func TestWithFieldNameTag(t *testing.T) {
 func TestWithCustomValidationTags(t *testing.T) {
 	tests := []struct {
 		name    string
-		arg     map[string]vt.Func
+		arg     map[string]vt.FuncCtx
 		wantErr bool
 	}{
 		{
@@ -45,12 +45,12 @@ func TestWithCustomValidationTags(t *testing.T) {
 		},
 		{
 			name:    "success with empty tags",
-			arg:     map[string]vt.Func{},
+			arg:     map[string]vt.FuncCtx{},
 			wantErr: false,
 		},
 		{
 			name:    "error with invalid tag",
-			arg:     map[string]vt.Func{"error": nil},
+			arg:     map[string]vt.FuncCtx{"error": nil},
 			wantErr: true,
 		},
 	}

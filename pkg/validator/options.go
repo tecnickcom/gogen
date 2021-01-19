@@ -29,10 +29,10 @@ func WithFieldNameTag(tag string) Option {
 }
 
 // WithCustomValidationTags register custom tags and validation functions.
-func WithCustomValidationTags(t map[string]vt.Func) Option {
+func WithCustomValidationTags(t map[string]vt.FuncCtx) Option {
 	return func(v *Validator) error {
 		for tag, fn := range t {
-			if err := v.v.RegisterValidation(tag, fn); err != nil {
+			if err := v.v.RegisterValidationCtx(tag, fn); err != nil {
 				return err
 			}
 		}
