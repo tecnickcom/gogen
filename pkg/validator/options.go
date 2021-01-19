@@ -45,7 +45,9 @@ func WithCustomValidationTags(t map[string]vt.FuncCtx) Option {
 // These translations takes precedence over the parent library translation object.
 func WithErrorTemplates(t map[string]string) Option {
 	return func(v *Validator) error {
-		v.tpl = make(map[string]*template.Template, len(t))
+		if len(v.tpl) == 0 {
+			v.tpl = make(map[string]*template.Template, len(t))
+		}
 		for tag, tpl := range t {
 			t, err := template.New(tag).Parse(tpl)
 			if err != nil {
