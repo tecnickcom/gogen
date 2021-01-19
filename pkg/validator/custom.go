@@ -10,39 +10,39 @@ import (
 )
 
 const (
-	regexPatternE164      = `^[+]?[1-9][0-9]{7,14}$`
-	regexPatternEIN       = `^[0-9]{2}-?[0-9]{7}$`
-	regexPatternUSZIPCode = `^[0-9]{5}(?:-[0-9]{4})?$`
+	regexPatternE164NoPlus = `^[1-9][0-9]{7,14}$`
+	regexPatternEIN        = `^[0-9]{2}-?[0-9]{7}$`
+	regexPatternUSZIPCode  = `^[0-9]{5}(?:-[0-9]{4})?$`
 )
 
 var (
-	regexEIN       = regexp.MustCompile(regexPatternEIN)
-	regexE164      = regexp.MustCompile(regexPatternE164)
-	regexUSZIPCode = regexp.MustCompile(regexPatternUSZIPCode)
+	regexE164NoPlus = regexp.MustCompile(regexPatternE164NoPlus)
+	regexEIN        = regexp.MustCompile(regexPatternEIN)
+	regexUSZIPCode  = regexp.MustCompile(regexPatternUSZIPCode)
 )
 
 // CustomValidationTags maps custom tags with validation function
 var CustomValidationTags = map[string]vt.Func{
-	"falseif": isFalseIf,
-	"e164":    isE164,
-	"ein":     isEIN,
-	"zipcode": isUSZIPCode,
-	"usstate": isUSState,
+	"falseif":    isFalseIf,
+	"e164noplus": isE164NoPlus,
+	"ein":        isEIN,
+	"zipcode":    isUSZIPCode,
+	"usstate":    isUSState,
 }
 
-// isE164 checks if the fields value is a valid E.164 phone number format (+123456789012345)
-func isE164(fl vt.FieldLevel) bool {
+// isE164 checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345)
+func isE164NoPlus(fl vt.FieldLevel) bool {
 	field := fl.Field()
-	return regexE164.MatchString(field.String())
+	return regexE164NoPlus.MatchString(field.String())
 }
 
-// isEIN checks if the fields value is a valid EIN US tax code (xx-xxxxxxx or xxxxxxxxx)
+// isEIN checks if the fields value is a valid EIN US tax code (e.g.: 12-3456789 or 123456789)
 func isEIN(fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexEIN.MatchString(field.String())
 }
 
-// isUSZIPCode checks if the fields value is a valid US ZIP code (xxxxx or xxxxx-xxxx)
+// isUSZIPCode checks if the fields value is a valid US ZIP code (e.g.: 12345 or 12345-6789)
 func isUSZIPCode(fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexUSZIPCode.MatchString(field.String())

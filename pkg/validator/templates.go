@@ -21,6 +21,7 @@ var ErrorTemplates = map[string]string{
 	"datetime":                `{{.Namespace}} does not match the {{.Param}} format`,
 	"dir":                     `{{.Namespace}} must be a valid directory`,
 	"e164":                    `{{.Namespace}} must be a valid E.164 formatted phone number`,
+	"e164noplus":              `{{.Namespace}} must be a valid E.164 formatted phone number without the leading '+' symbol`,
 	"ein":                     `{{.Namespace}} must be a valid US EIN tax code`,
 	"email":                   `{{.Namespace}} must be a valid email address`,
 	"endsnotwith":             `{{.Namespace}} must not end with {{.Param}}`,

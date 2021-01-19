@@ -9,8 +9,7 @@ import (
 )
 
 type testCustomTagStruct struct {
-	E164             string      `json:"e164" validate:"e164"`
-	E164B            string      `json:"e164_b" validate:"e164"`
+	E164NoPlus       string      `json:"e164_no_plus" validate:"e164noplus"`
 	EIN              string      `json:"ein" validate:"ein"`
 	EINB             string      `json:"ein_b" validate:"ein"`
 	USZIPCode        string      `json:"zip" validate:"zipcode"`
@@ -40,8 +39,7 @@ type testCustomTagStruct struct {
 
 func getTestCustomTagData() testCustomTagStruct {
 	return testCustomTagStruct{
-		E164:             "+123456789012345",
-		E164B:            "123456789012345",
+		E164NoPlus:       "123456789012345",
 		EIN:              "12-3456789",
 		EINB:             "123456789",
 		USZIPCode:        "12345",
@@ -83,8 +81,8 @@ func TestCustomTags(t *testing.T) {
 			wantErrCount: 0,
 		},
 		{
-			name:         "fail with invalid e164",
-			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.E164 = "012345678"; return obj },
+			name:         "fail with invalid e164noplus",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.E164NoPlus = "+123456789012345"; return obj },
 			wantErr:      true,
 			wantErrCount: 1,
 		},
