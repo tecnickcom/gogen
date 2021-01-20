@@ -25,6 +25,7 @@ func TestCheckHttpStatus(t *testing.T) {
 		checkMethod       string
 		checkExtraPath    string
 		checkTimeout      time.Duration
+		checkOpts         []CheckOption
 		checkWantStatus   int
 		wantErr           bool
 	}{
@@ -85,6 +86,19 @@ func TestCheckHttpStatus(t *testing.T) {
 			handlerStatusCode: http.StatusOK,
 			wantErr:           false,
 		},
+		{
+			name:            "succeed GET with 200 response with opts",
+			checkContext:    testutil.Context(),
+			checkMethod:     http.MethodGet,
+			checkTimeout:    1 * time.Second,
+			checkWantStatus: http.StatusOK,
+			checkOpts: []CheckOption{WithConfigureRequest(func(r *http.Request) {
+
+			})},
+			handlerMethod:     http.MethodGet,
+			handlerStatusCode: http.StatusOK,
+			wantErr:           false,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -108,7 +122,7 @@ func TestCheckHttpStatus(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 
-			err := CheckHTTPStatus(tt.checkContext, testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout)
+			err := CheckHTTPStatus(tt.checkContext, testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
 			t.Logf("check error: %v", err)
 			if tt.wantErr {
 				require.Error(t, err, "CheckHTTPStatus() error = %v, wantErr %v", err, tt.wantErr)
