@@ -95,10 +95,8 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 
 	l, err := zapCfg.Build()
 	if err == nil {
-		l = WithLevelFunctionHook(l, cfg.incMetricLogLevel)
 		l = l.With(cfg.fields...)
-		// replace global logger with the configured root logger
-		zap.ReplaceGlobals(l)
+		l = WithLevelFunctionHook(l, cfg.incMetricLogLevel)
 	}
 	return l, err
 }
@@ -154,5 +152,8 @@ func WithLevelFunctionHook(l *zap.Logger, fn IncrementLogMetricsFunc) *zap.Logge
 		fn(entry.Level.String())
 		return nil
 	}
-	return l.WithOptions(zap.Hooks(fnHook))
+	l = l.WithOptions(zap.Hooks(fnHook))
+	// replace global logger with the configured root logger
+	zap.ReplaceGlobals(l)
+	return l
 }
