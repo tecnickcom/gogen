@@ -48,6 +48,7 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	if err != nil {
 		return fmt.Errorf("error creating application metric: %w", err)
 	}
+	l = logging.WithLevelFunctionHook(l, m.IncLogLevelCounter)
 
 	l.Info("binding application components")
 	if err := bindFn(ctx, l, m); err != nil {

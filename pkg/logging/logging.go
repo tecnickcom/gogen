@@ -11,17 +11,17 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// LogFatal calls the default fatal logger
+// LogFatal calls the default fatal logger.
 var LogFatal = zap.L().Fatal
 
 type ctxKey struct{}
 
-// Syncer is an interface to allow the testing of log syncing
+// Syncer is an interface to allow the testing of log syncing.
 type Syncer interface {
 	Sync() error
 }
 
-// NewDefaultLogger configures a logger with the default fields
+// NewDefaultLogger configures a logger with the default fields.
 func NewDefaultLogger(name, version, release, format, level string) (*zap.Logger, error) {
 	l, err := NewLogger(
 		WithFields(
@@ -38,8 +38,7 @@ func NewDefaultLogger(name, version, release, format, level string) (*zap.Logger
 	return l, nil
 }
 
-// NewLogger configures a root logger for the application
-// see https://github.com/sandipb/zap-examples/tree/master/src/customlogger
+// NewLogger configures a root logger for the application.
 func NewLogger(opts ...Option) (*zap.Logger, error) {
 	cfg := defaultConfig()
 
@@ -94,13 +93,9 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 		},
 	}
 
-	loggingMetricsHook := func(entry zapcore.Entry) error {
-		cfg.incMetricLogLevel(entry.Level.String())
-		return nil
-	}
-
-	l, err := zapCfg.Build(zap.Hooks(loggingMetricsHook))
+	l, err := zapCfg.Build()
 	if err == nil {
+		l = WithLevelFunctionHook(l, cfg.incMetricLogLevel)
 		l = l.With(cfg.fields...)
 		// replace global logger with the configured root logger
 		zap.ReplaceGlobals(l)
@@ -108,12 +103,12 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 	return l, err
 }
 
-// NopLogger returns a no operation logger
+// NopLogger returns a no operation logger.
 func NopLogger() *zap.Logger {
 	return zap.NewNop()
 }
 
-// Sync flushes the given logger and ignores the error
+// Sync flushes the given logger and ignores the error.
 func Sync(s Syncer) {
 	// this is fine to ignore as we are syncing the log, adding more log would not help
 	_ = s.Sync()
@@ -124,7 +119,7 @@ func WithComponent(ctx context.Context, comp string) *zap.Logger {
 	return FromContext(ctx).With(zap.String("component", comp))
 }
 
-// WithComponentAndMethod creates a child logger with extra "component" and "method" tags
+// WithComponentAndMethod creates a child logger with extra "component" and "method" tags.
 func WithComponentAndMethod(ctx context.Context, comp, method string) *zap.Logger {
 	return FromContext(ctx).With(
 		zap.String("component", comp),
@@ -132,7 +127,7 @@ func WithComponentAndMethod(ctx context.Context, comp, method string) *zap.Logge
 	)
 }
 
-// FromContext retrieves a logger instance form the given context
+// FromContext retrieves a logger instance form the given context.
 func FromContext(ctx context.Context) *zap.Logger {
 	if l, ok := ctx.Value(ctxKey{}).(*zap.Logger); ok {
 		return l
@@ -140,7 +135,7 @@ func FromContext(ctx context.Context) *zap.Logger {
 	return zap.NewNop()
 }
 
-// WithLogger returns a new context with the given logger
+// WithLogger returns a new context with the given logger.
 func WithLogger(ctx context.Context, l *zap.Logger) context.Context {
 	if lp, ok := ctx.Value(ctxKey{}).(*zap.Logger); ok {
 		// Do not store same logger.
@@ -150,4 +145,14 @@ func WithLogger(ctx context.Context, l *zap.Logger) context.Context {
 		return ctx
 	}
 	return context.WithValue(ctx, ctxKey{}, l)
+}
+
+// WithLevelFunctionHook registers a function with a level string argument
+// which will be called each time the Logger writes out an Entry.
+func WithLevelFunctionHook(l *zap.Logger, fn IncrementLogMetricsFunc) *zap.Logger {
+	fnHook := func(entry zapcore.Entry) error {
+		fn(entry.Level.String())
+		return nil
+	}
+	return l.WithOptions(zap.Hooks(fnHook))
 }
