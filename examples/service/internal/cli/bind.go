@@ -62,6 +62,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, ipifyClient.GetPublicIP)),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
+			httpserver.WithMetricsHandlerFunc(m.MetricsHandlerFunc()),
 		}
 		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
 			return fmt.Errorf("error starting monitoring HTTP server: %w", err)
