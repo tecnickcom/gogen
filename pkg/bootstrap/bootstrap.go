@@ -35,20 +35,18 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	ctx, cancel := context.WithCancel(cfg.context)
 	defer cancel()
 
-	l, err := cfg.createLoggerFunc()
-	if err != nil {
-		return fmt.Errorf("error creating application logger: %w", err)
-	}
-
-	// attach root logger to application context
-	ctx = logging.WithLogger(ctx, l)
-	defer logging.Sync(l)
-
 	m, err := cfg.createMetricsClientFunc()
 	if err != nil {
 		return fmt.Errorf("error creating application metric: %w", err)
 	}
+
+	l, err := cfg.createLoggerFunc()
+	if err != nil {
+		return fmt.Errorf("error creating application logger: %w", err)
+	}
 	l = logging.WithLevelFunctionHook(l, m.IncLogLevelCounter)
+	ctx = logging.WithLogger(ctx, l)
+	defer logging.Sync(l)
 
 	l.Info("binding application components")
 	if err := bindFn(ctx, l, m); err != nil {
