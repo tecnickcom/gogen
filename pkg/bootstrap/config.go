@@ -4,15 +4,15 @@ import (
 	"context"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"go.uber.org/zap"
 )
 
 func defaultConfig() *config {
 	return &config{
-		context:                  context.Background(),
-		createLoggerFunc:         defaultCreateLogger,
-		createMetricRegisterFunc: defaultCreateMetricRegister,
+		context:                 context.Background(),
+		createLoggerFunc:        defaultCreateLogger,
+		createMetricsClientFunc: defaultCreateMetricsClientFunc,
 	}
 }
 
@@ -20,12 +20,12 @@ func defaultCreateLogger() (*zap.Logger, error) {
 	return logging.NewLogger()
 }
 
-func defaultCreateMetricRegister() prometheus.Registerer {
-	return prometheus.DefaultRegisterer
+func defaultCreateMetricsClientFunc() (*metrics.Client, error) {
+	return metrics.New(metrics.DefaultCollectors...)
 }
 
 type config struct {
-	context                  context.Context
-	createLoggerFunc         CreateLoggerFunc
-	createMetricRegisterFunc CreateMetricRegisterFunc
+	context                 context.Context
+	createLoggerFunc        CreateLoggerFunc
+	createMetricsClientFunc CreateMetricsClientFunc
 }

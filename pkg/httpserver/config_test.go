@@ -49,6 +49,13 @@ func Test_config_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "fail with missing instrumentHandler",
+			setupConfig: func(cfg *config) {
+				cfg.instrumentHandler = nil
+			},
+			wantErr: true,
+		},
+		{
 			name: "fail with missing metrics handler",
 			setupConfig: func(cfg *config) {
 				cfg.metricsHandlerFunc = nil
@@ -93,7 +100,7 @@ func Test_config_validate(t *testing.T) {
 		{
 			name: "succeed with valid configuration",
 			setupConfig: func(cfg *config) {
-				cfg.router = defaultRouter(testutil.Context(), traceid.DefaultHeader)
+				cfg.router = defaultRouter(testutil.Context(), traceid.DefaultHeader, cfg.instrumentHandler)
 			},
 			wantErr: false,
 		},

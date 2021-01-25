@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// Option is a type alias for a function that configures the HTTP httpServer instance
+// Option is a type alias for a function that configures the HTTP httpServer instance.
 type Option func(*config) error
 
-// WithRouter replaces the default router used by the httpServer (mostly used for test purposes with a mock router)
+// WithRouter replaces the default router used by the httpServer (mostly used for test purposes with a mock router).
 func WithRouter(r Router) Option {
 	return func(cfg *config) error {
 		cfg.router = r
@@ -18,7 +18,7 @@ func WithRouter(r Router) Option {
 	}
 }
 
-// WithServerAddr sets the address the httpServer will bind to
+// WithServerAddr sets the address the httpServer will bind to.
 func WithServerAddr(addr string) Option {
 	return func(cfg *config) error {
 		cfg.serverAddr = addr
@@ -26,7 +26,7 @@ func WithServerAddr(addr string) Option {
 	}
 }
 
-// WithServerReadTimeout sets the shutdown timeout
+// WithServerReadTimeout sets the shutdown timeout.
 func WithServerReadTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		cfg.serverReadTimeout = timeout
@@ -34,7 +34,7 @@ func WithServerReadTimeout(timeout time.Duration) Option {
 	}
 }
 
-// WithServerWriteTimeout sets the shutdown timeout
+// WithServerWriteTimeout sets the shutdown timeout.
 func WithServerWriteTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		cfg.serverWriteTimeout = timeout
@@ -42,7 +42,7 @@ func WithServerWriteTimeout(timeout time.Duration) Option {
 	}
 }
 
-// WithShutdownTimeout sets the shutdown timeout
+// WithShutdownTimeout sets the shutdown timeout.
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		cfg.shutdownTimeout = timeout
@@ -50,7 +50,7 @@ func WithShutdownTimeout(timeout time.Duration) Option {
 	}
 }
 
-// WithTLSCertData enable TLS with the given certificate and key data
+// WithTLSCertData enable TLS with the given certificate and key data.
 func WithTLSCertData(pemCert, pemKey []byte) Option {
 	return func(cfg *config) error {
 		cert, err := tls.X509KeyPair(pemCert, pemKey)
@@ -65,7 +65,15 @@ func WithTLSCertData(pemCert, pemKey []byte) Option {
 	}
 }
 
-// WithEnableDefaultRoutes sets the default routes to be enabled on the server
+// WithInstrumentHandler set the http.Handler wrap function to collect metrics.
+func WithInstrumentHandler(handler InstrumentHandler) Option {
+	return func(cfg *config) error {
+		cfg.instrumentHandler = handler
+		return nil
+	}
+}
+
+// WithEnableDefaultRoutes sets the default routes to be enabled on the server.
 func WithEnableDefaultRoutes(ids ...defaultRoute) Option {
 	return func(cfg *config) error {
 		cfg.defaultEnabledRoutes = ids
@@ -73,7 +81,7 @@ func WithEnableDefaultRoutes(ids ...defaultRoute) Option {
 	}
 }
 
-// WithEnableAllDefaultRoutes enables all default routes on the server
+// WithEnableAllDefaultRoutes enables all default routes on the server.
 func WithEnableAllDefaultRoutes() Option {
 	return func(cfg *config) error {
 		cfg.defaultEnabledRoutes = allDefaultRoutes
@@ -81,7 +89,7 @@ func WithEnableAllDefaultRoutes() Option {
 	}
 }
 
-// WithIndexHandlerFunc replaces the index handler
+// WithIndexHandlerFunc replaces the index handler.
 func WithIndexHandlerFunc(handler IndexHandlerFunc) Option {
 	return func(cfg *config) error {
 		cfg.indexHandlerFunc = handler
@@ -89,7 +97,7 @@ func WithIndexHandlerFunc(handler IndexHandlerFunc) Option {
 	}
 }
 
-// WithIPHandlerFunc replaces the default ip handler function
+// WithIPHandlerFunc replaces the default ip handler function.
 func WithIPHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		cfg.ipHandlerFunc = handler
@@ -97,7 +105,7 @@ func WithIPHandlerFunc(handler http.HandlerFunc) Option {
 	}
 }
 
-// WithMetricsHandlerFunc replaces the default metrics handler function
+// WithMetricsHandlerFunc replaces the default metrics handler function.
 func WithMetricsHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		cfg.metricsHandlerFunc = handler
@@ -105,7 +113,7 @@ func WithMetricsHandlerFunc(handler http.HandlerFunc) Option {
 	}
 }
 
-// WithPingHandlerFunc replaces the default ping handler function
+// WithPingHandlerFunc replaces the default ping handler function.
 func WithPingHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		cfg.pingHandlerFunc = handler
@@ -113,7 +121,7 @@ func WithPingHandlerFunc(handler http.HandlerFunc) Option {
 	}
 }
 
-// WithPProfHandlerFunc replaces the default pprof handler function
+// WithPProfHandlerFunc replaces the default pprof handler function.
 func WithPProfHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		cfg.pprofHandlerFunc = handler
@@ -121,7 +129,7 @@ func WithPProfHandlerFunc(handler http.HandlerFunc) Option {
 	}
 }
 
-// WithStatusHandlerFunc replaces the default status handler function
+// WithStatusHandlerFunc replaces the default status handler function.
 func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		cfg.statusHandlerFunc = handler
@@ -129,7 +137,7 @@ func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
 	}
 }
 
-// WithTraceIDHeaderName overrides the default trace id header name
+// WithTraceIDHeaderName overrides the default trace id header name.
 func WithTraceIDHeaderName(name string) Option {
 	return func(cfg *config) error {
 		cfg.traceIDHeaderName = name

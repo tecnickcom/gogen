@@ -72,7 +72,8 @@ func Test_defaultRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			r := defaultRouter(testutil.Context(), traceid.DefaultHeader)
+			defaultInstrumentHandler := func(path string, handler http.HandlerFunc) http.Handler { return handler }
+			r := defaultRouter(testutil.Context(), traceid.DefaultHeader, defaultInstrumentHandler)
 
 			if tt.setupRouter != nil {
 				tt.setupRouter(r)

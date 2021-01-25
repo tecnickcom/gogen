@@ -96,12 +96,14 @@ func TestNewRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			defaultInstrumentHandler := func(path string, handler http.HandlerFunc) http.Handler { return handler }
+
 			params := &AppInfo{
 				ProgramName:    "test",
 				ProgramVersion: "1.2.3",
 				ProgramRelease: "12345",
 			}
-			r := NewRouter(params)
+			r := NewRouter(params, defaultInstrumentHandler)
 
 			if tt.setupRouter != nil {
 				tt.setupRouter(r)

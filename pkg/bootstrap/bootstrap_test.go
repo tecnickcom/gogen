@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -16,13 +16,14 @@ import (
 // nolint:gocognit
 func TestBootstrap(t *testing.T) {
 	tests := []struct {
-		opts             []Option
-		name             string
-		bindFunc         BindFunc
-		createLoggerFunc CreateLoggerFunc
-		stopAfter        time.Duration
-		checkLogs        bool
-		wantErr          bool
+		opts                    []Option
+		name                    string
+		bindFunc                BindFunc
+		createLoggerFunc        CreateLoggerFunc
+		createMetricsClientFunc CreateMetricsClientFunc
+		stopAfter               time.Duration
+		checkLogs               bool
+		wantErr                 bool
 	}{
 		{
 			name: "should fail due to create logger function",
@@ -32,15 +33,22 @@ func TestBootstrap(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "should fail due to create metrics function",
+			createMetricsClientFunc: func() (*metrics.Client, error) {
+				return nil, fmt.Errorf("metrics error")
+			},
+			wantErr: true,
+		},
+		{
 			name: "should fail due to bind function",
-			bindFunc: func(context.Context, *zap.Logger, prometheus.Registerer) error {
+			bindFunc: func(context.Context, *zap.Logger, *metrics.Client) error {
 				return fmt.Errorf("bind error")
 			},
 			wantErr: true,
 		},
 		{
 			name: "should succeed",
-			bindFunc: func(context.Context, *zap.Logger, prometheus.Registerer) error {
+			bindFunc: func(context.Context, *zap.Logger, *metrics.Client) error {
 				return nil
 			},
 			stopAfter: 500 * time.Millisecond,
@@ -74,6 +82,15 @@ func TestBootstrap(t *testing.T) {
 					return logging.FromContext(ctx), nil
 				}
 				opts = append(opts, WithCreateLoggerFunc(fn))
+			}
+
+			if tt.createMetricsClientFunc != nil {
+				opts = append(opts, WithCreateMetricsClientFunc(tt.createMetricsClientFunc))
+			} else {
+				fn := func() (*metrics.Client, error) {
+					return metrics.New(metrics.DefaultCollectors...)
+				}
+				opts = append(opts, WithCreateMetricsClientFunc(fn))
 			}
 
 			if err := Bootstrap(tt.bindFunc, opts...); (err != nil) != tt.wantErr {

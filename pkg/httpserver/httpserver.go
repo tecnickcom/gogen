@@ -12,22 +12,21 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"go.uber.org/zap"
 )
 
-// Router is the interface representing the router used by the HTTP http server
+// Router is the interface representing the router used by the HTTP http server.
 type Router interface {
 	http.Handler
 	Handler(method, path string, handler http.Handler)
 }
 
-// Binder is an interface to allow configuring the HTTP router
+// Binder is an interface to allow configuring the HTTP router.
 type Binder interface {
 	BindHTTP(ctx context.Context) []route.Route
 }
 
-// NopBinder returns a simple no-operation binder
+// NopBinder returns a simple no-operation binder.
 func NopBinder() Binder {
 	return &nopBinder{}
 }
@@ -36,30 +35,27 @@ type nopBinder struct{}
 
 func (b *nopBinder) BindHTTP(_ context.Context) []route.Route { return nil }
 
-// Start configures and start a new HTTP http server
+// Start configures and start a new HTTP http server.
 func Start(ctx context.Context, binder Binder, opts ...Option) error {
 	l := logging.WithComponent(ctx, "httpserver")
 
 	cfg := defaultConfig()
-
 	for _, applyOpt := range opts {
 		if err := applyOpt(cfg); err != nil {
 			return err
 		}
 	}
 	if cfg.router == nil {
-		cfg.router = defaultRouter(ctx, cfg.traceIDHeaderName)
+		cfg.router = defaultRouter(ctx, cfg.traceIDHeaderName, cfg.instrumentHandler)
 	}
 
 	if err := cfg.validate(); err != nil {
 		return err
 	}
 
-	// mount status, metrics and pprof routes
 	l.Debug("adding default routes")
 	routes := newDefaultRoutes(cfg)
 
-	// bind service routes
 	l.Debug("adding service routes")
 	customRoutes := binder.BindHTTP(ctx)
 
@@ -68,13 +64,13 @@ func Start(ctx context.Context, binder Binder, opts ...Option) error {
 
 	for _, r := range routes {
 		l.Debug("binding route", zap.String("path", r.Path))
-		cfg.router.Handler(r.Method, r.Path, metrics.Handler(r.Path, r.Handler))
+		cfg.router.Handler(r.Method, r.Path, cfg.instrumentHandler(r.Path, r.Handler))
 	}
 
 	// attach route index if enabled
 	if cfg.isIndexRouteEnabled() {
 		l.Debug("enabling route index handler")
-		cfg.router.Handler(http.MethodGet, indexPath, metrics.Handler(indexPath, cfg.indexHandlerFunc(routes)))
+		cfg.router.Handler(http.MethodGet, indexPath, cfg.instrumentHandler(indexPath, cfg.indexHandlerFunc(routes)))
 	}
 
 	// wrap router with default middlewares
@@ -126,15 +122,15 @@ func startServer(ctx context.Context, cfg *config) error {
 	return nil
 }
 
-func defaultRouter(ctx context.Context, traceIDHeaderName string) *httprouter.Router {
+func defaultRouter(ctx context.Context, traceIDHeaderName string, instrumentHandler InstrumentHandler) *httprouter.Router {
 	r := httprouter.New()
 	l := logging.FromContext(ctx)
 
-	r.NotFound = RequestInjectHandler(l, traceIDHeaderName, metrics.Handler("404", func(w http.ResponseWriter, r *http.Request) {
+	r.NotFound = RequestInjectHandler(l, traceIDHeaderName, instrumentHandler("404", func(w http.ResponseWriter, r *http.Request) {
 		httputil.SendStatus(r.Context(), w, http.StatusNotFound)
 	}))
 
-	r.MethodNotAllowed = RequestInjectHandler(l, traceIDHeaderName, metrics.Handler("405", func(w http.ResponseWriter, r *http.Request) {
+	r.MethodNotAllowed = RequestInjectHandler(l, traceIDHeaderName, instrumentHandler("405", func(w http.ResponseWriter, r *http.Request) {
 		httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
 	}))
 

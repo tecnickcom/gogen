@@ -10,24 +10,23 @@ import (
 	"syscall"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"go.uber.org/zap"
 )
 
-// BindFunc represents the function responsible to wire up all components of the application
-type BindFunc func(context.Context, *zap.Logger, prometheus.Registerer) error
+// BindFunc represents the function responsible to wire up all components of the application.
+type BindFunc func(context.Context, *zap.Logger, *metrics.Client) error
 
-// CreateLoggerFunc creates a new logger
+// CreateLoggerFunc creates a new logger.
 type CreateLoggerFunc func() (*zap.Logger, error)
 
-// CreateMetricRegisterFunc creates a new metrics register
-type CreateMetricRegisterFunc func() prometheus.Registerer
+// CreateMetricsClientFunc creates a new metrics client.
+type CreateMetricsClientFunc func() (*metrics.Client, error)
 
 // Bootstrap is the function in charge of configuring the core components
-// of an application and handling the lifecycle of its context
+// of an application and handling the lifecycle of its context.
 func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	cfg := defaultConfig()
-
 	for _, applyOpt := range opts {
 		applyOpt(cfg)
 	}
@@ -45,8 +44,13 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	ctx = logging.WithLogger(ctx, l)
 	defer logging.Sync(l)
 
+	m, err := cfg.createMetricsClientFunc()
+	if err != nil {
+		return fmt.Errorf("error creating application metric: %w", err)
+	}
+
 	l.Info("binding application components")
-	if err := bindFn(ctx, l, cfg.createMetricRegisterFunc()); err != nil {
+	if err := bindFn(ctx, l, m); err != nil {
 		return fmt.Errorf("application bootstrap error: %w", err)
 	}
 	l.Info("application started")

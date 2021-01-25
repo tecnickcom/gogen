@@ -5,14 +5,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
 func TestWithContext(t *testing.T) {
 	t.Parallel()
-
 	v := context.WithValue(context.Background(), struct{}{}, "")
 	cfg := &config{}
 	WithContext(v)(cfg)
@@ -21,7 +20,6 @@ func TestWithContext(t *testing.T) {
 
 func TestWithLogger(t *testing.T) {
 	t.Parallel()
-
 	l := zap.NewNop()
 	cfg := &config{}
 	WithLogger(l)(cfg)
@@ -34,9 +32,7 @@ func TestWithLogger(t *testing.T) {
 
 func TestWithCreateLoggerFunc(t *testing.T) {
 	t.Parallel()
-
 	v := func() (*zap.Logger, error) {
-		// mock function
 		return nil, nil
 	}
 	cfg := &config{}
@@ -44,13 +40,12 @@ func TestWithCreateLoggerFunc(t *testing.T) {
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createLoggerFunc).Pointer())
 }
 
-func TestWithCreateMetricRegisterFunc(t *testing.T) {
+func TestWithCreateMetricsClientFunc(t *testing.T) {
 	t.Parallel()
-
-	v := func() prometheus.Registerer {
-		return nil
+	v := func() (*metrics.Client, error) {
+		return nil, nil
 	}
 	cfg := &config{}
-	WithCreateMetricRegisterFunc(v)(cfg)
-	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createMetricRegisterFunc).Pointer())
+	WithCreateMetricsClientFunc(v)(cfg)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createMetricsClientFunc).Pointer())
 }

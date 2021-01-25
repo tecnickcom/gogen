@@ -25,16 +25,16 @@ func WithLogger(l *zap.Logger) Option {
 	}
 }
 
-// WithCreateLoggerFunc overrides the root logger creation function (useful for testing)
+// WithCreateLoggerFunc overrides the root logger creation function
 func WithCreateLoggerFunc(fn CreateLoggerFunc) Option {
 	return func(cfg *config) {
 		cfg.createLoggerFunc = fn
 	}
 }
 
-// WithCreateMetricRegisterFunc overrides the default metrics register (useful for testing)
-func WithCreateMetricRegisterFunc(fn CreateMetricRegisterFunc) Option {
+// WithCreateMetricsClientFunc overrides the default metrics client register
+func WithCreateMetricsClientFunc(fn CreateMetricsClientFunc) Option {
 	return func(cfg *config) {
-		cfg.createMetricRegisterFunc = fn
+		cfg.createMetricsClientFunc = fn
 	}
 }

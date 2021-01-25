@@ -127,6 +127,16 @@ YlAqGKDZ+A+l
 	}
 }
 
+func TestWithInstrumentHandler(t *testing.T) {
+	t.Parallel()
+
+	v := func(path string, handler http.HandlerFunc) http.Handler { return handler }
+	cfg := &config{}
+	err := WithInstrumentHandler(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.instrumentHandler).Pointer())
+}
+
 func TestWithEnableDefaultRoutes(t *testing.T) {
 	t.Parallel()
 

@@ -13,7 +13,6 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"go.uber.org/zap"
 )
 
@@ -66,14 +65,14 @@ func Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppI
 }
 
 // NewRouter create a new router configured to responds with JSend wrapper responses for 404, 405 and panic
-func NewRouter(info *AppInfo) *httprouter.Router {
+func NewRouter(info *AppInfo, instrumentHandler httpserver.InstrumentHandler) *httprouter.Router {
 	r := httprouter.New()
 
-	r.NotFound = metrics.Handler("404", func(w http.ResponseWriter, r *http.Request) {
+	r.NotFound = instrumentHandler("404", func(w http.ResponseWriter, r *http.Request) {
 		Send(r.Context(), w, http.StatusNotFound, info, "invalid endpoint")
 	})
 
-	r.MethodNotAllowed = metrics.Handler("405", func(w http.ResponseWriter, r *http.Request) {
+	r.MethodNotAllowed = instrumentHandler("405", func(w http.ResponseWriter, r *http.Request) {
 		Send(r.Context(), w, http.StatusMethodNotAllowed, info, "the request cannot be routed")
 	})
 

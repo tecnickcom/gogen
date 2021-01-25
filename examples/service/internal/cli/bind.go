@@ -12,13 +12,13 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
 	"github.com/nexmoinc/gosrvlib/pkg/ipify"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"go.uber.org/zap"
 )
 
 // bind is the entry point of the service, this is where the wiring of all components happens
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
-	return func(ctx context.Context, l *zap.Logger, r prometheus.Registerer) error {
+	return func(ctx context.Context, l *zap.Logger, m *metrics.Client) error {
 		var statusHandler http.HandlerFunc
 
 		// We assume the service is disabled and override the service binder if required
@@ -57,7 +57,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 		httpMonitoringOpts := []httpserver.Option{
 			httpserver.WithServerAddr(cfg.MonitoringAddress),
 			httpserver.WithEnableAllDefaultRoutes(),
-			httpserver.WithRouter(jsendx.NewRouter(appInfo)), // set default 404, 405 and panic handlers
+			httpserver.WithRouter(jsendx.NewRouter(appInfo, m.InstrumentHandler)), // set default 404, 405 and panic handlers
 			httpserver.WithIndexHandlerFunc(jsendx.DefaultIndexHandler(appInfo)),
 			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, ipifyClient.GetPublicIP)),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
