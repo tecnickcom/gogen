@@ -56,13 +56,14 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 		// start monitoring server
 		httpMonitoringOpts := []httpserver.Option{
 			httpserver.WithServerAddr(cfg.MonitoringAddress),
+			httpserver.WithMetricsHandlerFunc(m.MetricsHandlerFunc()),
+			httpserver.WithInstrumentHandler(m.InstrumentHandler),
 			httpserver.WithEnableAllDefaultRoutes(),
 			httpserver.WithRouter(jsendx.NewRouter(appInfo, m.InstrumentHandler)), // set default 404, 405 and panic handlers
 			httpserver.WithIndexHandlerFunc(jsendx.DefaultIndexHandler(appInfo)),
 			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, ipifyClient.GetPublicIP)),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
-			httpserver.WithMetricsHandlerFunc(m.MetricsHandlerFunc()),
 		}
 		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
 			return fmt.Errorf("error starting monitoring HTTP server: %w", err)

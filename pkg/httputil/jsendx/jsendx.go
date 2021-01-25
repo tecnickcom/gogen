@@ -43,8 +43,7 @@ type AppInfo struct {
 // Wrap sends an Response object.
 func Wrap(statusCode int, info *AppInfo, data interface{}) *Response {
 	now := time.Now().UTC()
-
-	r := Response{
+	return &Response{
 		Program:   info.ProgramName,
 		Version:   info.ProgramVersion,
 		Release:   info.ProgramRelease,
@@ -55,8 +54,6 @@ func Wrap(statusCode int, info *AppInfo, data interface{}) *Response {
 		Message:   http.StatusText(statusCode),
 		Data:      data,
 	}
-
-	return &r
 }
 
 // Send sends a JSON respoonse wrapped in a JSendX container
