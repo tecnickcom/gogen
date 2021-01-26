@@ -34,21 +34,21 @@ func TestBootstrap(t *testing.T) {
 		},
 		{
 			name: "should fail due to create metrics function",
-			createMetricsClientFunc: func() (Metrics, error) {
+			createMetricsClientFunc: func() (*metrics.Client, error) {
 				return nil, fmt.Errorf("metrics error")
 			},
 			wantErr: true,
 		},
 		{
 			name: "should fail due to bind function",
-			bindFunc: func(context.Context, *zap.Logger, Metrics) error {
+			bindFunc: func(context.Context, *zap.Logger, *metrics.Client) error {
 				return fmt.Errorf("bind error")
 			},
 			wantErr: true,
 		},
 		{
 			name: "should succeed",
-			bindFunc: func(context.Context, *zap.Logger, Metrics) error {
+			bindFunc: func(context.Context, *zap.Logger, *metrics.Client) error {
 				return nil
 			},
 			stopAfter: 500 * time.Millisecond,
@@ -87,7 +87,7 @@ func TestBootstrap(t *testing.T) {
 			if tt.createMetricsClientFunc != nil {
 				opts = append(opts, WithCreateMetricsClientFunc(tt.createMetricsClientFunc))
 			} else {
-				fn := func() (Metrics, error) {
+				fn := func() (*metrics.Client, error) {
 					return metrics.New(metrics.DefaultCollectors...)
 				}
 				opts = append(opts, WithCreateMetricsClientFunc(fn))
