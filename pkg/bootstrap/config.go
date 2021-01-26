@@ -17,6 +17,12 @@ type CreateMetricsClientFunc func() (*metrics.Client, error)
 // BindFunc represents the function responsible to wire up all components of the application.
 type BindFunc func(context.Context, *zap.Logger, *metrics.Client) error
 
+type config struct {
+	context                 context.Context
+	createLoggerFunc        CreateLoggerFunc
+	createMetricsClientFunc CreateMetricsClientFunc
+}
+
 func defaultConfig() *config {
 	return &config{
 		context:                 context.Background(),
@@ -31,10 +37,4 @@ func defaultCreateLogger() (*zap.Logger, error) {
 
 func defaultCreateMetricsClientFunc() (*metrics.Client, error) {
 	return metrics.New(metrics.DefaultCollectors...)
-}
-
-type config struct {
-	context                 context.Context
-	createLoggerFunc        CreateLoggerFunc
-	createMetricsClientFunc CreateMetricsClientFunc
 }
