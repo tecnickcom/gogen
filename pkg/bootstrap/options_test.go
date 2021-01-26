@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -42,7 +41,7 @@ func TestWithCreateLoggerFunc(t *testing.T) {
 
 func TestWithCreateMetricsClientFunc(t *testing.T) {
 	t.Parallel()
-	v := func() (*metrics.Client, error) {
+	v := func() (Metrics, error) {
 		return nil, nil
 	}
 	cfg := &config{}
