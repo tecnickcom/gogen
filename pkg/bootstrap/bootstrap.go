@@ -10,18 +10,7 @@ import (
 	"syscall"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/metrics"
-	"go.uber.org/zap"
 )
-
-// BindFunc represents the function responsible to wire up all components of the application.
-type BindFunc func(context.Context, *zap.Logger, *metrics.Client) error
-
-// CreateLoggerFunc creates a new logger.
-type CreateLoggerFunc func() (*zap.Logger, error)
-
-// CreateMetricsClientFunc creates a new metrics client.
-type CreateMetricsClientFunc func() (*metrics.Client, error)
 
 // Bootstrap is the function in charge of configuring the core components
 // of an application and handling the lifecycle of its context.

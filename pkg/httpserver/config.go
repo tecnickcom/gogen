@@ -12,7 +12,6 @@ import (
 
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/ipify"
-	"github.com/nexmoinc/gosrvlib/pkg/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/profiling"
 	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 )
@@ -61,7 +60,7 @@ func defaultConfig() *config {
 		defaultEnabledRoutes: nil,
 		indexHandlerFunc:     defaultIndexHandler,
 		ipHandlerFunc:        defaultIPHandler(GetPublicIPDefaultFunc()),
-		metricsHandlerFunc:   metrics.DefaultMetricsHandlerFunc(),
+		metricsHandlerFunc:   notImplementedHandler,
 		pingHandlerFunc:      defaultPingHandler,
 		pprofHandlerFunc:     profiling.PProfHandler,
 		statusHandlerFunc:    defaultStatusHandler,

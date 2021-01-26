@@ -8,6 +8,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// CreateLoggerFunc creates a new logger.
+type CreateLoggerFunc func() (*zap.Logger, error)
+
+// CreateMetricsClientFunc creates a new metrics client.
+type CreateMetricsClientFunc func() (*metrics.Client, error)
+
+// BindFunc represents the function responsible to wire up all components of the application.
+type BindFunc func(context.Context, *zap.Logger, *metrics.Client) error
+
 func defaultConfig() *config {
 	return &config{
 		context:                 context.Background(),

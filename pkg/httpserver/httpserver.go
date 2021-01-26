@@ -172,3 +172,7 @@ func defaultPingHandler(w http.ResponseWriter, r *http.Request) {
 func defaultStatusHandler(w http.ResponseWriter, r *http.Request) {
 	httputil.SendStatus(r.Context(), w, http.StatusOK)
 }
+
+func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
+	httputil.SendStatus(r.Context(), w, http.StatusNotImplemented)
+}

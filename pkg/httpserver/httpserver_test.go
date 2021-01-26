@@ -190,6 +190,15 @@ func Test_defaultStatusHandler(t *testing.T) {
 	require.Equal(t, "OK\n", string(body))
 }
 
+func Test_notImplementedHandler(t *testing.T) {
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	notImplementedHandler(rr, req)
+
+	resp := rr.Result()
+	require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
+}
+
 // nolint:gocognit
 func TestStart(t *testing.T) {
 	tests := []struct {
