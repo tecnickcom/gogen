@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// ParseLevel converts syslog standard levels to zap a log level
+// ParseLevel converts syslog standard levels to zap a log level.
 func ParseLevel(l string) (zapcore.Level, error) {
 	switch strings.ToLower(l) {
 	case "emergency":

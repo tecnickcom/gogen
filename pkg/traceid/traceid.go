@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	// DefaultHeader is the default header name for the trace ID
+	// DefaultHeader is the default header name for the trace ID.
 	DefaultHeader = "X-Request-ID"
 
 	// DefaultValue is the default trace ID value.

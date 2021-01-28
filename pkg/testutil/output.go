@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CaptureOutput hijacks and captures stderr and stdout for testing the given function
+// CaptureOutput hijacks and captures stderr and stdout for testing the given function.
 func CaptureOutput(t *testing.T, fn func()) string {
 	reader, writer, err := os.Pipe()
 	require.Nil(t, err, "Unexpected error (os.Pipe)")

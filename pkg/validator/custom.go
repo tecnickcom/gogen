@@ -22,7 +22,7 @@ var (
 	regexUSZIPCode  = regexp.MustCompile(regexPatternUSZIPCode)
 )
 
-// CustomValidationTags maps custom tags with validation function
+// CustomValidationTags maps custom tags with validation function.
 var CustomValidationTags = map[string]vt.FuncCtx{
 	"falseif":    isFalseIf,
 	"e164noplus": isE164NoPlus,
@@ -31,25 +31,25 @@ var CustomValidationTags = map[string]vt.FuncCtx{
 	"usstate":    isUSState,
 }
 
-// isE164 checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345)
+// isE164 checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345).
 func isE164NoPlus(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexE164NoPlus.MatchString(field.String())
 }
 
-// isEIN checks if the fields value is a valid EIN US tax code (e.g.: 12-3456789 or 123456789)
+// isEIN checks if the fields value is a valid EIN US tax code (e.g.: 12-3456789 or 123456789).
 func isEIN(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexEIN.MatchString(field.String())
 }
 
-// isUSZIPCode checks if the fields value is a valid US ZIP code (e.g.: 12345 or 12345-6789)
+// isUSZIPCode checks if the fields value is a valid US ZIP code (e.g.: 12345 or 12345-6789).
 func isUSZIPCode(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexUSZIPCode.MatchString(field.String())
 }
 
-// isUSState checks if the fields value is a valid 2-letter US state
+// isUSState checks if the fields value is a valid 2-letter US state.
 func isUSState(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	if field.Kind() == reflect.String {

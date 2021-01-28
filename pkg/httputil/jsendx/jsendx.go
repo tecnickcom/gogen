@@ -20,7 +20,7 @@ const (
 	okMessage = "OK"
 )
 
-// Response wraps data into a JSend compliant response
+// Response wraps data into a JSend compliant response.
 type Response struct {
 	Program   string          `json:"program"`   // Program name
 	Version   string          `json:"version"`   // Program version
@@ -33,7 +33,7 @@ type Response struct {
 	Data      interface{}     `json:"data"`      // Data payload
 }
 
-// AppInfo is a struct containing data to enrich the JSend response
+// AppInfo is a struct containing data to enrich the JSend response.
 type AppInfo struct {
 	ProgramName    string
 	ProgramVersion string
@@ -56,12 +56,12 @@ func Wrap(statusCode int, info *AppInfo, data interface{}) *Response {
 	}
 }
 
-// Send sends a JSON respoonse wrapped in a JSendX container
+// Send sends a JSON respoonse wrapped in a JSendX container.
 func Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppInfo, data interface{}) {
 	httputil.SendJSON(ctx, w, statusCode, Wrap(statusCode, info, data))
 }
 
-// NewRouter create a new router configured to responds with JSend wrapper responses for 404, 405 and panic
+// NewRouter create a new router configured to responds with JSend wrapper responses for 404, 405 and panic.
 func NewRouter(info *AppInfo, instrumentHandler httpserver.InstrumentHandler) *httprouter.Router {
 	r := httprouter.New()
 
@@ -84,7 +84,7 @@ func NewRouter(info *AppInfo, instrumentHandler httpserver.InstrumentHandler) *h
 	return r
 }
 
-// DefaultIndexHandler returns the route index in JSendX format
+// DefaultIndexHandler returns the route index in JSendX format.
 func DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFunc {
 	return func(routes []route.Route) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +94,7 @@ func DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFunc {
 	}
 }
 
-// DefaultIPHandler returns the route ip in JSendX format
+// DefaultIPHandler returns the route ip in JSendX format.
 func DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
@@ -106,21 +106,21 @@ func DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.Handler
 	}
 }
 
-// DefaultPingHandler returns a ping request in JSendX format
+// DefaultPingHandler returns a ping request in JSendX format.
 func DefaultPingHandler(info *AppInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		Send(r.Context(), w, http.StatusOK, info, okMessage)
 	}
 }
 
-// DefaultStatusHandler returns the server status in JSendX format
+// DefaultStatusHandler returns the server status in JSendX format.
 func DefaultStatusHandler(info *AppInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		Send(r.Context(), w, http.StatusOK, info, okMessage)
 	}
 }
 
-// HealthCheckResultWriter returns a new healthcheck result writer
+// HealthCheckResultWriter returns a new healthcheck result writer.
 func HealthCheckResultWriter(info *AppInfo) healthcheck.ResultWriter {
 	return func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
 		Send(ctx, w, statusCode, info, data)

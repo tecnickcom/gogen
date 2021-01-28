@@ -13,7 +13,7 @@ const (
 	StatusOK = "OK"
 )
 
-// ResultWriter is a type alias for a function in charge of writing the result of the health checks
+// ResultWriter is a type alias for a function in charge of writing the result of the health checks.
 type ResultWriter func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{})
 
 // NewHandler creates a new instance of the healthcheck handler
@@ -30,14 +30,14 @@ func NewHandler(checks []HealthCheck, opts ...HandlerOption) *Handler {
 	return h
 }
 
-// Handler is the struct containng the HTTP handler function that performs the healthchecks
+// Handler is the struct containng the HTTP handler function that performs the healthchecks.
 type Handler struct {
 	checks      []HealthCheck
 	checksCount int
 	writeResult ResultWriter
 }
 
-// ServeHTTP runs the configured health checks in parallel and collects their results
+// ServeHTTP runs the configured health checks in parallel and collects their results.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	type checkResult struct {
 		id  string

@@ -112,7 +112,7 @@ func (c *config) validate() error {
 	return nil
 }
 
-// validateAddr checks if a http server bind address is valid
+// validateAddr checks if a http server bind address is valid.
 func validateAddr(addr string) error {
 	if !strings.Contains(addr, ":") {
 		return fmt.Errorf("invalid http server address: %s", addr)

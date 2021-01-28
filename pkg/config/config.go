@@ -141,13 +141,13 @@ var (
 	remoteViper Viper = viper.New()
 )
 
-// Reset resets the package global instances of Viper. Only used for tests calling Load multiple times
+// Reset resets the package global instances of Viper. Only used for tests calling Load multiple times.
 func Reset() {
 	localViper = viper.New()
 	remoteViper = viper.New()
 }
 
-// Load populates the configuration parameters
+// Load populates the configuration parameters.
 func Load(cmdName, configDir, envPrefix string, cfg Configuration) error {
 	remoteSourceCfg, err := loadLocalConfig(localViper, cmdName, configDir, envPrefix, cfg)
 	if err != nil {
@@ -165,7 +165,7 @@ func Load(cmdName, configDir, envPrefix string, cfg Configuration) error {
 	return nil
 }
 
-// loadLocalConfig returns the local configuration parameters
+// loadLocalConfig returns the local configuration parameters.
 func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configuration) (*remoteSourceConfig, error) {
 	// set default remote configuration values
 	v.SetDefault(keyRemoteConfigProvider, defaultRemoteConfigProvider)
@@ -216,7 +216,7 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 	return &rsCfg, nil
 }
 
-// loadRemoteConfig returns the remote configuration parameters
+// loadRemoteConfig returns the remote configuration parameters.
 func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix string, cfg Configuration) error {
 	for _, k := range lv.AllKeys() {
 		rv.SetDefault(k, lv.Get(k))

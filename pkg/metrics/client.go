@@ -9,17 +9,8 @@ import (
 
 // Client represents the state type of this client.
 type Client struct {
-	Registry              *prometheus.Registry
-	handlerOpts           promhttp.HandlerOpts
-	Collector             map[string]prometheus.Collector
-	CollectorGauge        map[string]prometheus.Gauge
-	CollectorCounter      map[string]prometheus.Counter
-	CollectorSummary      map[string]prometheus.Summary
-	CollectorHistogram    map[string]prometheus.Histogram
-	CollectorGaugeVec     map[string]*prometheus.GaugeVec
-	CollectorCounterVec   map[string]*prometheus.CounterVec
-	CollectorSummaryVec   map[string]*prometheus.SummaryVec
-	CollectorHistogramVec map[string]*prometheus.HistogramVec
+	Registry    *prometheus.Registry
+	handlerOpts promhttp.HandlerOpts
 }
 
 // New creates a new metrics instance.
@@ -44,42 +35,29 @@ func (c *Client) Configure(opts ...Option) error {
 
 func initClient() *Client {
 	return &Client{
-		Registry:              prometheus.NewRegistry(),
-		handlerOpts:           promhttp.HandlerOpts{},
-		Collector:             make(map[string]prometheus.Collector),
-		CollectorGauge:        make(map[string]prometheus.Gauge),
-		CollectorCounter:      make(map[string]prometheus.Counter),
-		CollectorSummary:      make(map[string]prometheus.Summary),
-		CollectorHistogram:    make(map[string]prometheus.Histogram),
-		CollectorGaugeVec:     make(map[string]*prometheus.GaugeVec),
-		CollectorCounterVec:   make(map[string]*prometheus.CounterVec),
-		CollectorSummaryVec:   make(map[string]*prometheus.SummaryVec),
-		CollectorHistogramVec: make(map[string]*prometheus.HistogramVec),
+		Registry:    prometheus.NewRegistry(),
+		handlerOpts: promhttp.HandlerOpts{},
 	}
 }
 
 // InstrumentHandler wraps an http.Handler to collect Prometheus metrics.
-// Requires DefaultCollectors.
 func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
 	var h http.Handler
 	h = handler
-	metricResponseSize, ok := c.CollectorHistogramVec[MetricResponseSize]
-	if ok {
-		h = promhttp.InstrumentHandlerResponseSize(metricResponseSize, h)
-	}
-	metricAPIRequests, ok := c.CollectorCounterVec[MetricAPIRequests]
-	if ok {
-		h = promhttp.InstrumentHandlerCounter(metricAPIRequests, h)
-	}
-	metricRequestDuration, ok := c.CollectorHistogramVec[MetricRequestDuration]
-	if ok {
-		h = promhttp.InstrumentHandlerDuration(metricRequestDuration.MustCurryWith(prometheus.Labels{"handler": path}), h)
-	}
-	metricInFlightRequest, ok := c.CollectorGauge[MetricInFlightRequest]
-	if ok {
-		h = promhttp.InstrumentHandlerInFlight(metricInFlightRequest, h)
-	}
+	h = promhttp.InstrumentHandlerRequestSize(collectorRequestSize, h)
+	h = promhttp.InstrumentHandlerResponseSize(collectorResponseSize, h)
+	h = promhttp.InstrumentHandlerCounter(collectorAPIRequests, h)
+	h = promhttp.InstrumentHandlerDuration(collectorRequestDuration.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
+	h = promhttp.InstrumentHandlerInFlight(collectorInFlightRequests, h)
 	return h
+}
+
+// InstrumentRoundTripper is a middleware that wraps the provided http.RoundTripper to observe the request result with default metrics.
+func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
+	next = promhttp.InstrumentRoundTripperCounter(collectorOutboundRequests, next)
+	next = promhttp.InstrumentRoundTripperDuration(collectorOutboundRequestsDuration, next)
+	next = promhttp.InstrumentRoundTripperInFlight(collectorOutboundInFlightRequests, next)
+	return next
 }
 
 // MetricsHandlerFunc returns an http handler function to serve the metrics endpoint.
@@ -88,16 +66,12 @@ func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
 	return promhttp.InstrumentMetricHandler(c.Registry, h).ServeHTTP
 }
 
-// DefaultMetricsHandlerFunc returns a default http handler function to serve the metrics endpoint.
-func DefaultMetricsHandlerFunc() http.HandlerFunc {
-	return promhttp.Handler().ServeHTTP
+// IncLogLevelCounter counts the number of errors for each log severity level.
+func (c *Client) IncLogLevelCounter(level string) {
+	collectorErrorLevel.With(prometheus.Labels{labelLevel: level}).Inc()
 }
 
-// IncLogLevelCounter counts the number of errors for each syslog level.
-// Requires DefaultCollectors.
-func (c *Client) IncLogLevelCounter(level string) {
-	m, ok := c.CollectorCounterVec[MetricErrorLevel]
-	if ok {
-		m.With(prometheus.Labels{"level": level}).Inc()
-	}
+// IncErrorCounter increments the number of errors by task, operation and error code.
+func (c *Client) IncErrorCounter(task, operation, code string) {
+	collectorErrorCode.With(prometheus.Labels{labelTask: task, labelOperation: operation, labelCode: code}).Inc()
 }

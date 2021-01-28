@@ -112,7 +112,7 @@ func Sync(s Syncer) {
 	_ = s.Sync()
 }
 
-// WithComponent creates a child logger with an extra "component" tag
+// WithComponent creates a child logger with an extra "component" tag.
 func WithComponent(ctx context.Context, comp string) *zap.Logger {
 	return FromContext(ctx).With(zap.String("component", comp))
 }

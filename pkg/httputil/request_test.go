@@ -56,7 +56,7 @@ func TestPathParam(t *testing.T) {
 			})
 
 			rr := httptest.NewRecorder()
-			req, err := http.NewRequest("GET", tt.requestPath, nil)
+			req, err := http.NewRequest(http.MethodGet, tt.requestPath, nil)
 			require.NoError(t, err)
 
 			r.ServeHTTP(rr, req)

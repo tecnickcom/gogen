@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// RequestInjectHandler wraps all incoming requests and injects a logger in the request scoped context
+// RequestInjectHandler wraps all incoming requests and injects a logger in the request scoped context.
 func RequestInjectHandler(rootLogger *zap.Logger, traceIDHeaderName string, next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

@@ -15,12 +15,12 @@ const (
 	defaultErrorIP = ""
 )
 
-// HTTPClient contains the function to perform the actual HTTP request
+// HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
-// Client represents the config options required by this client
+// Client represents the config options required by this client.
 type Client struct {
 	httpClient HTTPClient
 	timeout    time.Duration
@@ -28,7 +28,7 @@ type Client struct {
 	errorIP    string
 }
 
-// NewClient creates a new ipify client instance
+// NewClient creates a new ipify client instance.
 func NewClient(opts ...ClientOption) (*Client, error) {
 	c := &Client{
 		timeout: defaultTimeout,
@@ -49,7 +49,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	return c, nil
 }
 
-// GetPublicIP retrieves the public IP of this service instance via ipify.com API
+// GetPublicIP retrieves the public IP of this service instance via ipify.com API.
 func (c *Client) GetPublicIP(ctx context.Context) (string, error) {
 	ctx, cancelTimeout := context.WithTimeout(ctx, c.timeout)
 	defer cancelTimeout()

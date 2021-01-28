@@ -12,13 +12,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// ConnectFunc is the function called to perform the actual DB connection
+// ConnectFunc is the function called to perform the actual DB connection.
 type ConnectFunc func(ctx context.Context, cfg *config) (*sql.DB, error)
 
-// CheckConnectionFunc is the function called to perform a DB connection check
+// CheckConnectionFunc is the function called to perform a DB connection check.
 type CheckConnectionFunc func(ctx context.Context, db *sql.DB) error
 
-// SQLOpenFunc is the function called to open the DB. (Only for monkey patch testing)
+// SQLOpenFunc is the function called to open the DB. (Only for monkey patch testing).
 type SQLOpenFunc func(driverName, dataSourceName string) (*sql.DB, error)
 
 // Connect attempts to connect to a SQL database
@@ -61,7 +61,7 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 	return &c, nil
 }
 
-// SQLConn is the structure that helps to manage a SQL DB connection
+// SQLConn is the structure that helps to manage a SQL DB connection.
 type SQLConn struct {
 	cfg    *config
 	ctx    context.Context
@@ -69,7 +69,7 @@ type SQLConn struct {
 	dbLock sync.RWMutex
 }
 
-// DB returns a database connection from the pool
+// DB returns a database connection from the pool.
 func (c *SQLConn) DB() *sql.DB {
 	c.dbLock.RLock()
 	defer c.dbLock.RUnlock()
@@ -77,7 +77,7 @@ func (c *SQLConn) DB() *sql.DB {
 	return c.db
 }
 
-// HealthCheck performs a health check of the database connection
+// HealthCheck performs a health check of the database connection.
 func (c *SQLConn) HealthCheck(ctx context.Context) error {
 	c.dbLock.RLock()
 	defer c.dbLock.RUnlock()
@@ -134,7 +134,7 @@ func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
 }
 
 // parseConnectionURL attempts to extract the driver/dsn pair from a string in the format <DRIVER>://<DSN>
-// if only the DSN part is set, the driver will need to be specified via a configuration option
+// if only the DSN part is set, the driver will need to be specified via a configuration option.
 func parseConnectionURL(url string) (string, string, error) {
 	if url == "" {
 		return "", "", nil

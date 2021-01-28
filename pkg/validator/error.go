@@ -23,7 +23,7 @@ type Error struct {
 	// StructField is the field's actual name from the struct.
 	StructField string
 
-	// Kind is the Field's string representation of the kind (e.g. Int,Slice,...)
+	// Kind is the Field's string representation of the kind (e.g. Int,Slice,...).
 	Kind string
 
 	// Value is the actual field's value.

@@ -12,13 +12,13 @@ type HealthChecker interface {
 	HealthCheck(ctx context.Context) error
 }
 
-// HealthCheck is a structure containing the configuration for a single health check
+// HealthCheck is a structure containing the configuration for a single health check.
 type HealthCheck struct {
 	ID      string
 	Checker HealthChecker
 }
 
-// New creates a new instance of a health check configuration with default timeout
+// New creates a new instance of a health check configuration with default timeout.
 func New(id string, checker HealthChecker) HealthCheck {
 	return HealthCheck{
 		ID:      id,

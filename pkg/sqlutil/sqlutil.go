@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// CloseRows closes a rows instance or log an error
+// CloseRows closes a rows instance or log an error.
 func CloseRows(ctx context.Context, rows *sql.Rows) {
 	if rows == nil {
 		return
@@ -21,7 +21,7 @@ func CloseRows(ctx context.Context, rows *sql.Rows) {
 	}
 }
 
-// CloseStatement closes a prepared statement or log an error
+// CloseStatement closes a prepared statement or log an error.
 func CloseStatement(ctx context.Context, stmt *sql.Stmt) {
 	if stmt == nil {
 		return
@@ -31,7 +31,7 @@ func CloseStatement(ctx context.Context, stmt *sql.Stmt) {
 	}
 }
 
-// BuildInClauseInt prepares a SQL IN clause with the given list of integer values
+// BuildInClauseInt prepares a SQL IN clause with the given list of integer values.
 func BuildInClauseInt(field string, in []int) string {
 	if len(in) == 0 {
 		return ""
@@ -44,7 +44,7 @@ func BuildInClauseInt(field string, in []int) string {
 	return "`" + field + "` IN (" + strings.Join(values, ",") + ")"
 }
 
-// BuildInClauseString prepares a SQL IN clause with the given list of string values
+// BuildInClauseString prepares a SQL IN clause with the given list of string values.
 func BuildInClauseString(field string, in []string) string {
 	if len(in) == 0 {
 		return ""

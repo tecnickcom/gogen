@@ -1,11 +1,11 @@
-// Package route defines the endpoints for the HTTP server
+// Package route defines the endpoints for the HTTP server.
 package route
 
 import (
 	"net/http"
 )
 
-// Route contains the HTTP route description
+// Route contains the HTTP route description.
 type Route struct {
 	Method      string           `json:"method"`      // HTTP method
 	Path        string           `json:"path"`        // URL path
@@ -13,7 +13,7 @@ type Route struct {
 	Description string           `json:"description"` // Description
 }
 
-// Index contains the list of routes attached to the current service
+// Index contains the list of routes attached to the current service.
 type Index struct {
 	Routes []Route `json:"routes"`
 }

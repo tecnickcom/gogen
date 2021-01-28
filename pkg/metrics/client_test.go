@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
@@ -45,6 +46,53 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestInstrumentHandler(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(DefaultCollectors...)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	rr := httptest.NewRecorder()
+
+	handler := c.InstrumentHandler("/test", c.MetricsHandlerFunc())
+
+	req, err := http.NewRequest(http.MethodGet, "/test", nil)
+	require.NoError(t, err, "failed creating http request: %s", err)
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	rt, err := testutil.GatherAndCount(c.Registry, NameAPIRequests)
+	require.NoError(t, err, "failed to gather metrics: %s", err)
+	require.Equal(t, 1, rt, "failed to assert right metrics: got %v want %v", rt, 1)
+}
+
+func TestInstrumentRoundTripper(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(DefaultCollectors...)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`OK`))
+	}))
+	defer server.Close()
+
+	client := server.Client()
+	client.Timeout = 1 * time.Second
+	client.Transport = c.InstrumentRoundTripper(client.Transport)
+
+	_, err = client.Get(server.URL)
+	require.NoError(t, err, "client.Do() unexpected error = %v", err)
+
+	rt, err := testutil.GatherAndCount(c.Registry, NameOutboundRequests)
+	require.NoError(t, err, "failed to gather metrics: %s", err)
+	require.Equal(t, 1, rt, "failed to assert right metrics: got %v want %v", rt, 1)
+}
+
 func TestIncLogLevelCounter(t *testing.T) {
 	t.Parallel()
 
@@ -53,47 +101,26 @@ func TestIncLogLevelCounter(t *testing.T) {
 
 	c.IncLogLevelCounter("debug")
 
-	i, err := testutil.GatherAndCount(c.Registry, MetricErrorLevel)
-	if err != nil {
-		t.Errorf("failed to gather metrics: %s", err)
-	}
+	i, err := testutil.GatherAndCount(c.Registry, NameErrorLevel)
+	require.NoError(t, err, "failed to gather metrics: %s", err)
 
 	if i != 1 {
 		t.Errorf("failed to assert right metrics: got %v want %v", i, 1)
 	}
 }
 
-func TestHandler(t *testing.T) {
+func TestIncErrorCounter(t *testing.T) {
 	t.Parallel()
 
 	c, err := New(DefaultCollectors...)
 	require.NoError(t, err, "unexpected error = %v", err)
 
-	rr := httptest.NewRecorder()
+	c.IncErrorCounter("test_task", "test_operation", "3791")
 
-	handler := c.InstrumentHandler("/test", c.MetricsHandlerFunc())
+	i, err := testutil.GatherAndCount(c.Registry, NameErrorCode)
+	require.NoError(t, err, "failed to gather metrics: %s", err)
 
-	req, err := http.NewRequest("GET", "/test", nil)
-	if err != nil {
-		t.Fatal(err)
+	if i != 1 {
+		t.Errorf("failed to assert right metrics: got %v want %v", i, 1)
 	}
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
-
-	rt, err := testutil.GatherAndCount(c.Registry, MetricAPIRequests)
-	if err != nil {
-		t.Errorf("failed to gather metrics: %s", err)
-	}
-	require.Equal(t, 1, rt, "failed to assert right metrics: got %v want %v", rt, 1)
-}
-
-func TestDefaultMetricsHandlerFunc(t *testing.T) {
-	t.Parallel()
-
-	h := DefaultMetricsHandlerFunc()
-	require.NotNil(t, h, "unexpected nil")
 }

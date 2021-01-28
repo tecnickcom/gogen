@@ -10,24 +10,24 @@ import (
 )
 
 const (
-	// MimeApplicationJSON contains the mime type string for JSON content
+	// MimeApplicationJSON contains the mime type string for JSON content.
 	MimeApplicationJSON = "application/json; charset=utf-8"
 
-	// MimeTextPlain contains the mime type string for text content
+	// MimeTextPlain contains the mime type string for text content.
 	MimeTextPlain = "text/plain; charset=utf-8"
 )
 
-// JSend status codes
+// JSend status codes.
 const (
 	StatusSuccess = "success"
 	StatusFail    = "fail"
 	StatusError   = "error"
 )
 
-// Status translates the HTTP status code to a JSend status string
+// Status translates the HTTP status code to a JSend status string.
 type Status int
 
-// MarshalJSON implements the custom marshaling function for the json encoder
+// MarshalJSON implements the custom marshaling function for the json encoder.
 func (sc Status) MarshalJSON() ([]byte, error) {
 	s := StatusSuccess
 	if sc >= http.StatusBadRequest { // 400+
@@ -39,7 +39,7 @@ func (sc Status) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-// SendStatus sends write a HTTP status code to the response
+// SendStatus sends write a HTTP status code to the response.
 func SendStatus(ctx context.Context, w http.ResponseWriter, statusCode int) {
 	defer logResponse(ctx, statusCode, "")
 

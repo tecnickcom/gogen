@@ -127,13 +127,13 @@ func TestDefaultIndexHandler(t *testing.T) {
 
 	routes := []route.Route{
 		{
-			Method:      "GET",
+			Method:      http.MethodGet,
 			Path:        "/get",
 			Handler:     nil,
 			Description: "Get endpoint",
 		},
 		{
-			Method:      "POST",
+			Method:      http.MethodPost,
 			Path:        "/post",
 			Handler:     nil,
 			Description: "Post endpoint",

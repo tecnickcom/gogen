@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-// HTTPClient contains the function to perform the actual HTTP request
+// HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
-// CheckHTTPStatus checks if the given HTTP request responds with the expected status code
+// CheckHTTPStatus checks if the given HTTP request responds with the expected status code.
 func CheckHTTPStatus(ctx context.Context, httpClient HTTPClient, method string, url string, wantStatusCode int, timeout time.Duration, opts ...CheckOption) error {
 	cfg := checkConfig{}
 	for _, apply := range opts {
