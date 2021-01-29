@@ -45,7 +45,12 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr *instr.Metrics) bootstrap
 		}
 
 		// ipify client
+		ipc := &http.Client{
+			Transport: m.InstrumentRoundTripper(http.DefaultTransport),
+			Timeout:   time.Duration(cfg.Ipify.Timeout) * time.Second,
+		}
 		ipifyOpts := []ipify.ClientOption{
+			ipify.WithHTTPClient(ipc),
 			ipify.WithTimeout(time.Duration(cfg.Ipify.Timeout) * time.Second),
 			ipify.WithURL(cfg.Ipify.Address),
 		}
