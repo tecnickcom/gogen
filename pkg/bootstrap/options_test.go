@@ -42,7 +42,7 @@ func TestWithCreateLoggerFunc(t *testing.T) {
 
 func TestWithCreateMetricsClientFunc(t *testing.T) {
 	t.Parallel()
-	v := func() (*metrics.Client, error) {
+	v := func() (metrics.Client, error) {
 		return nil, nil
 	}
 	cfg := &config{}

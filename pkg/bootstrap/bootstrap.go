@@ -1,5 +1,5 @@
 // Package bootstrap provides a simple way to bootstrap an application with a managed
-// logging framework and application context
+// logging framework, metrics and application context.
 package bootstrap
 
 import (

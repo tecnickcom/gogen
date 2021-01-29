@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gosrvlibexample/gosrvlibexample/internal/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/config"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
@@ -55,8 +56,15 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 			ProgramRelease: release,
 		}
 
+		// Confifure metrics
+		mtr := metrics.New()
+
 		// Boostrap application
-		return bootstrapFn(bind(cfg, appInfo), bootstrap.WithLogger(l))
+		return bootstrapFn(
+			bind(cfg, appInfo, mtr),
+			bootstrap.WithLogger(l),
+			bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
+		)
 	}
 
 	// sub-command to print the version

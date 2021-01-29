@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gosrvlibexample/gosrvlibexample/internal/httphandler"
+	instr "github.com/gosrvlibexample/gosrvlibexample/internal/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
@@ -17,8 +18,8 @@ import (
 )
 
 // bind is the entry point of the service, this is where the wiring of all components happens
-func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
-	return func(ctx context.Context, l *zap.Logger, m *metrics.Client) error {
+func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr *instr.Metrics) bootstrap.BindFunc {
+	return func(ctx context.Context, l *zap.Logger, m metrics.Client) error {
 		var statusHandler http.HandlerFunc
 
 		// We assume the service is disabled and override the service binder if required
@@ -68,6 +69,9 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo) bootstrap.BindFunc {
 		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
 			return fmt.Errorf("error starting monitoring HTTP server: %w", err)
 		}
+
+		// example of custom metric
+		mtr.IncExampleCounter("START")
 
 		// start service server
 		httpServiceOpts := []httpserver.Option{

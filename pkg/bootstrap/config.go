@@ -12,10 +12,10 @@ import (
 type CreateLoggerFunc func() (*zap.Logger, error)
 
 // CreateMetricsClientFunc creates a new metrics client.
-type CreateMetricsClientFunc func() (*metrics.Client, error)
+type CreateMetricsClientFunc func() (metrics.Client, error)
 
 // BindFunc represents the function responsible to wire up all components of the application.
-type BindFunc func(context.Context, *zap.Logger, *metrics.Client) error
+type BindFunc func(context.Context, *zap.Logger, metrics.Client) error
 
 type config struct {
 	context                 context.Context
@@ -35,6 +35,6 @@ func defaultCreateLogger() (*zap.Logger, error) {
 	return logging.NewLogger()
 }
 
-func defaultCreateMetricsClientFunc() (*metrics.Client, error) {
-	return metrics.New(metrics.DefaultCollectors...)
+func defaultCreateMetricsClientFunc() (metrics.Client, error) {
+	return &metrics.Default{}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gosrvlibexample/gosrvlibexample/internal/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
@@ -97,11 +98,17 @@ func Test_bind(t *testing.T) {
 				defer func() { _ = l.Close() }()
 			}
 
-			testBindFn := bind(tt.cfg, &jsendx.AppInfo{
-				ProgramName:    "test",
-				ProgramVersion: "0.0.0",
-				ProgramRelease: "0",
-			})
+			mtr := metrics.New()
+
+			testBindFn := bind(
+				tt.cfg,
+				&jsendx.AppInfo{
+					ProgramName:    "test",
+					ProgramVersion: "0.0.0",
+					ProgramRelease: "0",
+				},
+				mtr,
+			)
 
 			testCtx, cancel := context.WithTimeout(testutil.Context(), 1*time.Second)
 			defer cancel()
