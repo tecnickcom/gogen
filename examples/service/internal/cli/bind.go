@@ -18,7 +18,7 @@ import (
 )
 
 // bind is the entry point of the service, this is where the wiring of all components happens
-func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr *instr.Metrics) bootstrap.BindFunc {
+func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.BindFunc {
 	return func(ctx context.Context, l *zap.Logger, m metrics.Client) error {
 		var statusHandler http.HandlerFunc
 
