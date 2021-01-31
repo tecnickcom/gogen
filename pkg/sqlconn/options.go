@@ -7,7 +7,7 @@ import (
 // Option is a type alias for a function that configures the DB connector.
 type Option func(*config)
 
-// WithConnectFunc replaces the default connection function
+// WithConnectFunc replaces the default connection function.
 func WithConnectFunc(fn ConnectFunc) Option {
 	return func(cfg *config) {
 		cfg.connectFunc = fn

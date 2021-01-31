@@ -65,10 +65,9 @@ func TestBootstrap(t *testing.T) {
 			ctx, logs := testutil.ContextWithLogObserver(zap.DebugLevel)
 
 			if tt.stopAfter != 0 {
-				stopCtx, stop := context.WithTimeout(ctx, tt.stopAfter)
+				var stop context.CancelFunc
+				ctx, stop = context.WithTimeout(ctx, tt.stopAfter)
 				defer stop()
-
-				ctx = stopCtx
 			}
 
 			opts := []Option{

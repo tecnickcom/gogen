@@ -1,6 +1,5 @@
-// Package healthcheck provides a simple way to define health checks
-// for external services or components.
-// These checks will be aggregated in the /status endpoint.
+// Package healthcheck provides a simple way to define health checks for external services or components.
+// These checks are aggregated by the /status endpoint.
 package healthcheck
 
 import (
@@ -14,7 +13,10 @@ type HealthChecker interface {
 
 // HealthCheck is a structure containing the configuration for a single health check.
 type HealthCheck struct {
-	ID      string
+	// ID is a unique identifier for the healthcheck.
+	ID string
+
+	// Checker is the function used to perform the healthchecks.
 	Checker HealthChecker
 }
 

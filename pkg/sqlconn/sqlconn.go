@@ -21,7 +21,7 @@ type CheckConnectionFunc func(ctx context.Context, db *sql.DB) error
 // SQLOpenFunc is the function called to open the DB. (Only for monkey patch testing).
 type SQLOpenFunc func(driverName, dataSourceName string) (*sql.DB, error)
 
-// Connect attempts to connect to a SQL database
+// Connect attempts to connect to a SQL database.
 func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) {
 	driver, dsn, err := parseConnectionURL(url)
 	if err != nil {

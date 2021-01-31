@@ -22,18 +22,35 @@ const (
 
 // Response wraps data into a JSend compliant response.
 type Response struct {
-	Program   string          `json:"program"`   // Program name
-	Version   string          `json:"version"`   // Program version
-	Release   string          `json:"release"`   // Program release number
-	DateTime  string          `json:"datetime"`  // Human-readable date and time when the event occurred
-	Timestamp int64           `json:"timestamp"` // Machine-readable UTC timestamp in nanoseconds since EPOCH
-	Status    httputil.Status `json:"status"`    // Status code (error|fail|success)
-	Code      int             `json:"code"`      // HTTP status code
-	Message   string          `json:"message"`   // Error or status message
-	Data      interface{}     `json:"data"`      // Data payload
+	// Program is the application name.
+	Program string `json:"program"`
+
+	// Version is the program semantic version (e.g. 1.2.3).
+	Version string `json:"version"`
+
+	// Release is the program build number that is appended to the version.
+	Release string `json:"release"`
+
+	// DateTime is the human-readable date and time when the response is sent.
+	DateTime string `json:"datetime"`
+
+	// Timestamp is the machine-readable UTC timestamp in nanoseconds since EPOCH.
+	Timestamp int64 `json:"timestamp"`
+
+	// Status code string (i.e.: error, fail, success).
+	Status httputil.Status `json:"status"`
+
+	// Code is the HTTP status code number.
+	Code int `json:"code"`
+
+	// Message is the error or general HTTP status message.
+	Message string `json:"message"`
+
+	// Data is the content payload.
+	Data interface{} `json:"data"`
 }
 
-// AppInfo is a struct containing data to enrich the JSend response.
+// AppInfo is a struct containing data to enrich the JSendX response.
 type AppInfo struct {
 	ProgramName    string
 	ProgramVersion string

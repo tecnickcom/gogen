@@ -77,6 +77,7 @@ func (c *config) isIndexRouteEnabled() bool {
 	return false
 }
 
+// validate the configuration.
 // nolint: gocyclo
 func (c *config) validate() error {
 	if err := validateAddr(c.serverAddr); err != nil {

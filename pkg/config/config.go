@@ -1,6 +1,6 @@
 // Package config handles the configuration of the program.
 // The configuration contains the set of initial parameter settings that are read at run-time by the program.
-// This package allows to load the configuration from a local file, an environment variable or a remote config provider (e.g. Consul, ETCD).
+// This package allows to load the configuration from a local file, an environment variable or a remote config provider (e.g. Consul, ETCD, Firestore).
 //
 // Configuration Loading Strategy:
 //

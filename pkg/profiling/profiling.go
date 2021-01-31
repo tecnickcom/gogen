@@ -9,7 +9,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// PProfHandler exposes pprof data.
+// PProfHandler exposes pprof profiling data.
 func PProfHandler(w http.ResponseWriter, r *http.Request) {
 	ps := httprouter.ParamsFromContext(r.Context())
 	profile := strings.TrimPrefix(ps.ByName("option"), "/")

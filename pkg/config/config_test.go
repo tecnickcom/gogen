@@ -18,40 +18,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint:maligned
 type testData struct {
 	Str string `mapstructure:"str"`
 	Int int    `mapstructure:"int"`
 	Arr []int  `mapstructure:"arr"`
 }
 
-// nolint:maligned
 type testConfig struct {
-	validateErr error
 	BaseConfig  `mapstructure:",squash"`
-	Boolean     bool                         `mapstructure:"bool"`
+	Data        testData `mapstructure:"data"`
+	Slice       []string `mapstructure:"slice"`
+	validateErr error
 	String      string                       `mapstructure:"string"`
 	Int         int                          `mapstructure:"int"`
-	Int8        int8                         `mapstructure:"int8"`
-	Int16       int16                        `mapstructure:"int16"`
-	Int32       int32                        `mapstructure:"int32"`
 	Int64       int64                        `mapstructure:"int64"`
 	UInt        uint                         `mapstructure:"uint"`
-	UInt8       uint8                        `mapstructure:"uint8"`
-	UInt16      uint16                       `mapstructure:"uint16"`
-	UInt32      uint32                       `mapstructure:"uint32"`
 	UInt64      uint64                       `mapstructure:"uint64"`
-	Float32     float32                      `mapstructure:"float32"`
-	Float64     float32                      `mapstructure:"float64"`
-	Slice       []string                     `mapstructure:"slice"`
 	MapString   map[string]string            `mapstructure:"mapstring"`
 	NestedMap   map[string]map[string]string `mapstructure:"nestedmap"`
-	Data        testData                     `mapstructure:"data"`
 	MapData     map[string]testData          `mapstructure:"mapdata"`
+	Int32       int32                        `mapstructure:"int32"`
+	UInt32      uint32                       `mapstructure:"uint32"`
+	Float32     float32                      `mapstructure:"float32"`
+	Float64     float32                      `mapstructure:"float64"`
+	Int16       int16                        `mapstructure:"int16"`
+	UInt16      uint16                       `mapstructure:"uint16"`
+	Boolean     bool                         `mapstructure:"bool"`
+	Int8        int8                         `mapstructure:"int8"`
+	UInt8       uint8                        `mapstructure:"uint8"`
 }
 
 func (tc *testConfig) SetDefaults(v Viper) {
-	v.SetDefault("drink", "c0ffee")
+	v.SetDefault("alpha", "beta")
 }
 
 func (tc *testConfig) Validate() error {
@@ -122,7 +120,7 @@ func Test_loadLocalConfig(t *testing.T) {
 				mock.EXPECT().SetDefault(keyLogLevel, defaultLogLevel)
 				mock.EXPECT().SetDefault(keyLogAddress, defaultLogAddress)
 				mock.EXPECT().SetDefault(keyLogNetwork, defaultLogNetwork)
-				mock.EXPECT().SetDefault("drink", "c0ffee")
+				mock.EXPECT().SetDefault("alpha", "beta")
 				mock.EXPECT().SetConfigName(defaultConfigName)
 				mock.EXPECT().SetConfigType(defaultConfigType)
 				mock.EXPECT().AddConfigPath(gomock.Any()).AnyTimes()
@@ -146,7 +144,7 @@ func Test_loadLocalConfig(t *testing.T) {
 				mock.EXPECT().SetDefault(keyLogLevel, defaultLogLevel)
 				mock.EXPECT().SetDefault(keyLogAddress, defaultLogAddress)
 				mock.EXPECT().SetDefault(keyLogNetwork, defaultLogNetwork)
-				mock.EXPECT().SetDefault("drink", "c0ffee")
+				mock.EXPECT().SetDefault("alpha", "beta")
 				mock.EXPECT().SetConfigName(defaultConfigName)
 				mock.EXPECT().SetConfigType(defaultConfigType)
 				mock.EXPECT().AddConfigPath(gomock.Any()).AnyTimes()
@@ -171,7 +169,7 @@ func Test_loadLocalConfig(t *testing.T) {
 				mock.EXPECT().SetDefault(keyLogLevel, defaultLogLevel)
 				mock.EXPECT().SetDefault(keyLogAddress, defaultLogAddress)
 				mock.EXPECT().SetDefault(keyLogNetwork, defaultLogNetwork)
-				mock.EXPECT().SetDefault("drink", "c0ffee")
+				mock.EXPECT().SetDefault("alpha", "beta")
 				mock.EXPECT().SetConfigName(defaultConfigName)
 				mock.EXPECT().SetConfigType(defaultConfigType)
 				mock.EXPECT().AddConfigPath(gomock.Any()).AnyTimes()
@@ -843,7 +841,7 @@ func TestLoad(t *testing.T) {
 				mock.EXPECT().SetDefault(keyLogLevel, defaultLogLevel)
 				mock.EXPECT().SetDefault(keyLogAddress, defaultLogAddress)
 				mock.EXPECT().SetDefault(keyLogNetwork, defaultLogNetwork)
-				mock.EXPECT().SetDefault("drink", "c0ffee")
+				mock.EXPECT().SetDefault("alpha", "beta")
 				mock.EXPECT().SetConfigName(defaultConfigName)
 				mock.EXPECT().SetConfigType(defaultConfigType)
 				mock.EXPECT().AddConfigPath(gomock.Any()).AnyTimes()

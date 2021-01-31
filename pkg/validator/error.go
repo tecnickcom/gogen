@@ -2,13 +2,13 @@ package validator
 
 // Error is a custom error adding a Field member.
 type Error struct {
-	// Tag is the validation tag that failed (e.g. "max")
+	// Tag is the validation tag that failed (e.g. "max").
 	Tag string
 
 	// Param is the Tag's parameter value (if any - e.g. "10").
 	Param string
 
-	// FullTag is the validation tag that failed with included parameters (e.g. "max=10")
+	// FullTag is the validation tag that failed with included parameters (e.g. "max=10").
 	FullTag string
 
 	// Namespace for the field error, with the tag name taking precedence over the field's actual name.

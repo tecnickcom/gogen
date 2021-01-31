@@ -68,6 +68,7 @@ func SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data s
 	}
 }
 
+// writeHeaders sets the content type with disabled caching.
 func writeHeaders(w http.ResponseWriter, statusCode int, contentType string) {
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Pragma", "no-cache")
@@ -76,6 +77,7 @@ func writeHeaders(w http.ResponseWriter, statusCode int, contentType string) {
 	w.WriteHeader(statusCode)
 }
 
+// logResponse logs the response.
 func logResponse(ctx context.Context, statusCode int, data interface{}) {
 	l := logging.FromContext(ctx)
 	reqLog := l.With(

@@ -66,7 +66,6 @@ func TestNewClient(t *testing.T) {
 	}
 }
 
-// nolint:gocognit
 func TestClient_GetPublicIP(t *testing.T) {
 	tests := []struct {
 		name         string

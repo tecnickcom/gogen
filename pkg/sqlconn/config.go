@@ -8,16 +8,18 @@ import (
 )
 
 const (
-	defaultConnMaxIdle     = 2                // Maximum number of idle connections
-	defaultConnMaxOpen     = 2                // The stdlib default is 0 (unlimited connections)
-	defaultConnMaxLifetime = time.Duration(0) // The stdlib default is 0 (unlimited reuse)
+	defaultConnMaxIdle          = 2                // Maximum number of idle connections (0 = unlimited)
+	defaultConnMaxLifetime      = time.Duration(0) // Maximum connection lifetime in seconds (0 = unlimited reuse)
+	defaultConnMaxOpen          = 2                // Maximum number of open connections (0 = unlimited connections)
+	defaultConnectMaxRetry      = 1                // Number of maximum connection retries
+	defaultConnectRetryInterval = 3 * time.Second  // Connection retry time in seconds
 )
 
 func defaultConfig(driver, dsn string) *config {
 	return &config{
 		checkConnectionFunc:  checkConnection,
-		connectMaxRetry:      1,
-		connectRetryInterval: 3 * time.Second,
+		connectMaxRetry:      defaultConnectMaxRetry,
+		connectRetryInterval: defaultConnectRetryInterval,
 		connectFunc:          connectWithBackoff,
 		driver:               driver,
 		dsn:                  dsn,

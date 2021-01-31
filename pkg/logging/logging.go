@@ -108,7 +108,7 @@ func NopLogger() *zap.Logger {
 
 // Sync flushes the given logger and ignores the error.
 func Sync(s Syncer) {
-	// this is fine to ignore as we are syncing the log, adding more log would not help
+	// it is fine to ignore the error as we are syncing the log and adding more logs would not help
 	_ = s.Sync()
 }
 

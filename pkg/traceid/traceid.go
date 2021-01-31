@@ -15,6 +15,7 @@ const (
 	DefaultValue = ""
 )
 
+// ctxKey is used to store the trace ID in the context.
 type ctxKey struct{}
 
 // NewContext stores the trace ID value in the context if not already present.

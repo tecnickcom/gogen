@@ -1,5 +1,6 @@
-// Package validator expose wrapper function for https://github.com/go-playground/validator
+// Package validator wraps https://github.com/go-playground/validator
 // to provide value validations for structs and individual fields based on tags.
+// It includes a simpler custom translation mechanism for errors.
 package validator
 
 import (
@@ -58,6 +59,7 @@ func (v *Validator) ValidateStructCtx(ctx context.Context, obj interface{}) (err
 	return err
 }
 
+// tagError set the error message associated with the validation tag.
 func (v *Validator) tagError(fe vt.FieldError, tag string) (err error) {
 	tagParts := strings.SplitN(tag, "=", 2)
 	tagKey := tagParts[0]
@@ -84,9 +86,9 @@ func (v *Validator) tagError(fe vt.FieldError, tag string) (err error) {
 	return ve
 }
 
+// translate returns the error message associated with the tag.
 func (v *Validator) translate(ve *Error) string {
-	t, ok := v.tpl[ve.Tag]
-	if ok {
+	if t, ok := v.tpl[ve.Tag]; ok {
 		var out bytes.Buffer
 		if err := t.Execute(&out, ve); err == nil {
 			return out.String()

@@ -8,7 +8,7 @@ import (
 	vt "github.com/go-playground/validator/v10"
 )
 
-// Option is the interface that allows to set options.
+// Option is the interface that allows to set configuration options.
 type Option func(v *Validator) error
 
 // WithFieldNameTag allows to use the field names specified by the tag instead of the original struct names.

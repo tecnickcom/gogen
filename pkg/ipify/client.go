@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	defaultTimeout = 4 * time.Second
+	defaultTimeout = 4 * time.Second         // default timeout in seconds
 	defaultAPIURL  = "https://api.ipify.org" // use "https://api64.ipify.org" for IPv6 support
-	defaultErrorIP = ""
+	defaultErrorIP = ""                      // string to return in case of error in place of the IP
 )
 
 // HTTPClient contains the function to perform the actual HTTP request.

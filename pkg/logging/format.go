@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Format represents the logging format to adopt.
+// Format represents the logging output format to adopt.
 type Format int8
 
 const (

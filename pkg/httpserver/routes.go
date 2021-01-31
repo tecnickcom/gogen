@@ -39,7 +39,7 @@ var allDefaultRoutes = []defaultRoute{IndexRoute, IPRoute, MetricsRoute, PingRou
 func newDefaultRoutes(cfg *config) []route.Route {
 	routes := make([]route.Route, 0)
 
-	// The index route is not included here because of the need of accessing all the routes bound to the handler
+	// The index route is not included here because of the need of accessing all the routes bound to the handler.
 	for _, id := range cfg.defaultEnabledRoutes {
 		switch id {
 		case IPRoute:
