@@ -19,6 +19,7 @@ type testCustomTagStruct struct {
 	StateB           string      `json:"state_b" validate:"falseif=Country|usstate"`
 	StateC           string      `json:"state_c" validate:"falseif=Country US|usstate"`
 	StateD           string      `json:"state_d" validate:"falseif|usstate"`
+	StateE           string      `json:"state_e" validate:"falseif=Country US|usterritory"`
 	FalseIfMissing   string      `json:"falseif_string" validate:"falseif=MissingField"`
 	FieldArray       []int       `json:"field_array" validate:"required"`
 	FieldInt         int         `json:"field_int" validate:"required"`
@@ -49,6 +50,7 @@ func getTestCustomTagData() testCustomTagStruct {
 		StateB:           "AL",
 		StateC:           "WI",
 		StateD:           "AK",
+		StateE:           "VI",
 		FalseIfMissing:   "hello",
 		FieldArray:       []int{1, 2, 3},
 		FieldInt:         -123,
@@ -113,6 +115,12 @@ func TestCustomTags(t *testing.T) {
 		{
 			name:         "fail with invalid US state when country is not set",
 			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.Country = ""; obj.StateB = "XX"; return obj },
+			wantErr:      true,
+			wantErrCount: 1,
+		},
+		{
+			name:         "fail with invalid US territory",
+			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.StateE = "XX"; return obj },
 			wantErr:      true,
 			wantErrCount: 1,
 		},

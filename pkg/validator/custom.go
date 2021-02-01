@@ -24,11 +24,12 @@ var (
 
 // CustomValidationTags maps custom tags with validation function.
 var CustomValidationTags = map[string]vt.FuncCtx{
-	"falseif":    isFalseIf,
-	"e164noplus": isE164NoPlus,
-	"ein":        isEIN,
-	"zipcode":    isUSZIPCode,
-	"usstate":    isUSState,
+	"falseif":     isFalseIf,
+	"e164noplus":  isE164NoPlus,
+	"ein":         isEIN,
+	"zipcode":     isUSZIPCode,
+	"usstate":     isUSState,
+	"usterritory": isUSTerritory,
 }
 
 // isE164 checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345).
@@ -50,11 +51,24 @@ func isUSZIPCode(ctx context.Context, fl vt.FieldLevel) bool {
 }
 
 // isUSState checks if the fields value is a valid 2-letter US state.
+// NOTE: It includes the District of Columbia (DC).
 func isUSState(ctx context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	if field.Kind() == reflect.String {
 		switch field.String() {
-		case "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY":
+		case "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY":
+			return true
+		}
+	}
+	return false
+}
+
+// isUSTerritory checks if the fields value is a valid 2-letter US territory (other than the official states and federal district).
+func isUSTerritory(ctx context.Context, fl vt.FieldLevel) bool {
+	field := fl.Field()
+	if field.Kind() == reflect.String {
+		switch field.String() {
+		case "AS", "GU", "MP", "PR", "VI":
 			return true
 		}
 	}

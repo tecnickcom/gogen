@@ -119,6 +119,7 @@ var ErrorTemplates = map[string]string{
 	"url_encoded":             `{{.Namespace}} must be URL-encoded`,
 	"urn_rfc2141":             `{{.Namespace}} must be a valid URN as per RFC 2141`,
 	"usstate":                 `{{.Namespace}} must be a valid 2-letter US state`,
+	"usterritory":             `{{.Namespace}} must be a valid 2-letter US territory`,
 	"uuid":                    `{{.Namespace}} must be a valid UUID`,
 	"uuid3":                   `{{.Namespace}} must be a valid version 3 UUID`,
 	"uuid3_rfc4122":           `{{.Namespace}} must be a valid version 3 UUID as per RFC 4122`,
