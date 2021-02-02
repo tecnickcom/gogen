@@ -10,10 +10,12 @@ import (
 	instr "github.com/gosrvlibexample/gosrvlibexample/internal/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
+	"github.com/nexmoinc/gosrvlib/pkg/httpclient"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
 	"github.com/nexmoinc/gosrvlib/pkg/ipify"
 	"github.com/nexmoinc/gosrvlib/pkg/metrics"
+	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"go.uber.org/zap"
 )
 
@@ -45,16 +47,18 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 		}
 
 		// ipify client
-		ipc := &http.Client{
-			Transport: m.InstrumentRoundTripper(http.DefaultTransport),
-			Timeout:   time.Duration(cfg.Ipify.Timeout) * time.Second,
-		}
-		ipifyOpts := []ipify.ClientOption{
+		ipcTimeout := time.Duration(cfg.Ipify.Timeout) * time.Second
+		ipc := httpclient.New(
+			httpclient.WithTimeout(ipcTimeout),
+			httpclient.WithRoundTripper(m.InstrumentRoundTripper),
+			httpclient.WithTraceIDHeaderName(traceid.DefaultHeader),
+			httpclient.WithComponent("ipify"),
+		)
+		ipifyClient, err := ipify.NewClient(
 			ipify.WithHTTPClient(ipc),
-			ipify.WithTimeout(time.Duration(cfg.Ipify.Timeout) * time.Second),
+			ipify.WithTimeout(ipcTimeout),
 			ipify.WithURL(cfg.Ipify.Address),
-		}
-		ipifyClient, err := ipify.NewClient(ipifyOpts...)
+		)
 		if err != nil {
 			return fmt.Errorf("failed to build ipify client: %w", err)
 		}
