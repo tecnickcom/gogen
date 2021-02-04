@@ -29,7 +29,11 @@ func TestSend(t *testing.T) {
 	rr := httptest.NewRecorder()
 	Send(testutil.Context(), rr, http.StatusOK, params, "hello test")
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -53,6 +57,8 @@ func TestSend(t *testing.T) {
 }
 
 func TestNewRouter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		method      string
@@ -112,13 +118,19 @@ func TestNewRouter(t *testing.T) {
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, httptest.NewRequest(tt.method, tt.path, nil))
 
-			resp := rr.Result()
+			resp := rr.Result() // nolint:bodyclose
+			require.NotNil(t, resp)
+
+			defer func() { _ = resp.Body.Close() }()
+
 			require.Equal(t, tt.wantStatus, resp.StatusCode, "status code got = %d, want = %d", resp.StatusCode, tt.wantStatus)
 		})
 	}
 }
 
 func TestDefaultIndexHandler(t *testing.T) {
+	t.Parallel()
+
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
 		ProgramVersion: "1.2.3",
@@ -143,7 +155,11 @@ func TestDefaultIndexHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	bodyData, _ := ioutil.ReadAll(resp.Body)
 	body := string(bodyData)
 	body = testutil.ReplaceDateTime(body, "<DT>")
@@ -155,6 +171,8 @@ func TestDefaultIndexHandler(t *testing.T) {
 }
 
 func TestDefaultIPHandler(t *testing.T) {
+	t.Parallel()
+
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
 		ProgramVersion: "2.3.4",
@@ -189,7 +207,11 @@ func TestDefaultIPHandler(t *testing.T) {
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 			DefaultIPHandler(appInfo, tt.ipFunc).ServeHTTP(rr, req)
 
-			resp := rr.Result()
+			resp := rr.Result() // nolint:bodyclose
+			require.NotNil(t, resp)
+
+			defer func() { _ = resp.Body.Close() }()
+
 			bodyData, _ := ioutil.ReadAll(resp.Body)
 			body := string(bodyData)
 			body = testutil.ReplaceDateTime(body, "<DT>")
@@ -208,7 +230,10 @@ func TestDefaultIPHandler(t *testing.T) {
 	}
 }
 
+// nolint:dupl
 func TestDefaultPingHandler(t *testing.T) {
+	t.Parallel()
+
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
 		ProgramVersion: "3.4.5",
@@ -219,8 +244,13 @@ func TestDefaultPingHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultPingHandler(appInfo)(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	bodyData, _ := ioutil.ReadAll(resp.Body)
+
 	body := string(bodyData)
 	body = testutil.ReplaceDateTime(body, "<DT>")
 	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
@@ -230,7 +260,10 @@ func TestDefaultPingHandler(t *testing.T) {
 	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.4.5\",\"release\":\"3\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
+// nolint:dupl
 func TestDefaultStatusHandler(t *testing.T) {
+	t.Parallel()
+
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
 		ProgramVersion: "5.6.7",
@@ -241,7 +274,11 @@ func TestDefaultStatusHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultStatusHandler(appInfo)(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	bodyData, _ := ioutil.ReadAll(resp.Body)
 
 	body := string(bodyData)
@@ -254,6 +291,8 @@ func TestDefaultStatusHandler(t *testing.T) {
 }
 
 func TestHealthCheckResultWriter(t *testing.T) {
+	t.Parallel()
+
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
 		ProgramVersion: "6.7.8",
@@ -263,7 +302,11 @@ func TestHealthCheckResultWriter(t *testing.T) {
 	rr := httptest.NewRecorder()
 	HealthCheckResultWriter(appInfo)(testutil.Context(), rr, http.StatusOK, "test body")
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	bodyData, _ := ioutil.ReadAll(resp.Body)
 
 	body := string(bodyData)

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/nexmoinc/gosrvlib/pkg/sqlutil"
 	"go.uber.org/zap"
 )
 
@@ -29,6 +30,7 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 	}
 
 	cfg := defaultConfig(driver, dsn)
+
 	for _, applyOpt := range opts {
 		applyOpt(cfg)
 	}
@@ -100,6 +102,7 @@ func (c *SQLConn) disconnect() {
 	if err := c.db.Close(); err != nil {
 		logging.FromContext(c.ctx).Error("failed closing database connection", zap.Error(err))
 	}
+
 	c.db = nil
 }
 
@@ -110,8 +113,11 @@ func checkConnection(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("failed ping on database: %w", err)
 	}
 
-	// nolint:rowserrcheck
-	if _, err = db.QueryContext(ctx, "SELECT 1"); err != nil {
+	// nolint:rowserrcheck,sqlclosecheck
+	rows, err := db.QueryContext(ctx, "SELECT 1")
+	defer sqlutil.CloseRows(ctx, rows)
+
+	if err != nil {
 		return fmt.Errorf("failed running check query on database: %w", err)
 	}
 
@@ -139,12 +145,15 @@ func parseConnectionURL(url string) (string, string, error) {
 	if url == "" {
 		return "", "", nil
 	}
+
 	parts := strings.Split(url, "://")
+
 	switch len(parts) {
 	case 1:
 		return "", parts[0], nil
 	case 2:
 		return parts[0], parts[1], nil
 	}
+
 	return "", "", fmt.Errorf("invalid connection string: %q", url)
 }

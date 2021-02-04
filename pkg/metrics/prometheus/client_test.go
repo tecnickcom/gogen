@@ -1,6 +1,7 @@
 package prometheus
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,8 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		opts    []Option
@@ -71,6 +74,8 @@ func TestNew(t *testing.T) {
 func TestInstrumentHandler(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	c, err := New()
 	require.NoError(t, err, "New() unexpected error = %v", err)
 
@@ -78,7 +83,7 @@ func TestInstrumentHandler(t *testing.T) {
 
 	handler := c.InstrumentHandler("/test", c.MetricsHandlerFunc())
 
-	req, err := http.NewRequest(http.MethodGet, "/test", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 	require.NoError(t, err, "failed creating http request: %s", err)
 	handler.ServeHTTP(rr, req)
 
@@ -107,7 +112,12 @@ func TestInstrumentRoundTripper(t *testing.T) {
 	client.Timeout = 1 * time.Second
 	client.Transport = c.InstrumentRoundTripper(client.Transport)
 
-	_, err = client.Get(server.URL)
+	// nolint:noctx
+	resp, err := client.Get(server.URL) // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	require.NoError(t, err, "client.Do() unexpected error = %v", err)
 
 	rt, err := testutil.GatherAndCount(c.registry, NameOutboundRequests)

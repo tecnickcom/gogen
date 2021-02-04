@@ -13,7 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:tparallel
 func TestStatus_MarshalJSON(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		status  Status
@@ -56,7 +59,11 @@ func TestSendJSON(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SendJSON(testutil.Context(), rr, http.StatusOK, "hello")
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -77,7 +84,11 @@ func TestSendText(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SendText(testutil.Context(), rr, http.StatusOK, "hello")
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -98,7 +109,11 @@ func TestSendStatus(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SendStatus(testutil.Context(), rr, http.StatusUnauthorized)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)

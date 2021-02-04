@@ -9,6 +9,8 @@ import (
 )
 
 func TestWithFormat(t *testing.T) {
+	t.Parallel()
+
 	v := JSONFormat
 	cfg := &config{}
 	err := WithFormat(v)(cfg)
@@ -17,6 +19,8 @@ func TestWithFormat(t *testing.T) {
 }
 
 func TestWithLevel(t *testing.T) {
+	t.Parallel()
+
 	v := zap.DebugLevel
 	cfg := &config{}
 	err := WithLevel(v)(cfg)
@@ -25,6 +29,8 @@ func TestWithLevel(t *testing.T) {
 }
 
 func TestWithFields(t *testing.T) {
+	t.Parallel()
+
 	v := []zap.Field{zap.String("a", "a"), zap.String("b", "b")}
 	cfg := &config{}
 	err := WithFields(v...)(cfg)
@@ -34,6 +40,8 @@ func TestWithFields(t *testing.T) {
 }
 
 func TestWithIncrementLogMetricsFunc(t *testing.T) {
+	t.Parallel()
+
 	v := func(s string) {
 		// mock function
 	}
@@ -44,6 +52,8 @@ func TestWithIncrementLogMetricsFunc(t *testing.T) {
 }
 
 func TestWithFormatStr(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		testValue string
@@ -62,6 +72,7 @@ func TestWithFormatStr(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := &config{}
 			if err := WithFormatStr(tt.testValue)(cfg); (err != nil) != tt.wantErr {
 				t.Errorf("WithFormatStr() error = %v, wantErr %v", err, tt.wantErr)
@@ -71,6 +82,8 @@ func TestWithFormatStr(t *testing.T) {
 }
 
 func TestWithLevelStr(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		testValue string
@@ -89,6 +102,7 @@ func TestWithLevelStr(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cfg := &config{}
 			if err := WithLevelStr(tt.testValue)(cfg); (err != nil) != tt.wantErr {
 				t.Errorf("WithLevelStr() error = %v, wantErr %v", err, tt.wantErr)
@@ -98,6 +112,8 @@ func TestWithLevelStr(t *testing.T) {
 }
 
 func TestWithOutputPaths(t *testing.T) {
+	t.Parallel()
+
 	v := []string{"stdout", "stderr"}
 	cfg := &config{}
 	err := WithOutputPaths(v)(cfg)
@@ -106,6 +122,8 @@ func TestWithOutputPaths(t *testing.T) {
 }
 
 func TestWithErrorOutputPaths(t *testing.T) {
+	t.Parallel()
+
 	v := []string{"stdout", "stderr"}
 	cfg := &config{}
 	err := WithErrorOutputPaths(v)(cfg)

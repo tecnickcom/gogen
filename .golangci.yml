@@ -72,25 +72,6 @@ linters-settings:
   whitespace:
     multi-if: false   # Enforces newlines (or comments) after every multi-line if statement
     multi-func: false # Enforces newlines (or comments) after every multi-line function signature
-#  wsl:
-#    # If true append is only allowed to be cuddled if appending value is
-#    # matching variables, fields or types on line above. Default is true.
-#    strict-append: true
-#    # Allow calls and assignments to be cuddled as long as the lines have any
-#    # matching variables, fields or types. Default is true.
-#    allow-assign-and-call: true
-#    # Allow multiline assignments to be cuddled. Default is true.
-#    allow-multiline-assign: true
-#    # Allow declarations (var) to be cuddled.
-#    allow-cuddle-declarations: false
-#    # Allow trailing comments in ending of blocks
-#    allow-trailing-comment: false
-#    # Force newlines in end of case at this limit (0 = never).
-#    force-case-trailing-whitespace: 0
-#    # Force cuddling of err checks with err var assignment
-#    force-err-cuddling: false
-#    # Allow leading comments to be separated with empty liens
-#    allow-separated-leading-comment: false
 
 linters:
   enable:
@@ -105,12 +86,12 @@ linters:
     - unused               # Checks Go code for unused constants, variables, functions and types [fast: false, auto-fix: false]
     - varcheck             # Finds unused global variables and constants [fast: true, auto-fix: false]
     - asciicheck           # Simple linter to check that your code does not contain non-ASCII identifiers [fast: true, auto-fix: false]
-#    - bodyclose            # checks whether HTTP response body is closed successfully [fast: true, auto-fix: false]
+    - bodyclose            # checks whether HTTP response body is closed successfully [fast: true, auto-fix: false]
     - depguard             # Go linter that checks if package imports are in a list of acceptable packages [fast: true, auto-fix: false]
     - dogsled              # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f()) [fast: true, auto-fix: false]
-#    - dupl                 # Tool for code clone detection [fast: true, auto-fix: false]
-#    - errorlint            # go-errorlint is a source code linter for Go software that can be used to find code that will cause problemswith the error wrapping scheme introduced in Go 1.13. [fast: true, auto-fix: false]
-#    - exhaustive           # check exhaustiveness of enum switch statements [fast: true, auto-fix: false]
+    - dupl                 # Tool for code clone detection [fast: true, auto-fix: false]
+    - errorlint            # go-errorlint is a source code linter for Go software that can be used to find code that will cause problemswith the error wrapping scheme introduced in Go 1.13. [fast: true, auto-fix: false]
+    - exhaustive           # check exhaustiveness of enum switch statements [fast: true, auto-fix: false]
 #    - exhaustivestruct     # Checks if all struct's fields are initialized [fast: true, auto-fix: false]
     - exportloopref        # checks for pointers to enclosing loop variables [fast: true, auto-fix: false]
     - forbidigo            # Forbids identifiers [fast: true, auto-fix: false]
@@ -122,7 +103,7 @@ linters:
     - goconst              # Finds repeated strings that could be replaced by a constant [fast: true, auto-fix: false]
     - gocritic             # The most opinionated Go source code linter [fast: true, auto-fix: false]
     - gocyclo              # Computes and checks the cyclomatic complexity of functions [fast: true, auto-fix: false]
-#    - godot                # Check if comments end in a period [fast: true, auto-fix: true]
+    - godot                # Check if comments end in a period [fast: true, auto-fix: true]
     - godox                # Tool for detection of FIXME, TODO and other comment keywords [fast: true, auto-fix: false]
 #    - goerr113             # Golang linter to check the errors handling expressions [fast: true, auto-fix: false]
     - gofmt                # Gofmt checks whether code was gofmt-ed. By default this tool runs with -s option to check for code simplification [fast: true, auto-fix: true]
@@ -135,7 +116,7 @@ linters:
     - goprintffuncname     # Checks that printf-like functions are named with `f` at the end [fast: true, auto-fix: false]
     - gosec                # Inspects source code for security problems [fast: true, auto-fix: false]
 #    - ifshort              # Checks that your code uses short syntax for if-statements whenever possible [fast: true, auto-fix: false]
-#    - interfacer           # Linter that suggests narrower interface types [fast: true, auto-fix: false]
+    - interfacer           # Linter that suggests narrower interface types [fast: true, auto-fix: false]
 #    - lll                  # Reports long lines [fast: true, auto-fix: false]
     - makezero             # Finds slice declarations with non-zero initial length [fast: true, auto-fix: false]
     - maligned             # Tool to detect Go structs that would take less memory if their fields were sorted [fast: true, auto-fix: false]
@@ -143,20 +124,20 @@ linters:
     - nakedret             # Finds naked returns in functions greater than a specified function length [fast: true, auto-fix: false]
     - nestif               # Reports deeply nested if statements [fast: true, auto-fix: false]
 #    - nlreturn             # nlreturn checks for a new line before return and branch statements to increase code clarity [fast: true, auto-fix: false]
-#    - noctx                # noctx finds sending http request without context.Context [fast: true, auto-fix: false]
+    - noctx                # noctx finds sending http request without context.Context [fast: true, auto-fix: false]
 #    - nolintlint           # Reports ill-formed or insufficient nolint directives [fast: true, auto-fix: false]
 #    - paralleltest         # paralleltest detects missing usage of t.Parallel() method in your Go test [fast: true, auto-fix: false]
-#    - prealloc             # Finds slice declarations that could potentially be preallocated [fast: true, auto-fix: false]
+    - prealloc             # Finds slice declarations that could potentially be preallocated [fast: true, auto-fix: false]
     - predeclared          # find code that shadows one of Go's predeclared identifiers [fast: true, auto-fix: false]
     - rowserrcheck         # checks whether Err of rows is checked successfully [fast: true, auto-fix: false]
 #    - scopelint            # Scopelint checks for unpinned variables in go programs [fast: true, auto-fix: false]
-#    - sqlclosecheck        # Checks that sql.Rows and sql.Stmt are closed. [fast: true, auto-fix: false]
+    - sqlclosecheck        # Checks that sql.Rows and sql.Stmt are closed. [fast: true, auto-fix: false]
     - stylecheck           # Stylecheck is a replacement for golint [fast: true, auto-fix: false]
 #    - testpackage          # linter that makes you use a separate _test package [fast: true, auto-fix: false]
-#    - thelper              # thelper detects golang test helpers without t.Helper() call and checks the consistency of test helpers [fast: true, auto-fix: false]
-#    - tparallel            # tparallel detects inappropriate usage of t.Parallel() method in your Go test codes [fast: true, auto-fix: false]
+    - thelper              # thelper detects golang test helpers without t.Helper() call and checks the consistency of test helpers [fast: true, auto-fix: false]
+    - tparallel            # tparallel detects inappropriate usage of t.Parallel() method in your Go test codes [fast: true, auto-fix: false]
     - unconvert            # Remove unnecessary type conversions [fast: true, auto-fix: false]
     - unparam              # Reports unused function parameters [fast: true, auto-fix: false]
     - whitespace           # Tool for detection of leading and trailing whitespace [fast: true, auto-fix: true]
-#    - wrapcheck            # Checks that errors returned from external packages are wrapped [fast: true, auto-fix: false]
-#    - wsl                  # Whitespace Linter - Forces you to use empty lines! [fast: true, auto-fix: false]
+    - wrapcheck            # Checks that errors returned from external packages are wrapped [fast: true, auto-fix: false]
+    - wsl                  # Whitespace Linter - Forces you to use empty lines! [fast: true, auto-fix: false]

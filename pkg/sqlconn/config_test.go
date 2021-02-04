@@ -7,6 +7,8 @@ import (
 )
 
 func Test_config_validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		cfg     *config

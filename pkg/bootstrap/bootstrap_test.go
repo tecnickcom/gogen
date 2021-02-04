@@ -16,6 +16,8 @@ import (
 
 // nolint:gocognit
 func TestBootstrap(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		opts                    []Option
 		name                    string
@@ -56,6 +58,7 @@ func TestBootstrap(t *testing.T) {
 			wantErr:   false,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {

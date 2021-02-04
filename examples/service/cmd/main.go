@@ -8,20 +8,22 @@ import (
 )
 
 var (
-	// ProgramVersion contains the version of the application injected at compile time
+	// ProgramVersion contains the version of the application injected at compile time.
 	ProgramVersion = "0.0.0"
 
-	// ProgramRelease contains the release of the application injected at compile time
+	// ProgramRelease contains the release of the application injected at compile time.
 	ProgramRelease = "0"
 )
 
 func main() {
 	_, _ = logging.NewDefaultLogger(cli.AppName, ProgramVersion, ProgramRelease, "json", "debug")
 	rootCmd, err := cli.New(ProgramVersion, ProgramRelease, bootstrap.Bootstrap)
+
 	if err != nil {
 		logging.LogFatal("UNABLE TO START THE PROGRAM", zap.Error(err))
 		return
 	}
+
 	// execute the root command and log errors (if any)
 	if err = rootCmd.Execute(); err != nil {
 		logging.LogFatal("UNABLE TO RUN THE COMMAND", zap.Error(err))

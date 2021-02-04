@@ -23,7 +23,9 @@ func WithFormatStr(f string) Option {
 		if err != nil {
 			return err
 		}
+
 		cfg.format = lf
+
 		return nil
 	}
 }
@@ -43,7 +45,9 @@ func WithLevelStr(l string) Option {
 		if err != nil {
 			return err
 		}
+
 		cfg.level = ll
+
 		return nil
 	}
 }

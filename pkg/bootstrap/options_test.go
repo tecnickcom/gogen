@@ -12,6 +12,7 @@ import (
 
 func TestWithContext(t *testing.T) {
 	t.Parallel()
+
 	v := context.WithValue(context.Background(), struct{}{}, "")
 	cfg := &config{}
 	WithContext(v)(cfg)
@@ -20,6 +21,7 @@ func TestWithContext(t *testing.T) {
 
 func TestWithLogger(t *testing.T) {
 	t.Parallel()
+
 	l := zap.NewNop()
 	cfg := &config{}
 	WithLogger(l)(cfg)
@@ -32,6 +34,7 @@ func TestWithLogger(t *testing.T) {
 
 func TestWithCreateLoggerFunc(t *testing.T) {
 	t.Parallel()
+
 	v := func() (*zap.Logger, error) {
 		return nil, nil
 	}
@@ -42,6 +45,7 @@ func TestWithCreateLoggerFunc(t *testing.T) {
 
 func TestWithCreateMetricsClientFunc(t *testing.T) {
 	t.Parallel()
+
 	v := func() (metrics.Client, error) {
 		return nil, nil
 	}

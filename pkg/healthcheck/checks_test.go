@@ -16,6 +16,8 @@ var testHTTPClient = &http.Client{Timeout: 2 * time.Second}
 
 // nolint:gocognit
 func TestCheckHttpStatus(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		handlerMethod     string

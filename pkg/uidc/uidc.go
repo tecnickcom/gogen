@@ -15,6 +15,7 @@ func NewID64() string {
 	offset := time.Date(t.Year()-10, 1, 1, 0, 0, 0, 0, time.UTC).Unix() // [s] time starts 1st JAN 10 years ago
 	b := make([]byte, 4)                                                // 4 bytes for 32 bit
 	_, _ = rand.Read(b)
+
 	return strconv.FormatUint((((uint64)(t.Unix()-offset))<<32)+(uint64)(binary.LittleEndian.Uint32(b)), 36)
 }
 
@@ -22,5 +23,6 @@ func NewID64() string {
 func NewID128() string {
 	b := make([]byte, 8) // 8 bytes for 64 bit
 	_, _ = rand.Read(b)
+
 	return strconv.FormatUint((uint64)(time.Now().UTC().UnixNano()), 36) + strconv.FormatUint(binary.LittleEndian.Uint64(b), 36)
 }

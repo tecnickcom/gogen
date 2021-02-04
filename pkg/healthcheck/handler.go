@@ -23,6 +23,7 @@ func NewHandler(checks []HealthCheck, opts ...HandlerOption) *Handler {
 		checksCount: len(checks),
 		writeResult: httputil.SendJSON,
 	}
+
 	for _, apply := range opts {
 		apply(h)
 	}
@@ -43,14 +44,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		id  string
 		err error
 	}
+
 	resCh := make(chan checkResult, h.checksCount)
 	defer close(resCh)
 
 	var wg sync.WaitGroup
+
 	wg.Add(h.checksCount)
 
 	for _, hc := range h.checks {
 		hc := hc
+
 		go func() {
 			defer wg.Done()
 
@@ -60,6 +64,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 	}
+
 	wg.Wait()
 
 	status := http.StatusOK

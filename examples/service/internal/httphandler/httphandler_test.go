@@ -11,23 +11,33 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
+
 	hh := New(nil)
 	require.NotNil(t, hh)
 }
 
 func TestHTTPHandler_BindHTTP(t *testing.T) {
+	t.Parallel()
+
 	h := &HTTPHandler{}
 	got := h.BindHTTP(testutil.Context())
 	require.Equal(t, 1, len(got))
 }
 
 func TestHTTPHandler_handleGenUID(t *testing.T) {
+	t.Parallel()
+
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 
 	(&HTTPHandler{}).handleGenUID(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)

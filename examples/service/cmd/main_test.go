@@ -18,9 +18,11 @@ func TestProgramVersion(t *testing.T) {
 		main()
 	})
 	match, err := regexp.MatchString("^[\\d]+\\.[\\d]+\\.[\\d]+[\\s]*$", out)
+
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
+
 	if !match {
 		t.Errorf("The expected version has not been returned")
 	}
@@ -28,16 +30,22 @@ func TestProgramVersion(t *testing.T) {
 
 func TestMainCliError(t *testing.T) {
 	oldLogFatal := logging.LogFatal
+
 	defer func() { logging.LogFatal = oldLogFatal }()
+
 	logging.LogFatal = zap.L().Panic
 	os.Args = []string{cli.AppName, "--INVALID"}
+
 	require.Panics(t, main, "Expected to fail because of invalid argument name")
 }
 
 func TestMainCliExecuteError(t *testing.T) {
 	oldLogFatal := logging.LogFatal
+
 	defer func() { logging.LogFatal = oldLogFatal }()
+
 	logging.LogFatal = zap.L().Panic
 	os.Args = []string{cli.AppName, "--logLevel=INVALID"}
+
 	require.Panics(t, main, "Expected to fail because of invalid argument value")
 }

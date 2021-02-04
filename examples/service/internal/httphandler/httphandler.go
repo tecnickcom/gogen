@@ -1,3 +1,4 @@
+// Package httphandler handles the inbound service requests.
 package httphandler
 
 import (
@@ -9,7 +10,7 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/uidc"
 )
 
-// Service is the interface representing the business logic of the service
+// Service is the interface representing the business logic of the service.
 type Service interface {
 	// NOTE
 	// This is a sample Service interface.
@@ -18,19 +19,19 @@ type Service interface {
 	// Add service functions here.
 }
 
-// New creates a new instance of the HTTP handler
+// New creates a new instance of the HTTP handler.
 func New(s Service) *HTTPHandler {
 	return &HTTPHandler{
 		service: s,
 	}
 }
 
-// HTTPHandler is the struct containing all the http handlers
+// HTTPHandler is the struct containing all the http handlers.
 type HTTPHandler struct {
 	service Service
 }
 
-// BindHTTP implements the function to bind the handler to a server
+// BindHTTP implements the function to bind the handler to a server.
 func (h *HTTPHandler) BindHTTP(_ context.Context) []route.Route {
 	return []route.Route{
 		{

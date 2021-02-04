@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// InstrumentRoundTripper is an alias for a RoundTripper function
+// InstrumentRoundTripper is an alias for a RoundTripper function.
 type InstrumentRoundTripper func(next http.RoundTripper) http.RoundTripper
 
 // Option is the interface that allows to set client options.

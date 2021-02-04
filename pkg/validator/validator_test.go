@@ -9,6 +9,7 @@ import (
 
 func TestError_Error(t *testing.T) {
 	t.Parallel()
+
 	want := "mock_error"
 	e := &Error{Err: "mock_error"}
 	got := e.Error()
@@ -16,6 +17,8 @@ func TestError_Error(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		opts    []Option
@@ -58,16 +61,20 @@ func TestNew(t *testing.T) {
 			wantErr: true,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			got, err := New(tt.opts...)
+
 			if tt.wantErr {
 				require.Nil(t, got, "New() returned Validator should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			require.NotNil(t, got, "New() returned Validator should not be nil")
 			require.NoError(t, err, "New() unexpected error = %v", err)
 		})
@@ -75,10 +82,13 @@ func TestNew(t *testing.T) {
 }
 
 func TestValidator_ValidateStruct(t *testing.T) {
+	t.Parallel()
+
 	type subStruct struct {
 		URLField string `json:"sub_string" validate:"required,url"`
 		IntField int    `json:"sub_int" validate:"required,min=2"`
 	}
+
 	type rootStruct struct {
 		BoolField    bool       `json:"bool_field"`
 		SubStruct    subStruct  `json:"sub_struct" validate:"required"`
@@ -150,10 +160,13 @@ func TestValidator_ValidateStruct(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			v, err := New(tt.opts...)
 			require.NoError(t, err, "New() unexpected error = %v", err)
+
 			err = v.ValidateStruct(tt.obj)
 			require.Equal(t, tt.wantErr, err != nil, "ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+
 			errs := multierr.Errors(err)
 			require.Equal(t, tt.wantErrCount, len(errs), "errors: %+v", errs)
 		})

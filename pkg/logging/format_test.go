@@ -7,6 +7,8 @@ import (
 )
 
 func TestParseFormat(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		value   string

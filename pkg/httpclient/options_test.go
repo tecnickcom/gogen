@@ -10,6 +10,7 @@ import (
 
 func TestWithTimeout(t *testing.T) {
 	t.Parallel()
+
 	c := defaultClient()
 	v := 13 * time.Second
 	WithTimeout(v)(c)
@@ -18,6 +19,7 @@ func TestWithTimeout(t *testing.T) {
 
 func TestWithRoundTripper(t *testing.T) {
 	t.Parallel()
+
 	c := defaultClient()
 	v := func(next http.RoundTripper) http.RoundTripper { return next }
 	WithRoundTripper(v)(c)
@@ -26,6 +28,7 @@ func TestWithRoundTripper(t *testing.T) {
 
 func TestWithTraceIDHeaderName(t *testing.T) {
 	t.Parallel()
+
 	c := &Client{}
 	v := "X-Test-Header"
 	WithTraceIDHeaderName(v)(c)
@@ -34,6 +37,7 @@ func TestWithTraceIDHeaderName(t *testing.T) {
 
 func TestWithComponent(t *testing.T) {
 	t.Parallel()
+
 	c := &Client{}
 	v := "test_123"
 	WithComponent(v)(c)

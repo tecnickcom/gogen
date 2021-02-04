@@ -8,6 +8,7 @@ import (
 
 func Test_defaultConfig(t *testing.T) {
 	t.Parallel()
+
 	cfg := defaultConfig()
 	require.NotNil(t, cfg)
 	require.NotNil(t, cfg.context)
@@ -17,6 +18,7 @@ func Test_defaultConfig(t *testing.T) {
 
 func Test_defaultCreateLogger(t *testing.T) {
 	t.Parallel()
+
 	l, err := defaultCreateLogger()
 	require.NotNil(t, l)
 	require.NoError(t, err)
@@ -24,6 +26,7 @@ func Test_defaultCreateLogger(t *testing.T) {
 
 func Test_defaultCreateMetricsClientFunc(t *testing.T) {
 	t.Parallel()
+
 	m, err := defaultCreateMetricsClientFunc()
 	require.NotNil(t, m)
 	require.NoError(t, err)

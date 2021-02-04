@@ -44,5 +44,5 @@ func (c *Default) MetricsHandlerFunc() http.HandlerFunc {
 // IncLogLevelCounter is an empty function.
 func (c *Default) IncLogLevelCounter(level string) {}
 
-// IncErrorCounter is an empty function
+// IncErrorCounter is an empty function.
 func (c *Default) IncErrorCounter(task, operation, code string) {}

@@ -35,9 +35,11 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		apiURL:  defaultAPIURL,
 		errorIP: defaultErrorIP,
 	}
+
 	for _, applyOpt := range opts {
 		applyOpt(c)
 	}
+
 	if c.httpClient == nil {
 		c.httpClient = &http.Client{Timeout: c.timeout}
 	}
@@ -56,13 +58,14 @@ func (c *Client) GetPublicIP(ctx context.Context) (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL, nil)
 	if err != nil {
-		return c.errorIP, fmt.Errorf("build request: %v", err)
+		return c.errorIP, fmt.Errorf("build request: %w", err)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return c.errorIP, fmt.Errorf("failed performing ipify request: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {

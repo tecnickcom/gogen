@@ -14,6 +14,8 @@ import (
 )
 
 func TestRouterWithHandler(t *testing.T) {
+	t.Parallel()
+
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(Context(), http.MethodGet, "/test", nil)
 
@@ -22,7 +24,11 @@ func TestRouterWithHandler(t *testing.T) {
 	})
 	router.ServeHTTP(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)

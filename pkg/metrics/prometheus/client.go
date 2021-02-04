@@ -1,6 +1,7 @@
 package prometheus
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -8,8 +9,6 @@ import (
 )
 
 const (
-	// collector names
-
 	// NameAPIRequests is the name of the collector that counts the total inbound http requests.
 	NameAPIRequests = "api_requests_total"
 
@@ -39,8 +38,6 @@ const (
 
 	// NameErrorCode is the name of the collector that counts the number of errors by task, operation and error code.
 	NameErrorCode = "error_code_total"
-
-	// labels
 
 	labelCode      = "code"
 	labelHandler   = "handler"
@@ -73,14 +70,17 @@ type Client struct {
 // New creates a new metrics instance with default collectors.
 func New(opts ...Option) (*Client, error) {
 	c := initClient()
+
 	for _, applyOpt := range opts {
 		if err := applyOpt(c); err != nil {
 			return nil, err
 		}
 	}
+
 	if err := c.defaultCollectors(); err != nil {
 		return nil, err
 	}
+
 	return c, nil
 }
 
@@ -102,6 +102,7 @@ func (c *Client) defaultCollectors() error {
 			Help: "Number of In-flight http requests.",
 		},
 	)
+
 	c.collectorAPIRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: NameAPIRequests,
@@ -109,6 +110,7 @@ func (c *Client) defaultCollectors() error {
 		},
 		[]string{labelCode, labelMethod},
 	)
+
 	c.collectorRequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    NameRequestDuration,
@@ -117,6 +119,7 @@ func (c *Client) defaultCollectors() error {
 		},
 		[]string{labelHandler, labelMethod},
 	)
+
 	c.collectorResponseSize = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    NameResponseSize,
@@ -125,6 +128,7 @@ func (c *Client) defaultCollectors() error {
 		},
 		[]string{},
 	)
+
 	c.collectorRequestSize = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    NameRequestSize,
@@ -133,6 +137,7 @@ func (c *Client) defaultCollectors() error {
 		},
 		[]string{},
 	)
+
 	c.collectorOutboundRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: NameOutboundRequests,
@@ -140,6 +145,7 @@ func (c *Client) defaultCollectors() error {
 		},
 		[]string{labelCode, labelMethod},
 	)
+
 	c.collectorOutboundRequestsDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    NameOutboundRequestsDuration,
@@ -148,12 +154,14 @@ func (c *Client) defaultCollectors() error {
 		},
 		[]string{labelCode, labelMethod},
 	)
+
 	c.collectorOutboundInFlightRequests = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: NameOutboundInFlightRequests,
 			Help: "Number of outbound In-flight http requests.",
 		},
 	)
+
 	c.collectorErrorLevel = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: NameErrorLevel,
@@ -161,6 +169,7 @@ func (c *Client) defaultCollectors() error {
 		},
 		[]string{labelLevel},
 	)
+
 	c.collectorErrorCode = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: NameErrorCode,
@@ -183,9 +192,10 @@ func (c *Client) defaultCollectors() error {
 		c.collectorErrorLevel,
 		c.collectorErrorCode,
 	}
+
 	for _, m := range collectors {
 		if err := c.registry.Register(m); err != nil {
-			return err
+			return fmt.Errorf("failed registering collector: %w", err)
 		}
 	}
 
@@ -200,6 +210,7 @@ func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.H
 	h = promhttp.InstrumentHandlerCounter(c.collectorAPIRequests, h)
 	h = promhttp.InstrumentHandlerDuration(c.collectorRequestDuration.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
 	h = promhttp.InstrumentHandlerInFlight(c.collectorInFlightRequests, h)
+
 	return h
 }
 
@@ -208,6 +219,7 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 	next = promhttp.InstrumentRoundTripperCounter(c.collectorOutboundRequests, next)
 	next = promhttp.InstrumentRoundTripperDuration(c.collectorOutboundRequestsDuration, next)
 	next = promhttp.InstrumentRoundTripperInFlight(c.collectorOutboundInFlightRequests, next)
+
 	return next
 }
 

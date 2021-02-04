@@ -35,6 +35,7 @@ func NewDefaultLogger(name, version, release, format, level string) (*zap.Logger
 	if err != nil {
 		return nil, fmt.Errorf("failed configuring default logger: %w", err)
 	}
+
 	return l, nil
 }
 
@@ -48,12 +49,16 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 		}
 	}
 
-	var disableCaller bool
-	var encoding string
-	var levelEncoder zapcore.LevelEncoder
-	var timeEncoder zapcore.TimeEncoder
+	var (
+		disableCaller bool
+		encoding      string
+		levelEncoder  zapcore.LevelEncoder
+		timeEncoder   zapcore.TimeEncoder
+	)
 
 	switch cfg.format {
+	case noFormat:
+		// no-op
 	case ConsoleFormat:
 		disableCaller = true
 		encoding = "console"
@@ -98,6 +103,7 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 		l = l.With(cfg.fields...)
 		l = WithLevelFunctionHook(l, cfg.incMetricLogLevel)
 	}
+	// nolint:wrapcheck
 	return l, err
 }
 
@@ -130,6 +136,7 @@ func FromContext(ctx context.Context) *zap.Logger {
 	if l, ok := ctx.Value(ctxKey{}).(*zap.Logger); ok {
 		return l
 	}
+
 	return zap.NewNop()
 }
 
@@ -140,8 +147,10 @@ func WithLogger(ctx context.Context, l *zap.Logger) context.Context {
 		if lp == l {
 			return ctx
 		}
+
 		return ctx
 	}
+
 	return context.WithValue(ctx, ctxKey{}, l)
 }
 
@@ -152,8 +161,11 @@ func WithLevelFunctionHook(l *zap.Logger, fn IncrementLogMetricsFunc) *zap.Logge
 		fn(entry.Level.String())
 		return nil
 	}
+
 	l = l.WithOptions(zap.Hooks(fnHook))
+
 	// replace global logger with the configured root logger
 	zap.ReplaceGlobals(l)
+
 	return l
 }

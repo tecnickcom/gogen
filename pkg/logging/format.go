@@ -26,5 +26,6 @@ func ParseFormat(f string) (Format, error) {
 	case "json":
 		return JSONFormat, nil
 	}
+
 	return noFormat, fmt.Errorf("invalid log format %q", f)
 }

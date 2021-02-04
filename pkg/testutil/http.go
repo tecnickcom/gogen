@@ -15,5 +15,6 @@ type TestHTTPResponseWriter interface {
 func RouterWithHandler(method, path string, handlerFunc http.HandlerFunc) http.Handler {
 	r := httprouter.New()
 	r.HandlerFunc(method, path, handlerFunc)
+
 	return r
 }

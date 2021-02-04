@@ -15,6 +15,7 @@ type HTTPClient interface {
 // CheckHTTPStatus checks if the given HTTP request responds with the expected status code.
 func CheckHTTPStatus(ctx context.Context, httpClient HTTPClient, method string, url string, wantStatusCode int, timeout time.Duration, opts ...CheckOption) error {
 	cfg := checkConfig{}
+
 	for _, apply := range opts {
 		apply(&cfg)
 	}
@@ -24,7 +25,7 @@ func CheckHTTPStatus(ctx context.Context, httpClient HTTPClient, method string, 
 
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
-		return fmt.Errorf("build request: %v", err)
+		return fmt.Errorf("build request: %w", err)
 	}
 
 	if cfg.configureRequest != nil {
@@ -33,12 +34,14 @@ func CheckHTTPStatus(ctx context.Context, httpClient HTTPClient, method string, 
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("healthcheck request: %v", err)
+		return fmt.Errorf("healthcheck request: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != wantStatusCode {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
 	}
+
 	return nil
 }

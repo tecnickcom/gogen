@@ -23,6 +23,7 @@ func NewContext(ctx context.Context, id string) context.Context {
 	if _, ok := ctx.Value(ctxKey{}).(string); ok {
 		return ctx
 	}
+
 	return context.WithValue(ctx, ctxKey{}, id)
 }
 
@@ -32,6 +33,7 @@ func FromContext(ctx context.Context, defaultValue string) string {
 	if v, ok := ctx.Value(ctxKey{}).(string); ok {
 		return v
 	}
+
 	return defaultValue
 }
 
@@ -41,6 +43,7 @@ func FromContext(ctx context.Context, defaultValue string) string {
 func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, header, defaultValue string) string {
 	id := FromContext(ctx, defaultValue)
 	r.Header.Set(header, id)
+
 	return id
 }
 
@@ -48,8 +51,10 @@ func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, heade
 // If not found the default value is returned instead.
 func FromHTTPRequestHeader(r *http.Request, header, defaultValue string) string {
 	id := r.Header.Get(header)
+
 	if id == "" {
 		return defaultValue
 	}
+
 	return id
 }

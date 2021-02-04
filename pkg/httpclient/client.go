@@ -21,9 +21,11 @@ type Client struct {
 // New creates a new HTTP client instance.
 func New(opts ...Option) *Client {
 	c := defaultClient()
+
 	for _, applyOpt := range opts {
 		applyOpt(c)
 	}
+
 	return c
 }
 
@@ -50,10 +52,12 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 			l.Error("error", zap.Error(err))
 			return
 		}
+
 		if debug {
 			l.Debug("outbound")
 			return
 		}
+
 		l.Info("outbound")
 	}()
 
@@ -84,8 +88,10 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 			respDump, _ := httputil.DumpResponse(resp, true)
 			l = l.With(zap.String("response", string(respDump)))
 		}
+
 		_ = resp.Body.Close()
 	}
 
+	// nolint:wrapcheck
 	return resp, err
 }

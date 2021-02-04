@@ -9,6 +9,8 @@ import (
 )
 
 func TestWithHandlerOpts(t *testing.T) {
+	t.Parallel()
+
 	c := initClient()
 	opt := promhttp.HandlerOpts{EnableOpenMetrics: true}
 	err := WithHandlerOpts(opt)(c)
@@ -17,6 +19,8 @@ func TestWithHandlerOpts(t *testing.T) {
 }
 
 func TestWithCollector(t *testing.T) {
+	t.Parallel()
+
 	c := initClient()
 	m := prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -29,6 +33,8 @@ func TestWithCollector(t *testing.T) {
 }
 
 func TestWithInboundRequestSizeBuckets(t *testing.T) {
+	t.Parallel()
+
 	c := initClient()
 	opt := []float64{1, 2, 3}
 	err := WithInboundRequestSizeBuckets(opt)(c)
@@ -37,6 +43,8 @@ func TestWithInboundRequestSizeBuckets(t *testing.T) {
 }
 
 func TestWithInboundResponseSizeBuckets(t *testing.T) {
+	t.Parallel()
+
 	c := initClient()
 	opt := []float64{4, 5, 6}
 	err := WithInboundResponseSizeBuckets(opt)(c)
@@ -45,6 +53,8 @@ func TestWithInboundResponseSizeBuckets(t *testing.T) {
 }
 
 func TestWithInboundRequestDurationBuckets(t *testing.T) {
+	t.Parallel()
+
 	c := initClient()
 	opt := []float64{7, 8, 9}
 	err := WithInboundRequestDurationBuckets(opt)(c)
@@ -53,6 +63,8 @@ func TestWithInboundRequestDurationBuckets(t *testing.T) {
 }
 
 func TestWithOutboundRequestDurationBuckets(t *testing.T) {
+	t.Parallel()
+
 	c := initClient()
 	opt := []float64{10, 11, 12}
 	err := WithOutboundRequestDurationBuckets(opt)(c)

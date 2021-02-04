@@ -13,9 +13,11 @@ import (
 func InitRandSeed() error {
 	var b [8]byte
 	_, err := rand.Read(b[:]) // #nosec
+
 	if err == nil {
 		rand.Seed(int64(binary.LittleEndian.Uint64(b[:])))
 	}
+	// nolint:wrapcheck
 	return err
 }
 
@@ -23,7 +25,8 @@ func InitRandSeed() error {
 // NOTE: the zero time is set to the 1st of january of 10 year ago.
 func NewID64() string {
 	t := time.Now().UTC()
-	offset := time.Date(t.Year()-10, 1, 1, 0, 0, 0, 0, time.UTC).Unix()                      // [s] time starts 1st JAN 10 years ago
+	offset := time.Date(t.Year()-10, 1, 1, 0, 0, 0, 0, time.UTC).Unix() // [s] time starts 1st JAN 10 years ago
+
 	return strconv.FormatUint((((uint64)(t.Unix()-offset))<<32)+(uint64)(rand.Uint32()), 36) // #nosec
 }
 

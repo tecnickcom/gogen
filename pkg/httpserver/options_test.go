@@ -62,6 +62,8 @@ func TestWithShutdownTimeout(t *testing.T) {
 }
 
 func TestWithTLSCertData(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		desc     string
 		certData []byte

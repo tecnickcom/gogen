@@ -1,6 +1,7 @@
 package profiling
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,8 @@ import (
 var testHTTPClient = &http.Client{Timeout: 2 * time.Second}
 
 func TestPProfHandler(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		path string
@@ -53,10 +56,16 @@ func TestPProfHandler(t *testing.T) {
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", ts.URL, tt.path), nil)
+			ctx := context.Background()
+
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s", ts.URL, tt.path), nil)
 			require.NoError(t, err, "unexpected error while creating request for path %q", tt.path)
 
-			resp, err := testHTTPClient.Do(req)
+			resp, err := testHTTPClient.Do(req) // nolint:bodyclose
+			require.NotNil(t, resp)
+
+			defer func() { _ = resp.Body.Close() }()
+
 			require.NoError(t, err, "unexpected error while performing request %q", req.URL.String())
 			require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code %d", resp.StatusCode)
 		})

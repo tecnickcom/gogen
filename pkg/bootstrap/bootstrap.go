@@ -16,6 +16,7 @@ import (
 // of an application and handling the lifecycle of its context.
 func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	cfg := defaultConfig()
+
 	for _, applyOpt := range opts {
 		applyOpt(cfg)
 	}
@@ -33,14 +34,18 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	if err != nil {
 		return fmt.Errorf("error creating application logger: %w", err)
 	}
+
 	l = logging.WithLevelFunctionHook(l, m.IncLogLevelCounter)
 	ctx = logging.WithLogger(ctx, l)
+
 	defer logging.Sync(l)
 
 	l.Info("binding application components")
+
 	if err := bindFn(ctx, l, m); err != nil {
 		return fmt.Errorf("application bootstrap error: %w", err)
 	}
+
 	l.Info("application started")
 
 	done := make(chan struct{})
@@ -53,10 +58,8 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 		select {
-		case <-ctx.Done():
-			// context canceled
-		case <-quit:
-			// quit on user signal
+		case <-ctx.Done(): // context canceled
+		case <-quit: // quit on user signal
 		}
 
 		// cancel the application context

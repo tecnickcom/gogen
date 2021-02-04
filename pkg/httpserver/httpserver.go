@@ -4,6 +4,7 @@ package httpserver
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"runtime/debug"
@@ -43,11 +44,13 @@ func Start(ctx context.Context, binder Binder, opts ...Option) error {
 	l := logging.WithComponent(ctx, "httpserver")
 
 	cfg := defaultConfig()
+
 	for _, applyOpt := range opts {
 		if err := applyOpt(cfg); err != nil {
 			return err
 		}
 	}
+
 	if cfg.router == nil {
 		cfg.router = defaultRouter(ctx, cfg.traceIDHeaderName, cfg.instrumentHandler)
 	}
@@ -57,9 +60,11 @@ func Start(ctx context.Context, binder Binder, opts ...Option) error {
 	}
 
 	l.Debug("adding default routes")
+
 	routes := newDefaultRoutes(cfg)
 
 	l.Debug("adding service routes")
+
 	customRoutes := binder.BindHTTP(ctx)
 
 	// merge custom service routes with the default routes
@@ -93,16 +98,21 @@ func startServer(ctx context.Context, cfg *config) error {
 	}
 
 	// start HTTP listener
-	var ls net.Listener
-	var err error
+	var (
+		ls  net.Listener
+		err error
+	)
+
 	if cfg.tlsConfig == nil {
 		ls, err = net.Listen("tcp", cfg.serverAddr)
 	} else {
 		ls, err = tls.Listen("tcp", cfg.serverAddr, cfg.tlsConfig)
 	}
+
 	if err != nil {
-		return err
+		return fmt.Errorf("failed creting the address listener: %w", err)
 	}
+
 	l.Info("listening for HTTP requests", zap.String("addr", cfg.serverAddr))
 
 	go func() {
@@ -115,10 +125,13 @@ func startServer(ctx context.Context, cfg *config) error {
 		<-ctx.Done()
 
 		l.Debug("shutting down HTTP http server")
+
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.shutdownTimeout)
+
 		defer cancel()
 
 		_ = s.Shutdown(shutdownCtx)
+
 		l.Debug("HTTP server shutdown")
 	}()
 
@@ -161,9 +174,11 @@ func defaultIPHandler(fn GetPublicIPFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
 		ip, err := fn(r.Context())
+
 		if err != nil {
 			status = http.StatusFailedDependency
 		}
+
 		httputil.SendText(r.Context(), w, status, ip)
 	}
 }

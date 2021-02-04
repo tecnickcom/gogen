@@ -8,6 +8,8 @@ import (
 )
 
 func TestWithFieldNameTag(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		tag  string
@@ -33,6 +35,8 @@ func TestWithFieldNameTag(t *testing.T) {
 }
 
 func TestWithCustomValidationTags(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		arg     map[string]vt.FuncCtx
@@ -70,6 +74,8 @@ func TestWithCustomValidationTags(t *testing.T) {
 }
 
 func TestWithErrorTemplates(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		arg     map[string]string

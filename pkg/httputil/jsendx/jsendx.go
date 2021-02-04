@@ -60,6 +60,7 @@ type AppInfo struct {
 // Wrap sends an Response object.
 func Wrap(statusCode int, info *AppInfo, data interface{}) *Response {
 	now := time.Now().UTC()
+
 	return &Response{
 		Program:   info.ProgramName,
 		Version:   info.ProgramVersion,
@@ -116,9 +117,11 @@ func DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.Handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
 		ip, err := fn(r.Context())
+
 		if err != nil {
 			status = http.StatusFailedDependency
 		}
+
 		Send(r.Context(), w, status, info, ip)
 	}
 }

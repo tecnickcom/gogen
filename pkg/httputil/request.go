@@ -14,6 +14,7 @@ func HeaderOrDefault(r *http.Request, key string, defaultValue string) string {
 	if v == "" {
 		return defaultValue
 	}
+
 	return v
 }
 

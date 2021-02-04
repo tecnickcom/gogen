@@ -21,14 +21,18 @@ import (
 )
 
 func TestNopBinder(t *testing.T) {
+	t.Parallel()
 	require.NotNil(t, NopBinder())
 }
 
 func Test_nopBinder_BindHTTP(t *testing.T) {
+	t.Parallel()
 	require.Nil(t, NopBinder().BindHTTP(context.Background()))
 }
 
 func Test_defaultRouter(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		method      string
@@ -67,6 +71,7 @@ func Test_defaultRouter(t *testing.T) {
 			wantStatus: http.StatusInternalServerError,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -82,13 +87,19 @@ func Test_defaultRouter(t *testing.T) {
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, httptest.NewRequest(tt.method, tt.path, nil))
 
-			resp := rr.Result()
+			resp := rr.Result() // nolint:bodyclose
+			require.NotNil(t, resp)
+
+			defer func() { _ = resp.Body.Close() }()
+
 			require.Equal(t, tt.wantStatus, resp.StatusCode, "status code got = %d, want = %d", resp.StatusCode, tt.wantStatus)
 		})
 	}
 }
 
 func Test_defaultIndexHandler(t *testing.T) {
+	t.Parallel()
+
 	routes := []route.Route{
 		{
 			Method:      http.MethodGet,
@@ -107,7 +118,11 @@ func Test_defaultIndexHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	defaultIndexHandler(routes).ServeHTTP(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -119,6 +134,8 @@ func Test_defaultIndexHandler(t *testing.T) {
 }
 
 func Test_defaultIPHandler(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		ipFunc  GetPublicIPFunc
@@ -147,7 +164,11 @@ func Test_defaultIPHandler(t *testing.T) {
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 			defaultIPHandler(tt.ipFunc).ServeHTTP(rr, req)
 
-			resp := rr.Result()
+			resp := rr.Result() // nolint:bodyclose
+			require.NotNil(t, resp)
+
+			defer func() { _ = resp.Body.Close() }()
+
 			bodyData, _ := ioutil.ReadAll(resp.Body)
 			body := string(bodyData)
 
@@ -165,11 +186,17 @@ func Test_defaultIPHandler(t *testing.T) {
 }
 
 func Test_defaultPingHandler(t *testing.T) {
+	t.Parallel()
+
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	defaultPingHandler(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -178,11 +205,17 @@ func Test_defaultPingHandler(t *testing.T) {
 }
 
 func Test_defaultStatusHandler(t *testing.T) {
+	t.Parallel()
+
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	defaultStatusHandler(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -191,16 +224,24 @@ func Test_defaultStatusHandler(t *testing.T) {
 }
 
 func Test_notImplementedHandler(t *testing.T) {
+	t.Parallel()
+
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	notImplementedHandler(rr, req)
 
-	resp := rr.Result()
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() { _ = resp.Body.Close() }()
+
 	require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
 }
 
 // nolint:gocognit
 func TestStart(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		opts           []Option
@@ -300,6 +341,8 @@ YlAqGKDZ+A+l
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 

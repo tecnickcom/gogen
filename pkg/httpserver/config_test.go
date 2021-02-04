@@ -22,6 +22,8 @@ func Test_defaultConfig(t *testing.T) {
 }
 
 func Test_config_validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		setupConfig func(c *config)
@@ -123,6 +125,8 @@ func Test_config_validate(t *testing.T) {
 }
 
 func Test_validateAddr(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		addr    string
@@ -185,6 +189,8 @@ func Test_validateAddr(t *testing.T) {
 }
 
 func Test_config_isIndexRouteEnabled(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		defaultEnabledRoutes []defaultRoute

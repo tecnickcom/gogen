@@ -9,6 +9,7 @@ import (
 
 func TestNew(t *testing.T) {
 	t.Parallel()
+
 	m := New()
 	require.NotNil(t, m, "Metrics should not be nil")
 	require.NotNil(t, m.collectorExample, "collectorExample not be nil")
@@ -16,6 +17,7 @@ func TestNew(t *testing.T) {
 
 func TestCreateMetricsClientFunc(t *testing.T) {
 	t.Parallel()
+
 	m := New()
 	c, err := m.CreateMetricsClientFunc()
 	require.NoError(t, err, "CreateMetricsClientFunc() unexpected error = %v", err)
@@ -24,6 +26,7 @@ func TestCreateMetricsClientFunc(t *testing.T) {
 
 func TestIncExampleCounter(t *testing.T) {
 	t.Parallel()
+
 	m := New()
 	i := testutil.CollectAndCount(m.collectorExample, NameExample)
 	require.Equal(t, 0, i, "failed to assert right metrics: got %v want %v", i, 0)

@@ -1,3 +1,4 @@
+// Package cli contains the CLI entry point.
 package cli
 
 import (
@@ -14,16 +15,18 @@ import (
 
 type bootstrapFunc func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error
 
-// New creates an new CLI instance
+// New creates an new CLI instance.
 func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, error) {
-	var argConfigDir string
-	var argLogFormat string
-	var argLogLevel string
-	var rootCmd = &cobra.Command{
-		Use:   AppName,
-		Short: appShortDesc,
-		Long:  appLongDesc,
-	}
+	var (
+		argConfigDir string
+		argLogFormat string
+		argLogLevel  string
+		rootCmd      = &cobra.Command{
+			Use:   AppName,
+			Short: appShortDesc,
+			Long:  appLongDesc,
+		}
+	)
 
 	rootCmd.Flags().StringVarP(&argConfigDir, "configDir", "c", "", "Configuration directory to be added on top of the search list")
 	rootCmd.Flags().StringVarP(&argLogFormat, "logFormat", "f", "", "Logging format: CONSOLE, JSON")
@@ -72,13 +75,15 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 		Use:   "version",
 		Short: "Print this program version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(version)
+			fmt.Println(version) // nolint:forbidigo
 		},
 	}
+
 	rootCmd.AddCommand(versionCmd)
 
 	if err := rootCmd.ParseFlags(os.Args); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed parsing comman-line arguments: %w", err)
 	}
+
 	return rootCmd, nil
 }

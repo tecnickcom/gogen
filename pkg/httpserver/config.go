@@ -51,6 +51,7 @@ type config struct {
 
 func defaultConfig() *config {
 	defaultInstrumentHandler := func(path string, handler http.HandlerFunc) http.Handler { return handler }
+
 	return &config{
 		serverAddr:           ":8017",
 		serverReadTimeout:    1 * time.Minute,
@@ -74,6 +75,7 @@ func (c *config) isIndexRouteEnabled() bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -83,33 +85,43 @@ func (c *config) validate() error {
 	if err := validateAddr(c.serverAddr); err != nil {
 		return err
 	}
+
 	if c.shutdownTimeout == 0 {
 		return fmt.Errorf("invalid shutdownTimeout")
 	}
+
 	if c.instrumentHandler == nil {
 		return fmt.Errorf("instrumentHandler is required")
 	}
+
 	if c.ipHandlerFunc == nil {
 		return fmt.Errorf("ipHandlerFunc is required")
 	}
+
 	if c.metricsHandlerFunc == nil {
 		return fmt.Errorf("metricsHandlerFunc is required")
 	}
+
 	if c.pingHandlerFunc == nil {
 		return fmt.Errorf("pingHandlerFunc is required")
 	}
+
 	if c.pprofHandlerFunc == nil {
 		return fmt.Errorf("pprofHandlerFunc is required")
 	}
+
 	if c.statusHandlerFunc == nil {
 		return fmt.Errorf("statusHandlerFunc is required")
 	}
+
 	if c.traceIDHeaderName == "" {
 		return fmt.Errorf("traceIDHeaderName is required")
 	}
+
 	if c.router == nil {
 		return fmt.Errorf("router is required")
 	}
+
 	return nil
 }
 

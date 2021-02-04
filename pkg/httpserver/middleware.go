@@ -31,5 +31,6 @@ func RequestInjectHandler(rootLogger *zap.Logger, traceIDHeaderName string, next
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
+
 	return http.HandlerFunc(fn)
 }

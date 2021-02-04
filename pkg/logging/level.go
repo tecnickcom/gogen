@@ -28,5 +28,6 @@ func ParseLevel(l string) (zapcore.Level, error) {
 	case "debug":
 		return zap.DebugLevel, nil
 	}
+
 	return zap.DebugLevel, fmt.Errorf("invalid log level %q", l)
 }

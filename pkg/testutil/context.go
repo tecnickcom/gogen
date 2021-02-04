@@ -16,17 +16,20 @@ func Context() context.Context {
 }
 
 // ContextWithLogObserver returns a context initialized with a NOP logger for testing.
-func ContextWithLogObserver(level zapcore.Level) (context.Context, *observer.ObservedLogs) {
+func ContextWithLogObserver(level zapcore.LevelEnabler) (context.Context, *observer.ObservedLogs) {
 	core, logs := observer.New(level)
 	l := zap.New(core)
+
 	return logging.WithLogger(context.Background(), l), logs
 }
 
 // ContextWithHTTPRouterParams creates a context copy containing map of URL path segments.
 func ContextWithHTTPRouterParams(ctx context.Context, params map[string]string) context.Context {
 	var m httprouter.Params
+
 	for k, v := range params {
 		m = append(m, httprouter.Param{Key: k, Value: v})
 	}
+
 	return context.WithValue(ctx, httprouter.ParamsKey, m)
 }

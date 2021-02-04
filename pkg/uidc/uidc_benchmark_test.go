@@ -6,6 +6,7 @@ import (
 
 func BenchmarkNewID64(b *testing.B) {
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_ = NewID64()
 	}
@@ -13,6 +14,7 @@ func BenchmarkNewID64(b *testing.B) {
 
 func BenchmarkNewID128(b *testing.B) {
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_ = NewID128()
 	}

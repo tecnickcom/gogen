@@ -41,8 +41,10 @@ func TestFromContext(t *testing.T) {
 func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	// header not set
-	r1, err := http.NewRequest(http.MethodGet, "/", nil)
+	r1, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	require.NoError(t, err)
 
 	id1 := SetHTTPRequestHeaderFromContext(context.Background(), r1, DefaultHeader, DefaultValue)
@@ -50,9 +52,10 @@ func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 	require.Equal(t, r1.Header.Get(DefaultHeader), DefaultValue)
 
 	// header set
-	r2, err := http.NewRequest(http.MethodGet, "/", nil)
+	r2, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	require.NoError(t, err)
-	ctx := NewContext(context.Background(), "test-904117")
+
+	ctx = NewContext(ctx, "test-904117")
 	r2 = r2.WithContext(ctx)
 
 	id2 := SetHTTPRequestHeaderFromContext(ctx, r2, DefaultHeader, DefaultValue)
@@ -63,15 +66,17 @@ func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 func TestFromHTTPRequestHeader(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	// header not set should return default
-	r1, err := http.NewRequest(http.MethodGet, "/", nil)
+	r1, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	require.NoError(t, err)
 
 	v1 := FromHTTPRequestHeader(r1, DefaultHeader, "default-1-103993")
 	require.Equal(t, "default-1-103993", v1)
 
 	// header set should return actual value
-	r2, err := http.NewRequest(http.MethodGet, "/", nil)
+	r2, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	require.NoError(t, err)
 	r2.Header.Add(DefaultHeader, "test-1-413579")
 

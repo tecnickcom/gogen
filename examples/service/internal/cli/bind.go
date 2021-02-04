@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// bind is the entry point of the service, this is where the wiring of all components happens
+// bind is the entry point of the service, this is where the wiring of all components happens.
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.BindFunc {
 	return func(ctx context.Context, l *zap.Logger, m metrics.Client) error {
 		var statusHandler http.HandlerFunc
@@ -59,6 +59,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			ipify.WithTimeout(ipcTimeout),
 			ipify.WithURL(cfg.Ipify.Address),
 		)
+
 		if err != nil {
 			return fmt.Errorf("failed to build ipify client: %w", err)
 		}
@@ -75,6 +76,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
 		}
+
 		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
 			return fmt.Errorf("error starting monitoring HTTP server: %w", err)
 		}
@@ -87,6 +89,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			httpserver.WithServerAddr(cfg.PublicAddress),
 			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
 		}
+
 		if err := httpserver.Start(ctx, serviceBinder, httpServiceOpts...); err != nil {
 			return fmt.Errorf("error starting service HTTP server: %w", err)
 		}

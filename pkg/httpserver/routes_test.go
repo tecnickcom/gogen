@@ -9,6 +9,8 @@ import (
 )
 
 func Test_newDefaultRoutes(t *testing.T) {
+	t.Parallel()
+
 	cfg := &config{
 		defaultEnabledRoutes: allDefaultRoutes,
 		metricsHandlerFunc:   func(w http.ResponseWriter, r *http.Request) {},
@@ -28,6 +30,7 @@ func Test_newDefaultRoutes(t *testing.T) {
 	}
 
 	boundCount := 0
+
 	for _, expFn := range expFuncs {
 		for _, r := range routes {
 			if reflect.ValueOf(expFn).Pointer() == reflect.ValueOf(r.Handler).Pointer() {
@@ -35,5 +38,6 @@ func Test_newDefaultRoutes(t *testing.T) {
 			}
 		}
 	}
+
 	require.Equal(t, 5, boundCount)
 }

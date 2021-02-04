@@ -20,6 +20,8 @@ func newMockConnectFunc(db *sql.DB, err error) ConnectFunc {
 
 // nolint:gocognit
 func TestConnect(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		connectDSN     string
@@ -123,6 +125,8 @@ func TestSQLConn_DB(t *testing.T) {
 }
 
 func TestSQLConn_HealthCheck(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                  string
 		configOpts            []Option
@@ -191,6 +195,8 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 }
 
 func Test_checkConnection(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		configMockFunc func(sqlmock.Sqlmock)
@@ -244,6 +250,8 @@ func Test_checkConnection(t *testing.T) {
 }
 
 func Test_connectWithBackoff(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		cfgDriver   string
@@ -315,7 +323,10 @@ func Test_connectWithBackoff(t *testing.T) {
 	}
 }
 
+// nolint:tparallel
 func Test_parseConnectionURL(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		url        string

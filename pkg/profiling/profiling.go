@@ -15,6 +15,7 @@ func PProfHandler(w http.ResponseWriter, r *http.Request) {
 	profile := strings.TrimPrefix(ps.ByName("option"), "/")
 
 	var handler http.HandlerFunc
+
 	switch profile {
 	case "":
 		handler = pprof.Index
@@ -29,5 +30,6 @@ func PProfHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		handler = pprof.Handler(profile).ServeHTTP
 	}
+
 	handler(w, r)
 }

@@ -42,6 +42,8 @@ func getValidTestConfig() appConfig {
 }
 
 func Test_appConfig_Validate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		fcfg    func(cfg appConfig) appConfig
