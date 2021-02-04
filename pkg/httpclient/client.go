@@ -43,29 +43,47 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	ctx := r.Context()
 
 	l := logging.WithComponent(ctx, c.component)
+	debug := l.Check(zap.DebugLevel, "debug") != nil
+
 	defer func() {
-		if err == nil {
+		if err != nil {
+			l.Error("error", zap.Error(err))
+			return
+		}
+		if debug {
 			l.Debug("outbound")
 			return
 		}
-		l.Error("error", zap.Error(err))
+		l.Info("outbound")
 	}()
 
 	reqID := traceid.FromContext(ctx, uidc.NewID128())
 	ctx = traceid.NewContext(ctx, reqID)
 	r.Header.Set(c.traceIDHeaderName, reqID)
 	r = r.WithContext(ctx)
-	l = l.With(zap.String("traceid", reqID))
-	reqDump, _ := httputil.DumpRequestOut(r, true)
-	l = l.With(zap.String("request", string(reqDump)))
+
+	l = l.With(
+		zap.String("traceid", reqID),
+		zap.String("request_method", r.Method),
+		zap.String("request_path", r.URL.Path),
+		zap.String("request_query", r.URL.RawQuery),
+		zap.String("request_uri", r.RequestURI),
+	)
+
+	if debug {
+		reqDump, _ := httputil.DumpRequestOut(r, true)
+		l = l.With(zap.String("request", string(reqDump)))
+	}
 
 	start := time.Now()
 	resp, err = c.client.Do(r)
 	l = l.With(zap.Duration("duration", time.Since(start)))
 
 	if resp != nil {
-		respDump, _ := httputil.DumpResponse(resp, true)
-		l = l.With(zap.String("response", string(respDump)))
+		if debug {
+			respDump, _ := httputil.DumpResponse(resp, true)
+			l = l.With(zap.String("response", string(respDump)))
+		}
 		_ = resp.Body.Close()
 	}
 

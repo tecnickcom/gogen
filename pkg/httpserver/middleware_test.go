@@ -35,8 +35,8 @@ func TestRequestInjectHandler(t *testing.T) {
 	logContextMap := logEntry.ContextMap()
 
 	// check request id
-	idValue, idExists := logContextMap["request_id"]
-	require.True(t, idExists, "request_id field missing")
+	idValue, idExists := logContextMap["traceid"]
+	require.True(t, idExists, "traceid field missing")
 	require.NotEmpty(t, idValue, "expected requestId value not found")
 
 	// check method

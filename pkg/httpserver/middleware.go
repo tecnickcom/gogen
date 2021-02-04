@@ -17,7 +17,7 @@ func RequestInjectHandler(rootLogger *zap.Logger, traceIDHeaderName string, next
 		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, uidc.NewID128())
 
 		reqLog := rootLogger.With(
-			zap.String("request_id", reqID),
+			zap.String("traceid", reqID),
 			zap.String("request_method", r.Method),
 			zap.String("request_path", r.URL.Path),
 			zap.String("request_query", r.URL.RawQuery),

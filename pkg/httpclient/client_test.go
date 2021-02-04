@@ -1,12 +1,15 @@
 package httpclient
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestNew(t *testing.T) {
@@ -39,14 +42,23 @@ func TestDo(t *testing.T) {
 
 	client := New()
 
-	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
-	require.NoError(t, err, "failed creating http request: %s", err)
+	req, err := http.NewRequest(http.MethodGet, "/error", nil)
+	require.NoError(t, err, "failed creating http request: %v", err)
+	_, err = client.Do(req)
+	require.Error(t, err, "client.Do with invalud URL: an error was expected")
+
+	req, err = http.NewRequest(http.MethodGet, server.URL, nil)
+	require.NoError(t, err, "failed creating http request: %v", err)
 	resp, err := client.Do(req)
 	require.NoError(t, err, "client.Do(): unexpected error = %v", err)
 	require.NotNil(t, resp, "returned response should not be nil")
 
-	req, err = http.NewRequest(http.MethodGet, "/error", nil)
-	require.NoError(t, err, "failed creating http request: %s", err)
-	_, err = client.Do(req)
-	require.Error(t, err, "client.Do with invalud URL: an error was expected")
+	l, err := logging.NewLogger(logging.WithLevel(zapcore.DebugLevel))
+	require.NoError(t, err, "failed creating logger: %v", err)
+	ctx := logging.WithLogger(context.Background(), l)
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+	require.NoError(t, err, "failed creating http request with context: %v", err)
+	resp, err = client.Do(req)
+	require.NoError(t, err, "client.Do() with context unexpected error = %v", err)
+	require.NotNil(t, resp, "returned response should not be nil")
 }
