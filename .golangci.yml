@@ -97,7 +97,7 @@ linters:
     - forbidigo            # Forbids identifiers [fast: true, auto-fix: false]
 #    - funlen               # Tool for detection of long functions [fast: true, auto-fix: false]
     - gci                  # Gci control golang package import order and make it always deterministic. [fast: true, auto-fix: true]
-#    - gochecknoglobals     # check that no global variables exist
+    - gochecknoglobals     # check that no global variables exist
     - gochecknoinits       # Checks that no init functions are present in Go code [fast: true, auto-fix: false]
     - gocognit             # Computes and checks the cognitive complexity of functions [fast: true, auto-fix: false]
     - goconst              # Finds repeated strings that could be replaced by a constant [fast: true, auto-fix: false]

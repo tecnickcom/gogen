@@ -12,7 +12,7 @@ func Test_newDefaultRoutes(t *testing.T) {
 	t.Parallel()
 
 	cfg := &config{
-		defaultEnabledRoutes: allDefaultRoutes,
+		defaultEnabledRoutes: allDefaultRoutes(),
 		metricsHandlerFunc:   func(w http.ResponseWriter, r *http.Request) {},
 		pingHandlerFunc:      func(w http.ResponseWriter, r *http.Request) {},
 		pprofHandlerFunc:     func(w http.ResponseWriter, r *http.Request) {},

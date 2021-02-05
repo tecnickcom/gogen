@@ -86,7 +86,7 @@ func WithEnableDefaultRoutes(ids ...defaultRoute) Option {
 // WithEnableAllDefaultRoutes enables all default routes on the server.
 func WithEnableAllDefaultRoutes() Option {
 	return func(cfg *config) error {
-		cfg.defaultEnabledRoutes = allDefaultRoutes
+		cfg.defaultEnabledRoutes = allDefaultRoutes()
 		return nil
 	}
 }

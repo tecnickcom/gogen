@@ -155,8 +155,8 @@ func TestCustomTags(t *testing.T) {
 	}
 	opts := []Option{
 		WithFieldNameTag("json"),
-		WithCustomValidationTags(CustomValidationTags),
-		WithErrorTemplates(ErrorTemplates),
+		WithCustomValidationTags(CustomValidationTags()),
+		WithErrorTemplates(ErrorTemplates()),
 	}
 	v, err := New(opts...)
 	require.NoError(t, err, "New() unexpected error = %v", err)

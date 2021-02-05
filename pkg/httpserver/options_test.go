@@ -154,7 +154,7 @@ func TestWithEnableAllDefaultRoutes(t *testing.T) {
 	cfg := &config{}
 	err := WithEnableAllDefaultRoutes()(cfg)
 	require.NoError(t, err)
-	require.Equal(t, allDefaultRoutes, cfg.defaultEnabledRoutes)
+	require.Equal(t, allDefaultRoutes(), cfg.defaultEnabledRoutes)
 }
 
 func TestWithIndexHandlerFunc(t *testing.T) {

@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testHTTPClient = &http.Client{Timeout: 2 * time.Second}
-
 func TestPProfHandler(t *testing.T) {
 	t.Parallel()
 
@@ -60,6 +58,8 @@ func TestPProfHandler(t *testing.T) {
 
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s", ts.URL, tt.path), nil)
 			require.NoError(t, err, "unexpected error while creating request for path %q", tt.path)
+
+			var testHTTPClient = &http.Client{Timeout: 2 * time.Second}
 
 			resp, err := testHTTPClient.Do(req) // nolint:bodyclose
 			require.NotNil(t, resp)

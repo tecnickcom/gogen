@@ -44,7 +44,7 @@ func TestWithCustomValidationTags(t *testing.T) {
 	}{
 		{
 			name:    "success with default custom tags",
-			arg:     CustomValidationTags,
+			arg:     CustomValidationTags(),
 			wantErr: false,
 		},
 		{
@@ -83,7 +83,7 @@ func TestWithErrorTemplates(t *testing.T) {
 	}{
 		{
 			name:    "success with default templates",
-			arg:     ErrorTemplates,
+			arg:     ErrorTemplates(),
 			wantErr: false,
 		},
 		{

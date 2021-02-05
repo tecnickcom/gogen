@@ -12,6 +12,7 @@ import (
 )
 
 // LogFatal calls the default fatal logger.
+// nolint:gochecknoglobals
 var LogFatal = zap.L().Fatal
 
 type ctxKey struct{}

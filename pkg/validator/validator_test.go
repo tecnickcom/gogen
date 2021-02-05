@@ -40,7 +40,7 @@ func TestNew(t *testing.T) {
 			name: "success with custom tag name and error templates options",
 			opts: []Option{
 				WithFieldNameTag("test_tag"),
-				WithErrorTemplates(ErrorTemplates),
+				WithErrorTemplates(ErrorTemplates()),
 			},
 			wantErr: false,
 		},
@@ -48,8 +48,8 @@ func TestNew(t *testing.T) {
 			name: "success with custom tag name, custom validation and error templates options",
 			opts: []Option{
 				WithFieldNameTag("test_tag"),
-				WithCustomValidationTags(CustomValidationTags),
-				WithErrorTemplates(ErrorTemplates),
+				WithCustomValidationTags(CustomValidationTags()),
+				WithErrorTemplates(ErrorTemplates()),
 			},
 			wantErr: false,
 		},
@@ -132,7 +132,7 @@ func TestValidator_ValidateStruct(t *testing.T) {
 			obj:  validObj,
 			opts: []Option{
 				WithFieldNameTag("json"),
-				WithErrorTemplates(ErrorTemplates),
+				WithErrorTemplates(ErrorTemplates()),
 			},
 			wantErr:      false,
 			wantErrCount: 0,
@@ -149,7 +149,7 @@ func TestValidator_ValidateStruct(t *testing.T) {
 			obj:  rootStruct{},
 			opts: []Option{
 				WithFieldNameTag("json"),
-				WithErrorTemplates(ErrorTemplates),
+				WithErrorTemplates(ErrorTemplates()),
 			},
 			wantErr:      true,
 			wantErrCount: 5,

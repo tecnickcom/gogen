@@ -22,14 +22,16 @@ var (
 	regexUSZIPCode  = regexp.MustCompile(regexPatternUSZIPCode)
 )
 
-// CustomValidationTags maps custom tags with validation function.
-var CustomValidationTags = map[string]vt.FuncCtx{
-	"falseif":     isFalseIf,
-	"e164noplus":  isE164NoPlus,
-	"ein":         isEIN,
-	"zipcode":     isUSZIPCode,
-	"usstate":     isUSState,
-	"usterritory": isUSTerritory,
+// CustomValidationTags returns a map of custom tags with validation function.
+func CustomValidationTags() map[string]vt.FuncCtx {
+	return map[string]vt.FuncCtx{
+		"falseif":     isFalseIf,
+		"e164noplus":  isE164NoPlus,
+		"ein":         isEIN,
+		"zipcode":     isUSZIPCode,
+		"usstate":     isUSState,
+		"usterritory": isUSTerritory,
+	}
 }
 
 // isE164 checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345).

@@ -53,8 +53,8 @@ func (c *appConfig) SetDefaults(v config.Viper) {
 func (c *appConfig) Validate() error {
 	opts := []validator.Option{
 		validator.WithFieldNameTag(fieldTagName),
-		validator.WithCustomValidationTags(validator.CustomValidationTags),
-		validator.WithErrorTemplates(validator.ErrorTemplates),
+		validator.WithCustomValidationTags(validator.CustomValidationTags()),
+		validator.WithErrorTemplates(validator.ErrorTemplates()),
 	}
 
 	v, _ := validator.New(opts...)
