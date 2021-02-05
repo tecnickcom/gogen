@@ -8,16 +8,16 @@ import (
 )
 
 var (
-	// ProgramVersion contains the version of the application injected at compile time.
-	ProgramVersion = "0.0.0"
+	// programVersion contains the version of the application injected at compile time.
+	programVersion = "0.0.0" // nolint:gochecknoglobals
 
-	// ProgramRelease contains the release of the application injected at compile time.
-	ProgramRelease = "0"
+	// programRelease contains the release of the application injected at compile time.
+	programRelease = "0" // nolint:gochecknoglobals
 )
 
 func main() {
-	_, _ = logging.NewDefaultLogger(cli.AppName, ProgramVersion, ProgramRelease, "json", "debug")
-	rootCmd, err := cli.New(ProgramVersion, ProgramRelease, bootstrap.Bootstrap)
+	_, _ = logging.NewDefaultLogger(cli.AppName, programVersion, programRelease, "json", "debug")
+	rootCmd, err := cli.New(programVersion, programRelease, bootstrap.Bootstrap)
 
 	if err != nil {
 		logging.LogFatal("UNABLE TO START THE PROGRAM", zap.Error(err))

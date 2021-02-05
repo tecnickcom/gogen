@@ -251,7 +251,7 @@ build:
 	CGO_ENABLED=0 \
 	$(GO) build \
 	-tags ${STATIC_TAG} \
-	-ldflags '-w -s -X main.ProgramVersion=${VERSION} -X main.ProgramRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
+	-ldflags '-w -s -X main.programVersion=${VERSION} -X main.programRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
 	-mod=vendor \
 	-o ./target/${BINPATH}$(PROJECT) $(CMDDIR)
 
