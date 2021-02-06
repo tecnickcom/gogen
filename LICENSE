@@ -1,12 +1,11 @@
 MIT LICENSE
 
-Copyright (c) 2019-2020 Vonage
+Copyright (c) 2019-2021 Vonage
+Copyright (c) 2014-2021 Nicola Asuni - Tecnick.com LTD
 
-The base of this code has been originally derived from
-https://github.com/tecnickcom/gogen
-subject to the same MIT licence but with copyright:
-Copyright (c) 2014-2020 Nicola Asuni - Tecnick.com LTD
-
+This work is derived from https://github.com/tecnickcom/gogen
+and contains additional contributions from Nicola Asuni - Tecnick.com LTD
+and Vonage.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

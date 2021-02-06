@@ -9,7 +9,6 @@
 
 
 * **category**    Library
-* **copyright**   2020 Vonage
 * **license**     see [LICENSE](LICENSE)
 * **link**        https://github.com/nexmoinc/gosrvlib
 

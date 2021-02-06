@@ -3,7 +3,6 @@
 *gosrvlibexampleshortdesc*
 
 * **category**    Application
-* **copyright**   2020 Author
 * **license**     see [LICENSE](LICENSE)
 * **link**        https://github.com/gosrvlibexample/gosrvlibexample
 
