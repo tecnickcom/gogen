@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/nexmoinc/gosrvlib/pkg/redact"
 	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/nexmoinc/gosrvlib/pkg/uidc"
 	"go.uber.org/zap"
@@ -16,6 +17,7 @@ type Client struct {
 	client            *http.Client
 	traceIDHeaderName string
 	component         string
+	redactFn          RedactFn
 }
 
 // New creates a new HTTP client instance.
@@ -37,6 +39,7 @@ func defaultClient() *Client {
 		},
 		traceIDHeaderName: traceid.DefaultHeader,
 		component:         "-",
+		redactFn:          redact.HTTPData,
 	}
 }
 
@@ -76,7 +79,7 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 
 	if debug {
 		reqDump, _ := httputil.DumpRequestOut(r, true)
-		l = l.With(zap.String("request", string(reqDump)))
+		l = l.With(zap.String("request", c.redactFn(string(reqDump))))
 	}
 
 	start := time.Now()
@@ -86,7 +89,7 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	if resp != nil {
 		if debug {
 			respDump, _ := httputil.DumpResponse(resp, true)
-			l = l.With(zap.String("response", string(respDump)))
+			l = l.With(zap.String("response", c.redactFn(string(respDump))))
 		}
 
 		_ = resp.Body.Close()

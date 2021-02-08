@@ -8,6 +8,9 @@ import (
 // InstrumentRoundTripper is an alias for a RoundTripper function.
 type InstrumentRoundTripper func(next http.RoundTripper) http.RoundTripper
 
+// RedactFn is an alias for a redact function.
+type RedactFn func(s string) string
+
 // Option is the interface that allows to set client options.
 type Option func(c *Client)
 
@@ -36,5 +39,12 @@ func WithTraceIDHeaderName(name string) Option {
 func WithComponent(name string) Option {
 	return func(c *Client) {
 		c.component = name
+	}
+}
+
+// WithReadactFn set the function used to redact HTTP request and response dumps in the logs.
+func WithReadactFn(fn RedactFn) Option {
+	return func(c *Client) {
+		c.redactFn = fn
 	}
 }

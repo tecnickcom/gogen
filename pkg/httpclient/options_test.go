@@ -43,3 +43,12 @@ func TestWithComponent(t *testing.T) {
 	WithComponent(v)(c)
 	require.Equal(t, v, c.component)
 }
+
+func TestWithReadactFn(t *testing.T) {
+	t.Parallel()
+
+	c := &Client{}
+	v := func(s string) string { return s + "test" }
+	WithReadactFn(v)(c)
+	require.Equal(t, "alphatest", c.redactFn("alpha"))
+}
