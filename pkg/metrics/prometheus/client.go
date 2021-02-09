@@ -19,7 +19,7 @@ const (
 	NameRequestDuration = "request_duration_seconds"
 
 	// NameRequestSize is the name of the collector that measures the http request size in bytes.
-	NameRequestSize = "requeste_size_bytes"
+	NameRequestSize = "request_size_bytes"
 
 	// NameResponseSize is the name of the collector that measures the http response size in bytes.
 	NameResponseSize = "response_size_bytes"
