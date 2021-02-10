@@ -2,37 +2,9 @@
 package sqlutil
 
 import (
-	"context"
-	"database/sql"
 	"strconv"
 	"strings"
-
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"go.uber.org/zap"
 )
-
-// CloseRows closes a rows instance or log an error.
-func CloseRows(ctx context.Context, rows *sql.Rows) {
-	if rows == nil {
-		return
-	}
-
-	if err := rows.Close(); err != nil {
-		logging.FromContext(ctx).Error("failed closing SQL rows", zap.Error(err))
-	}
-}
-
-// CloseStatement closes a prepared statement or log an error.
-// nolint:interfacer
-func CloseStatement(ctx context.Context, stmt *sql.Stmt) {
-	if stmt == nil {
-		return
-	}
-
-	if err := stmt.Close(); err != nil {
-		logging.FromContext(ctx).Error("failed closing SQL statement", zap.Error(err))
-	}
-}
 
 // BuildInClauseInt prepares a SQL IN clause with the given list of integer values.
 func BuildInClauseInt(field string, in []int) string {

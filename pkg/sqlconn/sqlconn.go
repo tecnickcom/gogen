@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/sqlutil"
 	"go.uber.org/zap"
 )
 
@@ -115,11 +114,11 @@ func checkConnection(ctx context.Context, db *sql.DB) error {
 
 	// nolint:rowserrcheck,sqlclosecheck
 	rows, err := db.QueryContext(ctx, "SELECT 1")
-	defer sqlutil.CloseRows(ctx, rows)
-
 	if err != nil {
 		return fmt.Errorf("failed running check query on database: %w", err)
 	}
+
+	defer logging.Close(ctx, rows, "failed closing SQL rows")
 
 	return nil
 }

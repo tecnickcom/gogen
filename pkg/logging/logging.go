@@ -5,6 +5,7 @@ package logging
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"go.uber.org/zap"
@@ -169,4 +170,11 @@ func WithLevelFunctionHook(l *zap.Logger, fn IncrementLogMetricsFunc) *zap.Logge
 	zap.ReplaceGlobals(l)
 
 	return l
+}
+
+// Close closes an object and logs an error in case of failure.
+func Close(ctx context.Context, obj io.Closer, errorMessage string) {
+	if err := obj.Close(); err != nil {
+		FromContext(ctx).Error(errorMessage, zap.Error(err))
+	}
 }

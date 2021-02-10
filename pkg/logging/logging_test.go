@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"testing"
@@ -197,7 +198,7 @@ func TestLogDifferences(t *testing.T) {
 
 	// Create a sink instance, and register it with zap for the "memory" protocol.
 	sink := &MemorySink{new(bytes.Buffer)}
-	err := zap.RegisterSink("memory", func(*url.URL) (zap.Sink, error) {
+	err := zap.RegisterSink("memdiff", func(*url.URL) (zap.Sink, error) {
 		return sink, nil
 	})
 	require.NoError(t, err)
@@ -210,8 +211,8 @@ func TestLogDifferences(t *testing.T) {
 		),
 		WithFormatStr("json"),
 		WithLevelStr("info"),
-		WithOutputPaths([]string{"memory://"}),      // Redirect all messages to the MemorySink.
-		WithErrorOutputPaths([]string{"memory://"}), // Redirect all errors to the MemorySink.
+		WithOutputPaths([]string{"memdiff://"}),      // Redirect all messages to the MemorySink.
+		WithErrorOutputPaths([]string{"memdiff://"}), // Redirect all errors to the MemorySink.
 	)
 	require.NoError(t, err)
 	require.NotNil(t, l)
@@ -266,4 +267,59 @@ func TestLogDifferences(t *testing.T) {
 	require.Equal(t, log1.Program, log2.Program, "Logs should have the same program")
 	require.Equal(t, log1.Version, log2.Version, "Logs should have the same version")
 	require.Equal(t, log1.Release, log2.Release, "Logs should have the same release")
+}
+
+type testCloseError struct{}
+
+func (c *testCloseError) Close() error {
+	return fmt.Errorf("close error")
+}
+
+type testCloseOK struct{}
+
+func (c *testCloseOK) Close() error {
+	return nil
+}
+
+func TestClose(t *testing.T) {
+	t.Parallel()
+
+	// Create a sink instance, and register it with zap for the "memory" protocol.
+	sink := &MemorySink{new(bytes.Buffer)}
+	err := zap.RegisterSink("memclose", func(*url.URL) (zap.Sink, error) {
+		return sink, nil
+	})
+	require.NoError(t, err)
+
+	l, err := NewLogger(
+		WithFormatStr("json"),
+		WithLevelStr("debug"),
+		WithOutputPaths([]string{"memclose://"}),      // Redirect all messages to the MemorySink.
+		WithErrorOutputPaths([]string{"memclose://"}), // Redirect all errors to the MemorySink.
+	)
+	require.NoError(t, err)
+	require.NotNil(t, l)
+
+	ctx := WithLogger(context.Background(), l)
+
+	objOK := &testCloseOK{}
+
+	Close(ctx, objOK, "test error OK")
+
+	err = l.Sync()
+	require.NoError(t, err)
+
+	out := sink.String()
+	require.Empty(t, out, "expecting empty log")
+
+	objErr := &testCloseError{}
+	Close(ctx, objErr, "test error ERROR")
+
+	err = l.Sync()
+	require.NoError(t, err)
+
+	out = sink.String()
+	require.NotEmpty(t, out, "expecting non-empty log")
+	require.Contains(t, out, "\"msg\":\"test error ERROR\"")
+	require.Contains(t, out, "\"error\":\"close error\"}\n")
 }
