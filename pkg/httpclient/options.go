@@ -42,8 +42,8 @@ func WithComponent(name string) Option {
 	}
 }
 
-// WithReadactFn set the function used to redact HTTP request and response dumps in the logs.
-func WithReadactFn(fn RedactFn) Option {
+// WithRedactFn set the function used to redact HTTP request and response dumps in the logs.
+func WithRedactFn(fn RedactFn) Option {
 	return func(c *Client) {
 		c.redactFn = fn
 	}
