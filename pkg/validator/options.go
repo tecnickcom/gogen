@@ -55,7 +55,6 @@ func WithErrorTemplates(t map[string]string) Option {
 
 		for tag, tpl := range t {
 			t, err := template.New(tag).Parse(tpl)
-
 			if err != nil {
 				return fmt.Errorf("failed adding error template: %w", err)
 			}

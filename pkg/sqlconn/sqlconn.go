@@ -106,9 +106,7 @@ func (c *SQLConn) disconnect() {
 }
 
 func checkConnection(ctx context.Context, db *sql.DB) error {
-	var err error
-
-	if err = db.PingContext(ctx); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("failed ping on database: %w", err)
 	}
 
@@ -124,8 +122,6 @@ func checkConnection(ctx context.Context, db *sql.DB) error {
 }
 
 func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
-	var err error
-
 	db, err := cfg.sqlOpenFunc(cfg.driver, cfg.dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed opening database connection: %w", err)

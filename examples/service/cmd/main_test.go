@@ -17,8 +17,8 @@ func TestProgramVersion(t *testing.T) {
 	out := testutil.CaptureOutput(t, func() {
 		main()
 	})
-	match, err := regexp.MatchString("^[\\d]+\\.[\\d]+\\.[\\d]+[\\s]*$", out)
 
+	match, err := regexp.MatchString("^[\\d]+\\.[\\d]+\\.[\\d]+[\\s]*$", out)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}

@@ -17,8 +17,8 @@ var (
 
 func main() {
 	_, _ = logging.NewDefaultLogger(cli.AppName, programVersion, programRelease, "json", "debug")
-	rootCmd, err := cli.New(programVersion, programRelease, bootstrap.Bootstrap)
 
+	rootCmd, err := cli.New(programVersion, programRelease, bootstrap.Bootstrap)
 	if err != nil {
 		logging.LogFatal("UNABLE TO START THE PROGRAM", zap.Error(err))
 		return

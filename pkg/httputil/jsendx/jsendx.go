@@ -116,8 +116,8 @@ func DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFunc {
 func DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
-		ip, err := fn(r.Context())
 
+		ip, err := fn(r.Context())
 		if err != nil {
 			status = http.StatusFailedDependency
 		}

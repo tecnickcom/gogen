@@ -12,11 +12,12 @@ import (
 // You have to call this first and only once.
 func InitRandSeed() error {
 	var b [8]byte
-	_, err := rand.Read(b[:]) // #nosec
 
+	_, err := rand.Read(b[:]) // #nosec
 	if err == nil {
 		rand.Seed(int64(binary.LittleEndian.Uint64(b[:])))
 	}
+
 	// nolint:wrapcheck
 	return err
 }

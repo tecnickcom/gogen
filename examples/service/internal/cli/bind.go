@@ -54,12 +54,12 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			httpclient.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpclient.WithComponent("ipify"),
 		)
+
 		ipifyClient, err := ipify.NewClient(
 			ipify.WithHTTPClient(ipc),
 			ipify.WithTimeout(ipcTimeout),
 			ipify.WithURL(cfg.Ipify.Address),
 		)
-
 		if err != nil {
 			return fmt.Errorf("failed to build ipify client: %w", err)
 		}
