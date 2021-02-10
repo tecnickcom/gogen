@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/nexmoinc/gosrvlib/pkg/logging"
 )
 
 // HTTPClient contains the function that performs the actual HTTP request.
@@ -32,12 +34,12 @@ func CheckHTTPStatus(ctx context.Context, httpClient HTTPClient, method string, 
 		cfg.configureRequest(req)
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req) // nolint:bodyclose
 	if err != nil {
 		return fmt.Errorf("healthcheck request: %w", err)
 	}
 
-	defer func() { _ = resp.Body.Close() }()
+	defer logging.Close(ctx, resp.Body, "error while closing CheckHTTPStatus response body")
 
 	if resp.StatusCode != wantStatusCode {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)

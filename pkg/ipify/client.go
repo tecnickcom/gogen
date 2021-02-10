@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/nexmoinc/gosrvlib/pkg/logging"
 )
 
 const (
@@ -61,12 +63,12 @@ func (c *Client) GetPublicIP(ctx context.Context) (string, error) {
 		return c.errorIP, fmt.Errorf("build request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // nolint:bodyclose
 	if err != nil {
 		return c.errorIP, fmt.Errorf("failed performing ipify request: %w", err)
 	}
 
-	defer func() { _ = resp.Body.Close() }()
+	defer logging.Close(ctx, resp.Body, "error while closing GetPublicIP response body")
 
 	if resp.StatusCode != http.StatusOK {
 		return c.errorIP, fmt.Errorf("unexpected ipify status code: %d", resp.StatusCode)

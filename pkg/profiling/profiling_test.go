@@ -62,11 +62,12 @@ func TestPProfHandler(t *testing.T) {
 			var testHTTPClient = &http.Client{Timeout: 2 * time.Second}
 
 			resp, err := testHTTPClient.Do(req) // nolint:bodyclose
+			require.NoError(t, err, "unexpected error while performing request %q", req.URL.String())
 			require.NotNil(t, resp)
 
-			defer func() { _ = resp.Body.Close() }()
+			err = resp.Body.Close()
+			require.NoError(t, err, "error closing resp.Body")
 
-			require.NoError(t, err, "unexpected error while performing request %q", req.URL.String())
 			require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code %d", resp.StatusCode)
 		})
 	}

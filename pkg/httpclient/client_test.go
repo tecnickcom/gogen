@@ -56,12 +56,11 @@ func TestDo(t *testing.T) {
 	require.NoError(t, err, "failed creating http request: %v", err)
 
 	resp, err = client.Do(req) // nolint:bodyclose
-	require.NotNil(t, resp)
-
-	defer func() { _ = resp.Body.Close() }()
-
 	require.NoError(t, err, "client.Do(): unexpected error = %v", err)
 	require.NotNil(t, resp, "returned response should not be nil")
+
+	err = resp.Body.Close()
+	require.NoError(t, err, "error closing resp.Body")
 
 	l, err := logging.NewLogger(logging.WithLevel(zapcore.DebugLevel))
 	require.NoError(t, err, "failed creating logger: %v", err)
@@ -71,9 +70,11 @@ func TestDo(t *testing.T) {
 	require.NoError(t, err, "failed creating http request with context: %v", err)
 
 	resp, err = client.Do(req) // nolint:bodyclose
-	require.NotNil(t, resp)
+	require.NoError(t, err, "client.Do(): unexpected error = %v", err)
+	require.NotNil(t, resp, "returned response should not be nil")
 
-	defer func() { _ = resp.Body.Close() }()
+	err = resp.Body.Close()
+	require.NoError(t, err, "error closing resp.Body")
 
 	require.NoError(t, err, "client.Do() with context unexpected error = %v", err)
 }

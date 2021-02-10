@@ -62,7 +62,8 @@ func TestSendJSON(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	defer func() { _ = resp.Body.Close() }()
+	err := resp.Body.Close()
+	require.NoError(t, err, "error closing resp.Body")
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
@@ -87,7 +88,8 @@ func TestSendText(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	defer func() { _ = resp.Body.Close() }()
+	err := resp.Body.Close()
+	require.NoError(t, err, "error closing resp.Body")
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
@@ -112,7 +114,8 @@ func TestSendStatus(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	defer func() { _ = resp.Body.Close() }()
+	err := resp.Body.Close()
+	require.NoError(t, err, "error closing resp.Body")
 
 	body, _ := ioutil.ReadAll(resp.Body)
 

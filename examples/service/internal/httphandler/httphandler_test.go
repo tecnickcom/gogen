@@ -33,10 +33,11 @@ func TestHTTPHandler_handleGenUID(t *testing.T) {
 
 	(&HTTPHandler{}).handleGenUID(rr, req)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
-	defer func() { _ = resp.Body.Close() }()
+	err := resp.Body.Close()
+	require.NoError(t, err, "error closing resp.Body")
 
 	body, _ := ioutil.ReadAll(resp.Body)
 

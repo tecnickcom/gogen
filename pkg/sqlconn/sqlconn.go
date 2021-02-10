@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"go.uber.org/zap"
 )
 
 // ConnectFunc is the function called to perform the actual DB connection.
@@ -98,9 +97,7 @@ func (c *SQLConn) disconnect() {
 	c.dbLock.Lock()
 	defer c.dbLock.Unlock()
 
-	if err := c.db.Close(); err != nil {
-		logging.FromContext(c.ctx).Error("failed closing database connection", zap.Error(err))
-	}
+	logging.Close(c.ctx, c.db, "failed closing database connection")
 
 	c.db = nil
 }

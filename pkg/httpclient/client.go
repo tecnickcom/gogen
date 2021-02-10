@@ -45,12 +45,15 @@ func defaultClient() *Client {
 
 // Do performs the HTTP request with added trace ID, logging and metrics.
 func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
+	start := time.Now()
 	ctx := r.Context()
 
 	l := logging.WithComponent(ctx, c.component)
 	debug := l.Check(zap.DebugLevel, "debug") != nil
 
 	defer func() {
+		l = l.With(zap.Duration("duration", time.Since(start)))
+
 		if err != nil {
 			l.Error("error", zap.Error(err))
 			return
@@ -82,19 +85,17 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 		l = l.With(zap.String("request", c.redactFn(string(reqDump))))
 	}
 
-	start := time.Now()
-	resp, err = c.client.Do(r)
-	l = l.With(zap.Duration("duration", time.Since(start)))
-
-	if resp != nil {
-		if debug {
-			respDump, _ := httputil.DumpResponse(resp, true)
-			l = l.With(zap.String("response", c.redactFn(string(respDump))))
-		}
-
-		_ = resp.Body.Close()
+	resp, err = c.client.Do(r) // nolint:bodyclose
+	if err != nil {
+		return nil, err // nolint:wrapcheck
 	}
 
-	// nolint:wrapcheck
-	return resp, err
+	defer logging.Close(ctx, resp.Body, "error while closing response body")
+
+	if debug {
+		respDump, _ := httputil.DumpResponse(resp, true)
+		l = l.With(zap.String("response", c.redactFn(string(respDump))))
+	}
+
+	return resp, nil
 }
