@@ -90,8 +90,10 @@ func Test_defaultRouter(t *testing.T) {
 			resp := rr.Result() // nolint:bodyclose
 			require.NotNil(t, resp)
 
-			err := resp.Body.Close()
-			require.NoError(t, err, "error closing resp.Body")
+			defer func() {
+				err := resp.Body.Close()
+				require.NoError(t, err, "error closing resp.Body")
+			}()
 
 			require.Equal(t, tt.wantStatus, resp.StatusCode, "status code got = %d, want = %d", resp.StatusCode, tt.wantStatus)
 		})
@@ -122,8 +124,10 @@ func Test_defaultIndexHandler(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
@@ -169,8 +173,10 @@ func Test_defaultIPHandler(t *testing.T) {
 			resp := rr.Result() // nolint:bodyclose
 			require.NotNil(t, resp)
 
-			err := resp.Body.Close()
-			require.NoError(t, err, "error closing resp.Body")
+			defer func() {
+				err := resp.Body.Close()
+				require.NoError(t, err, "error closing resp.Body")
+			}()
 
 			bodyData, _ := ioutil.ReadAll(resp.Body)
 			body := string(bodyData)
@@ -198,8 +204,10 @@ func Test_defaultPingHandler(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
@@ -218,8 +226,10 @@ func Test_defaultStatusHandler(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
@@ -238,8 +248,10 @@ func Test_notImplementedHandler(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
 }

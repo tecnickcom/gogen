@@ -65,8 +65,10 @@ func TestPProfHandler(t *testing.T) {
 			require.NoError(t, err, "unexpected error while performing request %q", req.URL.String())
 			require.NotNil(t, resp)
 
-			err = resp.Body.Close()
-			require.NoError(t, err, "error closing resp.Body")
+			defer func() {
+				err := resp.Body.Close()
+				require.NoError(t, err, "error closing resp.Body")
+			}()
 
 			require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code %d", resp.StatusCode)
 		})

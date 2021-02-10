@@ -117,8 +117,10 @@ func TestInstrumentRoundTripper(t *testing.T) {
 	require.NoError(t, err, "client.Get() unexpected error = %v", err)
 	require.NotNil(t, resp)
 
-	err = resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	rt, err := testutil.GatherAndCount(c.registry, NameOutboundRequests)
 	require.NoError(t, err, "failed to gather metrics: %s", err)

@@ -32,8 +32,10 @@ func TestSend(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	body, _ := ioutil.ReadAll(resp.Body)
 
@@ -122,8 +124,10 @@ func TestNewRouter(t *testing.T) {
 			resp := rr.Result() // nolint:bodyclose
 			require.NotNil(t, resp)
 
-			err := resp.Body.Close()
-			require.NoError(t, err, "error closing resp.Body")
+			defer func() {
+				err := resp.Body.Close()
+				require.NoError(t, err, "error closing resp.Body")
+			}()
 
 			require.Equal(t, tt.wantStatus, resp.StatusCode, "status code got = %d, want = %d", resp.StatusCode, tt.wantStatus)
 		})
@@ -160,8 +164,10 @@ func TestDefaultIndexHandler(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	bodyData, _ := ioutil.ReadAll(resp.Body)
 	body := string(bodyData)
@@ -213,8 +219,10 @@ func TestDefaultIPHandler(t *testing.T) {
 			resp := rr.Result() // nolint:bodyclose
 			require.NotNil(t, resp)
 
-			err := resp.Body.Close()
-			require.NoError(t, err, "error closing resp.Body")
+			defer func() {
+				err := resp.Body.Close()
+				require.NoError(t, err, "error closing resp.Body")
+			}()
 
 			bodyData, _ := ioutil.ReadAll(resp.Body)
 			body := string(bodyData)
@@ -251,8 +259,10 @@ func TestDefaultPingHandler(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	bodyData, _ := ioutil.ReadAll(resp.Body)
 
@@ -282,8 +292,10 @@ func TestDefaultStatusHandler(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	bodyData, _ := ioutil.ReadAll(resp.Body)
 
@@ -311,8 +323,10 @@ func TestHealthCheckResultWriter(t *testing.T) {
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
 
-	err := resp.Body.Close()
-	require.NoError(t, err, "error closing resp.Body")
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
 	bodyData, _ := ioutil.ReadAll(resp.Body)
 
