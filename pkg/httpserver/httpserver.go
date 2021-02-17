@@ -52,7 +52,7 @@ func Start(ctx context.Context, binder Binder, opts ...Option) error {
 	}
 
 	if cfg.router == nil {
-		cfg.router = defaultRouter(ctx, cfg.traceIDHeaderName, cfg.instrumentHandler)
+		cfg.router = defaultRouter(ctx, cfg.traceIDHeaderName, cfg.redactFn, cfg.instrumentHandler)
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -91,7 +91,7 @@ func startServer(ctx context.Context, cfg *config) error {
 	// create and start the http server
 	s := &http.Server{
 		Addr:         cfg.serverAddr,
-		Handler:      RequestInjectHandler(l, cfg.traceIDHeaderName, cfg.router),
+		Handler:      RequestInjectHandler(l, cfg.traceIDHeaderName, cfg.redactFn, cfg.router),
 		ReadTimeout:  cfg.serverReadTimeout,
 		TLSConfig:    cfg.tlsConfig,
 		WriteTimeout: cfg.serverWriteTimeout,
@@ -138,20 +138,20 @@ func startServer(ctx context.Context, cfg *config) error {
 	return nil
 }
 
-func defaultRouter(ctx context.Context, traceIDHeaderName string, instrumentHandler InstrumentHandler) *httprouter.Router {
+func defaultRouter(ctx context.Context, traceIDHeaderName string, redactFn RedactFn, instrumentHandler InstrumentHandler) *httprouter.Router {
 	r := httprouter.New()
 	l := logging.FromContext(ctx)
 
-	r.NotFound = RequestInjectHandler(l, traceIDHeaderName, instrumentHandler("404", func(w http.ResponseWriter, r *http.Request) {
+	r.NotFound = RequestInjectHandler(l, traceIDHeaderName, redactFn, instrumentHandler("404", func(w http.ResponseWriter, r *http.Request) {
 		httputil.SendStatus(r.Context(), w, http.StatusNotFound)
 	}))
 
-	r.MethodNotAllowed = RequestInjectHandler(l, traceIDHeaderName, instrumentHandler("405", func(w http.ResponseWriter, r *http.Request) {
+	r.MethodNotAllowed = RequestInjectHandler(l, traceIDHeaderName, redactFn, instrumentHandler("405", func(w http.ResponseWriter, r *http.Request) {
 		httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
 	}))
 
 	r.PanicHandler = func(w http.ResponseWriter, r *http.Request, p interface{}) {
-		RequestInjectHandler(l, traceIDHeaderName, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		RequestInjectHandler(l, traceIDHeaderName, redactFn, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			logging.FromContext(r.Context()).Error("panic",
 				zap.Any("err", p),
 				zap.String("stacktrace", string(debug.Stack())),

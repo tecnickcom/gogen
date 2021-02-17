@@ -13,8 +13,12 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/ipify"
 	"github.com/nexmoinc/gosrvlib/pkg/profiling"
+	"github.com/nexmoinc/gosrvlib/pkg/redact"
 	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 )
+
+// RedactFn is an alias for a redact function.
+type RedactFn func(s string) string
 
 // IndexHandlerFunc is a type alias for the route index function.
 type IndexHandlerFunc func([]route.Route) http.HandlerFunc
@@ -47,6 +51,7 @@ type config struct {
 	pprofHandlerFunc     http.HandlerFunc
 	statusHandlerFunc    http.HandlerFunc
 	traceIDHeaderName    string
+	redactFn             RedactFn
 }
 
 func defaultConfig() *config {
@@ -66,6 +71,7 @@ func defaultConfig() *config {
 		pprofHandlerFunc:     profiling.PProfHandler,
 		statusHandlerFunc:    defaultStatusHandler,
 		traceIDHeaderName:    traceid.DefaultHeader,
+		redactFn:             redact.HTTPData,
 	}
 }
 

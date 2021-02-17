@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/nexmoinc/gosrvlib/pkg/redact"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ func TestRequestInjectHandler(t *testing.T) {
 	})
 
 	ctx, logs := testutil.ContextWithLogObserver(zapcore.DebugLevel)
-	handler := RequestInjectHandler(logging.FromContext(ctx), traceid.DefaultHeader, nextHandler)
+	handler := RequestInjectHandler(logging.FromContext(ctx), traceid.DefaultHeader, redact.HTTPData, nextHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)

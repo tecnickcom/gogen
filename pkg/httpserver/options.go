@@ -146,3 +146,11 @@ func WithTraceIDHeaderName(name string) Option {
 		return nil
 	}
 }
+
+// WithRedactFn set the function used to redact HTTP request and response dumps in the logs.
+func WithRedactFn(fn RedactFn) Option {
+	return func(cfg *config) error {
+		cfg.redactFn = fn
+		return nil
+	}
+}

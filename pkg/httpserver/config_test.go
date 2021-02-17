@@ -102,7 +102,7 @@ func Test_config_validate(t *testing.T) {
 		{
 			name: "succeed with valid configuration",
 			setupConfig: func(cfg *config) {
-				cfg.router = defaultRouter(testutil.Context(), traceid.DefaultHeader, cfg.instrumentHandler)
+				cfg.router = defaultRouter(testutil.Context(), traceid.DefaultHeader, cfg.redactFn, cfg.instrumentHandler)
 			},
 			wantErr: false,
 		},

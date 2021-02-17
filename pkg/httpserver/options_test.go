@@ -240,3 +240,13 @@ func TestWithTraceIDHeaderName(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.traceIDHeaderName)
 }
+
+func TestWithRedactFn(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+	v := func(s string) string { return s + "test" }
+	err := WithRedactFn(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, "alphatest", cfg.redactFn("alpha"))
+}

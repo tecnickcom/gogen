@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
+	"github.com/nexmoinc/gosrvlib/pkg/redact"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/stretchr/testify/require"
@@ -78,7 +79,7 @@ func Test_defaultRouter(t *testing.T) {
 			t.Parallel()
 
 			defaultInstrumentHandler := func(path string, handler http.HandlerFunc) http.Handler { return handler }
-			r := defaultRouter(testutil.Context(), traceid.DefaultHeader, defaultInstrumentHandler)
+			r := defaultRouter(testutil.Context(), traceid.DefaultHeader, redact.HTTPData, defaultInstrumentHandler)
 
 			if tt.setupRouter != nil {
 				tt.setupRouter(r)
