@@ -60,14 +60,14 @@ func TestRequestInjectHandler(t *testing.T) {
 	require.True(t, ruExists, "request_uri field missing")
 	require.Equal(t, "/", ruValue)
 
-	// request_useragent
-	uaValue, uaExists := logContextMap["request_useragent"]
-	require.True(t, uaExists, "request_useragent field missing")
+	// request_user_agent
+	uaValue, uaExists := logContextMap["request_user_agent"]
+	require.True(t, uaExists, "request_user_agent field missing")
 	require.Equal(t, "", uaValue)
 
-	// request_useragent
-	_, ipExists := logContextMap["remote_ip"]
-	require.True(t, ipExists, "remote_ip field missing")
+	// request_user_agent
+	_, ipExists := logContextMap["request_remote_address"]
+	require.True(t, ipExists, "request_remote_address field missing")
 
 	// message
 	require.Equal(t, "injected", logEntry.Message)

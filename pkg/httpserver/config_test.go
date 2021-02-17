@@ -153,7 +153,7 @@ func Test_validateAddr(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "address port our of range",
+			name:    "address port out of range",
 			addr:    ":67800",
 			wantErr: true,
 		},

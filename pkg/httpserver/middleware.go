@@ -23,8 +23,9 @@ func RequestInjectHandler(rootLogger *zap.Logger, traceIDHeaderName string, reda
 			zap.String("request_path", r.URL.Path),
 			zap.String("request_query", r.URL.RawQuery),
 			zap.String("request_uri", r.RequestURI),
-			zap.String("request_useragent", r.UserAgent()),
-			zap.String("remote_ip", r.RemoteAddr),
+			zap.String("request_user_agent", r.UserAgent()),
+			zap.String("request_remote_address", r.RemoteAddr),
+			zap.String("request_x_forwarded_for", r.Header.Get("X-Forwarded-For")),
 		)
 
 		if l.Check(zap.DebugLevel, "debug") != nil {
