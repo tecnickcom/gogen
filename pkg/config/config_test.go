@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -213,12 +212,12 @@ func Test_loadLocalConfig(t *testing.T) {
 			)
 
 			if tt.configContent != nil {
-				configDir, err = ioutil.TempDir("", "test-loadLocalConfig-*")
+				configDir, err = os.MkdirTemp("", "test-loadLocalConfig-*")
 				require.NoError(t, err, "failed creating temp config dir: %v", err)
 				defer func() { _ = os.RemoveAll(configDir) }()
 
 				tmpFilePath := filepath.Join(configDir, "config.json")
-				require.NoError(t, ioutil.WriteFile(tmpFilePath, tt.configContent, 0600), "failed writing temp config file: %v", err)
+				require.NoError(t, os.WriteFile(tmpFilePath, tt.configContent, 0600), "failed writing temp config file: %v", err)
 			}
 
 			v := tt.setupViper(ctrl)
@@ -999,12 +998,12 @@ func Test_loadConfig(t *testing.T) {
 			var tmpConfigDir string
 			var err error
 			if tt.configContent != nil {
-				tmpConfigDir, err = ioutil.TempDir("", "test-loadConfig-*")
+				tmpConfigDir, err = os.MkdirTemp("", "test-loadConfig-*")
 				require.NoError(t, err, "failed creating temp config dir: %v", err)
 				defer func() { _ = os.RemoveAll(tmpConfigDir) }()
 
 				tmpFilePath := filepath.Join(tmpConfigDir, "config.json")
-				require.NoError(t, ioutil.WriteFile(tmpFilePath, tt.configContent, 0600), "failed writing temp config file: %v", err)
+				require.NoError(t, os.WriteFile(tmpFilePath, tt.configContent, 0600), "failed writing temp config file: %v", err)
 			}
 
 			var localViper Viper
@@ -1059,7 +1058,7 @@ func TestLoad(t *testing.T) {
 		err          error
 	)
 
-	tmpConfigDir, err = ioutil.TempDir("", "test-Load-*")
+	tmpConfigDir, err = os.MkdirTemp("", "test-Load-*")
 	require.NoError(t, err, "failed creating temp config dir: %v", err)
 
 	defer func() { _ = os.RemoveAll(tmpConfigDir) }()
@@ -1084,7 +1083,7 @@ func TestLoad(t *testing.T) {
   }
 }
 `)
-	require.NoError(t, ioutil.WriteFile(tmpFilePath, configContent, 0600), "failed writing temp config file: %v", err)
+	require.NoError(t, os.WriteFile(tmpFilePath, configContent, 0600), "failed writing temp config file: %v", err)
 
 	targetConfig := &testConfig{}
 

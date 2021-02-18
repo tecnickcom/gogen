@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -130,7 +130,7 @@ func Test_defaultIndexHandler(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
@@ -179,7 +179,7 @@ func Test_defaultIPHandler(t *testing.T) {
 				require.NoError(t, err, "error closing resp.Body")
 			}()
 
-			bodyData, _ := ioutil.ReadAll(resp.Body)
+			bodyData, _ := io.ReadAll(resp.Body)
 			body := string(bodyData)
 
 			require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
@@ -210,7 +210,7 @@ func Test_defaultPingHandler(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
@@ -232,7 +232,7 @@ func Test_defaultStatusHandler(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))

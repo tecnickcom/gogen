@@ -3,7 +3,7 @@ package ipify
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -74,7 +74,7 @@ func (c *Client) GetPublicIP(ctx context.Context) (string, error) {
 		return c.errorIP, fmt.Errorf("unexpected ipify status code: %d", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return c.errorIP, fmt.Errorf("failed reading response body: %w", err)
 	}

@@ -2,7 +2,7 @@ package httputil
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -70,7 +70,7 @@ func TestPathParam(t *testing.T) {
 
 			r.ServeHTTP(rr, req)
 
-			body, err := ioutil.ReadAll(rr.Body)
+			body, err := io.ReadAll(rr.Body)
 			require.NoError(t, err)
 
 			require.Equal(t, http.StatusOK, rr.Code)

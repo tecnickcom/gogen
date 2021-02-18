@@ -2,7 +2,7 @@ package httputil
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -67,7 +67,7 @@ func TestSendJSON(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
@@ -95,7 +95,7 @@ func TestSendText(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
@@ -123,7 +123,7 @@ func TestSendStatus(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	require.Equal(t, http.StatusText(http.StatusUnauthorized)+"\n", string(body))

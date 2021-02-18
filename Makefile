@@ -137,10 +137,13 @@ dbuild:
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.36.0
+	$(GO) get -u ./...
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.37.0
 	(GO111MODULE=off $(GO) get -u github.com/jstemmer/go-junit-report)
 	(GO111MODULE=off $(GO) get -u github.com/rakyll/gotest)
 	(GO111MODULE=off $(GO) get -u github.com/golang/mock/mockgen)
+	($(GO) get -u github.com/golang/mock/gomock@v1.4.4)
+	($(GO) get -u github.com/DATA-DOG/go-sqlmock)
 
 # Create the trget directories if missing
 .PHONY: ensuretarget

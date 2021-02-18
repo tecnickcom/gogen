@@ -3,7 +3,7 @@ package healthcheck
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -112,7 +112,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 				require.NoError(t, err, "error closing resp.Body")
 			}()
 
-			payloadData, _ := ioutil.ReadAll(resp.Body)
+			payloadData, _ := io.ReadAll(resp.Body)
 			payload := string(payloadData)
 
 			require.Equal(t, tt.wantStatus, resp.StatusCode)

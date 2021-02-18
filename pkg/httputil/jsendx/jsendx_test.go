@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -37,7 +37,7 @@ func TestSend(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
@@ -169,7 +169,7 @@ func TestDefaultIndexHandler(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	bodyData, _ := ioutil.ReadAll(resp.Body)
+	bodyData, _ := io.ReadAll(resp.Body)
 	body := string(bodyData)
 	body = testutil.ReplaceDateTime(body, "<DT>")
 	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
@@ -224,7 +224,7 @@ func TestDefaultIPHandler(t *testing.T) {
 				require.NoError(t, err, "error closing resp.Body")
 			}()
 
-			bodyData, _ := ioutil.ReadAll(resp.Body)
+			bodyData, _ := io.ReadAll(resp.Body)
 			body := string(bodyData)
 			body = testutil.ReplaceDateTime(body, "<DT>")
 			body = testutil.ReplaceUnixTimestamp(body, "<TS>")
@@ -264,7 +264,7 @@ func TestDefaultPingHandler(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	bodyData, _ := ioutil.ReadAll(resp.Body)
+	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
 	body = testutil.ReplaceDateTime(body, "<DT>")
@@ -297,7 +297,7 @@ func TestDefaultStatusHandler(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	bodyData, _ := ioutil.ReadAll(resp.Body)
+	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
 	body = testutil.ReplaceDateTime(body, "<DT>")
@@ -328,7 +328,7 @@ func TestHealthCheckResultWriter(t *testing.T) {
 		require.NoError(t, err, "error closing resp.Body")
 	}()
 
-	bodyData, _ := ioutil.ReadAll(resp.Body)
+	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
 	body = testutil.ReplaceDateTime(body, "<DT>")

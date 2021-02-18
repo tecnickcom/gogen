@@ -1,10 +1,11 @@
 module github.com/gosrvlibexample/gosrvlibexample
 
-go 1.15
+go 1.16
 
 replace github.com/nexmoinc/gosrvlib => ../..
 
 require (
+	github.com/golang/mock v1.4.4 // indirect
 	github.com/nexmoinc/gosrvlib v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.9.0
 	github.com/spf13/cobra v1.1.3
