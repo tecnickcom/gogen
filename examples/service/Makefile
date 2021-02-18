@@ -331,7 +331,7 @@ deps: ensuretarget
 	(GO111MODULE=off $(GO) get -u github.com/jstemmer/go-junit-report)
 	(GO111MODULE=off $(GO) get -u github.com/rakyll/gotest)
 	(GO111MODULE=off $(GO) get -u github.com/golang/mock/mockgen)
-	($(GO) get -u github.com/golang/mock/gomock@v1.4.4)
+	($(GO) get -u github.com/golang/mock/gomock)
 
 # Build a docker container to run this service
 .PHONY: docker
