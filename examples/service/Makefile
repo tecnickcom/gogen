@@ -326,12 +326,15 @@ endif
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	$(GO) get -u ./...
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.37.0
-	(GO111MODULE=off $(GO) get -u github.com/jstemmer/go-junit-report)
-	(GO111MODULE=off $(GO) get -u github.com/rakyll/gotest)
-	(GO111MODULE=off $(GO) get -u github.com/golang/mock/mockgen)
-	($(GO) get -u github.com/golang/mock/gomock)
+	$(GO) get -u $(CMDDIR)/...
+	$(GO) get -u $(SRCDIR)/...
+	$(GO) get -u -d github.com/rakyll/gotest
+	$(GO) install github.com/rakyll/gotest
+	$(GO) install github.com/jstemmer/go-junit-report
+	$(GO) get -u -d github.com/golang/mock/mockgen
+	$(GO) install github.com/golang/mock/mockgen
+	$(GO) get -u -d github.com/golang/mock/gomock
 
 # Build a docker container to run this service
 .PHONY: docker

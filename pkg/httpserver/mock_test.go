@@ -6,84 +6,83 @@ package httpserver
 
 import (
 	context "context"
-	http "net/http"
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	route "github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
+	http "net/http"
+	reflect "reflect"
 )
 
-// MockRouter is a mock of Router interface.
+// MockRouter is a mock of Router interface
 type MockRouter struct {
 	ctrl     *gomock.Controller
 	recorder *MockRouterMockRecorder
 }
 
-// MockRouterMockRecorder is the mock recorder for MockRouter.
+// MockRouterMockRecorder is the mock recorder for MockRouter
 type MockRouterMockRecorder struct {
 	mock *MockRouter
 }
 
-// NewMockRouter creates a new mock instance.
+// NewMockRouter creates a new mock instance
 func NewMockRouter(ctrl *gomock.Controller) *MockRouter {
 	mock := &MockRouter{ctrl: ctrl}
 	mock.recorder = &MockRouterMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockRouter) EXPECT() *MockRouterMockRecorder {
 	return m.recorder
 }
 
-// Handler mocks base method.
+// Handler mocks base method
 func (m *MockRouter) Handler(arg0, arg1 string, arg2 http.Handler) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Handler", arg0, arg1, arg2)
 }
 
-// Handler indicates an expected call of Handler.
+// Handler indicates an expected call of Handler
 func (mr *MockRouterMockRecorder) Handler(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Handler", reflect.TypeOf((*MockRouter)(nil).Handler), arg0, arg1, arg2)
 }
 
-// ServeHTTP mocks base method.
+// ServeHTTP mocks base method
 func (m *MockRouter) ServeHTTP(arg0 http.ResponseWriter, arg1 *http.Request) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "ServeHTTP", arg0, arg1)
 }
 
-// ServeHTTP indicates an expected call of ServeHTTP.
+// ServeHTTP indicates an expected call of ServeHTTP
 func (mr *MockRouterMockRecorder) ServeHTTP(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServeHTTP", reflect.TypeOf((*MockRouter)(nil).ServeHTTP), arg0, arg1)
 }
 
-// MockBinder is a mock of Binder interface.
+// MockBinder is a mock of Binder interface
 type MockBinder struct {
 	ctrl     *gomock.Controller
 	recorder *MockBinderMockRecorder
 }
 
-// MockBinderMockRecorder is the mock recorder for MockBinder.
+// MockBinderMockRecorder is the mock recorder for MockBinder
 type MockBinderMockRecorder struct {
 	mock *MockBinder
 }
 
-// NewMockBinder creates a new mock instance.
+// NewMockBinder creates a new mock instance
 func NewMockBinder(ctrl *gomock.Controller) *MockBinder {
 	mock := &MockBinder{ctrl: ctrl}
 	mock.recorder = &MockBinderMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockBinder) EXPECT() *MockBinderMockRecorder {
 	return m.recorder
 }
 
-// BindHTTP mocks base method.
+// BindHTTP mocks base method
 func (m *MockBinder) BindHTTP(arg0 context.Context) []route.Route {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BindHTTP", arg0)
@@ -91,7 +90,7 @@ func (m *MockBinder) BindHTTP(arg0 context.Context) []route.Route {
 	return ret0
 }
 
-// BindHTTP indicates an expected call of BindHTTP.
+// BindHTTP indicates an expected call of BindHTTP
 func (mr *MockBinderMockRecorder) BindHTTP(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindHTTP", reflect.TypeOf((*MockBinder)(nil).BindHTTP), arg0)

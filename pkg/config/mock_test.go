@@ -5,50 +5,49 @@
 package config
 
 import (
-	io "io"
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	pflag "github.com/spf13/pflag"
 	viper "github.com/spf13/viper"
+	io "io"
+	reflect "reflect"
 )
 
-// MockViper is a mock of Viper interface.
+// MockViper is a mock of Viper interface
 type MockViper struct {
 	ctrl     *gomock.Controller
 	recorder *MockViperMockRecorder
 }
 
-// MockViperMockRecorder is the mock recorder for MockViper.
+// MockViperMockRecorder is the mock recorder for MockViper
 type MockViperMockRecorder struct {
 	mock *MockViper
 }
 
-// NewMockViper creates a new mock instance.
+// NewMockViper creates a new mock instance
 func NewMockViper(ctrl *gomock.Controller) *MockViper {
 	mock := &MockViper{ctrl: ctrl}
 	mock.recorder = &MockViperMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockViper) EXPECT() *MockViperMockRecorder {
 	return m.recorder
 }
 
-// AddConfigPath mocks base method.
+// AddConfigPath mocks base method
 func (m *MockViper) AddConfigPath(arg0 string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AddConfigPath", arg0)
 }
 
-// AddConfigPath indicates an expected call of AddConfigPath.
+// AddConfigPath indicates an expected call of AddConfigPath
 func (mr *MockViperMockRecorder) AddConfigPath(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddConfigPath", reflect.TypeOf((*MockViper)(nil).AddConfigPath), arg0)
 }
 
-// AddRemoteProvider mocks base method.
+// AddRemoteProvider mocks base method
 func (m *MockViper) AddRemoteProvider(arg0, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddRemoteProvider", arg0, arg1, arg2)
@@ -56,13 +55,13 @@ func (m *MockViper) AddRemoteProvider(arg0, arg1, arg2 string) error {
 	return ret0
 }
 
-// AddRemoteProvider indicates an expected call of AddRemoteProvider.
+// AddRemoteProvider indicates an expected call of AddRemoteProvider
 func (mr *MockViperMockRecorder) AddRemoteProvider(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRemoteProvider", reflect.TypeOf((*MockViper)(nil).AddRemoteProvider), arg0, arg1, arg2)
 }
 
-// AddSecureRemoteProvider mocks base method.
+// AddSecureRemoteProvider mocks base method
 func (m *MockViper) AddSecureRemoteProvider(arg0, arg1, arg2, arg3 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddSecureRemoteProvider", arg0, arg1, arg2, arg3)
@@ -70,13 +69,13 @@ func (m *MockViper) AddSecureRemoteProvider(arg0, arg1, arg2, arg3 string) error
 	return ret0
 }
 
-// AddSecureRemoteProvider indicates an expected call of AddSecureRemoteProvider.
+// AddSecureRemoteProvider indicates an expected call of AddSecureRemoteProvider
 func (mr *MockViperMockRecorder) AddSecureRemoteProvider(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddSecureRemoteProvider", reflect.TypeOf((*MockViper)(nil).AddSecureRemoteProvider), arg0, arg1, arg2, arg3)
 }
 
-// AllKeys mocks base method.
+// AllKeys mocks base method
 func (m *MockViper) AllKeys() []string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AllKeys")
@@ -84,25 +83,25 @@ func (m *MockViper) AllKeys() []string {
 	return ret0
 }
 
-// AllKeys indicates an expected call of AllKeys.
+// AllKeys indicates an expected call of AllKeys
 func (mr *MockViperMockRecorder) AllKeys() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllKeys", reflect.TypeOf((*MockViper)(nil).AllKeys))
 }
 
-// AutomaticEnv mocks base method.
+// AutomaticEnv mocks base method
 func (m *MockViper) AutomaticEnv() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AutomaticEnv")
 }
 
-// AutomaticEnv indicates an expected call of AutomaticEnv.
+// AutomaticEnv indicates an expected call of AutomaticEnv
 func (mr *MockViperMockRecorder) AutomaticEnv() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AutomaticEnv", reflect.TypeOf((*MockViper)(nil).AutomaticEnv))
 }
 
-// BindEnv mocks base method.
+// BindEnv mocks base method
 func (m *MockViper) BindEnv(arg0 ...string) error {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{}
@@ -114,13 +113,13 @@ func (m *MockViper) BindEnv(arg0 ...string) error {
 	return ret0
 }
 
-// BindEnv indicates an expected call of BindEnv.
+// BindEnv indicates an expected call of BindEnv
 func (mr *MockViperMockRecorder) BindEnv(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindEnv", reflect.TypeOf((*MockViper)(nil).BindEnv), arg0...)
 }
 
-// BindPFlag mocks base method.
+// BindPFlag mocks base method
 func (m *MockViper) BindPFlag(arg0 string, arg1 *pflag.Flag) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BindPFlag", arg0, arg1)
@@ -128,13 +127,13 @@ func (m *MockViper) BindPFlag(arg0 string, arg1 *pflag.Flag) error {
 	return ret0
 }
 
-// BindPFlag indicates an expected call of BindPFlag.
+// BindPFlag indicates an expected call of BindPFlag
 func (mr *MockViperMockRecorder) BindPFlag(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindPFlag", reflect.TypeOf((*MockViper)(nil).BindPFlag), arg0, arg1)
 }
 
-// Get mocks base method.
+// Get mocks base method
 func (m *MockViper) Get(arg0 string) interface{} {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0)
@@ -142,13 +141,13 @@ func (m *MockViper) Get(arg0 string) interface{} {
 	return ret0
 }
 
-// Get indicates an expected call of Get.
+// Get indicates an expected call of Get
 func (mr *MockViperMockRecorder) Get(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockViper)(nil).Get), arg0)
 }
 
-// ReadConfig mocks base method.
+// ReadConfig mocks base method
 func (m *MockViper) ReadConfig(arg0 io.Reader) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadConfig", arg0)
@@ -156,13 +155,13 @@ func (m *MockViper) ReadConfig(arg0 io.Reader) error {
 	return ret0
 }
 
-// ReadConfig indicates an expected call of ReadConfig.
+// ReadConfig indicates an expected call of ReadConfig
 func (mr *MockViperMockRecorder) ReadConfig(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadConfig", reflect.TypeOf((*MockViper)(nil).ReadConfig), arg0)
 }
 
-// ReadInConfig mocks base method.
+// ReadInConfig mocks base method
 func (m *MockViper) ReadInConfig() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadInConfig")
@@ -170,13 +169,13 @@ func (m *MockViper) ReadInConfig() error {
 	return ret0
 }
 
-// ReadInConfig indicates an expected call of ReadInConfig.
+// ReadInConfig indicates an expected call of ReadInConfig
 func (mr *MockViperMockRecorder) ReadInConfig() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadInConfig", reflect.TypeOf((*MockViper)(nil).ReadInConfig))
 }
 
-// ReadRemoteConfig mocks base method.
+// ReadRemoteConfig mocks base method
 func (m *MockViper) ReadRemoteConfig() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadRemoteConfig")
@@ -184,61 +183,61 @@ func (m *MockViper) ReadRemoteConfig() error {
 	return ret0
 }
 
-// ReadRemoteConfig indicates an expected call of ReadRemoteConfig.
+// ReadRemoteConfig indicates an expected call of ReadRemoteConfig
 func (mr *MockViperMockRecorder) ReadRemoteConfig() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadRemoteConfig", reflect.TypeOf((*MockViper)(nil).ReadRemoteConfig))
 }
 
-// SetConfigName mocks base method.
+// SetConfigName mocks base method
 func (m *MockViper) SetConfigName(arg0 string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetConfigName", arg0)
 }
 
-// SetConfigName indicates an expected call of SetConfigName.
+// SetConfigName indicates an expected call of SetConfigName
 func (mr *MockViperMockRecorder) SetConfigName(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetConfigName", reflect.TypeOf((*MockViper)(nil).SetConfigName), arg0)
 }
 
-// SetConfigType mocks base method.
+// SetConfigType mocks base method
 func (m *MockViper) SetConfigType(arg0 string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetConfigType", arg0)
 }
 
-// SetConfigType indicates an expected call of SetConfigType.
+// SetConfigType indicates an expected call of SetConfigType
 func (mr *MockViperMockRecorder) SetConfigType(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetConfigType", reflect.TypeOf((*MockViper)(nil).SetConfigType), arg0)
 }
 
-// SetDefault mocks base method.
+// SetDefault mocks base method
 func (m *MockViper) SetDefault(arg0 string, arg1 interface{}) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetDefault", arg0, arg1)
 }
 
-// SetDefault indicates an expected call of SetDefault.
+// SetDefault indicates an expected call of SetDefault
 func (mr *MockViperMockRecorder) SetDefault(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefault", reflect.TypeOf((*MockViper)(nil).SetDefault), arg0, arg1)
 }
 
-// SetEnvPrefix mocks base method.
+// SetEnvPrefix mocks base method
 func (m *MockViper) SetEnvPrefix(arg0 string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "SetEnvPrefix", arg0)
 }
 
-// SetEnvPrefix indicates an expected call of SetEnvPrefix.
+// SetEnvPrefix indicates an expected call of SetEnvPrefix
 func (mr *MockViperMockRecorder) SetEnvPrefix(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnvPrefix", reflect.TypeOf((*MockViper)(nil).SetEnvPrefix), arg0)
 }
 
-// Unmarshal mocks base method.
+// Unmarshal mocks base method
 func (m *MockViper) Unmarshal(arg0 interface{}, arg1 ...viper.DecoderConfigOption) error {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0}
@@ -250,7 +249,7 @@ func (m *MockViper) Unmarshal(arg0 interface{}, arg1 ...viper.DecoderConfigOptio
 	return ret0
 }
 
-// Unmarshal indicates an expected call of Unmarshal.
+// Unmarshal indicates an expected call of Unmarshal
 func (mr *MockViperMockRecorder) Unmarshal(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{arg0}, arg1...)
