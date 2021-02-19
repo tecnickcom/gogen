@@ -204,7 +204,6 @@ help:
 	@echo "    make apitest       : Execute API tests"
 	@echo "    make buildall      : Full build and test sequence"
 	@echo "    make build         : Compile the application"
-	@echo "    make cleandeps     : Remove all dependencies, including go.sum and go.mod entries"
 	@echo "    make clean         : Remove any build artifact"
 	@echo "    make confcheck     : Check the configuration files"
 	@echo "    make coverage      : Generate the coverage report"
@@ -219,7 +218,7 @@ help:
 	@echo "    make generate      : Generate go code automatically"
 	@echo "    make install       : Install this application"
 	@echo "    make linter        : Check code against multiple linters"
-	@echo "    make mod           : Download and vendor dependencies"
+	@echo "    make mod           : Download dependencies"
 	@echo "    make openapitest   : Test the OpenAPI specification"
 	@echo "    make qa            : Run all tests and static analysis tools"
 	@echo "    make rpm           : Build an RPM package"
@@ -227,7 +226,7 @@ help:
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo "To test and build everything from scratch:"
-	@echo "DEVMODE=LOCAL make format clean cleandeps deps generate mod qa build docker dockertest"
+	@echo "DEVMODE=LOCAL make format clean mod deps generate qa build docker dockertest"
 	@echo ""
 
 # Alias for help target
@@ -252,15 +251,7 @@ build:
 	$(GO) build \
 	-tags ${STATIC_TAG} \
 	-ldflags '-w -s -X main.programVersion=${VERSION} -X main.programRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
-	-mod=vendor \
 	-o ./target/${BINPATH}$(PROJECT) $(CMDDIR)
-
-# Remove any build artifact
-.PHONY: cleandeps
-cleandeps:
-	rm -rf vendor
-	rm -f go.sum
-	sed -i '/require (/,/)/crequire ()' go.mod
 
 # Remove any build artifact
 .PHONY: clean
@@ -327,12 +318,9 @@ endif
 .PHONY: deps
 deps: ensuretarget
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.37.0
-	$(GO) get -u $(CMDDIR)/...
-	$(GO) get -u $(SRCDIR)/...
-	$(GO) get -u github.com/rakyll/gotest
-	$(GO) get -u github.com/jstemmer/go-junit-report
-	$(GO) get -u github.com/golang/mock/mockgen
-	$(GO) get -u github.com/golang/mock/gomock
+	$(GO) install github.com/rakyll/gotest
+	$(GO) install github.com/jstemmer/go-junit-report
+	$(GO) install github.com/golang/mock/mockgen
 
 # Build a docker container to run this service
 .PHONY: docker
@@ -469,12 +457,10 @@ linter:
 	$(BINUTIL)/golangci-lint run --exclude-use-default=false $(CMDDIR)/... $(SRCDIR)/...
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
-# Download and vendor dependencies
+# Download dependencies
 .PHONY: mod
 mod:
 	$(GO) mod download
-	$(GO) mod vendor
-	rm -f vendor/github.com/coreos/etcd/client/keys.generated.go || true
 
 # Test the OpenAPI specification against the real deployed service
 .PHONY: openapitest

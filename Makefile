@@ -85,7 +85,6 @@ help:
 	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
-	@echo "    make cleandeps : Remove all dependencies, including go.sum and go.mod entries"
 	@echo "    make clean     : Remove any build artifact"
 	@echo "    make coverage  : Generate the coverage report"
 	@echo "    make dbuild    : Build everything inside a Docker container"
@@ -102,18 +101,11 @@ help:
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo "To test and build everything from scratch:"
-	@echo "DEVMODE=LOCAL make format clean cleandeps deps generate mod qa example"
+	@echo "DEVMODE=LOCAL make format clean mod deps generate qa example"
 	@echo ""
 
 # Alias for help target
 all: help
-
-# Remove any build artifact
-.PHONY: cleandeps
-cleandeps:
-	rm -rf vendor
-	rm -f go.sum
-	sed -i '/require (/,/)/crequire ()' go.mod
 
 # Remove any build artifact
 .PHONY: clean
@@ -138,12 +130,9 @@ dbuild:
 .PHONY: deps
 deps: ensuretarget
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.37.0
-	$(GO) get -u $(SRCDIR)/...
-	$(GO) get -u github.com/rakyll/gotest
-	$(GO) get -u github.com/jstemmer/go-junit-report
-	$(GO) get -u github.com/golang/mock/mockgen
-	$(GO) get -u github.com/golang/mock/gomock
-	$(GO) get -u github.com/DATA-DOG/go-sqlmock
+	$(GO) install github.com/rakyll/gotest
+	$(GO) install github.com/jstemmer/go-junit-report
+	$(GO) install github.com/golang/mock/mockgen
 
 # Create the trget directories if missing
 .PHONY: ensuretarget
@@ -156,7 +145,7 @@ ensuretarget:
 .PHONY: example
 example:
 	cd examples/service && \
-	make clean cleandeps deps generate mod qa build
+	make clean mod deps generate qa build
 
 # Format the source code
 .PHONY: format
@@ -177,12 +166,10 @@ linter:
 	$(BINUTIL)/golangci-lint run --exclude-use-default=false $(SRCDIR)/...
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
-# Download and vendor dependencies
+# Download dependencies
 .PHONY: mod
 mod:
 	$(GO) mod download
-	#$(GO) mod vendor
-	#rm -f vendor/github.com/coreos/etcd/client/keys.generated.go || true
 
 # Create a new project based on the example template
 .PHONY: project

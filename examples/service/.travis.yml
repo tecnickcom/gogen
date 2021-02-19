@@ -41,7 +41,7 @@ install:
 
 script:
   - echo "$TRAVIS_BUILD_NUMBER" > RELEASE
-  - make deps mod build qa docker dockertest
+  - make mod deps build qa docker dockertest
 
 after_failure:
   - cat ./target/test/report.xml
