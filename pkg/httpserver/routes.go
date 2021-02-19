@@ -46,7 +46,7 @@ func allDefaultRoutes() []defaultRoute {
 }
 
 func newDefaultRoutes(cfg *config) []route.Route {
-	routes := make([]route.Route, 0)
+	routes := make([]route.Route, 0, len(cfg.defaultEnabledRoutes)+1)
 
 	for _, id := range cfg.defaultEnabledRoutes {
 		switch id {

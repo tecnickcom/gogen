@@ -19,7 +19,7 @@ type config struct {
 
 func defaultConfig() *config {
 	return &config{
-		fields:            make([]zap.Field, 0),
+		fields:            make([]zap.Field, 0, 3),
 		format:            JSONFormat,
 		level:             zap.DebugLevel,
 		outputPaths:       []string{"stderr"},

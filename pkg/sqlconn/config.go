@@ -18,29 +18,29 @@ const (
 func defaultConfig(driver, dsn string) *config {
 	return &config{
 		checkConnectionFunc:  checkConnection,
-		connectMaxRetry:      defaultConnectMaxRetry,
-		connectRetryInterval: defaultConnectRetryInterval,
+		sqlOpenFunc:          sql.Open,
 		connectFunc:          connectWithBackoff,
+		connMaxLifetime:      defaultConnMaxLifetime,
+		connectRetryInterval: defaultConnectRetryInterval,
+		connectMaxRetry:      defaultConnectMaxRetry,
+		connMaxIdle:          defaultConnMaxIdle,
+		connMaxOpen:          defaultConnMaxOpen,
 		driver:               driver,
 		dsn:                  dsn,
-		sqlOpenFunc:          sql.Open,
-		connMaxIdle:          defaultConnMaxIdle,
-		connMaxLifetime:      defaultConnMaxLifetime,
-		connMaxOpen:          defaultConnMaxOpen,
 	}
 }
 
 type config struct {
 	checkConnectionFunc  CheckConnectionFunc
-	connectMaxRetry      int
-	connectRetryInterval time.Duration
+	sqlOpenFunc          SQLOpenFunc
 	connectFunc          ConnectFunc
-	connMaxIdle          int
 	connMaxLifetime      time.Duration
+	connectRetryInterval time.Duration
+	connectMaxRetry      int
+	connMaxIdle          int
 	connMaxOpen          int
 	driver               string
 	dsn                  string
-	sqlOpenFunc          SQLOpenFunc
 }
 
 func (c *config) validate() error {

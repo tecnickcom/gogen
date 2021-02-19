@@ -24,7 +24,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/prometheus/client_golang v1.9.0
-	github.com/prometheus/common v0.16.0 // indirect
+	github.com/prometheus/common v0.17.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/spf13/afero v1.5.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -35,11 +35,11 @@ require (
 	go.opencensus.io v0.22.6 // indirect
 	go.uber.org/multierr v1.6.0
 	go.uber.org/zap v1.16.0
-	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
+	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect
 	golang.org/x/exp v0.0.0-20210212053707-62dc52270d37 // indirect
-	golang.org/x/oauth2 v0.0.0-20210216194517-16ff1888fd2e // indirect
-	golang.org/x/sys v0.0.0-20210218085108-9555bcde0c6a // indirect
-	google.golang.org/genproto v0.0.0-20210217220511-c18582744cc2 // indirect
+	golang.org/x/oauth2 v0.0.0-20210218202405-ba52d332ba99 // indirect
+	golang.org/x/sys v0.0.0-20210218155724-8ebf48af031b // indirect
+	google.golang.org/genproto v0.0.0-20210218151259-fe80b386bf06 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
