@@ -6,6 +6,7 @@ replace github.com/nexmoinc/gosrvlib => ../..
 
 require (
 	github.com/golang/mock v1.4.4 // indirect
+	github.com/jstemmer/go-junit-report v0.9.1 // indirect
 	github.com/nexmoinc/gosrvlib v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rakyll/gotest v0.0.5 // indirect
