@@ -47,6 +47,11 @@ func TestNewLogger(t *testing.T) {
 			opts:    []Option{WithFormat(JSONFormat), WithLevel(zap.InfoLevel)},
 			wantErr: false,
 		},
+		{
+			name:    "succeed with empty options",
+			opts:    []Option{},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -144,9 +149,22 @@ func TestWithLogger(t *testing.T) {
 	ctx1 := WithLogger(ctx, l1)
 	require.Equal(t, ctx, ctx1)
 
-	// do not override with other logger
-	ctx2 := WithLogger(ctx, zap.NewNop())
-	require.Equal(t, ctx, ctx2)
+	// override with another logger
+	l2 := zap.NewNop()
+	ctx2 := WithLogger(ctx, l2)
+	require.NotEqual(t, ctx, ctx2)
+
+	// test with real logger
+	l3, err := NewLogger()
+	require.NoError(t, err)
+
+	ctx3 := WithLogger(ctx, l3)
+	require.NotEqual(t, ctx, ctx3)
+
+	// override with logger change
+	l4 := l3.With(zap.String("A", "B"))
+	ctx4 := WithLogger(ctx3, l4)
+	require.NotEqual(t, ctx3, ctx4)
 }
 
 func TestFromContext(t *testing.T) {

@@ -144,13 +144,8 @@ func FromContext(ctx context.Context) *zap.Logger {
 
 // WithLogger returns a new context with the given logger.
 func WithLogger(ctx context.Context, l *zap.Logger) context.Context {
-	if lp, ok := ctx.Value(ctxKey{}).(*zap.Logger); ok {
-		// Do not store same logger.
-		if lp == l {
-			return ctx
-		}
-
-		return ctx
+	if lp, ok := ctx.Value(ctxKey{}).(*zap.Logger); ok && lp == l {
+		return ctx // do not overwrite the same logger
 	}
 
 	return context.WithValue(ctx, ctxKey{}, l)
