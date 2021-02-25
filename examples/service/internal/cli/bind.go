@@ -55,7 +55,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			httpclient.WithComponent("ipify"),
 		)
 
-		ipifyClient, err := ipify.NewClient(
+		ipifyClient, err := ipify.New(
 			ipify.WithHTTPClient(ipc),
 			ipify.WithTimeout(ipcTimeout),
 			ipify.WithURL(cfg.Ipify.Address),

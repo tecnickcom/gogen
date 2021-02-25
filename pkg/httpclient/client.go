@@ -20,17 +20,6 @@ type Client struct {
 	redactFn          RedactFn
 }
 
-// New creates a new HTTP client instance.
-func New(opts ...Option) *Client {
-	c := defaultClient()
-
-	for _, applyOpt := range opts {
-		applyOpt(c)
-	}
-
-	return c
-}
-
 // defaultClient() returns a default client.
 func defaultClient() *Client {
 	return &Client{
@@ -41,6 +30,17 @@ func defaultClient() *Client {
 		component:         "-",
 		redactFn:          redact.HTTPData,
 	}
+}
+
+// New creates a new HTTP client instance.
+func New(opts ...Option) *Client {
+	c := defaultClient()
+
+	for _, applyOpt := range opts {
+		applyOpt(c)
+	}
+
+	return c
 }
 
 // Do performs the HTTP request with added trace ID, logging and metrics.

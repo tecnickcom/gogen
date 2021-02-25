@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewClient(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name        string
-		opts        []ClientOption
+		opts        []Option
 		wantTimeout time.Duration
 		wantAPIURL  string
 		wantErrorIP string
@@ -31,7 +31,7 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name: "succeeds with custom values",
-			opts: []ClientOption{
+			opts: []Option{
 				WithTimeout(3 * time.Second),
 				WithURL("http://test.ipify.invalid"),
 				WithErrorIP("0.0.0.0"),
@@ -43,7 +43,7 @@ func TestNewClient(t *testing.T) {
 		},
 		{
 			name:    "fails with invalid character in URL",
-			opts:    []ClientOption{WithURL("http://invalid-url.domain.invalid\u007F")},
+			opts:    []Option{WithURL("http://invalid-url.domain.invalid\u007F")},
 			wantErr: true,
 		},
 	}
@@ -53,17 +53,17 @@ func TestNewClient(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			c, err := NewClient(tt.opts...)
+			c, err := New(tt.opts...)
 			if tt.wantErr {
-				require.Nil(t, c, "NewClient() returned client should be nil")
-				require.Error(t, err, "NewClient() error = %v, wantErr %v", err, tt.wantErr)
+				require.Nil(t, c, "New() returned client should be nil")
+				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			require.NotNil(t, c, "NewClient() returned client should not be nil")
-			require.NoError(t, err, "NewClient() unexpected error = %v", err)
-			require.Equal(t, tt.wantTimeout, c.timeout, "NewClient() unexpected timeout = %d got %d", tt.wantTimeout, c.timeout)
-			require.Equal(t, tt.wantAPIURL, c.apiURL, "NewClient() unexpected apiURL = %d got %d", tt.wantAPIURL, c.apiURL)
-			require.Equal(t, tt.wantErrorIP, c.errorIP, "NewClient() unexpected errorIP = %d got %d", tt.wantErrorIP, c.errorIP)
+			require.NotNil(t, c, "New() returned client should not be nil")
+			require.NoError(t, err, "New() unexpected error = %v", err)
+			require.Equal(t, tt.wantTimeout, c.timeout, "New() unexpected timeout = %d got %d", tt.wantTimeout, c.timeout)
+			require.Equal(t, tt.wantAPIURL, c.apiURL, "New() unexpected apiURL = %d got %d", tt.wantAPIURL, c.apiURL)
+			require.Equal(t, tt.wantErrorIP, c.errorIP, "New() unexpected errorIP = %d got %d", tt.wantErrorIP, c.errorIP)
 		})
 	}
 }
@@ -121,8 +121,8 @@ func TestClient_GetPublicIP(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 
-			opts := []ClientOption{WithURL(ts.URL)}
-			c, err := NewClient(opts...)
+			opts := []Option{WithURL(ts.URL)}
+			c, err := New(opts...)
 			require.NoError(t, err, "Client.GetPublicIP() create client unexpected error = %v", err)
 
 			ip, err := c.GetPublicIP(testutil.Context())
@@ -140,7 +140,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 func TestClient_GetPublicIP_URLError(t *testing.T) {
 	t.Parallel()
 
-	c, err := NewClient()
+	c, err := New()
 	require.NoError(t, err, "Client.GetPublicIP() create client unexpected error = %v", err)
 
 	c.apiURL = "\x007"

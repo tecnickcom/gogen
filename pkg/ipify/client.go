@@ -30,13 +30,17 @@ type Client struct {
 	errorIP    string
 }
 
-// NewClient creates a new ipify client instance.
-func NewClient(opts ...ClientOption) (*Client, error) {
-	c := &Client{
+func defaultClient() *Client {
+	return &Client{
 		timeout: defaultTimeout,
 		apiURL:  defaultAPIURL,
 		errorIP: defaultErrorIP,
 	}
+}
+
+// New creates a new ipify client instance.
+func New(opts ...Option) (*Client, error) {
+	c := defaultClient()
 
 	for _, applyOpt := range opts {
 		applyOpt(c)

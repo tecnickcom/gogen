@@ -31,7 +31,7 @@ type InstrumentHandler func(string, http.HandlerFunc) http.Handler
 
 // GetPublicIPDefaultFunc returns the GetPublicIP function for a default ipify client.
 func GetPublicIPDefaultFunc() GetPublicIPFunc {
-	c, _ := ipify.NewClient() // no errors are returned with default values
+	c, _ := ipify.New() // no errors are returned with default values
 	return c.GetPublicIP
 }
 
