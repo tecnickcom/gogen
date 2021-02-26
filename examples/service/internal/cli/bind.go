@@ -9,6 +9,7 @@ import (
 	"github.com/gosrvlibexample/gosrvlibexample/internal/httphandler"
 	instr "github.com/gosrvlibexample/gosrvlibexample/internal/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
+	"github.com/nexmoinc/gosrvlib/pkg/errtrace"
 	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/httpclient"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
@@ -61,7 +62,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			ipify.WithURL(cfg.Ipify.Address),
 		)
 		if err != nil {
-			return fmt.Errorf("failed to build ipify client: %w", err)
+			return fmt.Errorf("failed to build ipify client: %w", errtrace.Trace(err))
 		}
 
 		// start monitoring server
@@ -78,7 +79,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 		}
 
 		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
-			return fmt.Errorf("error starting monitoring HTTP server: %w", err)
+			return fmt.Errorf("error starting monitoring HTTP server: %w", errtrace.Trace(err))
 		}
 
 		// example of custom metric
@@ -91,7 +92,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 		}
 
 		if err := httpserver.Start(ctx, serviceBinder, httpServiceOpts...); err != nil {
-			return fmt.Errorf("error starting service HTTP server: %w", err)
+			return fmt.Errorf("error starting service HTTP server: %w", errtrace.Trace(err))
 		}
 
 		return nil
