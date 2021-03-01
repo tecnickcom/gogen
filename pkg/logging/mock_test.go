@@ -5,34 +5,35 @@
 package logging
 
 import (
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
-// MockSyncer is a mock of Syncer interface
+// MockSyncer is a mock of Syncer interface.
 type MockSyncer struct {
 	ctrl     *gomock.Controller
 	recorder *MockSyncerMockRecorder
 }
 
-// MockSyncerMockRecorder is the mock recorder for MockSyncer
+// MockSyncerMockRecorder is the mock recorder for MockSyncer.
 type MockSyncerMockRecorder struct {
 	mock *MockSyncer
 }
 
-// NewMockSyncer creates a new mock instance
+// NewMockSyncer creates a new mock instance.
 func NewMockSyncer(ctrl *gomock.Controller) *MockSyncer {
 	mock := &MockSyncer{ctrl: ctrl}
 	mock.recorder = &MockSyncerMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockSyncer) EXPECT() *MockSyncerMockRecorder {
 	return m.recorder
 }
 
-// Sync mocks base method
+// Sync mocks base method.
 func (m *MockSyncer) Sync() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Sync")
@@ -40,7 +41,7 @@ func (m *MockSyncer) Sync() error {
 	return ret0
 }
 
-// Sync indicates an expected call of Sync
+// Sync indicates an expected call of Sync.
 func (mr *MockSyncerMockRecorder) Sync() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sync", reflect.TypeOf((*MockSyncer)(nil).Sync))

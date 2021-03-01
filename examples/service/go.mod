@@ -8,7 +8,6 @@ require (
 	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
 	github.com/coreos/go-etcd v2.0.0+incompatible // indirect
 	github.com/cpuguy83/go-md2man v1.0.10 // indirect
-	github.com/golang/mock v1.4.4 // indirect
 	github.com/jstemmer/go-junit-report v0.9.1 // indirect
 	github.com/nexmoinc/gosrvlib v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.9.0

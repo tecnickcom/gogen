@@ -94,6 +94,7 @@ help:
 	@echo "    make generate  : Generate go code automatically"
 	@echo "    make linter    : Check code against multiple linters"
 	@echo "    make mod       : Download dependencies"
+	@echo "    make modupdate : Update dependencies"
 	@echo "    make project   : Generate a new project from the example using the data set via CONFIG=project.cfg"
 	@echo "    make qa        : Run all tests and static analysis tools"
 	@echo "    make tag       : Tag the Git repository"
@@ -129,7 +130,7 @@ dbuild:
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.37.0
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.37.1
 	$(GO) install github.com/rakyll/gotest
 	$(GO) install github.com/jstemmer/go-junit-report
 	$(GO) install github.com/golang/mock/mockgen
@@ -170,6 +171,11 @@ linter:
 .PHONY: mod
 mod:
 	$(GO) mod download
+
+# Update dependencies
+.PHONY: modupdate
+modupdate:
+	$(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
 
 # Create a new project based on the example template
 .PHONY: project
