@@ -61,7 +61,7 @@ func TestPProfHandler(t *testing.T) {
 
 			var testHTTPClient = &http.Client{Timeout: 2 * time.Second}
 
-			resp, err := testHTTPClient.Do(req) // nolint:bodyclose
+			resp, err := testHTTPClient.Do(req)
 			require.NoError(t, err, "unexpected error while performing request %q", req.URL.String())
 			require.NotNil(t, resp)
 

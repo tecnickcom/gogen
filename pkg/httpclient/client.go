@@ -85,7 +85,7 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 		l = l.With(zap.String("request", c.redactFn(string(reqDump))))
 	}
 
-	resp, err = c.client.Do(r) // nolint:bodyclose
+	resp, err = c.client.Do(r)
 	if err != nil {
 		return nil, err // nolint:wrapcheck
 	}

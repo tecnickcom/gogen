@@ -63,6 +63,7 @@ func TestConnect(t *testing.T) {
 			wantConn: true,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -157,6 +158,7 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 			wantErr: false,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -226,6 +228,7 @@ func Test_checkConnection(t *testing.T) {
 			wantErr: false,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -295,6 +298,7 @@ func Test_connectWithBackoff(t *testing.T) {
 			wantErr: false,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -360,7 +364,9 @@ func Test_parseConnectionURL(t *testing.T) {
 			wantDSN:    "user:pass@tcp(db2.host.invalid)/db2",
 		},
 	}
+
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			gotDriver, gotDSN, err := parseConnectionURL(tt.url)
 			if (err != nil) != tt.wantErr {

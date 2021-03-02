@@ -1,81 +1,110 @@
-// Package sqlutil provides common SQL utilities.
+// Package sqlutil provides SQL utilities.
 package sqlutil
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
-const (
-	conditionIn    = "IN"
-	conditionNotIn = "NOT IN"
-)
+// SQLQuoteFunc is the type of function called to quote a string (ID or value).
+type SQLQuoteFunc func(s string) string
 
-// BuildInClauseString prepares a SQL IN clause with the given list of string values.
-func BuildInClauseString(field string, values []string) string {
-	return composeInClause(conditionIn, field, formatStrings(values))
+// SQLUtil is the structure that helps to manage a SQL DB connection.
+type SQLUtil struct {
+	quoteIDFunc    SQLQuoteFunc
+	quoteValueFunc SQLQuoteFunc
 }
 
-// BuildNotInClauseString prepares a SQL NOT IN clause with the given list of string values.
-func BuildNotInClauseString(field string, values []string) string {
-	return composeInClause(conditionNotIn, field, formatStrings(values))
-}
+// New creates a new instance.
+func New(opts ...Option) (*SQLUtil, error) {
+	c := defaultSQLUtil()
 
-// BuildInClauseInt prepares a SQL IN clause with the given list of integer values.
-func BuildInClauseInt(field string, values []int) string {
-	return composeInClause(conditionIn, field, formatInts(values))
-}
-
-// BuildNotInClauseInt prepares a SQL NOT IN clause with the given list of integer values.
-func BuildNotInClauseInt(field string, values []int) string {
-	return composeInClause(conditionNotIn, field, formatInts(values))
-}
-
-// BuildInClauseUint prepares a SQL IN clause with the given list of integer values.
-func BuildInClauseUint(field string, values []uint64) string {
-	return composeInClause(conditionIn, field, formatUints(values))
-}
-
-// BuildNotInClauseUint prepares a SQL NOT IN clause with the given list of integer values.
-func BuildNotInClauseUint(field string, values []uint64) string {
-	return composeInClause(conditionNotIn, field, formatUints(values))
-}
-
-func formatStrings(values []string) []string {
-	items := make([]string, len(values))
-
-	for k, v := range values {
-		items[k] = "'" + v + "'"
+	for _, applyOpt := range opts {
+		applyOpt(c)
 	}
 
-	return items
-}
-
-func formatInts(values []int) []string {
-	items := make([]string, len(values))
-
-	for k, v := range values {
-		items[k] = strconv.Itoa(v)
+	if err := c.validate(); err != nil {
+		return nil, err
 	}
 
-	return items
+	return c, nil
 }
 
-func formatUints(values []uint64) []string {
-	items := make([]string, len(values))
-
-	for k, v := range values {
-		items[k] = strconv.FormatUint(v, 10)
+func defaultSQLUtil() *SQLUtil {
+	return &SQLUtil{
+		quoteIDFunc:    defaultQuoteID,
+		quoteValueFunc: defaultQuoteValue,
 	}
-
-	return items
 }
 
-func composeInClause(condition string, field string, values []string) string {
-	if len(values) == 0 {
-		return ""
+func (c *SQLUtil) validate() error {
+	if c.quoteIDFunc == nil {
+		return fmt.Errorf("the QuoteID function must be set")
 	}
 
-	return fmt.Sprintf("`%s` %s (%s)", field, condition, strings.Join(values, ","))
+	if c.quoteValueFunc == nil {
+		return fmt.Errorf("the QuoteValue function must be set")
+	}
+
+	return nil
+}
+
+// QuoteID quotes identifiers such as schema, table, or column names.
+func (c *SQLUtil) QuoteID(s string) string {
+	return c.quoteIDFunc(s)
+}
+
+// QuoteValue quotes database string values.
+// The returned value will include all surrounding quotes.
+func (c *SQLUtil) QuoteValue(s string) string {
+	return c.quoteValueFunc(s)
+}
+
+// defaultQuoteID is the QuoteID default function for mysql-like databases.
+func defaultQuoteID(s string) string {
+	if s == "" {
+		return s
+	}
+
+	parts := strings.Split(s, ".")
+
+	for k, v := range parts {
+		parts[k] = "`" + strings.ReplaceAll(escape(v), "`", "``") + "`"
+	}
+
+	return strings.Join(parts, ".")
+}
+
+// defaultQuoteValue is the QuoteValue default function for mysql-like databases.
+func defaultQuoteValue(s string) string {
+	if s == "" {
+		return s
+	}
+
+	return "'" + strings.ReplaceAll(escape(s), "'", "''") + "'"
+}
+
+func escape(s string) string {
+	dest := make([]byte, 0, 2*len(s))
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+
+		switch c {
+		case 0:
+			dest = append(dest, '\\', '0')
+		case '\n':
+			dest = append(dest, '\\', 'n')
+		case '\r':
+			dest = append(dest, '\\', 'r')
+		case '\\':
+			dest = append(dest, '\\', '\\')
+		case '\032':
+			dest = append(dest, '\\', 'Z')
+		default:
+			dest = append(dest, c)
+		}
+	}
+
+	return string(dest)
 }
