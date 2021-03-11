@@ -1,6 +1,9 @@
 package httpretrier
 
 import (
+	"bytes"
+	"io"
+	"net/http"
 	"testing"
 	"time"
 
@@ -12,10 +15,16 @@ func TestWithRetryIfFn(t *testing.T) {
 
 	c := &HTTPRetrier{}
 
-	v := func(statusCode int, err error) bool { return true }
+	v := func(r *http.Response, err error) bool { return true }
 	err := WithRetryIfFn(v)(c)
 	require.NoError(t, err)
-	require.True(t, c.retryIfFn(200, nil))
+
+	resp := &http.Response{
+		Status:     http.StatusText(http.StatusOK),
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader([]byte{})),
+	}
+	require.True(t, c.retryIfFn(resp, nil))
 
 	v = nil
 	err = WithRetryIfFn(v)(c)

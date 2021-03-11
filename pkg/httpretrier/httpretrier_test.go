@@ -30,7 +30,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "succeeds with custom values",
 			opts: []Option{
-				WithRetryIfFn(func(statusCode int, err error) bool { return true }),
+				WithRetryIfFn(func(r *http.Response, err error) bool { return true }),
 				WithAttempts(5),
 				WithDelay(601 * time.Millisecond),
 				WithDelayFactor(1.3),
@@ -64,28 +64,40 @@ func Test_defaultRetryIfFn(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		statusCode int
-		err        error
-		want       bool
+		name     string
+		response *http.Response
+		err      error
+		want     bool
 	}{
 		{
-			name:       "true with error",
-			statusCode: 0,
-			err:        fmt.Errorf("ERROR"),
-			want:       true,
+			name: "true with error",
+			response: &http.Response{
+				Status:     http.StatusText(http.StatusInternalServerError),
+				StatusCode: http.StatusInternalServerError,
+				Body:       io.NopCloser(bytes.NewReader([]byte{})),
+			},
+			err:  fmt.Errorf("ERROR"),
+			want: true,
 		},
 		{
-			name:       "true with matching status code",
-			statusCode: http.StatusNotFound,
-			err:        nil,
-			want:       true,
+			name: "true with matching status code",
+			response: &http.Response{
+				Status:     http.StatusText(http.StatusNotFound),
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(bytes.NewReader([]byte{})),
+			},
+			err:  nil,
+			want: true,
 		},
 		{
-			name:       "false with no matching status code",
-			statusCode: http.StatusOK,
-			err:        nil,
-			want:       false,
+			name: "false with no matching status code",
+			response: &http.Response{
+				Status:     http.StatusText(http.StatusOK),
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader([]byte{})),
+			},
+			err:  nil,
+			want: false,
 		},
 	}
 
@@ -93,7 +105,7 @@ func Test_defaultRetryIfFn(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := defaultRetryIfFn(tt.statusCode, tt.err)
+			got := defaultRetryIfFn(tt.response, tt.err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -111,8 +123,8 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			name: "success at first attempt",
 			setupMocks: func(mock *MockHTTPClient) {
 				rOK := &http.Response{
-					Status:     "200",
-					StatusCode: 200,
+					Status:     http.StatusText(http.StatusOK),
+					StatusCode: http.StatusOK,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
 				mock.EXPECT().Do(gomock.Any()).Return(rOK, nil)
@@ -123,13 +135,13 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			name: "success at third attempt after multiple retry conditions",
 			setupMocks: func(mock *MockHTTPClient) {
 				rErr := &http.Response{
-					Status:     "500",
-					StatusCode: 500,
+					Status:     http.StatusText(http.StatusInternalServerError),
+					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
 				rOK := &http.Response{
-					Status:     "200",
-					StatusCode: 200,
+					Status:     http.StatusText(http.StatusOK),
+					StatusCode: http.StatusOK,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
 				mock.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("network error"))
@@ -142,8 +154,8 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			name: "fail all attempts",
 			setupMocks: func(mock *MockHTTPClient) {
 				rErr := &http.Response{
-					Status:     "500",
-					StatusCode: 500,
+					Status:     http.StatusText(http.StatusInternalServerError),
+					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
 				mock.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("network error"))
@@ -155,8 +167,8 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			name: "request context timeout",
 			setupMocks: func(mock *MockHTTPClient) {
 				rErr := &http.Response{
-					Status:     "500",
-					StatusCode: 500,
+					Status:     http.StatusText(http.StatusInternalServerError),
+					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
 				mock.EXPECT().Do(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {

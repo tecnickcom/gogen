@@ -25,7 +25,7 @@ const (
 )
 
 // RetryIfFn is the signature of the function used to decide when retry.
-type RetryIfFn func(statusCode int, err error) bool
+type RetryIfFn func(r *http.Response, err error) bool
 
 // HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
@@ -91,12 +91,12 @@ func (c *HTTPRetrier) Do(r *http.Request) (*http.Response, error) {
 }
 
 // defaultRetryIfFn is the default function to check the retry condition.
-func defaultRetryIfFn(statusCode int, err error) bool {
+func defaultRetryIfFn(r *http.Response, err error) bool {
 	if err != nil {
 		return true
 	}
 
-	switch statusCode {
+	switch r.StatusCode {
 	case http.StatusNotFound,
 		http.StatusRequestTimeout,
 		http.StatusConflict,
@@ -149,16 +149,7 @@ func (c *HTTPRetrier) run(r *http.Request) bool {
 	c.doResponse, c.doError = c.httpClient.Do(r) // nolint:bodyclose
 
 	c.remainingAttempts--
-	if c.remainingAttempts == 0 {
-		return true
-	}
-
-	var statusCode int
-	if c.doResponse != nil {
-		statusCode = c.doResponse.StatusCode
-	}
-
-	if !c.retryIfFn(statusCode, c.doError) {
+	if c.remainingAttempts == 0 || !c.retryIfFn(c.doResponse, c.doError) {
 		return true
 	}
 
