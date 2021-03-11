@@ -146,17 +146,24 @@ func (c *HTTPRetrier) retry(r *http.Request) {
 }
 
 func (c *HTTPRetrier) run(r *http.Request) bool {
-	var statusCode int
-
 	c.doResponse, c.doError = c.httpClient.Do(r) // nolint:bodyclose
-	if c.doError == nil {
-		statusCode = c.doResponse.StatusCode
-		logging.Close(r.Context(), c.doResponse.Body, "error while closing response body")
-	}
 
 	c.remainingAttempts--
-	if c.remainingAttempts == 0 || !c.retryIfFn(statusCode, c.doError) {
+	if c.remainingAttempts == 0 {
 		return true
+	}
+
+	var statusCode int
+	if c.doResponse != nil {
+		statusCode = c.doResponse.StatusCode
+	}
+
+	if !c.retryIfFn(statusCode, c.doError) {
+		return true
+	}
+
+	if c.doError == nil {
+		logging.Close(r.Context(), c.doResponse.Body, "error while closing response body")
 	}
 
 	c.resetTimer <- time.Duration(int64(c.nextDelay) + rand.Int63n(int64(c.jitter))) // nolint:gosec
