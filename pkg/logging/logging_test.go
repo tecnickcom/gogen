@@ -38,6 +38,11 @@ func TestNewLogger(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "fail with no format",
+			opts:    []Option{WithFormat(noFormat), WithLevel(zap.InfoLevel)},
+			wantErr: true,
+		},
+		{
 			name:    "succeed with console format",
 			opts:    []Option{WithFormat(ConsoleFormat), WithLevel(zap.InfoLevel)},
 			wantErr: false,
