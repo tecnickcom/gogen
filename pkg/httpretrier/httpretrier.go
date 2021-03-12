@@ -97,17 +97,18 @@ func defaultRetryIfFn(r *http.Response, err error) bool {
 	}
 
 	switch r.StatusCode {
-	case http.StatusNotFound,
-		http.StatusRequestTimeout,
-		http.StatusConflict,
-		http.StatusMisdirectedRequest,
-		http.StatusTooEarly,
-		http.StatusTooManyRequests,
-		http.StatusInternalServerError,
-		http.StatusBadGateway,
-		http.StatusServiceUnavailable,
-		http.StatusGatewayTimeout,
-		http.StatusInsufficientStorage:
+	case
+		http.StatusNotFound,            // 404
+		http.StatusRequestTimeout,      // 408
+		http.StatusConflict,            // 409
+		http.StatusLocked,              // 423
+		http.StatusTooEarly,            // 425
+		http.StatusTooManyRequests,     // 429
+		http.StatusInternalServerError, // 500
+		http.StatusBadGateway,          // 502
+		http.StatusServiceUnavailable,  // 503
+		http.StatusGatewayTimeout,      // 504
+		http.StatusInsufficientStorage: // 507
 		return true
 	}
 
