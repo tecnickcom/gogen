@@ -56,7 +56,6 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 
 	go func() {
 		defer close(done)
-		defer close(quit)
 
 		select {
 		case <-quit: // quit on user signal

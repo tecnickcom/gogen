@@ -65,6 +65,7 @@ func TestBootstrap(t *testing.T) {
 				return nil
 			},
 			stopAfter: 500 * time.Millisecond,
+			sigterm:   true,
 			wantErr:   false,
 		},
 	}
