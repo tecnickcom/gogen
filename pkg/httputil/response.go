@@ -24,6 +24,11 @@ const (
 	StatusError   = "error"
 )
 
+const (
+	logKeyResponseDataText   = "response_txt"
+	logKeyResponseDataObject = "response_data"
+)
+
 // Status translates the HTTP status code to a JSend status string.
 type Status int
 
@@ -44,14 +49,14 @@ func (sc Status) MarshalJSON() ([]byte, error) {
 
 // SendStatus sends write a HTTP status code to the response.
 func SendStatus(ctx context.Context, w http.ResponseWriter, statusCode int) {
-	defer logResponse(ctx, statusCode, "")
+	defer logResponse(ctx, statusCode, logKeyResponseDataText, "")
 
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
 // SendJSON sends a JSON object to the response.
 func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
-	defer logResponse(ctx, statusCode, data)
+	defer logResponse(ctx, statusCode, logKeyResponseDataObject, data)
 
 	writeHeaders(w, statusCode, MimeApplicationJSON)
 
@@ -62,7 +67,7 @@ func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data i
 
 // SendText sends a JSON marshaled object to the response.
 func SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
-	defer logResponse(ctx, statusCode, data)
+	defer logResponse(ctx, statusCode, logKeyResponseDataText, data)
 
 	writeHeaders(w, statusCode, MimeTextPlain)
 
@@ -81,13 +86,13 @@ func writeHeaders(w http.ResponseWriter, statusCode int, contentType string) {
 }
 
 // logResponse logs the response.
-func logResponse(ctx context.Context, statusCode int, data interface{}) {
+func logResponse(ctx context.Context, statusCode int, dataKey string, data interface{}) {
 	l := logging.FromContext(ctx)
 	reqLog := l.With(
 		zap.Int("response_code", statusCode),
 		zap.String("response_message", http.StatusText(statusCode)),
 		zap.Any("response_status", Status(statusCode)),
-		zap.Any("response_data", data),
+		zap.Any(dataKey, data),
 	)
 
 	if statusCode >= http.StatusBadRequest { // 400+
