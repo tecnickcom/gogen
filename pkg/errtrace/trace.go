@@ -8,15 +8,21 @@ import (
 
 // Trace annotates the error message with the filename, line number and function name.
 func Trace(err error) error {
-	pc, file, line, ok := runtime.Caller(1)
-	if !ok {
-		return fmt.Errorf("?:0 ?: %w", err)
+	var (
+		pc       uintptr
+		file     string
+		line     int
+		ok       bool
+		funcName string
+	)
+
+	pc, file, line, ok = runtime.Caller(1)
+	if ok {
+		fn := runtime.FuncForPC(pc)
+		if fn != nil {
+			funcName = fn.Name()
+		}
 	}
 
-	fn := runtime.FuncForPC(pc)
-	if fn == nil {
-		return fmt.Errorf("%s:%d ?: %w", file, line, err)
-	}
-
-	return fmt.Errorf("%s:%d %s: %w", file, line, fn.Name(), err)
+	return fmt.Errorf("file: %s, line: %d, function: %s, error: %w", file, line, funcName, err)
 }
