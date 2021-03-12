@@ -50,16 +50,17 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 
 	done := make(chan struct{})
 
+	// handle shutdown signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
 	go func() {
 		defer close(done)
-
-		// handle shutdown signals
-		quit := make(chan os.Signal, 1)
-		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+		defer close(quit)
 
 		select {
-		case <-ctx.Done(): // context canceled
 		case <-quit: // quit on user signal
+		case <-ctx.Done(): // context canceled
 		}
 
 		// cancel the application context

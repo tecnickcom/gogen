@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"syscall"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ func TestBootstrap(t *testing.T) {
 		createLoggerFunc        CreateLoggerFunc
 		createMetricsClientFunc CreateMetricsClientFunc
 		stopAfter               time.Duration
+		sigterm                 bool
 		checkLogs               bool
 		wantErr                 bool
 	}{
@@ -50,7 +52,15 @@ func TestBootstrap(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "should succeed",
+			name: "should succeed and exit with context cancel",
+			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
+				return nil
+			},
+			stopAfter: 500 * time.Millisecond,
+			wantErr:   false,
+		},
+		{
+			name: "should succeed and exit with SIGTERM",
 			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
 				return nil
 			},
@@ -68,9 +78,16 @@ func TestBootstrap(t *testing.T) {
 			ctx, logs := testutil.ContextWithLogObserver(zap.DebugLevel)
 
 			if tt.stopAfter != 0 {
-				var stop context.CancelFunc
-				ctx, stop = context.WithTimeout(ctx, tt.stopAfter)
-				defer stop()
+				if tt.sigterm {
+					f := func() {
+						_ = syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+					}
+					time.AfterFunc(tt.stopAfter, f)
+				} else {
+					var stop context.CancelFunc
+					ctx, stop = context.WithTimeout(ctx, tt.stopAfter)
+					defer stop()
+				}
 			}
 
 			opts := []Option{
