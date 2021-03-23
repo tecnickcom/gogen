@@ -67,11 +67,11 @@ func TestNew(t *testing.T) {
 func TestInstrumentHandler(t *testing.T) {
 	t.Parallel()
 
-	srv, err := newStatsdServer(t, func(p []byte) {
+	srv, err := newTestStatsdServer(t, func(p []byte) {
 		exp := "TEST.inbound./test.POST.in:1|c\nTEST.inbound./test.POST.501.count:1|c\nTEST.inbound./test.POST.501.request_size:27|g\nTEST.inbound./test.POST.501.response_size:16|g\nTEST.inbound./test.POST.501.time:0|ms\nTEST.inbound./test.POST.out:1|c"
 		require.Equal(t, exp, string(p))
 	})
-	require.NoError(t, err, "newStatsdServer() unexpected error = %v", err)
+	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
 
 	defer srv.Close()
 
@@ -101,14 +101,14 @@ func TestInstrumentHandler(t *testing.T) {
 func TestInstrumentRoundTripper(t *testing.T) {
 	t.Parallel()
 
-	srv, err := newStatsdServer(t, func(p []byte) {
+	srv, err := newTestStatsdServer(t, func(p []byte) {
 		exp := "TEST.outbound.GET.in:1|c\nTEST.outbound.GET.200.count:1|c\nTEST.outbound.GET.200.time:1|ms\nTEST.outbound.GET.out:1|c"
 		got := string(p)
 		if got != exp {
 			t.Errorf("expected: %v , got: %v", exp, got)
 		}
 	})
-	require.NoError(t, err, "newStatsdServer() unexpected error = %v", err)
+	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
 
 	defer srv.Close()
 
@@ -164,17 +164,17 @@ func TestIncErrorCounter(t *testing.T) {
 	c.IncErrorCounter("test_task", "test_operation", "3791")
 }
 
-type statsdServer struct {
+type testStatsdServer struct {
 	tb     testing.TB
 	addr   string
 	closer io.Closer
 	closed chan bool
 }
 
-func newStatsdServer(tb testing.TB, f func([]byte)) (*statsdServer, error) {
+func newTestStatsdServer(tb testing.TB, f func([]byte)) (*testStatsdServer, error) {
 	tb.Helper()
 
-	s := &statsdServer{tb: tb, closed: make(chan bool)}
+	s := &testStatsdServer{tb: tb, closed: make(chan bool)}
 
 	laddr, err := net.ResolveUDPAddr(statsdTestNetwork, statsdTestAddr)
 	if err != nil {
@@ -208,7 +208,7 @@ func newStatsdServer(tb testing.TB, f func([]byte)) (*statsdServer, error) {
 	return s, nil
 }
 
-func (s *statsdServer) Close() {
+func (s *testStatsdServer) Close() {
 	if err := s.closer.Close(); err != nil {
 		s.tb.Error(err)
 	}
