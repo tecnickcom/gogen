@@ -21,6 +21,9 @@ type Client interface {
 
 	// IncErrorCounter increments the number of errors by task, operation and error code.
 	IncErrorCounter(task, operation, code string)
+
+	// Close method.
+	Close() error
 }
 
 // Default is the default implementation for the Client interface.
@@ -46,3 +49,6 @@ func (c *Default) IncLogLevelCounter(level string) {}
 
 // IncErrorCounter is an empty function.
 func (c *Default) IncErrorCounter(task, operation, code string) {}
+
+// Close method.
+func (c *Default) Close() error { return nil }

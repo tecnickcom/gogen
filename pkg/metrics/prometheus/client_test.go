@@ -103,9 +103,14 @@ func TestInstrumentRoundTripper(t *testing.T) {
 	c, err := New()
 	require.NoError(t, err, "New() unexpected error = %v", err)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`OK`))
-	}))
+	server := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`OK`))
+			},
+		),
+	)
 	defer server.Close()
 
 	client := server.Client()
@@ -157,4 +162,14 @@ func TestIncErrorCounter(t *testing.T) {
 	if i != 1 {
 		t.Errorf("failed to assert right metrics: got %v want %v", i, 1)
 	}
+}
+
+func TestClose(t *testing.T) {
+	t.Parallel()
+
+	c, err := New()
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	err = c.Close()
+	require.NoError(t, err, "Close() unexpected error = %v", err)
 }

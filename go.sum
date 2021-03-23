@@ -659,6 +659,10 @@ github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5Cc
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/subosito/gotenv v1.2.0 h1:Slr1R9HxAlEKefgq5jn9U+DnETlIUa6HfgEzj0g5d7s=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
+github.com/tecnickcom/statsd v0.0.0-20190730191307-6ed45bf0e12d h1:XR89Z1CvHFWrqWCyu3fWH1RUIjYYPjnyY+JszSvhi5E=
+github.com/tecnickcom/statsd v0.0.0-20190730191307-6ed45bf0e12d/go.mod h1:3eggm6WjkLwfYPDmqnhSh3+ASq/wD6PV0ntoKuc//TM=
+github.com/tecnickcom/statsd/v2 v2.0.8 h1:9pCGEQznmotkjJaIUvgqPNSFIqKDu/u3LdtSyvhylBo=
+github.com/tecnickcom/statsd/v2 v2.0.8/go.mod h1:9QqtkwJq/Bty6N96Xfvga+MBY7AEI+UB1zbiKOHlITA=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 h1:LnC5Kc/wtumK+WB441p7ynQJzVuNRJiqddSIE3IlSEQ=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=

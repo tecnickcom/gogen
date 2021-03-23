@@ -238,3 +238,8 @@ func (c *Client) IncLogLevelCounter(level string) {
 func (c *Client) IncErrorCounter(task, operation, code string) {
 	c.collectorErrorCode.With(prometheus.Labels{labelTask: task, labelOperation: operation, labelCode: code}).Inc()
 }
+
+// Close method.
+func (c *Client) Close() error {
+	return nil
+}
