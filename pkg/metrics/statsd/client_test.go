@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -68,9 +69,15 @@ func TestInstrumentHandler(t *testing.T) {
 	t.Parallel()
 
 	srv, err := newTestStatsdServer(t, func(p []byte) {
-		exp := "TEST.inbound./test.POST.in:1|c\nTEST.inbound./test.POST.501.count:1|c\nTEST.inbound./test.POST.501.request_size:27|g\nTEST.inbound./test.POST.501.response_size:16|g\nTEST.inbound./test.POST.501.time:0|ms\nTEST.inbound./test.POST.out:1|c"
+		exp := `TEST.inbound.test.POST.in:1\|c
+TEST.inbound.test.POST.501.count:1\|c
+TEST.inbound.test.POST.501.request_size:27\|g
+TEST.inbound.test.POST.501.response_size:16\|g
+TEST.inbound.test.POST.501.time:[0-9]+\|ms
+TEST.inbound.test.POST.out:1\|c`
+		re := regexp.MustCompile(exp)
 		got := string(p)
-		if got != exp {
+		if !re.MatchString(got) {
 			t.Errorf("expected: %v , got: %v", exp, got)
 		}
 	})
@@ -93,7 +100,7 @@ func TestInstrumentHandler(t *testing.T) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/test", strings.NewReader("TEST"))
 	require.NoError(t, err, "failed creating http request: %s", err)
 
-	handler := c.InstrumentHandler("/test", c.MetricsHandlerFunc())
+	handler := c.InstrumentHandler("test", c.MetricsHandlerFunc())
 	handler.ServeHTTP(rr, req)
 
 	if status := rr.Code; status != http.StatusNotImplemented {
@@ -105,10 +112,14 @@ func TestInstrumentRoundTripper(t *testing.T) {
 	t.Parallel()
 
 	srv, err := newTestStatsdServer(t, func(p []byte) {
-		exp := "TEST.outbound.GET.in:1|c\nTEST.outbound.GET.200.count:1|c\nTEST.outbound.GET.200.time:1|ms\nTEST.outbound.GET.out:1|c"
+		exp := `TEST.outbound.GET.in:1\|c
+TEST.outbound.GET.200.count:1\|c
+TEST.outbound.GET.200.time:[0-9]+\|ms
+TEST.outbound.GET.out:1\|c`
+		re := regexp.MustCompile(exp)
 		got := string(p)
-		if got != exp {
-			t.Errorf("expected: %v , got: %v", exp, got)
+		if !re.MatchString(got) {
+			t.Errorf("expected: %v\n\ngot: %v", exp, got)
 		}
 	})
 	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
