@@ -69,7 +69,10 @@ func TestInstrumentHandler(t *testing.T) {
 
 	srv, err := newTestStatsdServer(t, func(p []byte) {
 		exp := "TEST.inbound./test.POST.in:1|c\nTEST.inbound./test.POST.501.count:1|c\nTEST.inbound./test.POST.501.request_size:27|g\nTEST.inbound./test.POST.501.response_size:16|g\nTEST.inbound./test.POST.501.time:0|ms\nTEST.inbound./test.POST.out:1|c"
-		require.Equal(t, exp, string(p))
+		got := string(p)
+		if got != exp {
+			t.Errorf("expected: %v , got: %v", exp, got)
+		}
 	})
 	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
 
