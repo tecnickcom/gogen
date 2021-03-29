@@ -39,6 +39,20 @@ func TestNew(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "succeeds with RetryIfForWriteRequests",
+			opts: []Option{
+				WithRetryIfFn(RetryIfForWriteRequests),
+			},
+			wantErr: false,
+		},
+		{
+			name: "succeeds with RetryIfForReadRequests",
+			opts: []Option{
+				WithRetryIfFn(RetryIfForReadRequests),
+			},
+			wantErr: false,
+		},
+		{
 			name:    "fails with invalid option",
 			opts:    []Option{WithJitter(0)},
 			wantErr: true,
@@ -60,42 +74,21 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func Test_defaultRetryIfFn(t *testing.T) {
+func Test_defaultRetryIf(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		response *http.Response
-		err      error
-		want     bool
+		name string
+		err  error
+		want bool
 	}{
 		{
 			name: "true with error",
-			response: &http.Response{
-				Status:     http.StatusText(http.StatusInternalServerError),
-				StatusCode: http.StatusInternalServerError,
-				Body:       io.NopCloser(bytes.NewReader([]byte{})),
-			},
 			err:  fmt.Errorf("ERROR"),
 			want: true,
 		},
 		{
-			name: "true with matching status code",
-			response: &http.Response{
-				Status:     http.StatusText(http.StatusNotFound),
-				StatusCode: http.StatusNotFound,
-				Body:       io.NopCloser(bytes.NewReader([]byte{})),
-			},
-			err:  nil,
-			want: true,
-		},
-		{
-			name: "false with no matching status code",
-			response: &http.Response{
-				Status:     http.StatusText(http.StatusOK),
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader([]byte{})),
-			},
+			name: "false with no error",
 			err:  nil,
 			want: false,
 		},
@@ -105,7 +98,169 @@ func Test_defaultRetryIfFn(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := defaultRetryIfFn(tt.response, tt.err)
+			got := defaultRetryIf(nil, tt.err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRetryIfForWriteRequests(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		status int
+		err    error
+		want   bool
+	}{
+		{
+			name:   "true with error",
+			status: http.StatusOK,
+			err:    fmt.Errorf("ERROR"),
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusTooManyRequests",
+			status: http.StatusTooManyRequests,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusBadGateway",
+			status: http.StatusBadGateway,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusServiceUnavailable",
+			status: http.StatusServiceUnavailable,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "false with no matching status code",
+			status: http.StatusOK,
+			err:    nil,
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			response := &http.Response{
+				Status:     http.StatusText(tt.status),
+				StatusCode: tt.status,
+				Body:       io.NopCloser(bytes.NewReader([]byte{})),
+			}
+			got := RetryIfForWriteRequests(response, tt.err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRetryIfForReadRequests(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		status int
+		err    error
+		want   bool
+	}{
+		{
+			name:   "true with error",
+			status: http.StatusOK,
+			err:    fmt.Errorf("ERROR"),
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusNotFound",
+			status: http.StatusNotFound,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusRequestTimeout",
+			status: http.StatusRequestTimeout,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusConflict",
+			status: http.StatusConflict,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusLocked",
+			status: http.StatusLocked,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusTooEarly",
+			status: http.StatusTooEarly,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusTooManyRequests",
+			status: http.StatusTooManyRequests,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusInternalServerError",
+			status: http.StatusInternalServerError,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusBadGateway",
+			status: http.StatusBadGateway,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusServiceUnavailable",
+			status: http.StatusServiceUnavailable,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusGatewayTimeout",
+			status: http.StatusGatewayTimeout,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "true with http.StatusInsufficientStorage",
+			status: http.StatusInsufficientStorage,
+			err:    nil,
+			want:   true,
+		},
+		{
+			name:   "false with no matching status code",
+			status: http.StatusOK,
+			err:    nil,
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			response := &http.Response{
+				Status:     http.StatusText(tt.status),
+				StatusCode: tt.status,
+				Body:       io.NopCloser(bytes.NewReader([]byte{})),
+			}
+			got := RetryIfForReadRequests(response, tt.err)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -204,6 +359,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			require.NoError(t, err)
 
 			opts := []Option{
+				WithRetryIfFn(RetryIfForReadRequests),
 				WithAttempts(4),
 				WithDelay(100 * time.Millisecond),
 				WithDelayFactor(1.2),
