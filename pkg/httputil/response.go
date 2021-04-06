@@ -44,7 +44,7 @@ func (sc Status) MarshalJSON() ([]byte, error) {
 		s = StatusError
 	}
 
-	return json.Marshal(s)
+	return json.Marshal(s) // nolint:wrapcheck
 }
 
 // SendStatus sends write a HTTP status code to the response.

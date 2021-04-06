@@ -32,7 +32,7 @@ func defaultConfig() *config {
 }
 
 func defaultCreateLogger() (*zap.Logger, error) {
-	return logging.NewLogger()
+	return logging.NewLogger() // nolint:wrapcheck
 }
 
 func defaultCreateMetricsClientFunc() (metrics.Client, error) {

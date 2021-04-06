@@ -255,7 +255,7 @@ func loadFromEnvVarSource(v Viper, rc *remoteSourceConfig, envPrefix string) err
 		return fmt.Errorf("failed decoding config data: %w", err)
 	}
 
-	return v.ReadConfig(bytes.NewReader(data))
+	return v.ReadConfig(bytes.NewReader(data)) // nolint:wrapcheck
 }
 
 func loadFromRemoteSource(v Viper, rc *remoteSourceConfig, envPrefix string) error {
@@ -279,7 +279,7 @@ func loadFromRemoteSource(v Viper, rc *remoteSourceConfig, envPrefix string) err
 		return fmt.Errorf("failed adding remote config provider: %w", err)
 	}
 
-	return v.ReadRemoteConfig()
+	return v.ReadRemoteConfig() // nolint:wrapcheck
 }
 
 func configureSearchPath(v Viper, cmdName, configDir string) {

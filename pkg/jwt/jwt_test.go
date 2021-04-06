@@ -380,7 +380,7 @@ func testUserHash(username string) ([]byte, error) {
 		return nil, fmt.Errorf("invalid username")
 	}
 
-	return bcrypt.GenerateFromPassword([]byte(username), bcrypt.MinCost)
+	return bcrypt.GenerateFromPassword([]byte(username), bcrypt.MinCost) // nolint:wrapcheck
 }
 
 type testSigningMethodError struct {

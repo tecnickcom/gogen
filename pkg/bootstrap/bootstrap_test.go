@@ -109,7 +109,7 @@ func TestBootstrap(t *testing.T) {
 				opts = append(opts, WithCreateMetricsClientFunc(tt.createMetricsClientFunc))
 			} else {
 				fn := func() (metrics.Client, error) {
-					return prometheus.New()
+					return prometheus.New() // nolint:wrapcheck
 				}
 				opts = append(opts, WithCreateMetricsClientFunc(fn))
 			}
