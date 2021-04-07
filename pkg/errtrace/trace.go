@@ -8,6 +8,10 @@ import (
 
 // Trace annotates the error message with the filename, line number and function name.
 func Trace(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	var (
 		pc       uintptr
 		file     string
