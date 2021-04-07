@@ -35,6 +35,4 @@ func TestTrace(t *testing.T) {
 
 	want = "/pkg/errtrace/trace_test.go, line: 33, function: github.com/nexmoinc/gosrvlib/pkg/errtrace.TestTrace.func1, error: ERROR LAMBDA FUNC"
 	require.Contains(t, err.Error(), want, "unexpected output %v, want %v", err, want)
-
-	require.Nil(t, Trace(nil))
 }
