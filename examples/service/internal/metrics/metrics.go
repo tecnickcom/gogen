@@ -42,7 +42,7 @@ func New() *Client {
 // CreateMetricsClientFunc returns the metrics Client.
 func (m *Client) CreateMetricsClientFunc() (metrics.Client, error) {
 	opt := prom.WithCollector(m.collectorExample)
-	return prom.New(opt)
+	return prom.New(opt) // nolint:wrapcheck
 }
 
 // IncExampleCounter is an example function to increment a counter.
