@@ -3,6 +3,7 @@ package httpretrier
 
 import (
 	"context"
+	"io"
 	"math/rand"
 	"net/http"
 	"time"
@@ -171,6 +172,11 @@ func (c *HTTPRetrier) retry(r *http.Request) {
 }
 
 func (c *HTTPRetrier) run(r *http.Request) bool {
+	var bodyRC io.ReadCloser
+	if r.GetBody != nil {
+		bodyRC, _ = r.GetBody()
+	}
+
 	c.doResponse, c.doError = c.httpClient.Do(r) // nolint:bodyclose
 
 	c.remainingAttempts--
@@ -181,6 +187,8 @@ func (c *HTTPRetrier) run(r *http.Request) bool {
 	if c.doError == nil {
 		logging.Close(r.Context(), c.doResponse.Body, "error while closing response body")
 	}
+
+	r.Body = bodyRC
 
 	c.resetTimer <- time.Duration(int64(c.nextDelay) + rand.Int63n(int64(c.jitter))) // nolint:gosec
 	c.nextDelay *= c.delayFactor

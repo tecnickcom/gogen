@@ -271,6 +271,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 		name                  string
 		setupMocks            func(mock *MockHTTPClient)
 		ctxTimeout            time.Duration
+		body                  io.Reader
 		wantErr               bool
 		wantRemainingAttempts uint
 	}{
@@ -284,6 +285,19 @@ func TestHTTPRetrier_Do(t *testing.T) {
 				}
 				mock.EXPECT().Do(gomock.Any()).Return(rOK, nil)
 			},
+			wantRemainingAttempts: 3,
+		},
+		{
+			name: "success at first attempt with body",
+			setupMocks: func(mock *MockHTTPClient) {
+				rOK := &http.Response{
+					Status:     http.StatusText(http.StatusOK),
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader([]byte{})),
+				}
+				mock.EXPECT().Do(gomock.Any()).Return(rOK, nil)
+			},
+			body:                  bytes.NewReader([]byte(`some body`)),
 			wantRemainingAttempts: 3,
 		},
 		{
@@ -355,7 +369,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 				ctx = timeoutCtx
 			}
 
-			r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", tt.body)
 			require.NoError(t, err)
 
 			opts := []Option{
