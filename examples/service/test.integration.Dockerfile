@@ -9,7 +9,7 @@ RUN apt update \
     && pip3 install schemathesis
 
 # Venom
-ADD https://github.com/ovh/venom/releases/download/v0.28.0/venom.linux-amd64 /usr/bin/venom
+ADD https://github.com/ovh/venom/releases/download/v1.0.0-rc.4/venom.linux-amd64 /usr/bin/venom
 RUN chmod ug+x /usr/bin/venom
 
 # Add only the required project resources

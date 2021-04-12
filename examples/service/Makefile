@@ -549,7 +549,6 @@ venomtest:
 		--var gosrvlibexample.url="${API_TEST_URL}" \
 		--var gosrvlibexample.version="${VERSION}" \
 		--var gosrvlibexample.release="${RELEASE}" \
-		--strict \
-		--log=info \
+		-vv \
 		--output-dir=$(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR) \
 		resources/test/venom/$(API_TEST_DIR)/$(API_TEST_FILE)
