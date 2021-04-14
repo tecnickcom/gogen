@@ -21,9 +21,8 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: run linter
-        run: |
-          make mod deps linter GOPATH=$(go env GOPATH)
+      - name: linter
+        run: make mod deps linter GOPATH=$(go env GOPATH)
 
   test:
     runs-on: ubuntu-latest
@@ -39,11 +38,9 @@ jobs:
         with:
           path: $(go env GOPATH)/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: run unit tests
-        run: |
-          make mod deps test GOPATH=$(go env GOPATH)
+          restore-keys: ${{ runner.os }}-go-
+      - name: unit tests
+        run: make mod deps test GOPATH=$(go env GOPATH)
 
   example-lint:
     runs-on: ubuntu-latest
@@ -59,11 +56,9 @@ jobs:
         with:
           path: $(go env GOPATH)/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: run linter
-        run: |
-          cd examples/service && make mod deps linter GOPATH=$(go env GOPATH)
+          restore-keys: ${{ runner.os }}-go-
+      - name: linter
+        run: cd examples/service && make mod deps linter GOPATH=$(go env GOPATH)
 
   example-test:
     runs-on: ubuntu-latest
@@ -79,11 +74,9 @@ jobs:
         with:
           path: $(go env GOPATH)/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: run unit tests
-        run: |
-          cd examples/service && make mod deps generate confcheck test GOPATH=$(go env GOPATH) 
+          restore-keys: ${{ runner.os }}-go-
+      - name: unit tests
+        run: cd examples/service && make mod deps generate confcheck test GOPATH=$(go env GOPATH) 
 
   example-integration-test:
     runs-on: ubuntu-latest
@@ -99,28 +92,8 @@ jobs:
         with:
           path: $(go env GOPATH)/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: run integration tests
-        run: |
-          echo ${GITHUB_RUN_NUMBER} > RELEASE
-          cd examples/service && make mod deps generate build docker dockertest GOPATH=$(go env GOPATH)
-
-#  whitesource:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: checkout repository
-#        uses: actions/checkout@v2
-#      - name: WhiteSource CI integration
-#        uses: Idancc/WhiteSource-CI-Integration@v2.5.1
-#        env:
-#          WHITESOURCE_PRODUCT_NAME: OSS
-#          WHITESOURCE_PROJECT_NAME: ${{ github.event.repository.name }}
-#          WHITESOURCE_GH_PAT: ${{ secrets.WHITESOURCE_GH_PAT }}
-#          WHITESOURCE_CONFIG_REPO: ${{ secrets.WHITESOURCE_CONFIG_REPO }}
-#          WHITESOURCE_NPM_TOKEN: ${{ secrets.WHITESOURCE_NPM_TOKEN }}
-#          WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
-#          WHITESOURCE_USER_KEY: ${{ secrets.WHITESOURCE_USER_KEY }}
-#      - name: policy Rejection Summary
-#        if: ${{ always() }}
-#        run: cat ./whitesource/policyRejectionSummary.json
+          restore-keys: ${{ runner.os }}-go-
+      - name: set RELEASE number
+        run: cd examples/service && echo ${GITHUB_RUN_NUMBER} > RELEASE
+      - name: integration tests
+        run: cd examples/service && make mod deps generate build docker dockertest GOPATH=$(go env GOPATH)
