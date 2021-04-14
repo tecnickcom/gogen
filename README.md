@@ -2,6 +2,8 @@
 
 *Go Service Library*
 
+[![check](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml)
+[![whitesource](https://github.com/nexmoinc/gosrvlib/actions/workflows/whitesource.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/whitesource.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nexmoinc/gosrvlib)](https://goreportcard.com/report/github.com/nexmoinc/gosrvlib)
 [![Go Reference](https://pkg.go.dev/badge/github.com/nexmoinc/gosrvlib.svg)](https://pkg.go.dev/github.com/nexmoinc/gosrvlib)
 
