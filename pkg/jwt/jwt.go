@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/form3tech-oss/jwt-go"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
@@ -140,7 +140,7 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	claims := Claims{
 		Username: creds.Username,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: jwt.At(exp),
+			ExpiresAt: exp.Unix(),
 		},
 	}
 
@@ -159,7 +159,7 @@ func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if time.Until(claims.ExpiresAt.Time) > c.renewTime {
+	if time.Until(time.Unix(claims.ExpiresAt, 0)) > c.renewTime {
 		c.sendResponseFn(r.Context(), w, http.StatusBadRequest, "the JWT token can be renewed only when it is close to expiration")
 		logging.FromContext(r.Context()).With(
 			zap.String("username", claims.Username),
