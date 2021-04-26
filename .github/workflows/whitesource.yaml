@@ -8,7 +8,7 @@ on:
     branches:
       - 'main'
   schedule:
-    - cron: '0 0 * * TUE'  # At 00:00 on Tuesday.
+    - cron: '4 0 * * TUE'
 
 jobs:
   whitesource:
@@ -16,16 +16,16 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v2
-#      - name: WhiteSource CI integration
-#        uses: Idancc/WhiteSource-CI-Integration@v2.5.1
-#        env:
-#          WHITESOURCE_PRODUCT_NAME: OSS
-#          WHITESOURCE_PROJECT_NAME: ${{ github.event.repository.name }}
-#          WHITESOURCE_GH_PAT: ${{ secrets.WHITESOURCE_GH_PAT }}
-#          WHITESOURCE_CONFIG_REPO: ${{ secrets.WHITESOURCE_CONFIG_REPO }}
-#          WHITESOURCE_NPM_TOKEN: ${{ secrets.WHITESOURCE_NPM_TOKEN }}
-#          WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
-#          WHITESOURCE_USER_KEY: ${{ secrets.WHITESOURCE_USER_KEY }}
-#      - name: policy Rejection Summary
-#        if: ${{ always() }}
-#        run: cat ./whitesource/policyRejectionSummary.json
+      - name: WhiteSource CI integration
+        uses: Idancc/WhiteSource-CI-Integration@v2.5.1
+        env:
+          WHITESOURCE_PRODUCT_NAME: OSS
+          WHITESOURCE_PROJECT_NAME: ${{ github.event.repository.name }}
+          WHITESOURCE_GH_PAT: ${{ secrets.WHITESOURCE_GH_PAT }}
+          WHITESOURCE_CONFIG_REPO: ${{ secrets.WHITESOURCE_CONFIG_REPO }}
+          WHITESOURCE_NPM_TOKEN: ${{ secrets.WHITESOURCE_NPM_TOKEN }}
+          WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
+          WHITESOURCE_USER_KEY: ${{ secrets.WHITESOURCE_USER_KEY }}
+      - name: policy Rejection Summary
+        if: ${{ always() }}
+        run: cat ./whitesource/policyRejectionSummary.json
