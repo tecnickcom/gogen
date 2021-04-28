@@ -16,6 +16,7 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v2
+        with: { ref: main }
       - name: WhiteSource CI integration
         uses: Idancc/WhiteSource-CI-Integration@v2.5.1
         env:
