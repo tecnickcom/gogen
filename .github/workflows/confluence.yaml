@@ -1,0 +1,25 @@
+name: confluence
+
+on:
+  push:
+    branches:
+      - 'main'
+
+env:
+  GO_VERSION: 1.16.x
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v2
+        with: { ref: main }
+      - name: setup go build environment
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: install publishing tool
+        run: go install github.com/kovetskiy/mark@latest
+      - name: publish docs
+        run: mark -u ${{ secrets.CONFLUENCE_USER }} -p ${{ secrets.CONFLUENCE_TOKEN }} -b ${{ secrets.CONFLUENCE_URL }} -f README.md

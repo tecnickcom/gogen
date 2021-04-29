@@ -1,6 +1,12 @@
+<!-- Space: APIOSS -->
+<!-- Parent: Projects -->
+<!-- Title: gosrvlib -->
+
 # gosrvlib
 
 *Go Service Library*
+
+This Open Source project contains a collection of common GO packages that forms the base structure of a service.
 
 [![check](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml)
 [![whitesource](https://github.com/nexmoinc/gosrvlib/actions/workflows/whitesource.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/whitesource.yaml)
@@ -9,24 +15,16 @@
 
 
 * **category**    Library
-* **license**     see [LICENSE](LICENSE)
+* **license**     [MIT](https://github.com/nexmoinc/gosrvlib/blob/main/LICENSE)
 * **link**        https://github.com/nexmoinc/gosrvlib
 
 -----------------------------------------------------------------
 
 ## TOC
 
-* [Description](#description)
 * [Quick Start](#quickstart)
 * [Running all tests](#runtest)
 * [Examples](#examples)
-
------------------------------------------------------------------
-
-<a name="description"></a>
-## Description
-
-This project contains a collection of common GO packages that forms the base structure of a service.
 
 -----------------------------------------------------------------
 
@@ -40,44 +38,44 @@ All the packages listed in the *resources/docker/Dockerfile* file are required i
 Alternatively, everything can be built inside a [Docker](https://www.docker.com) container using the command "make dbuild".
 
 To see all available options:
-```
+```bash
 make help
 ```
 
 To build the project inside a Docker container (requires Docker):
-```
+```bash
 make dbuild
 ```
 
 An arbitrary make target can be executed inside a Docker container by specifying the "MAKETARGET" parameter:
-```
+```bash
 MAKETARGET='deps mod qa example' make dbuild
 ```
 The list of make targets can be obtained by typing ```make```
 
 
 The base Docker building environment is defined in the following Dockerfile:
-```
+```bash
 resources/docker/Dockerfile.dev
 ```
 
 To download all dependencies:
-```
+```bash
 make deps
 ```
 
 To update the mod file:
-```
+```bash
 make mod
 ```
 
 To execute all the default test builds and generate reports in the current environment:
-```
+```bash
 make qa
 ```
 
 To format the code (please use this command before submitting any pull request):
-```
+```bash
 make format
 ```
 
@@ -88,7 +86,7 @@ make format
 
 Before committing the code, please format it and check if it passes all tests using
 ```bash
-make format deps mod qa example
+DEVMODE=LOCAL make format clean mod deps generate qa example
 ```
 
 -----------------------------------------------------------------
@@ -97,3 +95,9 @@ make format deps mod qa example
 ## Examples
 
 Please check the `examples` folder for an example of a service based on this library.
+
+The following command generates a new project from the example using the data set in the project.cfg file:
+
+```bash
+make project CONFIG=project.cfg
+```
