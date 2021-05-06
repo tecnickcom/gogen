@@ -22,13 +22,7 @@ set -e -u +x
 : ${SSH_PUBLIC_KEY:=$(cat ~/.ssh/id_rsa.pub)}
 
 # make target to execute
-: ${MAKETARGET:=deps mod qa example}
-
-# Name of the base development Docker image
-DOCKERDEV=${VENDOR}/dev_${PROJECT}
-
-# Build the base environment and keep it cached locally
-docker build --pull --tag ${DOCKERDEV} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+: ${MAKETARGET:=mod deps generate qa example}
 
 # Define the project root path
 PRJPATH=/root/src/${CVSPATH}/${PROJECT}
@@ -37,7 +31,7 @@ PRJPATH=/root/src/${CVSPATH}/${PROJECT}
 # NOTE: The exit status of the RUN command is stored to be returned later,
 #       so in case of error we can continue without interrupting this script.
 cat > Dockerfile.test <<- EOM
-FROM ${DOCKERDEV}
+FROM ${VENDOR}/dev_${PROJECT}
 ARG SSH_PRIVATE_KEY=""
 ARG SSH_PUBLIC_KEY=""
 RUN \\

@@ -120,7 +120,7 @@ coverage: ensuretarget
 
 # Build everything inside a Docker container
 .PHONY: dbuild
-dbuild:
+dbuild: dockerdev
 	@mkdir -p $(TARGETDIR)
 	@rm -rf $(TARGETDIR)/*
 	@echo 0 > $(TARGETDIR)/make.exit
@@ -134,6 +134,11 @@ deps: ensuretarget
 	$(GO) install github.com/rakyll/gotest
 	$(GO) install github.com/jstemmer/go-junit-report
 	$(GO) install github.com/golang/mock/mockgen
+
+# Build a base development Docker image
+.PHONY: dockerdev
+dockerdev:
+	docker build --pull --tag ${VENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
 
 # Create the trget directories if missing
 .PHONY: ensuretarget
