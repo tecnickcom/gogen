@@ -272,7 +272,7 @@ coverage: ensuretarget
 
 # Build everything inside a Docker container
 .PHONY: dbuild
-dbuild:
+dbuild: dockerdev
 	@mkdir -p $(TARGETDIR)
 	@rm -rf $(TARGETDIR)/*
 	@echo 0 > $(TARGETDIR)/make.exit
@@ -337,6 +337,11 @@ dockerbuild:
 dockerdelete:
 	$(DOCKER) rmi -f `docker images "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" -q`
 
+# Build a base development Docker image
+.PHONY: dockerdev
+dockerdev:
+	docker build --pull --tag ${VENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+
 # Create the directory with docker files to be packaged
 .PHONY: dockerdir
 dockerdir:
@@ -364,7 +369,7 @@ dockerpush:
 	$(DOCKER) push "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 
 .PHONY: dockertest
-dockertest: dockertestenv
+dockertest: dockertestenv dockerdev
 ifeq ("$(wildcard $(BINUTIL)/dockerize)","")
 	curl -sSfL https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
 endif

@@ -1,16 +1,6 @@
-FROM golang:1.16
+FROM gosrvlibexample/dev_gosrvlibexample
 
 RUN mkdir /workspace
-
-# Schemathesis
-RUN apt update \
-    && apt -y upgrade \
-    && apt install -y python3-pip \
-    && pip3 install schemathesis
-
-# Venom
-ADD https://github.com/ovh/venom/releases/download/v1.0.0-rc.4/venom.linux-amd64 /usr/bin/venom
-RUN chmod ug+x /usr/bin/venom
 
 # Add only the required project resources
 ADD resources /workspace/resources

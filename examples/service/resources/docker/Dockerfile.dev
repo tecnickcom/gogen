@@ -1,7 +1,7 @@
-FROM golang:1.16
+FROM golang
 ENV PATH=/root/.local/bin:$PATH
-RUN apt-get update \
-&& apt-get -y install \
+RUN apt update \
+&& apt -y install \
 devscripts \
 fakeroot \
 debhelper \
@@ -13,4 +13,6 @@ dh-golang \
 upx-ucl \
 python3 \
 python3-pip \
-&& pip3 install --upgrade --user jsonschema
+&& pip3 install --upgrade --user jsonschema schemathesis
+ADD https://github.com/ovh/venom/releases/download/v1.0.0-rc.4/venom.linux-amd64 /usr/bin/venom
+RUN chmod ug+x /usr/bin/venom
