@@ -14,8 +14,6 @@ jobs:
   whitesource:
     runs-on: ubuntu-latest
     steps:
-      - run: echo ::set-env name=REPOSITORY_NAME::$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
-        shell: bash
       - name: checkout repository
         uses: actions/checkout@v2
         with: { ref: main }
@@ -23,7 +21,7 @@ jobs:
         uses: Idancc/WhiteSource-CI-Integration@v2.5.1
         env:
           WHITESOURCE_PRODUCT_NAME: OSS
-          WHITESOURCE_PROJECT_NAME: ${REPOSITORY_NAME}
+          WHITESOURCE_PROJECT_NAME: $(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
           WHITESOURCE_GH_PAT: ${{ secrets.WHITESOURCE_GH_PAT }}
           WHITESOURCE_CONFIG_REPO: ${{ secrets.WHITESOURCE_CONFIG_REPO }}
           WHITESOURCE_NPM_TOKEN: ${{ secrets.WHITESOURCE_NPM_TOKEN }}
