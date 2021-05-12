@@ -1,0 +1,13 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: gosrvlib
+  description: Collection of common GO packages that forms the base structure of a service.
+  annotations:
+    github.com/project-slug: nexmoinc/gosrvlib
+    backstage.io/techdocs-ref: url:https://github.com/nexmoinc/gosrvlib/tree/main
+spec:
+  type: library
+  owner: api.eng.oss@vonage.com
+  lifecycle: production
