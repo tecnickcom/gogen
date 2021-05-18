@@ -86,11 +86,7 @@ func (c *SQLConn) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("database not unavailable")
 	}
 
-	if err := c.cfg.checkConnectionFunc(ctx, c.db); err != nil {
-		return err
-	}
-
-	return nil
+	return c.cfg.checkConnectionFunc(ctx, c.db)
 }
 
 func (c *SQLConn) disconnect() {
