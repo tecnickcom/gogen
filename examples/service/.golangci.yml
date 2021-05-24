@@ -129,7 +129,7 @@ linters:
 #    - gofumpt              # Gofumpt checks whether code was gofumpt-ed. [fast: true, auto-fix: true]
     - goheader             # Checks is file header matches to pattern [fast: true, auto-fix: false]
     - goimports            # Goimports does everything that gofmt does. Additionally it checks unused imports [fast: true, auto-fix: true]
-    - golint               # Golint differs from gofmt. Gofmt reformats Go source code, whereas golint prints out style mistakes [fast: true, auto-fix: false]
+#    - golint               # Golint differs from gofmt. Gofmt reformats Go source code, whereas golint prints out style mistakes [fast: true, auto-fix: false]
 #    - gomnd                # An analyzer to detect magic numbers. [fast: true, auto-fix: false]
     - gomodguard           # Allow and block list linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations. [fast: true, auto-fix: false]
     - goprintffuncname     # Checks that printf-like functions are named with `f` at the end [fast: true, auto-fix: false]
@@ -148,6 +148,7 @@ linters:
 #    - paralleltest         # paralleltest detects missing usage of t.Parallel() method in your Go test [fast: true, auto-fix: false]
     - prealloc             # Finds slice declarations that could potentially be preallocated [fast: true, auto-fix: false]
     - predeclared          # find code that shadows one of Go's predeclared identifiers [fast: true, auto-fix: false]
+    - revive
     - rowserrcheck         # checks whether Err of rows is checked successfully [fast: true, auto-fix: false]
 #    - scopelint            # Scopelint checks for unpinned variables in go programs [fast: true, auto-fix: false]
     - sqlclosecheck        # Checks that sql.Rows and sql.Stmt are closed. [fast: true, auto-fix: false]
