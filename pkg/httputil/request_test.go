@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
@@ -91,4 +92,134 @@ func TestAddBasicAuth(t *testing.T) {
 	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
 	wanted.Header.Set("Authorization", "Basic a2V5OnNlY3JldA==")
 	require.Equal(t, r, wanted)
+}
+
+func TestQueryIntOrDefault(t *testing.T) {
+	t.Parallel()
+
+	defaultVal := 7549
+
+	type args struct {
+		q   url.Values
+		key string
+		def int
+	}
+
+	tests := []struct {
+		name     string
+		args     args
+		wantResp int
+	}{
+		{
+			name: "get default value because the key value cannot be converted to int",
+			args: args{
+				q:   url.Values{"test-key": []string{"test-value"}},
+				key: "test-key",
+				def: defaultVal,
+			},
+			wantResp: defaultVal,
+		},
+		{
+			name: "get default value because the key is not present",
+			args: args{
+				q:   url.Values{"test-key": []string{"test-value"}},
+				key: "test-key-invalid",
+				def: defaultVal,
+			},
+			wantResp: defaultVal,
+		},
+		{
+			name: "get correct positive query values",
+			args: args{
+				q:   url.Values{"test-key": []string{"65713"}},
+				key: "test-key",
+				def: defaultVal,
+			},
+			wantResp: 65713,
+		},
+		{
+			name: "get correct negative query values",
+			args: args{
+				q:   url.Values{"test-key": []string{"-47629"}},
+				key: "test-key",
+				def: defaultVal,
+			},
+			wantResp: -47629,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := QueryIntOrDefault(tt.args.q, tt.args.key, tt.args.def)
+			require.Equal(t, tt.wantResp, got, "QueryIntOrDefault() = %v, wantResp %v", got, tt.wantResp)
+		})
+	}
+}
+
+func TestQueryUintOrDefault(t *testing.T) {
+	t.Parallel()
+
+	var defaultVal uint = 7549
+
+	type args struct {
+		q   url.Values
+		key string
+		def uint
+	}
+
+	tests := []struct {
+		name     string
+		args     args
+		wantResp uint
+	}{
+		{
+			name: "get default value because the key value cannot be converted to uint",
+			args: args{
+				q:   url.Values{"test-key": []string{"test-value"}},
+				key: "test-key",
+				def: defaultVal,
+			},
+			wantResp: defaultVal,
+		},
+		{
+			name: "get default value because the key is not present",
+			args: args{
+				q:   url.Values{"test-key": []string{"test-value"}},
+				key: "test-key-invalid",
+				def: defaultVal,
+			},
+			wantResp: defaultVal,
+		},
+		{
+			name: "get default value because of negative input",
+			args: args{
+				q:   url.Values{"test-key": []string{"-47629"}},
+				key: "test-key",
+				def: defaultVal,
+			},
+			wantResp: defaultVal,
+		},
+		{
+			name: "get correct query values",
+			args: args{
+				q:   url.Values{"test-key": []string{"65713"}},
+				key: "test-key",
+				def: defaultVal,
+			},
+			wantResp: 65713,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := QueryUintOrDefault(tt.args.q, tt.args.key, tt.args.def)
+			require.Equal(t, tt.wantResp, got, "QueryUintOrDefault() = %v, wantResp %v", got, tt.wantResp)
+		})
+	}
 }
