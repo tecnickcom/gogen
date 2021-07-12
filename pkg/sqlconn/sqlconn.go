@@ -50,9 +50,10 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 		return nil, err
 	}
 
-	db.SetMaxIdleConns(cfg.connMaxIdle)
+	db.SetConnMaxIdleTime(cfg.connMaxIdleTime)
 	db.SetConnMaxLifetime(cfg.connMaxLifetime)
-	db.SetMaxOpenConns(cfg.connMaxOpen)
+	db.SetMaxIdleConns(cfg.connMaxIdleCount)
+	db.SetMaxOpenConns(cfg.connMaxOpenCount)
 
 	c := SQLConn{
 		cfg: cfg,

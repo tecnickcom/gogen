@@ -28,38 +28,31 @@ func WithSQLOpenFunc(fn SQLOpenFunc) Option {
 	}
 }
 
-// WithConnectMaxRetry sets the maximum retry attempts.
-func WithConnectMaxRetry(maxRetry int) Option {
+// WithConnMaxIdleCount sets the maximum number of idle database connections.
+func WithConnMaxIdleCount(maxIdle int) Option {
 	return func(cfg *config) {
-		cfg.connectMaxRetry = maxRetry
+		cfg.connMaxIdleCount = maxIdle
 	}
 }
 
-// WithConnectRetryInterval sets the interval between connection retries.
-func WithConnectRetryInterval(interval time.Duration) Option {
+// WithConnMaxIdleTime sets the maximum idle time of a database connection.
+func WithConnMaxIdleTime(t time.Duration) Option {
 	return func(cfg *config) {
-		cfg.connectRetryInterval = interval
+		cfg.connMaxIdleTime = t
 	}
 }
 
 // WithConnMaxLifetime sets the maximum lifetime of a database connection.
-func WithConnMaxLifetime(lifetime time.Duration) Option {
+func WithConnMaxLifetime(t time.Duration) Option {
 	return func(cfg *config) {
-		cfg.connMaxLifetime = lifetime
-	}
-}
-
-// WithConnMaxIdle sets the maximum number of idle database connections.
-func WithConnMaxIdle(maxIdle int) Option {
-	return func(cfg *config) {
-		cfg.connMaxIdle = maxIdle
+		cfg.connMaxLifetime = t
 	}
 }
 
 // WithConnMaxOpen sets the maximum number of open database connections.
 func WithConnMaxOpen(maxOpen int) Option {
 	return func(cfg *config) {
-		cfg.connMaxOpen = maxOpen
+		cfg.connMaxOpenCount = maxOpen
 	}
 }
 

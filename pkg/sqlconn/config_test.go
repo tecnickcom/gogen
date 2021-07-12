@@ -25,24 +25,6 @@ func Test_config_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "fail with invalid max retry value",
-			cfg: func() *config {
-				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
-				cfg.connectMaxRetry = 0
-				return cfg
-			}(),
-			wantErr: true,
-		},
-		{
-			name: "fail with invalid retry interval",
-			cfg: func() *config {
-				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
-				cfg.connectRetryInterval = 0
-				return cfg
-			}(),
-			wantErr: true,
-		},
-		{
 			name: "fail with invalid connect function",
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
@@ -70,10 +52,37 @@ func Test_config_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "fail with invalid max idle",
+			name: "fail with invalid max idle count",
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
-				cfg.connMaxIdle = 0
+				cfg.connMaxIdleCount = 0
+				return cfg
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "fail with invalid max idle time",
+			cfg: func() *config {
+				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
+				cfg.connMaxIdleTime = 0
+				return cfg
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "fail with invalid max lifetime",
+			cfg: func() *config {
+				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
+				cfg.connMaxLifetime = 0
+				return cfg
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "fail with invalid max open count",
+			cfg: func() *config {
+				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
+				cfg.connMaxOpenCount = 0
 				return cfg
 			}(),
 			wantErr: true,
@@ -110,9 +119,8 @@ func Test_defaultConfig(t *testing.T) {
 	require.NotNil(t, cfg.connectFunc)
 	require.NotNil(t, cfg.checkConnectionFunc)
 	require.NotNil(t, cfg.sqlOpenFunc)
-	require.NotEqual(t, 0, cfg.connectMaxRetry)
-	require.NotEqual(t, 0, cfg.connectRetryInterval)
-	require.Equal(t, defaultConnMaxIdle, cfg.connMaxIdle)
+	require.Equal(t, defaultConnMaxIdleCount, cfg.connMaxIdleCount)
+	require.Equal(t, defaultConnMaxIdleTime, cfg.connMaxIdleTime)
 	require.Equal(t, defaultConnMaxLifetime, cfg.connMaxLifetime)
-	require.Equal(t, defaultConnMaxOpen, cfg.connMaxOpen)
+	require.Equal(t, defaultConnMaxOpenCount, cfg.connMaxOpenCount)
 }

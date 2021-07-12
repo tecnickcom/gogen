@@ -46,40 +46,22 @@ func TestWithSQLOpenFunc(t *testing.T) {
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.sqlOpenFunc).Pointer())
 }
 
-func TestWithConnectMaxRetry(t *testing.T) {
-	t.Parallel()
-
-	v := 12345
-	cfg := &config{}
-	WithConnectMaxRetry(v)(cfg)
-	require.Equal(t, v, cfg.connectMaxRetry)
-}
-
-func TestWithConnectRetryInterval(t *testing.T) {
-	t.Parallel()
-
-	v := 17 * time.Second
-	cfg := &config{}
-	WithConnectRetryInterval(v)(cfg)
-	require.Equal(t, v, cfg.connectRetryInterval)
-}
-
-func TestWithConnMaxOpen(t *testing.T) {
-	t.Parallel()
-
-	v := 24683
-	cfg := &config{}
-	WithConnMaxOpen(v)(cfg)
-	require.Equal(t, v, cfg.connMaxOpen)
-}
-
-func TestWithConnMaxIdle(t *testing.T) {
+func TestWithConnMaxIdleCount(t *testing.T) {
 	t.Parallel()
 
 	v := 24697
 	cfg := &config{}
-	WithConnMaxIdle(v)(cfg)
-	require.Equal(t, v, cfg.connMaxIdle)
+	WithConnMaxIdleCount(v)(cfg)
+	require.Equal(t, v, cfg.connMaxIdleCount)
+}
+
+func TestWithConnMaxIdleTime(t *testing.T) {
+	t.Parallel()
+
+	v := 19 * time.Second
+	cfg := &config{}
+	WithConnMaxIdleTime(v)(cfg)
+	require.Equal(t, v, cfg.connMaxIdleTime)
 }
 
 func TestWithConnMaxLifetime(t *testing.T) {
@@ -89,6 +71,15 @@ func TestWithConnMaxLifetime(t *testing.T) {
 	cfg := &config{}
 	WithConnMaxLifetime(v)(cfg)
 	require.Equal(t, v, cfg.connMaxLifetime)
+}
+
+func TestWithConnMaxOpen(t *testing.T) {
+	t.Parallel()
+
+	v := 24683
+	cfg := &config{}
+	WithConnMaxOpen(v)(cfg)
+	require.Equal(t, v, cfg.connMaxOpenCount)
 }
 
 func TestWithDefaultDriver(t *testing.T) {
