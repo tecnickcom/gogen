@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -179,8 +180,8 @@ func (c *Client) defaultCollectors() error {
 	)
 
 	collectors := []prometheus.Collector{
-		prometheus.NewGoCollector(),
-		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
+		collectors.NewGoCollector(),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		c.collectorInFlightRequests,
 		c.collectorAPIRequests,
 		c.collectorRequestDuration,
