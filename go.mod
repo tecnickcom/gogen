@@ -8,8 +8,8 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/fatih/color v1.12.0 // indirect
-	github.com/form3tech-oss/jwt-go v3.2.3+incompatible
 	github.com/go-playground/validator/v10 v10.7.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0
 	github.com/hashicorp/consul/api v1.9.1 // indirect
