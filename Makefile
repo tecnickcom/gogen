@@ -175,7 +175,7 @@ linter:
 # Download dependencies
 .PHONY: mod
 mod:
-	$(GO) mod download
+	$(GO) mod download all all
 
 # Update dependencies
 .PHONY: modupdate
