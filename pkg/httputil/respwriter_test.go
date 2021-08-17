@@ -79,8 +79,8 @@ func Test_responseWriterWrapper_Status(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	ww := responseWriterWrapper{ResponseWriter: rr}
-	ww.WriteHeader(97)
-	require.Equal(t, 97, ww.Status())
+	ww.WriteHeader(207)
+	require.Equal(t, 207, ww.Status())
 }
 
 func Test_responseWriterWrapper_Tee(t *testing.T) {
@@ -114,10 +114,10 @@ func Test_responseWriterWrapper_WriteHeader(t *testing.T) {
 	t.Parallel()
 
 	ww := responseWriterWrapper{ResponseWriter: httptest.NewRecorder()}
-	ww.WriteHeader(19)
-	require.Equal(t, 19, ww.Status())
-	ww.WriteHeader(41)
-	require.Equal(t, 19, ww.Status())
+	ww.WriteHeader(204)
+	require.Equal(t, 204, ww.Status())
+	ww.WriteHeader(301)
+	require.Equal(t, 204, ww.Status())
 }
 
 func Test_responseWriterWrapper_Hijack(t *testing.T) {
