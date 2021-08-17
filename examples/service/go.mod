@@ -5,7 +5,7 @@ go 1.17
 replace github.com/nexmoinc/gosrvlib => ../..
 
 require (
-	github.com/nexmoinc/gosrvlib v1.8.4
+	github.com/nexmoinc/gosrvlib v1.8.6
 	github.com/prometheus/client_golang v1.11.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
