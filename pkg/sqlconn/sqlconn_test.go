@@ -327,7 +327,6 @@ func Test_connectWithBackoff(t *testing.T) {
 	}
 }
 
-// nolint:tparallel
 func Test_parseConnectionURL(t *testing.T) {
 	t.Parallel()
 
@@ -368,6 +367,8 @@ func Test_parseConnectionURL(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			gotDriver, gotDSN, err := parseConnectionURL(tt.url)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseConnectionURL() error = %v, wantErr %v", err, tt.wantErr)

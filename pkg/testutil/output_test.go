@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// nolint:paralleltest
 func TestCaptureOutput(t *testing.T) {
 	testFn := func() {
 		log.Printf("test output capture")

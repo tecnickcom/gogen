@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint:tparallel
 func TestStatus_MarshalJSON(t *testing.T) {
 	t.Parallel()
 
@@ -39,8 +38,12 @@ func TestStatus_MarshalJSON(t *testing.T) {
 			want:   []byte(`"fail"`),
 		},
 	}
+
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.status.MarshalJSON()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)

@@ -267,6 +267,8 @@ func TestRetryIfForReadRequests(t *testing.T) {
 }
 
 func TestHTTPRetrier_Do(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                  string
 		setupMocks            func(mock *MockHTTPClient)
@@ -353,6 +355,8 @@ func TestHTTPRetrier_Do(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -391,6 +395,8 @@ func TestHTTPRetrier_Do(t *testing.T) {
 }
 
 func TestHTTPRetrier_setTimer(t *testing.T) {
+	t.Parallel()
+
 	c := &HTTPRetrier{
 		timer: time.NewTimer(1 * time.Millisecond),
 	}

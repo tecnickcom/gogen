@@ -87,8 +87,8 @@ func Test_MapUint8ToStrings(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		v        uint8
 		want     []string
+		v        uint8
 		wantErr  bool
 		enumFunc func(enum map[int]string) map[int]string
 	}{

@@ -9,7 +9,10 @@ import (
 )
 
 func Test_defaultConfig(t *testing.T) {
+	t.Parallel()
+
 	cfg := defaultConfig()
+
 	require.NotNil(t, cfg)
 	require.NotNil(t, cfg.metricsHandlerFunc)
 	require.NotNil(t, cfg.pingHandlerFunc)

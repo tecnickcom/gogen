@@ -15,8 +15,8 @@ func TestDB_Acquire(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		closeConn      bool
 		setupMocks     func(mock sqlmock.Sqlmock)
+		closeConn      bool
 		wantErr        bool
 		wantReleaseErr bool
 	}{

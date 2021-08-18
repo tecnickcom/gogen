@@ -217,7 +217,7 @@ tag:
 test: ensuretarget
 	@echo -e "\n\n>>> START: Unit Tests <<<\n\n"
 	$(GOTEST) \
-	-count=1 \
+	-shuffle=on \
 	-tags=unit,benchmark \
 	-covermode=atomic \
 	-bench=. \

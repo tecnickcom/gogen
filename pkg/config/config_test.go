@@ -121,7 +121,6 @@ func mockViper(ctrl *gomock.Controller) *MockViper {
 	return mock
 }
 
-// nolint:tparallel
 func Test_loadLocalConfig(t *testing.T) {
 	t.Parallel()
 
@@ -202,7 +201,10 @@ func Test_loadLocalConfig(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -245,7 +247,7 @@ func Test_validationError(t *testing.T) {
 	require.EqualError(t, err, "provider config provider requires PREFIX_VAR to be set")
 }
 
-// nolint:gocognit,tparallel
+// nolint:gocognit
 func Test_loadRemoteConfig(t *testing.T) {
 	t.Parallel()
 
@@ -373,7 +375,10 @@ func Test_loadRemoteConfig(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -989,6 +994,7 @@ func Test_loadConfig(t *testing.T) {
 		},
 	}
 
+	// nolint:paralleltest
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
