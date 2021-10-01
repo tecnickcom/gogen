@@ -100,10 +100,22 @@ func TestClient_HealthCheck(t *testing.T) {
 			wantErr:               true,
 		},
 		{
-			name:                  "fails because bad status",
+			name:                  "fails because bad status for API service",
 			pingHandlerStatusCode: http.StatusOK,
-			pingBody:              &status{Status: "error"},
+			pingBody:              &status{Status: failStatus, Services: map[int]string{0: failService}},
 			wantErr:               true,
+		},
+		{
+			name:                  "fails because bad status for multiple services",
+			pingHandlerStatusCode: http.StatusOK,
+			pingBody:              &status{Status: failStatus, Services: map[int]string{0: "Calls", 1: failService, 2: "Search"}},
+			wantErr:               true,
+		},
+		{
+			name:                  "success with bad status on another service",
+			pingHandlerStatusCode: http.StatusOK,
+			pingBody:              &status{Status: failStatus, Services: map[int]string{0: "Calls"}},
+			wantErr:               false,
 		},
 		{
 			name:                  "fails because bad response body",

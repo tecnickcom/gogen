@@ -20,6 +20,8 @@ const (
 	defaultPingURL        = "https://status.slack.com/api/v2.0.0/current"
 	defaultRequestTimeout = 1 * time.Second
 	defaultPingTimeout    = 1 * time.Second
+	failStatus            = "active"
+	failService           = "Apps/Integrations/APIs"
 )
 
 // HTTPClient contains the function to perform the actual HTTP request.
@@ -73,10 +75,11 @@ func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*C
 }
 
 type status struct {
-	Status string `json:"status"`
+	Status   string         `json:"status"`
+	Services map[int]string `json:"services,omitempty"`
 }
 
-// HealthCheck performs a status check on the Address service.
+// HealthCheck performs a status check on the Slack service.
 func (c *Client) HealthCheck(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
@@ -97,14 +100,18 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
 	}
 
-	var respBody status
+	respBody := &status{}
 
-	if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(respBody); err != nil {
 		return fmt.Errorf("failed decoding response body: %w", err)
 	}
 
-	if respBody.Status != "ok" {
-		return fmt.Errorf("unexpected healthcheck status: %v", respBody.Status)
+	if respBody.Status == failStatus {
+		for _, service := range respBody.Services {
+			if service == failService {
+				return fmt.Errorf("unexpected healthcheck status: %v", respBody.Status)
+			}
+		}
 	}
 
 	return nil
