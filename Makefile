@@ -4,8 +4,8 @@
 # @link        https://github.com/nexmoinc/gosrvlib
 # ------------------------------------------------------------------------------
 
-# Use bash as shell (Note: Ubuntu now uses dash which doesn't support PIPESTATUS).
 SHELL=/bin/bash
+.SHELLFLAGS=-o pipefail -c
 
 # CVS path (path to the parent dir containing the project)
 CVSPATH=github.com/nexmoinc
