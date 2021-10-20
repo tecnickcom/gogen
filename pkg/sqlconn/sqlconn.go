@@ -87,6 +87,9 @@ func (c *SQLConn) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("database not unavailable")
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, c.cfg.pingTimeout)
+	defer cancel()
+
 	return c.cfg.checkConnectionFunc(ctx, c.db)
 }
 
@@ -120,6 +123,9 @@ func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed opening database connection: %w", err)
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, cfg.pingTimeout)
+	defer cancel()
 
 	if err = cfg.checkConnectionFunc(ctx, db); err != nil {
 		return nil, fmt.Errorf("failed checking database connection: %w", err)

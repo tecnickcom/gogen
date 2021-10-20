@@ -12,6 +12,7 @@ const (
 	defaultConnMaxIdleTime  = 1 * time.Minute // Maximum amount of time a connection may be idle before being closed
 	defaultConnMaxLifetime  = 1 * time.Hour   // Maximum amount of time a connection may be reused (0 = unlimited reuse)
 	defaultConnMaxOpenCount = 5               // Maximum number of open connections (0 = unlimited connections)
+	defaultPingTimeout      = 5 * time.Second // Healthcheck ping timeout
 )
 
 func defaultConfig(driver, dsn string) *config {
@@ -25,6 +26,7 @@ func defaultConfig(driver, dsn string) *config {
 		connMaxOpenCount:    defaultConnMaxOpenCount,
 		driver:              driver,
 		dsn:                 dsn,
+		pingTimeout:         defaultPingTimeout,
 	}
 }
 
@@ -38,8 +40,10 @@ type config struct {
 	connMaxOpenCount    int
 	driver              string
 	dsn                 string
+	pingTimeout         time.Duration
 }
 
+// nolint:gocyclo
 func (c *config) validate() error {
 	if strings.TrimSpace(c.driver) == "" {
 		return fmt.Errorf("database driver must be set")
@@ -75,6 +79,10 @@ func (c *config) validate() error {
 
 	if c.connMaxOpenCount < 1 {
 		return fmt.Errorf("database pool max open connections must be greater than 0")
+	}
+
+	if c.pingTimeout < 1*time.Second {
+		return fmt.Errorf("database ping timeout must be at least 1 second")
 	}
 
 	return nil

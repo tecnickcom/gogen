@@ -88,6 +88,15 @@ func Test_config_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "fail with invalid ping timeout",
+			cfg: func() *config {
+				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
+				cfg.pingTimeout = 0
+				return cfg
+			}(),
+			wantErr: true,
+		},
+		{
 			name: "succeed with no errors",
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
@@ -123,4 +132,5 @@ func Test_defaultConfig(t *testing.T) {
 	require.Equal(t, defaultConnMaxIdleTime, cfg.connMaxIdleTime)
 	require.Equal(t, defaultConnMaxLifetime, cfg.connMaxLifetime)
 	require.Equal(t, defaultConnMaxOpenCount, cfg.connMaxOpenCount)
+	require.Equal(t, defaultPingTimeout, cfg.pingTimeout)
 }

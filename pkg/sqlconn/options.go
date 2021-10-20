@@ -64,3 +64,10 @@ func WithDefaultDriver(driver string) Option {
 		}
 	}
 }
+
+// WithPingTimeout sets the healthcheck ping timeout.
+func WithPingTimeout(t time.Duration) Option {
+	return func(cfg *config) {
+		cfg.pingTimeout = t
+	}
+}

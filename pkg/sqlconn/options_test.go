@@ -99,3 +99,12 @@ func TestWithDefaultDriver(t *testing.T) {
 	WithDefaultDriver(v2)(cfg2)
 	require.NotEqual(t, v2, cfg2.driver)
 }
+
+func TestWithPingTimeout(t *testing.T) {
+	t.Parallel()
+
+	v := 21 * time.Second
+	cfg := &config{}
+	WithPingTimeout(v)(cfg)
+	require.Equal(t, v, cfg.pingTimeout)
+}
