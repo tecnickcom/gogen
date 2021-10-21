@@ -1,9 +1,11 @@
 package prometheus
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
+	"github.com/dlmiddlecote/sqlstats"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -179,7 +181,7 @@ func (c *Client) defaultCollectors() error {
 		[]string{labelTask, labelOperation, labelCode},
 	)
 
-	collectors := []prometheus.Collector{
+	colls := []prometheus.Collector{
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		c.collectorInFlightRequests,
@@ -194,13 +196,19 @@ func (c *Client) defaultCollectors() error {
 		c.collectorErrorCode,
 	}
 
-	for _, m := range collectors {
+	for _, m := range colls {
 		if err := c.registry.Register(m); err != nil {
 			return fmt.Errorf("failed registering collector: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// InstrumentDB wraps a sql.DB to collect metrics.
+func (c *Client) InstrumentDB(dbName string, db *sql.DB) {
+	coll := sqlstats.NewStatsCollector(dbName, db)
+	c.registry.MustRegister(coll)
 }
 
 // InstrumentHandler wraps an http.Handler to collect Prometheus metrics.

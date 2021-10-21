@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -78,6 +79,11 @@ func defaultClient() *Client {
 		address:     defaultStatsAddress,
 		flushPeriod: defaultStatsFlushPeriod,
 	}
+}
+
+// InstrumentDB wraps a sql.DB to collect metrics.
+func (c *Client) InstrumentDB(dbName string, db *sql.DB) {
+	// not implemented
 }
 
 // InstrumentHandler wraps an http.Handler to collect StatsD metrics.

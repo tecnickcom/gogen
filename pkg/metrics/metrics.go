@@ -2,12 +2,16 @@
 package metrics
 
 import (
+	"database/sql"
 	"net/http"
 )
 
 // Client is an interface type for the metrics functions.
 type Client interface {
-	// InstrumentHandler wraps an http.Handler to collect metrics.
+	// InstrumentDB wraps a sql.DB to collect metrics.
+	InstrumentDB(dbName string, db *sql.DB)
+
+	// InstrumentHandler wraps a http.Handler to collect metrics.
 	InstrumentHandler(path string, handler http.HandlerFunc) http.Handler
 
 	// InstrumentRoundTripper is a middleware that wraps the provided http.RoundTripper to observe the request result with default metrics.
@@ -28,6 +32,11 @@ type Client interface {
 
 // Default is the default implementation for the Client interface.
 type Default struct{}
+
+// InstrumentDB wraps a sql.DB to collect metrics.
+func (c *Default) InstrumentDB(dbName string, db *sql.DB) {
+	// not implemented
+}
 
 // InstrumentHandler returns the input handler.
 func (c *Default) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
