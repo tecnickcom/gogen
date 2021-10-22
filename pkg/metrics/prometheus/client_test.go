@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
@@ -172,4 +173,16 @@ func TestClose(t *testing.T) {
 
 	err = c.Close()
 	require.NoError(t, err, "Close() unexpected error = %v", err)
+}
+
+func TestInstrumentDB(t *testing.T) {
+	t.Parallel()
+
+	c, err := New()
+	require.NoError(t, err, "unexpected error = %v", err)
+
+	db, _, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+
+	c.InstrumentDB("db_test", db)
 }
