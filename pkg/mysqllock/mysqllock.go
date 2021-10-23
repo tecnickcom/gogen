@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/nexmoinc/gosrvlib/pkg/logging"
 )
 
 // ReleaseFunc is an alias for a release lock function.
@@ -41,16 +43,23 @@ func New(db *sql.DB) *MySQLLock {
 
 // Acquire attempts to acquire a database lock.
 func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Duration) (ReleaseFunc, error) {
-	row := l.db.QueryRowContext(ctx, sqlGetLock, key, int(timeout.Seconds()), resLockError)
+	conn, err := l.db.Conn(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get db connection: %w", err)
+	}
+
+	row := conn.QueryRowContext(ctx, sqlGetLock, key, int(timeout.Seconds()), resLockError)
 
 	var res int
-	if err := row.Scan(&res); err != nil {
+	if err = row.Scan(&res); err != nil {
 		return nil, fmt.Errorf("scan acquire lock result: %w", err)
 	}
 
 	releaseFunc := func() error {
+		defer logging.Close(ctx, conn, "error closing lock connection")
+
 		// background context used to ensure that release lock is always executed
-		if _, err := l.db.ExecContext(context.Background(), sqlReleaseLock, key); err != nil {
+		if _, err := conn.ExecContext(context.Background(), sqlReleaseLock, key); err != nil {
 			return fmt.Errorf("release lock: %w", err)
 		}
 
