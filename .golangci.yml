@@ -3,7 +3,7 @@
 run:
   issues-exit-code: 1
   tests: true
-  timeout: 1m
+  timeout: 5m
   skip-dirs:
     - .github
     - .githook
