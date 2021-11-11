@@ -24,7 +24,8 @@ type Client struct {
 func defaultClient() *Client {
 	return &Client{
 		client: &http.Client{
-			Timeout: 1 * time.Minute,
+			Timeout:   1 * time.Minute,
+			Transport: http.DefaultTransport,
 		},
 		traceIDHeaderName: traceid.DefaultHeader,
 		component:         "-",

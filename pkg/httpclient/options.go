@@ -24,7 +24,7 @@ func WithTimeout(timeout time.Duration) Option {
 // WithRoundTripper wraps the HTTP client Transport with the specified RoundTripper function.
 func WithRoundTripper(fn InstrumentRoundTripper) Option {
 	return func(c *Client) {
-		c.client.Transport = fn(http.DefaultTransport)
+		c.client.Transport = fn(c.client.Transport)
 	}
 }
 
