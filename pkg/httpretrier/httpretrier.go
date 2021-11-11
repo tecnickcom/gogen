@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"go.uber.org/zap"
 )
 
 const (
@@ -172,9 +173,17 @@ func (c *HTTPRetrier) retry(r *http.Request) {
 }
 
 func (c *HTTPRetrier) run(r *http.Request) bool {
-	var bodyRC io.ReadCloser
+	var (
+		bodyRC io.ReadCloser
+		err    error
+	)
+
 	if r.GetBody != nil {
-		bodyRC, _ = r.GetBody()
+		bodyRC, err = r.GetBody()
+		if err != nil {
+			logging.FromContext(r.Context()).Error("error while reading request body", zap.Error(err))
+			return true
+		}
 	}
 
 	c.doResponse, c.doError = c.httpClient.Do(r) // nolint:bodyclose
@@ -185,9 +194,11 @@ func (c *HTTPRetrier) run(r *http.Request) bool {
 	}
 
 	if c.doError == nil {
+		// we only close the body between attempts
 		logging.Close(r.Context(), c.doResponse.Body, "error while closing response body")
 	}
 
+	// set the original body for the next request
 	r.Body = bodyRC
 
 	c.resetTimer <- time.Duration(int64(c.nextDelay) + rand.Int63n(int64(c.jitter))) // nolint:gosec
