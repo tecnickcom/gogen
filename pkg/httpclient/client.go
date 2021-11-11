@@ -90,10 +90,8 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 		return nil, err // nolint:wrapcheck
 	}
 
-	defer logging.Close(ctx, resp.Body, "error while closing response body")
-
 	if debug {
-		respDump, _ := httputil.DumpResponse(resp, true)
+		respDump, _ := httputil.DumpResponse(resp, false)
 		l = l.With(zap.String("response", c.redactFn(string(respDump))))
 	}
 
