@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"net/http"
 	"net/http/httputil"
 	"time"
@@ -47,7 +48,9 @@ func New(opts ...Option) *Client {
 // Do performs the HTTP request with added trace ID, logging and metrics.
 func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	start := time.Now()
-	ctx := r.Context()
+
+	ctx, cancel := context.WithTimeout(r.Context(), c.client.Timeout)
+	defer cancel()
 
 	l := logging.WithComponent(ctx, c.component)
 	debug := l.Check(zap.DebugLevel, "debug") != nil
@@ -92,7 +95,7 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	}
 
 	if debug {
-		respDump, _ := httputil.DumpResponse(resp, false)
+		respDump, _ := httputil.DumpResponse(resp, true)
 		l = l.With(zap.String("response", c.redactFn(string(respDump))))
 	}
 
