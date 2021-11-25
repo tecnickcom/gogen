@@ -206,9 +206,9 @@ func (c *Client) defaultCollectors() error {
 }
 
 // InstrumentDB wraps a sql.DB to collect metrics.
-func (c *Client) InstrumentDB(dbName string, db *sql.DB) {
+func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
 	coll := sqlstats.NewStatsCollector(dbName, db)
-	c.registry.MustRegister(coll)
+	return c.registry.Register(coll) // nolint:wrapcheck
 }
 
 // InstrumentHandler wraps an http.Handler to collect Prometheus metrics.

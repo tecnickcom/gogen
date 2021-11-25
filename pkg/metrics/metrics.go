@@ -9,7 +9,7 @@ import (
 // Client is an interface type for the metrics functions.
 type Client interface {
 	// InstrumentDB wraps a sql.DB to collect metrics.
-	InstrumentDB(dbName string, db *sql.DB)
+	InstrumentDB(dbName string, db *sql.DB) error
 
 	// InstrumentHandler wraps a http.Handler to collect metrics.
 	InstrumentHandler(path string, handler http.HandlerFunc) http.Handler
@@ -34,8 +34,8 @@ type Client interface {
 type Default struct{}
 
 // InstrumentDB wraps a sql.DB to collect metrics.
-func (c *Default) InstrumentDB(dbName string, db *sql.DB) {
-	// not implemented
+func (c *Default) InstrumentDB(dbName string, db *sql.DB) error {
+	return nil
 }
 
 // InstrumentHandler returns the input handler.

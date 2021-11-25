@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -176,6 +177,19 @@ func TestIncErrorCounter(t *testing.T) {
 	require.NoError(t, err, "unexpected error = %v", err)
 
 	c.IncErrorCounter("test_task", "test_operation", "3791")
+}
+
+func TestInstrumentDB(t *testing.T) {
+	t.Parallel()
+
+	c, err := New()
+	require.NoError(t, err, "unexpected error = %v", err)
+
+	db, _, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+
+	err = c.InstrumentDB("db_test", db)
+	require.NoError(t, err)
 }
 
 type testStatsdServer struct {

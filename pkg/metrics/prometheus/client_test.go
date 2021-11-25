@@ -184,5 +184,6 @@ func TestInstrumentDB(t *testing.T) {
 	db, _, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 	require.NoError(t, err)
 
-	c.InstrumentDB("db_test", db)
+	err = c.InstrumentDB("db_test", db)
+	require.NoError(t, err)
 }

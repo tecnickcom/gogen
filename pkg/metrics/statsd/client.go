@@ -81,9 +81,9 @@ func defaultClient() *Client {
 	}
 }
 
-// InstrumentDB wraps a sql.DB to collect metrics.
-func (c *Client) InstrumentDB(dbName string, db *sql.DB) {
-	// not implemented
+// InstrumentDB wraps a sql.DB to collect metrics - [NOT IMPLEMENTED].
+func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
+	return nil
 }
 
 // InstrumentHandler wraps an http.Handler to collect StatsD metrics.
