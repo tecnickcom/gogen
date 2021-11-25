@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/confluentinc/confluent-kafka-go v1.7.0
 	github.com/dlmiddlecote/sqlstats v1.0.2
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
