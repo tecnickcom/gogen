@@ -3,6 +3,7 @@ package enumcache
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -13,8 +14,8 @@ type EnumCache struct {
 	name map[int]string
 }
 
-// MakeEnumCache returns a new empty EnumCache.
-func MakeEnumCache() *EnumCache {
+// New returns a new empty EnumCache.
+func New() *EnumCache {
 	return &EnumCache{
 		id:   make(map[string]int),
 		name: make(map[int]string),
@@ -22,20 +23,20 @@ func MakeEnumCache() *EnumCache {
 }
 
 // Set a single id-name key-value.
-func (tc *EnumCache) Set(id int, name string) {
-	tc.Lock()
-	defer tc.Unlock()
+func (ec *EnumCache) Set(id int, name string) {
+	ec.Lock()
+	defer ec.Unlock()
 
-	tc.name[id] = name
-	tc.id[name] = id
+	ec.name[id] = name
+	ec.id[name] = id
 }
 
 // ID returns the numerical ID associated to the given name.
-func (tc *EnumCache) ID(name string) (int, error) {
-	tc.RLock()
-	defer tc.RUnlock()
+func (ec *EnumCache) ID(name string) (int, error) {
+	ec.RLock()
+	defer ec.RUnlock()
 
-	id, ok := tc.id[name]
+	id, ok := ec.id[name]
 	if !ok {
 		return 0, fmt.Errorf("cache name not found: %s", name)
 	}
@@ -44,14 +45,38 @@ func (tc *EnumCache) ID(name string) (int, error) {
 }
 
 // Name returns the name associated with the given numerical ID.
-func (tc *EnumCache) Name(id int) (string, error) {
-	tc.RLock()
-	defer tc.RUnlock()
+func (ec *EnumCache) Name(id int) (string, error) {
+	ec.RLock()
+	defer ec.RUnlock()
 
-	name, ok := tc.name[id]
+	name, ok := ec.name[id]
 	if !ok {
 		return "", fmt.Errorf("cache ID not found: %d", id)
 	}
 
 	return name, nil
+}
+
+// SortNames returns a list of sorted names.
+func (ec *EnumCache) SortNames() []string {
+	sorted := make([]string, 0, len(ec.id))
+	for name := range ec.id {
+		sorted = append(sorted, name)
+	}
+
+	sort.Strings(sorted)
+
+	return sorted
+}
+
+// SortIDs returns a list of sorted IDs.
+func (ec *EnumCache) SortIDs() []int {
+	sorted := make([]int, 0, len(ec.name))
+	for id := range ec.name {
+		sorted = append(sorted, id)
+	}
+
+	sort.Ints(sorted)
+
+	return sorted
 }
