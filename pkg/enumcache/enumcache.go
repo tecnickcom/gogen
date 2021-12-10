@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/nexmoinc/gosrvlib/pkg/enumbitmap"
 )
 
 // EnumCache handles name and id value mapping.
@@ -79,4 +81,16 @@ func (ec *EnumCache) SortIDs() []int {
 	sort.Ints(sorted)
 
 	return sorted
+}
+
+// DecodeBinaryMap decodes a int binary map into a list of string names.
+// The EnumCache must contain the mapping between the bit values and the names.
+func (ec *EnumCache) DecodeBinaryMap(v int) (s []string, err error) {
+	return enumbitmap.BitMapToStrings(ec.name, v) // nolint:wrapcheck
+}
+
+// EncodeBinaryMap encode a list of string names into a int binary map.
+// The EnumCache must contain the mapping between the bit values and the names.
+func (ec *EnumCache) EncodeBinaryMap(s []string) (v int, err error) {
+	return enumbitmap.StringsToBitMap(ec.id, s) // nolint:wrapcheck
 }

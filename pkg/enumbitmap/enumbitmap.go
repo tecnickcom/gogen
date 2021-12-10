@@ -1,7 +1,7 @@
 // Package enumbitmap provides functions to encode slices of enumeration strings into integer bitmap values and vice versa.
 // Each bit correspond to a unique enumeration value.
 //
-// Example for uint8:
+// Example:
 //
 //    00000000 =   0 dec = NONE
 //    00000001 =   1 dec = FIRST
@@ -20,22 +20,23 @@ import (
 )
 
 const (
-	numBitUint8 = 8
+	maxBit = 32
 )
 
-// MapUint8ToStrings converts a uint8 bitmap value into a string slice.
-func MapUint8ToStrings(enum map[int]string, v uint8) (s []string, err error) {
+// BitMapToStrings converts a int bitmap value into a string slice.
+func BitMapToStrings(enum map[int]string, v int) (s []string, err error) {
 	if v == 0 {
 		return []string{}, nil
 	}
 
-	s = make([]string, 0, numBitUint8)
-	errBits := make([]int, 0, numBitUint8)
+	s = make([]string, 0, maxBit)
+	errBits := make([]int, 0, maxBit)
 
-	var i uint8 = 1
-	for bit := 1; bit <= numBitUint8; bit++ {
+	i := 1
+
+	for bit := 1; bit <= maxBit; bit++ {
 		if v&i == i {
-			name, ok := enum[int(i)]
+			name, ok := enum[i]
 			if ok {
 				s = append(s, name)
 			} else {
@@ -53,14 +54,14 @@ func MapUint8ToStrings(enum map[int]string, v uint8) (s []string, err error) {
 	return s, err
 }
 
-// MapStringsToUint8 converts a string slice into a uint8 bitmap value.
-func MapStringsToUint8(enum map[string]int, s []string) (v uint8, err error) {
-	errStrings := make([]string, 0, numBitUint8)
+// StringsToBitMap converts a string slice into a int bitmap value.
+func StringsToBitMap(enum map[string]int, s []string) (v int, err error) {
+	errStrings := make([]string, 0, maxBit)
 
 	for _, key := range s {
 		id, ok := enum[key]
 		if ok {
-			v |= uint8(id)
+			v |= id
 		} else {
 			errStrings = append(errStrings, key)
 		}

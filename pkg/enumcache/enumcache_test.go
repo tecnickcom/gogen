@@ -41,7 +41,7 @@ func Test_New_Set_ID_Name(t *testing.T) {
 	require.Equal(t, "bravo", name)
 }
 
-func TestSortNames(t *testing.T) {
+func Test_SortNames(t *testing.T) {
 	t.Parallel()
 
 	ec := New()
@@ -60,7 +60,7 @@ func TestSortNames(t *testing.T) {
 	require.Equal(t, expected, sorted)
 }
 
-func TestSortIDs(t *testing.T) {
+func Test_SortIDs(t *testing.T) {
 	t.Parallel()
 
 	ec := New()
@@ -77,4 +77,32 @@ func TestSortIDs(t *testing.T) {
 	expected := []int{11, 22, 33, 44, 55, 66}
 
 	require.Equal(t, expected, sorted)
+}
+
+func Test_DecodeBinaryMap(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.NotNil(t, ec)
+
+	ec.Set(1, "alpha")
+	ec.Set(8, "bravo")
+
+	s, err := ec.DecodeBinaryMap(11)
+	require.Error(t, err)
+	require.Equal(t, []string{"alpha", "bravo"}, s)
+}
+
+func Test_EncodeBinaryMap(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.NotNil(t, ec)
+
+	ec.Set(1, "alpha")
+	ec.Set(8, "bravo")
+
+	v, err := ec.EncodeBinaryMap([]string{"alpha", "bravo", "charlie"})
+	require.Error(t, err)
+	require.Equal(t, 9, v)
 }
