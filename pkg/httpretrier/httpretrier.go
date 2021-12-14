@@ -3,13 +3,13 @@ package httpretrier
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"go.uber.org/zap"
 )
 
 const (
@@ -161,6 +161,7 @@ func (c *HTTPRetrier) retry(r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
+			c.doError = fmt.Errorf("context canceled")
 			return
 		case d := <-c.resetTimer:
 			c.setTimer(d)
@@ -181,7 +182,7 @@ func (c *HTTPRetrier) run(r *http.Request) bool {
 	if r.GetBody != nil {
 		bodyRC, err = r.GetBody()
 		if err != nil {
-			logging.FromContext(r.Context()).Error("error while reading request body", zap.Error(err))
+			c.doError = fmt.Errorf("error while reading request body: %w", err)
 			return true
 		}
 	}
