@@ -3,6 +3,7 @@ package httputil
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"net/http"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
@@ -12,6 +13,9 @@ import (
 const (
 	// MimeApplicationJSON contains the mime type string for JSON content.
 	MimeApplicationJSON = "application/json; charset=utf-8"
+
+	// MimeApplicationXML contains the mime type string for XML content.
+	MimeApplicationXML = "application/xml; charset=utf-8"
 
 	// MimeTextPlain contains the mime type string for text content.
 	MimeTextPlain = "text/plain; charset=utf-8"
@@ -62,6 +66,17 @@ func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data i
 
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		logging.FromContext(ctx).Error("httputil.SendJSON()", zap.Error(err))
+	}
+}
+
+// SendXML sends an XML object to the response.
+func SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
+	defer logResponse(ctx, statusCode, logKeyResponseDataObject, data)
+
+	writeHeaders(w, statusCode, MimeApplicationXML)
+
+	if err := xml.NewEncoder(w).Encode(data); err != nil {
+		logging.FromContext(ctx).Error("httputil.SendXML()", zap.Error(err))
 	}
 }
 

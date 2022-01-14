@@ -60,7 +60,7 @@ func TestSendJSON(t *testing.T) {
 	t.Parallel()
 
 	rr := httptest.NewRecorder()
-	SendJSON(testutil.Context(), rr, http.StatusOK, "hello")
+	SendJSON(testutil.Context(), rr, http.StatusOK, "json_data")
 
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
@@ -74,21 +74,51 @@ func TestSendJSON(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, `"hello"`+"\n", string(body))
+	require.Equal(t, `"json_data"`+"\n", string(body))
 
-	// add coverage for error handling
+	// test error condition
 	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
-	SendJSON(testutil.Context(), mockWriter, http.StatusOK, "message")
+	SendJSON(testutil.Context(), mockWriter, http.StatusOK, "json_message")
 }
 
+// nolint:dupl
+func TestSendXML(t *testing.T) {
+	t.Parallel()
+
+	rr := httptest.NewRecorder()
+	SendXML(testutil.Context(), rr, http.StatusOK, "xml_data")
+
+	resp := rr.Result() // nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/xml; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "<string>xml_data</string>", string(body))
+
+	// test error condition
+	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
+	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
+	mockWriter.EXPECT().WriteHeader(http.StatusOK)
+	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
+	SendXML(testutil.Context(), mockWriter, http.StatusOK, "xml_message")
+}
+
+// nolint:dupl
 func TestSendText(t *testing.T) {
 	t.Parallel()
 
 	rr := httptest.NewRecorder()
-	SendText(testutil.Context(), rr, http.StatusOK, "hello")
+	SendText(testutil.Context(), rr, http.StatusOK, "text_data")
 
 	resp := rr.Result() // nolint:bodyclose
 	require.NotNil(t, resp)
@@ -102,14 +132,14 @@ func TestSendText(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, `hello`, string(body))
+	require.Equal(t, `text_data`, string(body))
 
-	// add coverage for error handling
+	// test error condition
 	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
-	SendText(testutil.Context(), mockWriter, http.StatusOK, "message")
+	SendText(testutil.Context(), mockWriter, http.StatusOK, "text_message")
 }
 
 func TestSendStatus(t *testing.T) {
