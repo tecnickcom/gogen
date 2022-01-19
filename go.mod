@@ -82,6 +82,7 @@ require (
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/tecnickcom/farmhash64 v0.0.0-20200201102909-d78936b5a645 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.1 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.1 // indirect
 	go.etcd.io/etcd/client/v2 v2.305.1 // indirect
