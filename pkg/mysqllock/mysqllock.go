@@ -59,6 +59,7 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 		defer logging.Close(ctx, conn, "error closing lock connection")
 
 		// background context used to ensure that release lock is always executed
+		// nolint: contextcheck
 		if _, err := conn.ExecContext(context.Background(), sqlReleaseLock, key); err != nil {
 			return fmt.Errorf("release lock: %w", err)
 		}

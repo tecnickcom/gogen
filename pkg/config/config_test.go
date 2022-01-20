@@ -1028,8 +1028,7 @@ func Test_loadConfig(t *testing.T) {
 
 			if tt.envDataContent != nil {
 				envKey := strings.ToUpper(fmt.Sprintf("%s_REMOTECONFIGDATA", "test"))
-				_ = os.Setenv(envKey, base64.StdEncoding.EncodeToString(tt.envDataContent))
-				defer func() { _ = os.Unsetenv(envKey) }()
+				t.Setenv(envKey, base64.StdEncoding.EncodeToString(tt.envDataContent))
 			}
 
 			if err := loadConfig(localViper, remoteViper, "cmd", tmpConfigDir, "test", tt.targetConfig); (err != nil) != tt.wantErr {

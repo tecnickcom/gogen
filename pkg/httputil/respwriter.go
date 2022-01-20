@@ -2,6 +2,7 @@ package httputil
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -40,13 +41,20 @@ func (b *responseWriterWrapper) Size() int {
 
 func (b *responseWriterWrapper) Flush() {
 	b.headerWritten = true
-	fl := b.ResponseWriter.(http.Flusher)
-	fl.Flush()
+
+	fl, ok := b.ResponseWriter.(http.Flusher)
+	if ok {
+		fl.Flush()
+	}
 }
 
 // nolint:wrapcheck
 func (b *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hj := b.ResponseWriter.(http.Hijacker)
+	hj, ok := b.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("the Hijacker is not supported by the ResponseWriter")
+	}
+
 	return hj.Hijack()
 }
 
@@ -64,7 +72,10 @@ func (b *responseWriterWrapper) ReadFrom(r io.Reader) (int64, error) {
 		return n, err
 	}
 
-	rf := b.ResponseWriter.(io.ReaderFrom)
+	rf, ok := b.ResponseWriter.(io.ReaderFrom)
+	if !ok {
+		return 0, fmt.Errorf("the ReaderFrom is not supported by the ResponseWriter")
+	}
 
 	b.maybeWriteHeader()
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -24,17 +23,8 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, got)
 	require.Equal(t, "name", got.bucketName)
 
-	EnvKey := "AWS_ENABLE_ENDPOINT_DISCOVERY"
-	envValBeforeTest := os.Getenv(EnvKey)
-
 	// make AWS lib to return an error
-	err = os.Setenv(EnvKey, "ERROR")
-	require.NoError(t, err)
-
-	defer func() {
-		err = os.Setenv(EnvKey, envValBeforeTest)
-		require.NoError(t, err)
-	}()
+	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
 	got, err = New(context.TODO(), "name")
 	require.Error(t, err)

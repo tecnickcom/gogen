@@ -12,15 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newMockResponseWriter() *mockResponseWriter {
-	buf := bytes.NewBuffer([]byte{})
-	return &mockResponseWriter{Buffer: buf}
-}
-
 type mockResponseWriter struct {
 	*bytes.Buffer
 	hijackCalled bool
 	pushCalled   bool
+}
+
+func newMockResponseWriter() *mockResponseWriter {
+	buf := bytes.NewBuffer([]byte{})
+	return &mockResponseWriter{Buffer: buf}
 }
 
 func (rw *mockResponseWriter) Header() http.Header {
@@ -44,6 +44,25 @@ func (rw *mockResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 func (rw *mockResponseWriter) Push(target string, opts *http.PushOptions) error {
 	rw.pushCalled = true
 	return nil
+}
+
+type mockBrokenResponseWriter struct {
+}
+
+func newMockBrokenResponseWriter() *mockBrokenResponseWriter {
+	return &mockBrokenResponseWriter{}
+}
+
+func (rw *mockBrokenResponseWriter) Header() http.Header {
+	return nil
+}
+
+func (rw *mockBrokenResponseWriter) Write(in []byte) (int, error) {
+	return 0, nil
+}
+
+func (rw *mockBrokenResponseWriter) WriteHeader(statusCode int) {
+
 }
 
 func TestNewWrapResponseWriter(t *testing.T) {
@@ -132,6 +151,17 @@ func Test_responseWriterWrapper_Hijack(t *testing.T) {
 	require.True(t, mock.hijackCalled)
 }
 
+func Test_broken_responseWriterWrapper_Hijack(t *testing.T) {
+	t.Parallel()
+
+	mock := newMockBrokenResponseWriter()
+	ww := NewResponseWriterWrapper(mock)
+	require.NotNil(t, ww)
+
+	_, _, err := ww.(*responseWriterWrapper).Hijack()
+	require.Error(t, err)
+}
+
 func Test_responseWriterWrapper_Push(t *testing.T) {
 	t.Parallel()
 
@@ -171,4 +201,16 @@ func Test_responseWriterWrapper_ReadFrom(t *testing.T) {
 	require.Equal(t, int64(10), countTee)
 	require.Equal(t, "0123456789", teeBuf.String())
 	require.True(t, wwTee.(*responseWriterWrapper).headerWritten)
+}
+
+func Test_broken_responseWriterWrapper_ReadFrom(t *testing.T) {
+	t.Parallel()
+
+	mock := newMockBrokenResponseWriter()
+	ww := NewResponseWriterWrapper(mock)
+	require.NotNil(t, ww)
+
+	inputBuf := bytes.NewBufferString("-")
+	_, err := ww.(*responseWriterWrapper).ReadFrom(inputBuf)
+	require.Error(t, err)
 }
