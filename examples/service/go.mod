@@ -7,7 +7,7 @@ replace github.com/nexmoinc/gosrvlib => ../..
 require (
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v0.9.1
-	github.com/nexmoinc/gosrvlib v1.18.0
+	github.com/nexmoinc/gosrvlib v1.18.2
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rakyll/gotest v0.0.6
 	github.com/spf13/cobra v1.3.0
@@ -72,9 +72,9 @@ require (
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
-	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
+	golang.org/x/crypto v0.0.0-20220126234351-aa10faf2a1f8 // indirect
 	golang.org/x/mod v0.5.0 // indirect
-	golang.org/x/net v0.0.0-20220114011407-0dd24b26b47d // indirect
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/text v0.3.7 // indirect
@@ -82,8 +82,8 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/api v0.65.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220118154757-00ab72f36ad5 // indirect
-	google.golang.org/grpc v1.43.0 // indirect
+	google.golang.org/genproto v0.0.0-20220126215142-9970aeb2e350 // indirect
+	google.golang.org/grpc v1.44.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.66.3 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

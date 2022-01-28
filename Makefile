@@ -185,12 +185,13 @@ modupdate:
 # Create a new project based on the example template
 .PHONY: project
 project:
-	cd examples/service && make clean cleandeps
+	cd examples/service && make clean
 	@mkdir -p ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)
 	@rm -rf ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)/*
 	@cp -rf examples/service/. ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)/
-	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -name 'gosrvlibexample.1' -type f -execdir mv {} $(gosrvlibexample).1 \;
-	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -name 'gosrvlibexample' -exec mv {} $$(dirname {}/$(gosrvlibexample)) \;
+	sed -i '/^replace /d' ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)/go.mod
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -depth -name 'gosrvlibexample.1' -type f -execdir mv {} $(gosrvlibexample).1 \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -depth -name 'gosrvlibexample' -execdir mv {} $(gosrvlibexample) \;
 	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleshortdesc|$(gosrvlibexampleshortdesc)|g" {} \;
 	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexamplelongdesc|$(gosrvlibexamplelongdesc)|g" {} \;
 	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleauthor|$(gosrvlibexampleauthor)|g" {} \;
