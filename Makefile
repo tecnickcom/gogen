@@ -190,8 +190,8 @@ project:
 	@rm -rf ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)/*
 	@cp -rf examples/service/. ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)/
 	sed -i '/^replace /d' ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample)/go.mod
-	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -depth -name 'gosrvlibexample.1' -type f -execdir mv {} $(gosrvlibexample).1 \;
-	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -depth -name 'gosrvlibexample' -execdir mv {} $(gosrvlibexample) \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -depth -regextype sed -regex '.*gosrvlibexample.*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/gosrvlibexample/$(gosrvlibexample)/)"' \;
+	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -depth -regextype sed -regex '.*GOSRVLIBEXAMPLE.*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/GOSRVLIBEXAMPLE/$(GOSRVLIBEXAMPLE)/)"' \;
 	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleshortdesc|$(gosrvlibexampleshortdesc)|g" {} \;
 	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexamplelongdesc|$(gosrvlibexamplelongdesc)|g" {} \;
 	find ./target/$(gosrvlibexamplecvspath)/$(gosrvlibexample) -type f -exec sed -i "s|gosrvlibexampleauthor|$(gosrvlibexampleauthor)|g" {} \;
