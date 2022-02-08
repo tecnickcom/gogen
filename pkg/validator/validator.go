@@ -6,6 +6,7 @@ package validator
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"strings"
@@ -45,21 +46,20 @@ func (v *Validator) ValidateStruct(obj interface{}) (err error) {
 func (v *Validator) ValidateStructCtx(ctx context.Context, obj interface{}) (err error) {
 	vErr := v.v.StructCtx(ctx, obj)
 
-	if vErr == nil {
-		return nil
-	}
+	var valErr vt.ValidationErrors
 
-	// nolint:errorlint
-	for _, fe := range vErr.(vt.ValidationErrors) {
-		// separate tags grouped by OR
-		tags := strings.Split(fe.Tag(), "|")
-		for _, tag := range tags {
-			if strings.HasPrefix(tag, "falseif") {
-				// the "falseif" tag only works in combination with other tags
-				continue
+	if errors.As(vErr, &valErr) {
+		for _, fe := range valErr {
+			// separate tags grouped by OR
+			tags := strings.Split(fe.Tag(), "|")
+			for _, tag := range tags {
+				if strings.HasPrefix(tag, "falseif") {
+					// the "falseif" tag only works in combination with other tags
+					continue
+				}
+
+				err = multierr.Append(err, v.tagError(fe, tag))
 			}
-
-			err = multierr.Append(err, v.tagError(fe, tag))
 		}
 	}
 

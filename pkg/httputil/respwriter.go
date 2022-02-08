@@ -60,7 +60,12 @@ func (b *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 // nolint:wrapcheck
 func (b *responseWriterWrapper) Push(target string, opts *http.PushOptions) error {
-	return b.ResponseWriter.(http.Pusher).Push(target, opts)
+	pusher, ok := b.ResponseWriter.(http.Pusher)
+	if !ok {
+		return fmt.Errorf("the Pusher is not supported by the ResponseWriter")
+	}
+
+	return pusher.Push(target, opts)
 }
 
 // nolint:wrapcheck

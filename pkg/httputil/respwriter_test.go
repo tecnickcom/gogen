@@ -71,7 +71,9 @@ func TestNewWrapResponseWriter(t *testing.T) {
 	rr := httptest.NewRecorder()
 	ww := NewResponseWriterWrapper(rr)
 	require.NotNil(t, ww)
-	require.Equal(t, reflect.ValueOf(rr).Pointer(), reflect.ValueOf(ww.(*responseWriterWrapper).ResponseWriter).Pointer())
+	wwResponseWriterWrapper, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+	require.Equal(t, reflect.ValueOf(rr).Pointer(), reflect.ValueOf(wwResponseWriterWrapper.ResponseWriter).Pointer())
 }
 
 func Test_responseWriterWrapper_Size(t *testing.T) {
@@ -146,7 +148,10 @@ func Test_responseWriterWrapper_Hijack(t *testing.T) {
 	ww := NewResponseWriterWrapper(mock)
 	require.NotNil(t, ww)
 
-	_, _, err := ww.(*responseWriterWrapper).Hijack()
+	wwResponseWriterWrapper, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	_, _, err := wwResponseWriterWrapper.Hijack()
 	require.NoError(t, err)
 	require.True(t, mock.hijackCalled)
 }
@@ -158,7 +163,10 @@ func Test_broken_responseWriterWrapper_Hijack(t *testing.T) {
 	ww := NewResponseWriterWrapper(mock)
 	require.NotNil(t, ww)
 
-	_, _, err := ww.(*responseWriterWrapper).Hijack()
+	wwResponseWriterWrapper, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	_, _, err := wwResponseWriterWrapper.Hijack()
 	require.Error(t, err)
 }
 
@@ -169,9 +177,26 @@ func Test_responseWriterWrapper_Push(t *testing.T) {
 	ww := NewResponseWriterWrapper(mock)
 	require.NotNil(t, ww)
 
-	_ = ww.(*responseWriterWrapper).Push("", &http.PushOptions{})
+	wwResponseWriterWrapper, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	_ = wwResponseWriterWrapper.Push("", &http.PushOptions{})
 
 	require.True(t, mock.pushCalled)
+}
+
+func Test_broken_responseWriterWrapper_Push(t *testing.T) {
+	t.Parallel()
+
+	mock := newMockBrokenResponseWriter()
+	ww := NewResponseWriterWrapper(mock)
+	require.NotNil(t, ww)
+
+	wwResponseWriterWrapper, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	err := wwResponseWriterWrapper.Push("", &http.PushOptions{})
+	require.Error(t, err)
 }
 
 func Test_responseWriterWrapper_ReadFrom(t *testing.T) {
@@ -200,7 +225,10 @@ func Test_responseWriterWrapper_ReadFrom(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(10), countTee)
 	require.Equal(t, "0123456789", teeBuf.String())
-	require.True(t, wwTee.(*responseWriterWrapper).headerWritten)
+
+	wwTeeResponseWriterWrapper, ok := wwTee.(*responseWriterWrapper)
+	require.True(t, ok)
+	require.True(t, wwTeeResponseWriterWrapper.headerWritten)
 }
 
 func Test_broken_responseWriterWrapper_ReadFrom(t *testing.T) {
