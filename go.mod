@@ -22,14 +22,14 @@ require (
 	github.com/tecnickcom/farmhash64 v0.0.0-20200201102909-d78936b5a645
 	github.com/tecnickcom/statsd/v2 v2.0.8
 	go.uber.org/multierr v1.7.0
-	go.uber.org/zap v1.20.0
-	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838
+	go.uber.org/zap v1.21.0
+	golang.org/x/crypto v0.0.0-20220208050332-20e1d8d225ab
 	golang.org/x/text v0.3.7
 )
 
 require (
 	cloud.google.com/go v0.100.2 // indirect
-	cloud.google.com/go/compute v1.1.0 // indirect
+	cloud.google.com/go/compute v1.2.0 // indirect
 	cloud.google.com/go/firestore v1.6.1 // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.2.0 // indirect
@@ -80,7 +80,7 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/sagikazarmark/crypt v0.4.0 // indirect
-	github.com/spf13/afero v1.8.0 // indirect
+	github.com/spf13/afero v1.8.1 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
@@ -92,12 +92,12 @@ require (
 	golang.org/x/mod v0.5.0 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27 // indirect
+	golang.org/x/sys v0.0.0-20220207234003-57398862261d // indirect
 	golang.org/x/tools v0.1.5 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/api v0.66.0 // indirect
+	google.golang.org/api v0.67.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220202230416-2a053f022f0d // indirect
+	google.golang.org/genproto v0.0.0-20220207185906-7721543eae58 // indirect
 	google.golang.org/grpc v1.44.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.66.3 // indirect

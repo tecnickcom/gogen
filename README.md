@@ -8,6 +8,8 @@
 
 This Open Source project contains a collection of common GO packages that forms the base structure of a service.
 
+It also contains a project generator for new services.
+
 [![check](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml)
 [![whitesource](https://github.com/nexmoinc/gosrvlib/actions/workflows/whitesource.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/whitesource.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nexmoinc/gosrvlib)](https://goreportcard.com/report/github.com/nexmoinc/gosrvlib)
