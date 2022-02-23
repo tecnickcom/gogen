@@ -17,12 +17,18 @@ type ExecFunc func(ctx context.Context, tx *sqlx.Tx) error
 
 // Exec executes the specified function inside a SQL transaction.
 func Exec(ctx context.Context, db *sqlx.DB, run ExecFunc) error {
+	var committed bool
+
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("unable to start an SQLX transaction: %w", err)
 	}
 
 	defer func() {
+		if committed {
+			return
+		}
+
 		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
 			logging.FromContext(ctx).Error("failed rolling back SQLX transaction", zap.Error(err))
 		}
@@ -35,6 +41,8 @@ func Exec(ctx context.Context, db *sqlx.DB, run ExecFunc) error {
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("unable to commit an SQL transaction: %w", err)
 	}
+
+	committed = true
 
 	return nil
 }
