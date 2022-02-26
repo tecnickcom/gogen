@@ -18,7 +18,7 @@ type ExecFunc func(ctx context.Context, tx *sql.Tx) error
 func Exec(ctx context.Context, db *sql.DB, run ExecFunc) error {
 	var committed bool
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("unable to start an SQL transaction: %w", err)
 	}
