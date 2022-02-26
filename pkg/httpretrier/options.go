@@ -38,7 +38,7 @@ func WithAttempts(attempts uint) Option {
 func WithDelay(delay time.Duration) Option {
 	return func(r *HTTPRetrier) error {
 		if int64(delay) < 1 {
-			return fmt.Errorf("delay must be a greater than zero")
+			return fmt.Errorf("delay must be greater than zero")
 		}
 
 		r.delay = delay
@@ -67,7 +67,7 @@ func WithDelayFactor(delayFactor float64) Option {
 func WithJitter(jitter time.Duration) Option {
 	return func(r *HTTPRetrier) error {
 		if int64(jitter) < 1 {
-			return fmt.Errorf("jitter must be a greater than zero")
+			return fmt.Errorf("jitter must be greater than zero")
 		}
 
 		r.jitter = jitter
