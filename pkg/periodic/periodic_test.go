@@ -22,56 +22,56 @@ func TestNew(t *testing.T) {
 		{
 			name:     "zero interval",
 			interval: 0 * time.Millisecond,
-			jitter:   1 * time.Millisecond,
-			timeout:  1 * time.Millisecond,
+			jitter:   3 * time.Millisecond,
+			timeout:  10 * time.Millisecond,
 			task:     func(_ context.Context) {},
 			wantErr:  true,
 		},
 		{
 			name:     "negative interval",
-			interval: -3 * time.Millisecond,
-			jitter:   1 * time.Millisecond,
-			timeout:  1 * time.Millisecond,
+			interval: -30 * time.Millisecond,
+			jitter:   3 * time.Millisecond,
+			timeout:  10 * time.Millisecond,
 			task:     func(_ context.Context) {},
 			wantErr:  true,
 		},
 		{
 			name:     "negative jitter",
-			interval: 3 * time.Millisecond,
-			jitter:   -1 * time.Millisecond,
-			timeout:  1 * time.Millisecond,
+			interval: 30 * time.Millisecond,
+			jitter:   -3 * time.Millisecond,
+			timeout:  10 * time.Millisecond,
 			task:     func(_ context.Context) {},
 			wantErr:  true,
 		},
 		{
 			name:     "zero timeout",
-			interval: 3 * time.Millisecond,
-			jitter:   1 * time.Millisecond,
+			interval: 30 * time.Millisecond,
+			jitter:   3 * time.Millisecond,
 			timeout:  0 * time.Millisecond,
 			task:     func(_ context.Context) {},
 			wantErr:  true,
 		},
 		{
 			name:     "negative timeout",
-			interval: 3 * time.Millisecond,
-			jitter:   1 * time.Millisecond,
-			timeout:  -1 * time.Millisecond,
+			interval: 30 * time.Millisecond,
+			jitter:   3 * time.Millisecond,
+			timeout:  -10 * time.Millisecond,
 			task:     func(_ context.Context) {},
 			wantErr:  true,
 		},
 		{
 			name:     "nil task",
-			interval: 3 * time.Millisecond,
-			jitter:   1 * time.Millisecond,
-			timeout:  1 * time.Millisecond,
+			interval: 30 * time.Millisecond,
+			jitter:   3 * time.Millisecond,
+			timeout:  10 * time.Millisecond,
 			task:     nil,
 			wantErr:  true,
 		},
 		{
 			name:     "success",
-			interval: 3 * time.Millisecond,
-			jitter:   1 * time.Millisecond,
-			timeout:  1 * time.Millisecond,
+			interval: 30 * time.Millisecond,
+			jitter:   3 * time.Millisecond,
+			timeout:  10 * time.Millisecond,
 			task:     func(_ context.Context) {},
 			wantErr:  false,
 		},
@@ -107,14 +107,14 @@ func Test_Start_Stop(t *testing.T) {
 		count <- (v + 1)
 	}
 
-	interval := 1 * time.Millisecond
+	interval := 10 * time.Millisecond
 	p, err := New(interval, 1*time.Millisecond, 1*time.Millisecond, task)
 	require.NotNil(t, p)
 	require.NoError(t, err)
 
 	p.Start()
 
-	wait := 4 * interval
+	wait := 3 * interval
 	time.Sleep(wait)
 
 	d := <-p.resetTimer
@@ -126,14 +126,14 @@ func Test_Start_Stop(t *testing.T) {
 
 	require.NotNil(t, p.ctx.Err())
 
-	require.GreaterOrEqual(t, 4, <-count)
+	require.LessOrEqual(t, 2, <-count)
 }
 
 func TestPeriodic_setTimer(t *testing.T) {
 	t.Parallel()
 
 	c := &Periodic{
-		timer: time.NewTimer(1 * time.Millisecond),
+		timer: time.NewTimer(10 * time.Millisecond),
 	}
 
 	time.Sleep(2 * time.Millisecond)
