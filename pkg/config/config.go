@@ -40,8 +40,7 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-
-	_ "github.com/spf13/viper/remote" // nolint:gci
+	_ "github.com/spf13/viper/remote" // nolint:revive,nolintlint
 )
 
 const (
