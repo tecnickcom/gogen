@@ -49,41 +49,44 @@ func New(db *sql.DB) *MySQLLock {
 func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Duration) (ReleaseFunc, error) {
 	conn, err := l.db.Conn(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get db connection: %w", err)
+		return nil, fmt.Errorf("unable to get mysql connection: %w", err)
 	}
 
 	row := conn.QueryRowContext(ctx, sqlGetLock, key, int(timeout.Seconds()), resLockError)
 
 	var res int
 	if err = row.Scan(&res); err != nil {
-		return nil, fmt.Errorf("scan acquire lock result: %w", err)
+		closeConnection(ctx, conn)
+		return nil, fmt.Errorf("unable to scan mysql lock: %w", err)
+	}
+
+	if res != resLockAcquired {
+		closeConnection(ctx, conn)
+
+		if res == resLockTimeout {
+			return nil, ErrTimeout
+		}
+
+		return nil, ErrFailed
 	}
 
 	releaseCtx, cancelReleaseCtx := context.WithCancel(context.Background())
 	releaseCtx = logging.WithLogger(releaseCtx, logging.FromContext(ctx))
 
 	releaseFunc := func() error {
-		defer logging.Close(releaseCtx, conn, "error closing lock connection")
+		defer closeConnection(releaseCtx, conn)
 		defer cancelReleaseCtx()
 
 		if _, err := conn.ExecContext(releaseCtx, sqlReleaseLock, key); err != nil {
-			return fmt.Errorf("release lock: %w", err)
+			return fmt.Errorf("unable to release mysql lock: %w", err)
 		}
 
 		return nil
 	}
 
-	switch res {
-	case resLockAcquired:
-		go keepConnectionAlive(releaseCtx, conn, keepAliveInterval)
-		return releaseFunc, nil
-	case resLockTimeout:
-		cancelReleaseCtx()
-		return nil, ErrTimeout
-	default:
-		cancelReleaseCtx()
-		return nil, ErrFailed
-	}
+	go keepConnectionAlive(releaseCtx, conn, keepAliveInterval)
+
+	return releaseFunc, nil
 }
 
 func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Duration) {
@@ -102,4 +105,8 @@ func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Dura
 			return
 		}
 	}
+}
+
+func closeConnection(ctx context.Context, conn *sql.Conn) {
+	logging.Close(ctx, conn, "error closing mysql lock connection")
 }
