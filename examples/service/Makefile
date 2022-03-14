@@ -146,6 +146,15 @@ GOFMT=gofmt
 GOTEST=GOPATH=$(GOPATH) gotest
 GODOC=GOPATH=$(GOPATH) godoc
 
+# Current operating system and architecture as one string.
+GOOSARCH=$(shell go env GOOS GOARCH | tr -d \\n)
+
+# OS and Architecture used to build the Go binary for Docker.
+LINUXGOBUILDENV=GOOS=linux GOARCH=amd64
+
+# Environment variables for the go build command
+GOBUILDENV=
+
 # Directory containing the source code
 CMDDIR=./cmd
 SRCDIR=./internal
@@ -248,7 +257,7 @@ buildall: build qa docker
 # Compile the application
 .PHONY: build
 build:
-	CGO_ENABLED=0 \
+	CGO_ENABLED=0 $(GOBUILDENV) \
 	$(GO) build \
 	-tags ${STATIC_TAG} \
 	-ldflags '-w -s -X main.programVersion=${VERSION} -X main.programRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
@@ -318,7 +327,7 @@ endif
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.44.2
+	curl --silent --show-error --fail --location https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.44.2
 	$(GO) install github.com/rakyll/gotest
 	$(GO) install github.com/jstemmer/go-junit-report
 	$(GO) install github.com/golang/mock/mockgen
@@ -345,6 +354,9 @@ dockerdev:
 # Create the directory with docker files to be packaged
 .PHONY: dockerdir
 dockerdir:
+ifneq ($(GOOSARCH),linuxamd64)
+	GOBUILDENV=$(LINUXGOBUILDENV) $(MAKE) build
+endif
 	rm -rf $(PATHDOCKERPKG)
 	$(MAKE) install DESTDIR=$(PATHDOCKERPKG)
 	$(MAKE) installssl DESTDIR=$(PATHDOCKERPKG)
@@ -370,9 +382,7 @@ dockerpush:
 
 .PHONY: dockertest
 dockertest: dockertestenv dockerdev
-ifeq ("$(wildcard $(BINUTIL)/dockerize)","")
-	curl -sSfL https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
-endif
+	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
 	@echo 0 > $(TARGETDIR)/make.exit
 	docker-compose down --volumes || true
 	docker-compose up --build --exit-code-from gosrvlibexample_integration || echo $${?} > $(TARGETDIR)/make.exit
@@ -383,7 +393,7 @@ endif
 .PHONY: dockertestenv
 dockertestenv: ensuretarget
 	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gosrvlibexample.integration.env
-	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/integration/gosrvlibexample/config.json | base64 -w0)" >> $(TARGETDIR)/gosrvlibexample.integration.env
+	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/integration/gosrvlibexample/config.json | base64 | tr -d \\n)" >> $(TARGETDIR)/gosrvlibexample.integration.env
 
 # Create the trget directories if missing
 .PHONY: ensuretarget
@@ -420,14 +430,14 @@ install: uninstall
 	chmod -R 644 $(PATHINSTDOC)*
 ifneq ($(strip $(INITPATH)),)
 	mkdir -p $(PATHINSTINIT)
-	cp -ru ./resources/${INITPATH}* $(PATHINSTINIT)
+	cp -rf ./resources/${INITPATH}* $(PATHINSTINIT)
 	find $(PATHINSTINIT) -type d -exec chmod 755 {} \;
 	find $(PATHINSTINIT) -type f -exec chmod 755 {} \;
 endif
 ifneq ($(strip $(CONFIGPATH)),)
 	mkdir -p $(PATHINSTCFG)
 	touch -c $(PATHINSTCFG)*
-	cp -ru ./resources/${CONFIGPATH}* $(PATHINSTCFG)
+	cp -rf ./resources/${CONFIGPATH}* $(PATHINSTCFG)
 	find $(PATHINSTCFG) -type d -exec chmod 755 {} \;
 	find $(PATHINSTCFG) -type f -exec chmod 644 {} \;
 endif
