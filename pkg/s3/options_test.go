@@ -15,13 +15,13 @@ func Test_WithEndpoint(t *testing.T) {
 		name      string
 		url       string
 		immutable bool
-		want      *awsConfig
+		want      *cfg
 	}{
 		{
 			name:      "Immutable URL",
 			url:       "test_a",
 			immutable: true,
-			want: &awsConfig{awsOpts: []func(*config.LoadOptions) error{
+			want: &cfg{awsOpts: []func(*config.LoadOptions) error{
 				config.WithEndpointResolverWithOptions(endpointResolver{url: "test_a", isImmutable: true})},
 			},
 		},
@@ -29,7 +29,7 @@ func Test_WithEndpoint(t *testing.T) {
 			name:      "Mutable URL",
 			url:       "test_b",
 			immutable: false,
-			want: &awsConfig{awsOpts: []func(*config.LoadOptions) error{
+			want: &cfg{awsOpts: []func(*config.LoadOptions) error{
 				config.WithEndpointResolverWithOptions(endpointResolver{url: "test_b", isImmutable: false})},
 			},
 		},
@@ -41,15 +41,15 @@ func Test_WithEndpoint(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cfg := &awsConfig{}
+			c := &cfg{}
 			gotFn := WithEndpoint(tt.url, tt.immutable)
 
-			gotFn(cfg)
+			gotFn(c)
 
-			require.Equal(t, len(tt.want.awsOpts), len(cfg.awsOpts))
+			require.Equal(t, len(tt.want.awsOpts), len(c.awsOpts))
 
 			for i, opt := range tt.want.awsOpts {
-				reflect.DeepEqual(opt, cfg.awsOpts[i])
+				reflect.DeepEqual(opt, c.awsOpts[i])
 			}
 		})
 	}

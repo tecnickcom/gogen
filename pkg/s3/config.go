@@ -7,16 +7,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 )
 
-type awsConfig struct {
+type cfg struct {
 	awsOpts []func(*config.LoadOptions) error
 }
 
 func loadConfig(ctx context.Context, opts ...Option) (aws.Config, error) {
-	cfg := &awsConfig{}
+	c := &cfg{}
 
 	for _, apply := range opts {
-		apply(cfg)
+		apply(c)
 	}
 
-	return config.LoadDefaultConfig(ctx, cfg.awsOpts...) // nolint: wrapcheck
+	return config.LoadDefaultConfig(ctx, c.awsOpts...) // nolint: wrapcheck
 }

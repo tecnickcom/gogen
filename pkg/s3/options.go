@@ -6,11 +6,11 @@ import (
 )
 
 // Option is a type to allow setting custom client options.
-type Option func(*awsConfig)
+type Option func(*cfg)
 
 func withAWSOption(opt func(*config.LoadOptions) error) Option {
-	return func(cfg *awsConfig) {
-		cfg.awsOpts = append(cfg.awsOpts, opt)
+	return func(c *cfg) {
+		c.awsOpts = append(c.awsOpts, opt)
 	}
 }
 
