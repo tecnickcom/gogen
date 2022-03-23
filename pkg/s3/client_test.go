@@ -32,10 +32,14 @@ func TestNew(t *testing.T) {
 }
 
 type s3mock struct {
+	delFn  func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
 	getFn  func(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	listFn func(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 	putFn  func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
-	delFn  func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
+}
+
+func (s s3mock) DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+	return s.delFn(ctx, params, optFns...)
 }
 
 func (s s3mock) GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
@@ -50,8 +54,57 @@ func (s s3mock) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns
 	return s.putFn(ctx, params, optFns...)
 }
 
-func (s s3mock) DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
-	return s.delFn(ctx, params, optFns...)
+func TestS3Client_DeleteObject(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		key     string
+		bucket  string
+		mock    S3
+		wantErr bool
+	}{
+		{
+			name:   "success",
+			key:    "k1",
+			bucket: "bucket",
+			mock: s3mock{delFn: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+				return &s3.DeleteObjectOutput{}, nil
+			}},
+			wantErr: false,
+		},
+		{
+			name:   "error",
+			key:    "k1",
+			bucket: "bucket",
+			mock: s3mock{delFn: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+				return nil, fmt.Errorf("some err")
+			}},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.TODO()
+			cli, err := New(ctx, tt.bucket)
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			cli.s3 = tt.mock
+
+			err = cli.Delete(ctx, tt.key)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
 }
 
 func TestS3Client_GetObject(t *testing.T) {
@@ -123,112 +176,6 @@ func TestS3Client_GetObject(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, string(expectedBytes), string(gotBytes))
-		})
-	}
-}
-
-func TestS3Client_PutObject(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		key     string
-		bucket  string
-		mock    S3
-		wantErr bool
-	}{
-		{
-			name:   "success",
-			key:    "k1",
-			bucket: "bucket",
-			mock: s3mock{putFn: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-				return &s3.PutObjectOutput{}, nil
-			}},
-			wantErr: false,
-		},
-		{
-			name:   "error",
-			key:    "k1",
-			bucket: "bucket",
-			mock: s3mock{putFn: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-				return nil, fmt.Errorf("some err")
-			}},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.TODO()
-			cli, err := New(ctx, tt.bucket)
-			require.NoError(t, err)
-			require.NotNil(t, cli)
-
-			cli.s3 = tt.mock
-
-			err = cli.Put(ctx, tt.key, nil)
-			if tt.wantErr {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestS3Client_DeleteObject(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		key     string
-		bucket  string
-		mock    S3
-		wantErr bool
-	}{
-		{
-			name:   "success",
-			key:    "k1",
-			bucket: "bucket",
-			mock: s3mock{delFn: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
-				return &s3.DeleteObjectOutput{}, nil
-			}},
-			wantErr: false,
-		},
-		{
-			name:   "error",
-			key:    "k1",
-			bucket: "bucket",
-			mock: s3mock{delFn: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
-				return nil, fmt.Errorf("some err")
-			}},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			ctx := context.TODO()
-			cli, err := New(ctx, tt.bucket)
-			require.NoError(t, err)
-			require.NotNil(t, cli)
-
-			cli.s3 = tt.mock
-
-			err = cli.Delete(ctx, tt.key)
-			if tt.wantErr {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
 		})
 	}
 }
@@ -306,6 +253,59 @@ func TestS3Client_ListObject(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, got)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestS3Client_PutObject(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		key     string
+		bucket  string
+		mock    S3
+		wantErr bool
+	}{
+		{
+			name:   "success",
+			key:    "k1",
+			bucket: "bucket",
+			mock: s3mock{putFn: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+				return &s3.PutObjectOutput{}, nil
+			}},
+			wantErr: false,
+		},
+		{
+			name:   "error",
+			key:    "k1",
+			bucket: "bucket",
+			mock: s3mock{putFn: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+				return nil, fmt.Errorf("some err")
+			}},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.TODO()
+			cli, err := New(ctx, tt.bucket)
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			cli.s3 = tt.mock
+
+			err = cli.Put(ctx, tt.key, nil)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
 		})
 	}
 }

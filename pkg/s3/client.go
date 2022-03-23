@@ -11,10 +11,10 @@ import (
 
 // S3 represents the mockable functions in the AWS SDK S3 client.
 type S3 interface {
+	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
 	GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
-	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
 }
 
 // Client is a wrapper for the S3 client in the AWS SDK.
@@ -43,6 +43,16 @@ type Object struct {
 	body   io.ReadCloser
 }
 
+// Delete removes an object from S3 Bucket by key.
+func (c *Client) Delete(ctx context.Context, key string) error {
+	_, err := c.s3.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: aws.String(c.bucketName), Key: aws.String(key)})
+	if err != nil {
+		return fmt.Errorf("cannot delete s3 object: %w", err)
+	}
+
+	return nil
+}
+
 // Get returns *Object.
 func (c *Client) Get(ctx context.Context, key string) (*Object, error) {
 	resp, err := c.s3.GetObject(ctx, &s3.GetObjectInput{
@@ -54,26 +64,6 @@ func (c *Client) Get(ctx context.Context, key string) (*Object, error) {
 	}
 
 	return &Object{bucket: c.bucketName, key: key, body: resp.Body}, nil
-}
-
-// Put uploads data from reader to S3 Bucket.
-func (c *Client) Put(ctx context.Context, key string, reader io.Reader) error {
-	_, err := c.s3.PutObject(ctx, &s3.PutObjectInput{Bucket: aws.String(c.bucketName), Key: aws.String(key), Body: reader})
-	if err != nil {
-		return fmt.Errorf("cannot put s3 object: %w", err)
-	}
-
-	return nil
-}
-
-// Delete removes an object from S3 Bucket by key.
-func (c *Client) Delete(ctx context.Context, key string) error {
-	_, err := c.s3.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: aws.String(c.bucketName), Key: aws.String(key)})
-	if err != nil {
-		return fmt.Errorf("cannot delete s3 object: %w", err)
-	}
-
-	return nil
 }
 
 // ListKeys searches for keys by a provided prefix; returns all keys if prefix is empty string.
@@ -89,4 +79,14 @@ func (c *Client) ListKeys(ctx context.Context, prefix string) ([]string, error) 
 	}
 
 	return keysList, nil
+}
+
+// Put uploads data from reader to S3 Bucket.
+func (c *Client) Put(ctx context.Context, key string, reader io.Reader) error {
+	_, err := c.s3.PutObject(ctx, &s3.PutObjectInput{Bucket: aws.String(c.bucketName), Key: aws.String(key), Body: reader})
+	if err != nil {
+		return fmt.Errorf("cannot put s3 object: %w", err)
+	}
+
+	return nil
 }
