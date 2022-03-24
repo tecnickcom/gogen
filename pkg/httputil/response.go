@@ -21,6 +21,9 @@ const (
 	MimeTextPlain = "text/plain; charset=utf-8"
 )
 
+// XMLHeader is a default XML Declaration header suitable for use with the SendXML function.
+const XMLHeader = xml.Header
+
 // JSend status codes.
 const (
 	StatusSuccess = "success"
@@ -58,6 +61,17 @@ func SendStatus(ctx context.Context, w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
+// SendText sends text to the response.
+func SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
+	defer logResponse(ctx, statusCode, logKeyResponseDataText, data)
+
+	writeHeaders(w, statusCode, MimeTextPlain)
+
+	if _, err := w.Write([]byte(data)); err != nil {
+		logging.FromContext(ctx).Error("httputil.SendText()", zap.Error(err))
+	}
+}
+
 // SendJSON sends a JSON object to the response.
 func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
 	defer logResponse(ctx, statusCode, logKeyResponseDataObject, data)
@@ -70,24 +84,17 @@ func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data i
 }
 
 // SendXML sends an XML object to the response.
-func SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
+func SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, xmlHeader string, data interface{}) {
 	defer logResponse(ctx, statusCode, logKeyResponseDataObject, data)
 
 	writeHeaders(w, statusCode, MimeApplicationXML)
 
+	if _, err := w.Write([]byte(xmlHeader)); err != nil {
+		logging.FromContext(ctx).Error("httputil.SendXML() unable to send XML Declaration Header", zap.Error(err))
+	}
+
 	if err := xml.NewEncoder(w).Encode(data); err != nil {
 		logging.FromContext(ctx).Error("httputil.SendXML()", zap.Error(err))
-	}
-}
-
-// SendText sends a JSON marshaled object to the response.
-func SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
-	defer logResponse(ctx, statusCode, logKeyResponseDataText, data)
-
-	writeHeaders(w, statusCode, MimeTextPlain)
-
-	if _, err := w.Write([]byte(data)); err != nil {
-		logging.FromContext(ctx).Error("httputil.SendText()", zap.Error(err))
 	}
 }
 
