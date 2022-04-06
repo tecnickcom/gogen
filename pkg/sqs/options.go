@@ -9,6 +9,7 @@ import (
 type Option func(*cfg)
 
 // WithWaitTimeSeconds overrides the default duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
+// Values range: 0 to 20 seconds.
 func WithWaitTimeSeconds(t int32) Option {
 	return func(c *cfg) {
 		c.waitTimeSeconds = t

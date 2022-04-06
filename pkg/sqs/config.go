@@ -10,7 +10,8 @@ import (
 
 const (
 	// DefaultWaitTimeSeconds is the default duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
-	DefaultWaitTimeSeconds = 60
+	// This must be between 0 and 20 seconds.
+	DefaultWaitTimeSeconds = 20
 
 	// DefaultVisibilityTimeout is the default duration (in seconds) that the received messages are hidden from subsequent retrieve requests after being retrieved by a ReceiveMessage request.
 	DefaultVisibilityTimeout = 600
@@ -33,12 +34,12 @@ func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 		apply(c)
 	}
 
-	if c.waitTimeSeconds < 0 {
-		return nil, fmt.Errorf("waitTimeSeconds must be greater or equal zero")
+	if c.waitTimeSeconds < 0 || c.waitTimeSeconds > 20 {
+		return nil, fmt.Errorf("waitTimeSeconds must be between 0 and 20 seconds")
 	}
 
 	if c.visibilityTimeout < 0 || c.visibilityTimeout > 43200 {
-		return nil, fmt.Errorf("visibilityTimeout must be between 0 and 43200")
+		return nil, fmt.Errorf("visibilityTimeout must be between 0 and 43200 seconds")
 	}
 
 	awsConfig, err := config.LoadDefaultConfig(ctx, c.awsOpts...)

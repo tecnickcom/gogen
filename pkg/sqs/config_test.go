@@ -40,6 +40,14 @@ func Test_loadConfig(t *testing.T) {
 
 	got, err = loadConfig(
 		context.TODO(),
+		WithWaitTimeSeconds(21),
+	)
+
+	require.Error(t, err)
+	require.Nil(t, got)
+
+	got, err = loadConfig(
+		context.TODO(),
 		WithVisibilityTimeout(-1),
 	)
 
