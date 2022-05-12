@@ -27,7 +27,7 @@ type Client struct {
 	messageGroupID *string
 
 	// waitTimeSeconds is the duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
-	// If a message is available, the call returns soonerthan WaitTimeSeconds.
+	// If a message is available, the call returns sooner than WaitTimeSeconds.
 	// If no messages are available and the wait time expires, the call returns successfully with an empty list of messages.
 	// The value of this parameter must be smaller than the HTTP response timeout.
 	waitTimeSeconds int32

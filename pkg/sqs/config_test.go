@@ -19,7 +19,7 @@ func Test_loadConfig(t *testing.T) {
 	got, err := loadConfig(
 		context.TODO(),
 		WithEndpoint("test", true),
-		withAWSOption(config.WithRegion(reg)),
+		WithAWSOption(config.WithRegion(reg)),
 		WithWaitTimeSeconds(wt),
 		WithVisibilityTimeout(vt),
 	)

@@ -8,7 +8,8 @@ import (
 // Option is a type to allow setting custom client options.
 type Option func(*cfg)
 
-func withAWSOption(opt func(*config.LoadOptions) error) Option {
+// WithAWSOption allows to add an arbitrary AWS option.
+func WithAWSOption(opt func(*config.LoadOptions) error) Option {
 	return func(c *cfg) {
 		c.awsOpts = append(c.awsOpts, opt)
 	}
@@ -16,7 +17,7 @@ func withAWSOption(opt func(*config.LoadOptions) error) Option {
 
 // WithEndpoint overrides the AWS endpoint for the service.
 func WithEndpoint(url string, isImmutable bool) Option {
-	return withAWSOption(config.WithEndpointResolverWithOptions(endpointResolver{url: url, isImmutable: isImmutable}))
+	return WithAWSOption(config.WithEndpointResolverWithOptions(endpointResolver{url: url, isImmutable: isImmutable}))
 }
 
 type endpointResolver struct {

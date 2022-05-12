@@ -14,7 +14,7 @@ func Test_loadConfig(t *testing.T) {
 	got, err := loadConfig(
 		context.TODO(),
 		WithEndpoint("test", true),
-		withAWSOption(config.WithRegion("eu-central-1")),
+		WithAWSOption(config.WithRegion("eu-central-1")),
 	)
 
 	require.NoError(t, err)
