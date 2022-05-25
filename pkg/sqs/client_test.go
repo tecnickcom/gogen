@@ -131,7 +131,7 @@ func TestReceive(t *testing.T) {
 			}},
 			want: &Message{
 				Body:          "testBody01",
-				receiptHandle: aws.String("TestReceiptHandle01"),
+				receiptHandle: "TestReceiptHandle01",
 			},
 			wantErr: false,
 		},
