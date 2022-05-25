@@ -28,6 +28,25 @@ func Test_WithVisibilityTimeout(t *testing.T) {
 	require.Equal(t, v, conf.visibilityTimeout)
 }
 
+func Test_WithRegion(t *testing.T) {
+	t.Parallel()
+
+	region := "ap-southeast-2"
+
+	c := &cfg{}
+	gotFn := WithRegion(region)
+
+	gotFn(c)
+
+	want := &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion(region)}}
+
+	require.Equal(t, len(want.awsOpts), len(c.awsOpts))
+
+	for i, opt := range want.awsOpts {
+		reflect.DeepEqual(opt, c.awsOpts[i])
+	}
+}
+
 func Test_WithEndpoint(t *testing.T) {
 	t.Parallel()
 

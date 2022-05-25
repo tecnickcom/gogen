@@ -24,6 +24,11 @@ func WithVisibilityTimeout(t int32) Option {
 	}
 }
 
+// WithRegion allows to specify the AWS region.
+func WithRegion(region string) Option {
+	return WithAWSOption(config.WithRegion(region))
+}
+
 // WithAWSOption allows to add an arbitrary AWS option.
 func WithAWSOption(opt func(*config.LoadOptions) error) Option {
 	return func(c *cfg) {
