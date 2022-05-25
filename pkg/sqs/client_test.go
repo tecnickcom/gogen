@@ -236,3 +236,76 @@ func TestDelete(t *testing.T) {
 		})
 	}
 }
+
+func TestMessageEncode(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	got, err := MessageEncode(&TestData{Alpha: "abc123", Beta: -375})
+	require.NoError(t, err)
+	require.Equal(t, "Kf+BAwEBCFRlc3REYXRhAf+CAAECAQVBbHBoYQEMAAEEQmV0YQEEAAAAD/+CAQZhYmMxMjMB/gLtAA==", got)
+
+	got, err = MessageEncode(nil)
+	require.Error(t, err)
+	require.Equal(t, "", got)
+}
+
+func TestMessageDecode(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	tests := []struct {
+		name    string
+		msg     string
+		want    TestData
+		wantErr bool
+	}{
+		{
+			name:    "success",
+			msg:     "Kf+BAwEBCFRlc3REYXRhAf+CAAECAQVBbHBoYQEMAAEEQmV0YQEEAAAAD/+CAQZhYmMxMjMB/gLtAA==",
+			want:    TestData{Alpha: "abc123", Beta: -375},
+			wantErr: false,
+		},
+		{
+			name:    "invalid base64",
+			msg:     "你好世界",
+			want:    TestData{},
+			wantErr: true,
+		},
+		{
+			name:    "empty",
+			msg:     "",
+			want:    TestData{},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var data TestData
+
+			err := MessageDecode(tt.msg, &data)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want.Alpha, data.Alpha)
+			require.Equal(t, tt.want.Beta, data.Beta)
+		})
+	}
+}

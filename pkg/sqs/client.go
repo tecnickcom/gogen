@@ -1,7 +1,10 @@
 package sqs
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/gob"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -118,6 +121,32 @@ func (c *Client) Delete(ctx context.Context, msg *Message) error {
 		})
 	if err != nil {
 		return fmt.Errorf("cannot delete message from the queue: %w", err)
+	}
+
+	return nil
+}
+
+// MessageEncode encodes and serialize the input data to a string compatible with SQS.
+func MessageEncode(data interface{}) (string, error) {
+	var buf bytes.Buffer
+
+	if err := gob.NewEncoder(&buf).Encode(data); err != nil {
+		return "", fmt.Errorf("failed to gob-encode the message: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+}
+
+// MessageDecode decodes a message encoded with MessageEncode to the provided data object.
+// The value underlying data must be a pointer to the correct type for the next data item received.
+func MessageDecode(msg string, data interface{}) error {
+	s, err := base64.StdEncoding.DecodeString(msg)
+	if err != nil {
+		return fmt.Errorf("failed to base64-decode the message: %w", err)
+	}
+
+	if err := gob.NewDecoder(bytes.NewBuffer(s)).Decode(data); err != nil {
+		return fmt.Errorf("failed to gob-decode the message: %w", err)
 	}
 
 	return nil
