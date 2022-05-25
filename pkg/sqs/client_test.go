@@ -140,7 +140,7 @@ func TestReceive(t *testing.T) {
 			mock: sqsmock{receiveFn: func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 				return &sqs.ReceiveMessageOutput{}, nil
 			}},
-			want:    &Message{},
+			want:    nil,
 			wantErr: false,
 		},
 		{
@@ -173,7 +173,6 @@ func TestReceive(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.NotNil(t, got)
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -184,18 +183,29 @@ func TestDelete(t *testing.T) {
 
 	tests := []struct {
 		name    string
+		msg     *Message
 		mock    SQS
 		wantErr bool
 	}{
 		{
 			name: "success",
+			msg:  &Message{receiptHandle: "123456"},
 			mock: sqsmock{deleteFn: func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return &sqs.DeleteMessageOutput{}, nil
 			}},
 			wantErr: false,
 		},
 		{
+			name: "empty",
+			msg:  nil,
+			mock: sqsmock{deleteFn: func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+				return &sqs.DeleteMessageOutput{}, nil
+			}},
+			wantErr: true,
+		},
+		{
 			name: "error",
+			msg:  &Message{receiptHandle: "7890"},
 			mock: sqsmock{deleteFn: func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return nil, fmt.Errorf("some err")
 			}},
@@ -216,7 +226,7 @@ func TestDelete(t *testing.T) {
 
 			cli.sqs = tt.mock
 
-			err = cli.Delete(ctx, &Message{})
+			err = cli.Delete(ctx, tt.msg)
 			if tt.wantErr {
 				require.Error(t, err)
 				return

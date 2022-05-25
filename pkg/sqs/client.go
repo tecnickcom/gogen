@@ -95,7 +95,7 @@ func (c *Client) Receive(ctx context.Context) (*Message, error) {
 	}
 
 	if len(resp.Messages) < 1 {
-		return &Message{}, nil
+		return nil, nil
 	}
 
 	return &Message{
@@ -106,6 +106,10 @@ func (c *Client) Receive(ctx context.Context) (*Message, error) {
 
 // Delete deletes the specified message from the queue.
 func (c *Client) Delete(ctx context.Context, msg *Message) error {
+	if msg == nil {
+		return fmt.Errorf("cannot delete an empty message from the queue")
+	}
+
 	_, err := c.sqs.DeleteMessage(
 		ctx,
 		&sqs.DeleteMessageInput{
