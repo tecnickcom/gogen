@@ -1,8 +1,15 @@
 package sqs
 
 import (
+	"regexp"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+)
+
+const (
+	awsRegionFromURLRegexp = `^https://sqs.([^.]+).amazonaws.com` // protocol://service-code.region-code.amazonaws.com
+	awsDefaultRegion       = "unknown"
 )
 
 // Option is a type to allow setting custom client options.
@@ -27,6 +34,22 @@ func WithVisibilityTimeout(t int32) Option {
 // WithRegion allows to specify the AWS region.
 func WithRegion(region string) Option {
 	return WithAWSOption(config.WithRegion(region))
+}
+
+// WithRegionFromURL allows to specify the AWS region extracted from the provided URL.
+func WithRegionFromURL(url string) Option {
+	return WithRegion(awsRegionFromURL(url))
+}
+
+func awsRegionFromURL(url string) string {
+	re := regexp.MustCompile(awsRegionFromURLRegexp)
+	match := re.FindStringSubmatch(url)
+
+	if len(match) > 1 {
+		return match[1]
+	}
+
+	return awsDefaultRegion
 }
 
 // WithAWSOption allows to add an arbitrary AWS option.

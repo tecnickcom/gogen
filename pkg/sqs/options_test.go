@@ -47,6 +47,46 @@ func Test_WithRegion(t *testing.T) {
 	}
 }
 
+func Test_WithRegionFromURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		url  string
+		want *cfg
+	}{
+		{
+			name: "Valid AWS URL",
+			url:  "https://sqs.ap-southeast-2.amazonaws.com",
+			want: &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion("ap-southeast-2")}},
+		},
+		{
+			name: "Invalid AWS URL",
+			url:  awsDefaultRegion,
+			want: &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion(awsDefaultRegion)}},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c := &cfg{}
+			gotFn := WithRegionFromURL(tt.url)
+
+			gotFn(c)
+
+			require.Equal(t, len(tt.want.awsOpts), len(c.awsOpts))
+
+			for i, opt := range tt.want.awsOpts {
+				reflect.DeepEqual(opt, c.awsOpts[i])
+			}
+		})
+	}
+}
+
 func Test_WithEndpoint(t *testing.T) {
 	t.Parallel()
 
