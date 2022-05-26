@@ -131,7 +131,7 @@ func TestReceive(t *testing.T) {
 			}},
 			want: &Message{
 				Body:          "testBody01",
-				receiptHandle: "TestReceiptHandle01",
+				ReceiptHandle: "TestReceiptHandle01",
 			},
 			wantErr: false,
 		},
@@ -182,30 +182,22 @@ func TestDelete(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		msg     *Message
-		mock    SQS
-		wantErr bool
+		name          string
+		receiptHandle string
+		mock          SQS
+		wantErr       bool
 	}{
 		{
-			name: "success",
-			msg:  &Message{receiptHandle: "123456"},
+			name:          "success",
+			receiptHandle: "123456",
 			mock: sqsmock{deleteFn: func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return &sqs.DeleteMessageOutput{}, nil
 			}},
 			wantErr: false,
 		},
 		{
-			name: "empty",
-			msg:  nil,
-			mock: sqsmock{deleteFn: func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
-				return &sqs.DeleteMessageOutput{}, nil
-			}},
-			wantErr: true,
-		},
-		{
-			name: "error",
-			msg:  &Message{receiptHandle: "7890"},
+			name:          "error",
+			receiptHandle: "7890",
 			mock: sqsmock{deleteFn: func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 				return nil, fmt.Errorf("some err")
 			}},
@@ -226,7 +218,7 @@ func TestDelete(t *testing.T) {
 
 			cli.sqs = tt.mock
 
-			err = cli.Delete(ctx, tt.msg)
+			err = cli.Delete(ctx, tt.receiptHandle)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -306,6 +298,124 @@ func TestMessageDecode(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.want.Alpha, data.Alpha)
 			require.Equal(t, tt.want.Beta, data.Beta)
+		})
+	}
+}
+
+func TestSendData(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.TODO()
+	cli, err := New(ctx, "test_queue_url_3", "TEST_MSG_GROUP_ID_3")
+	require.NoError(t, err)
+	require.NotNil(t, cli)
+
+	cli.sqs = sqsmock{sendFn: func(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+		return &sqs.SendMessageOutput{}, nil
+	}}
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	err = cli.SendData(ctx, TestData{Alpha: "abc345", Beta: -678})
+	require.NoError(t, err)
+
+	err = cli.SendData(ctx, nil)
+	require.Error(t, err)
+}
+
+func TestReceiveData(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	tests := []struct {
+		name    string
+		mock    SQS
+		data    TestData
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "success",
+			mock: sqsmock{receiveFn: func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				return &sqs.ReceiveMessageOutput{
+					Messages: []types.Message{
+						{
+							Body:          aws.String("Kf+BAwEBCFRlc3REYXRhAf+CAAECAQVBbHBoYQEMAAEEQmV0YQEEAAAAD/+CAQZhYmMxMjMB/gLtAA=="),
+							ReceiptHandle: aws.String("TestReceiptHandle02"),
+						},
+					},
+				}, nil
+			}},
+			data:    TestData{Alpha: "abc123", Beta: -375},
+			want:    "TestReceiptHandle02",
+			wantErr: false,
+		},
+		{
+			name: "empty",
+			mock: sqsmock{receiveFn: func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				return &sqs.ReceiveMessageOutput{}, nil
+			}},
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name: "error",
+			mock: sqsmock{receiveFn: func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				return nil, fmt.Errorf("some err")
+			}},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "invalid message",
+			mock: sqsmock{receiveFn: func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				return &sqs.ReceiveMessageOutput{
+					Messages: []types.Message{
+						{
+							Body:          aws.String("你好世界"),
+							ReceiptHandle: aws.String("TestReceiptHandle03"),
+						},
+					},
+				}, nil
+			}},
+			want:    "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.TODO()
+			cli, err := New(ctx, "test_queue_url_4", "TEST_MSG_GROUP_ID_4")
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			cli.sqs = tt.mock
+
+			var data TestData
+
+			got, err := cli.ReceiveData(ctx, &data)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Empty(t, got)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.data.Alpha, data.Alpha)
+			require.Equal(t, tt.data.Beta, data.Beta)
 		})
 	}
 }
