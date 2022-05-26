@@ -385,7 +385,7 @@ func TestReceiveData(t *testing.T) {
 					},
 				}, nil
 			}},
-			want:    "",
+			want:    "TestReceiptHandle03",
 			wantErr: true,
 		},
 	}
@@ -408,7 +408,7 @@ func TestReceiveData(t *testing.T) {
 			got, err := cli.ReceiveData(ctx, &data)
 			if tt.wantErr {
 				require.Error(t, err)
-				require.Empty(t, got)
+				require.Equal(t, tt.want, got)
 				return
 			}
 

@@ -163,6 +163,7 @@ func (c *Client) SendData(ctx context.Context, data interface{}) error {
 // This function will wait up to WaitTimeSeconds seconds for a message to be available, otherwise it will return an empty ReceiptHandle.
 // Once retrieved, a message will not be visible for up to VisibilityTimeout seconds.
 // Once processed the message should be removed from the queue by calling the Delete method.
+// In case of decoding error the returned receipt handle will be not empty, so it can be used to delete the message.
 func (c *Client) ReceiveData(ctx context.Context, data interface{}) (string, error) {
 	message, err := c.Receive(ctx)
 	if err != nil {
@@ -174,9 +175,6 @@ func (c *Client) ReceiveData(ctx context.Context, data interface{}) (string, err
 	}
 
 	err = MessageDecode(message.Body, data)
-	if err != nil {
-		return "", err
-	}
 
-	return message.ReceiptHandle, nil
+	return message.ReceiptHandle, err
 }
