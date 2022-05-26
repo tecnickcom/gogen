@@ -109,6 +109,10 @@ func (c *Client) Receive(ctx context.Context) (*Message, error) {
 
 // Delete deletes the specified message from the queue.
 func (c *Client) Delete(ctx context.Context, receiptHandle string) error {
+	if receiptHandle == "" {
+		return nil
+	}
+
 	_, err := c.sqs.DeleteMessage(
 		ctx,
 		&sqs.DeleteMessageInput{
