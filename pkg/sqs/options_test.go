@@ -47,23 +47,48 @@ func Test_WithRegion(t *testing.T) {
 	}
 }
 
+// nolint:paralleltest,tparallel
 func Test_WithRegionFromURL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name string
-		url  string
-		want *cfg
+		name                string
+		url                 string
+		defaultRegion       string
+		envAWSRegion        string
+		envAWSDefaultregion string
+		want                *cfg
 	}{
 		{
 			name: "Valid AWS URL",
-			url:  "https://sqs.ap-southeast-2.amazonaws.com",
-			want: &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion("ap-southeast-2")}},
+			url:  "https://sqs.ap-southeast-1.amazonaws.com",
+			want: &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion("ap-southeast-1")}},
 		},
 		{
-			name: "Invalid AWS URL",
-			url:  awsDefaultRegion,
-			want: &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion(awsDefaultRegion)}},
+			name:          "Load default region",
+			url:           "https://no-region-2.with-default.example.com",
+			defaultRegion: "ap-southeast-2",
+			want:          &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion("ap-southeast-2")}},
+		},
+		{
+			name:          "Load from AWS_REGION",
+			url:           "https://no-region-3.example.com",
+			defaultRegion: "",
+			envAWSRegion:  "eu-central-1",
+			want:          &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion("eu-central-1")}},
+		},
+		{
+			name:                "Load from AWS_DEFAULT_REGION",
+			url:                 "https://no-region-4.example.com",
+			defaultRegion:       "",
+			envAWSDefaultregion: "eu-west-1",
+			want:                &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion("eu-west-1")}},
+		},
+		{
+			name:          "Invalid AWS URL without default region",
+			url:           "https://no-region.without-default.example.com",
+			defaultRegion: "",
+			want:          &cfg{awsOpts: []func(*config.LoadOptions) error{config.WithRegion(awsDefaultRegion)}},
 		},
 	}
 
@@ -71,10 +96,11 @@ func Test_WithRegionFromURL(t *testing.T) {
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			t.Setenv("AWS_REGION", tt.envAWSRegion)
+			t.Setenv("AWS_DEFAULT_REGION", tt.envAWSDefaultregion)
 
 			c := &cfg{}
-			gotFn := WithRegionFromURL(tt.url)
+			gotFn := WithRegionFromURL(tt.url, tt.defaultRegion)
 
 			gotFn(c)
 

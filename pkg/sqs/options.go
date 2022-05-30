@@ -1,6 +1,7 @@
 package sqs
 
 import (
+	"os"
 	"regexp"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -9,7 +10,7 @@ import (
 
 const (
 	awsRegionFromURLRegexp = `^https://sqs.([^.]+).amazonaws.com` // protocol://service-code.region-code.amazonaws.com
-	awsDefaultRegion       = "unknown"
+	awsDefaultRegion       = "us-east-2"
 )
 
 // Option is a type to allow setting custom client options.
@@ -37,16 +38,35 @@ func WithRegion(region string) Option {
 }
 
 // WithRegionFromURL allows to specify the AWS region extracted from the provided URL.
-func WithRegionFromURL(url string) Option {
-	return WithRegion(awsRegionFromURL(url))
+// If the URL does not contain a region, a default one will be returned with the order of precedence:
+//   * the specified defaultRegion;
+//   * the AWS_REGION environment variable;
+//   * the AWS_DEFAULT_REGION environment variable;
+//   * the region set in the awsDefaultRegion constant.
+func WithRegionFromURL(url, defaultRegion string) Option {
+	return WithRegion(awsRegionFromURL(url, defaultRegion))
 }
 
-func awsRegionFromURL(url string) string {
+func awsRegionFromURL(url, defaultRegion string) string {
 	re := regexp.MustCompile(awsRegionFromURLRegexp)
 	match := re.FindStringSubmatch(url)
 
 	if len(match) > 1 {
 		return match[1]
+	}
+
+	if defaultRegion != "" {
+		return defaultRegion
+	}
+
+	r := os.Getenv("AWS_REGION")
+	if r != "" {
+		return r
+	}
+
+	r = os.Getenv("AWS_DEFAULT_REGION")
+	if r != "" {
+		return r
 	}
 
 	return awsDefaultRegion

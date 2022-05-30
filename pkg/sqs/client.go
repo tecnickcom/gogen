@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
+	"net/url"
+	"path"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -13,9 +15,10 @@ import (
 
 // SQS represents the mockable functions in the AWS SDK SQS client.
 type SQS interface {
-	SendMessage(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
-	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+	ListQueues(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error)
+	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
+	SendMessage(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
 }
 
 // Client is a wrapper for the SQS client in the AWS SDK.
@@ -23,10 +26,10 @@ type Client struct {
 	// sqs is the interface for the upstream functions.
 	sqs SQS
 
-	// Queue URLs and names are case-sensitive and limited up to 80 chars.
+	// queueURL is the SQS queue URL. Names are case-sensitive and limited up to 80 chars.
 	queueURL *string
 
-	// messageGroupId is a tag that specifies that a message belongs to a specific message group.
+	// messageGroupID is a tag that specifies that a message belongs to a specific message group.
 	messageGroupID *string
 
 	// waitTimeSeconds is the duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
@@ -35,9 +38,12 @@ type Client struct {
 	// The value of this parameter must be smaller than the HTTP response timeout.
 	waitTimeSeconds int32
 
-	// The duration (in seconds) that the received messages are hidden from subsequent retrieve requests after being retrieved by a ReceiveMessage request.
+	// visibilityTimeout is the duration (in seconds) that the received messages are hidden from subsequent retrieve requests after being retrieved by a ReceiveMessage request.
 	// Values range: 0 to 43200. Maximum: 12 hours.
 	visibilityTimeout int32
+
+	// hcListQueuesInput is the input parameter for the ListQueues function used by the HealthCheck.
+	hcListQueuesInput *sqs.ListQueuesInput
 }
 
 // New creates a new instance of the SQS client wrapper.
@@ -47,12 +53,18 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 		return nil, fmt.Errorf("cannot create a new sqs client: %w", err)
 	}
 
+	queueName, err := queueNameFromURL(queueURL)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Client{
 		sqs:               sqs.NewFromConfig(cfg.awsConfig),
 		queueURL:          aws.String(queueURL),
 		messageGroupID:    aws.String(msgGroupID),
 		waitTimeSeconds:   cfg.waitTimeSeconds,
 		visibilityTimeout: cfg.visibilityTimeout,
+		hcListQueuesInput: &sqs.ListQueuesInput{MaxResults: aws.Int32(1), QueueNamePrefix: queueName},
 	}, nil
 }
 
@@ -181,4 +193,27 @@ func (c *Client) ReceiveData(ctx context.Context, data interface{}) (string, err
 	err = MessageDecode(message.Body, data)
 
 	return message.ReceiptHandle, err
+}
+
+// HealthCheck checks if the current queue is present in the current region and returns an error otherwise.
+func (c *Client) HealthCheck(ctx context.Context) error {
+	q, err := c.sqs.ListQueues(ctx, c.hcListQueuesInput)
+	if err != nil {
+		return fmt.Errorf("unable to connect to AWS SQS: %w", err)
+	}
+
+	if len(q.QueueUrls) == 1 {
+		return nil
+	}
+
+	return fmt.Errorf("unable to find the queue: %s", aws.ToString(c.queueURL))
+}
+
+func queueNameFromURL(queueURL string) (*string, error) {
+	url, err := url.Parse(queueURL)
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract the queue name from %s URL: %w", queueURL, err)
+	}
+
+	return aws.String(path.Base(url.Path)), nil
 }
