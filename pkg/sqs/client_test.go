@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/nexmoinc/gosrvlib/pkg/awsopt"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,11 +19,15 @@ func TestNew(t *testing.T) {
 		vt int32 = 17
 	)
 
+	o := awsopt.Options{}
+	o.WithRegion("eu-west-1")
+	o.WithEndpoint("https://test.endpoint.invalid", true)
+
 	got, err := New(
 		context.TODO(),
 		"https://test_queue.invalid/queue0.fifo",
 		"TEST_MSG_GROUP_ID_0",
-		WithEndpoint("test", true),
+		WithAWSOptions(o),
 		WithWaitTimeSeconds(wt),
 		WithVisibilityTimeout(vt),
 	)

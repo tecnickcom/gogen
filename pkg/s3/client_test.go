@@ -10,14 +10,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/nexmoinc/gosrvlib/pkg/awsopt"
 	"github.com/stretchr/testify/require"
 )
 
 // nolint: paralleltest
 func TestNew(t *testing.T) {
-	opt := WithEndpoint("test", true)
+	o := awsopt.Options{}
+	o.WithEndpoint("https://test.endpoint.invalid", true)
 
-	got, err := New(context.TODO(), "name", opt)
+	got, err := New(
+		context.TODO(),
+		"name",
+		WithAWSOptions(o),
+	)
 
 	require.NoError(t, err)
 	require.NotNil(t, got)

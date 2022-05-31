@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/nexmoinc/gosrvlib/pkg/awsopt"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 )
 
 type cfg struct {
-	awsOpts           []func(*config.LoadOptions) error
+	awsOpts           awsopt.Options
 	awsConfig         aws.Config
 	waitTimeSeconds   int32
 	visibilityTimeout int32
@@ -42,10 +42,9 @@ func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 		return nil, fmt.Errorf("visibilityTimeout must be between 0 and 43200 seconds")
 	}
 
-	awsConfig, err := config.LoadDefaultConfig(ctx, c.awsOpts...)
-
+	awsConfig, err := c.awsOpts.LoadDefaultConfig(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to load AWS options: %w", err)
+		return nil, fmt.Errorf("unable to load AWS configuration: %w", err)
 	}
 
 	c.awsConfig = awsConfig

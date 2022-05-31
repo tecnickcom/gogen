@@ -4,29 +4,32 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/nexmoinc/gosrvlib/pkg/awsopt"
 	"github.com/stretchr/testify/require"
 )
 
 // nolint: paralleltest
 func Test_loadConfig(t *testing.T) {
 	var (
-		wt  int32 = 13
-		vt  int32 = 17
-		reg       = "eu-central-1"
+		wt     int32 = 13
+		vt     int32 = 17
+		region       = "eu-central-1"
 	)
+
+	o := awsopt.Options{}
+	o.WithRegion(region)
+	o.WithEndpoint("https://test.endpoint.invalid", true)
 
 	got, err := loadConfig(
 		context.TODO(),
-		WithEndpoint("test", true),
-		WithAWSOption(config.WithRegion(reg)),
+		WithAWSOptions(o),
 		WithWaitTimeSeconds(wt),
 		WithVisibilityTimeout(vt),
 	)
 
 	require.NoError(t, err)
 	require.NotNil(t, got)
-	require.Equal(t, reg, got.awsConfig.Region)
+	require.Equal(t, region, got.awsConfig.Region)
 	require.Equal(t, wt, got.waitTimeSeconds)
 	require.Equal(t, vt, got.visibilityTimeout)
 
