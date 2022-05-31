@@ -6,17 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
-	"net/url"
-	"path"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 // SQS represents the mockable functions in the AWS SDK SQS client.
 type SQS interface {
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
-	ListQueues(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error)
+	GetQueueAttributes(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error)
 	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
 	SendMessage(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
 }
@@ -42,8 +41,8 @@ type Client struct {
 	// Values range: 0 to 43200. Maximum: 12 hours.
 	visibilityTimeout int32
 
-	// hcListQueuesInput is the input parameter for the ListQueues function used by the HealthCheck.
-	hcListQueuesInput *sqs.ListQueuesInput
+	// hcGetQueueAttributesInput is the input parameter for the GetQueueAttributes function used by the HealthCheck.
+	hcGetQueueAttributesInput *sqs.GetQueueAttributesInput
 }
 
 // New creates a new instance of the SQS client wrapper.
@@ -53,18 +52,16 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 		return nil, fmt.Errorf("cannot create a new sqs client: %w", err)
 	}
 
-	queueName, err := queueNameFromURL(queueURL)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Client{
 		sqs:               sqs.NewFromConfig(cfg.awsConfig),
 		queueURL:          aws.String(queueURL),
 		messageGroupID:    aws.String(msgGroupID),
 		waitTimeSeconds:   cfg.waitTimeSeconds,
 		visibilityTimeout: cfg.visibilityTimeout,
-		hcListQueuesInput: &sqs.ListQueuesInput{MaxResults: aws.Int32(1), QueueNamePrefix: queueName},
+		hcGetQueueAttributesInput: &sqs.GetQueueAttributesInput{
+			QueueUrl:       aws.String(queueURL),
+			AttributeNames: []types.QueueAttributeName{types.QueueAttributeNameLastModifiedTimestamp},
+		},
 	}, nil
 }
 
@@ -197,23 +194,14 @@ func (c *Client) ReceiveData(ctx context.Context, data interface{}) (string, err
 
 // HealthCheck checks if the current queue is present in the current region and returns an error otherwise.
 func (c *Client) HealthCheck(ctx context.Context) error {
-	q, err := c.sqs.ListQueues(ctx, c.hcListQueuesInput)
+	q, err := c.sqs.GetQueueAttributes(ctx, c.hcGetQueueAttributesInput)
 	if err != nil {
 		return fmt.Errorf("unable to connect to AWS SQS: %w", err)
 	}
 
-	if len(q.QueueUrls) == 1 {
+	if _, ok := q.Attributes[string(types.QueueAttributeNameLastModifiedTimestamp)]; ok {
 		return nil
 	}
 
-	return fmt.Errorf("unable to find the queue: %s", aws.ToString(c.queueURL))
-}
-
-func queueNameFromURL(queueURL string) (*string, error) {
-	url, err := url.Parse(queueURL)
-	if err != nil {
-		return nil, fmt.Errorf("unable to extract the queue name from %s URL: %w", queueURL, err)
-	}
-
-	return aws.String(path.Base(url.Path)), nil
+	return fmt.Errorf("the AWS SQS queue is not responding: %s", aws.ToString(c.queueURL))
 }

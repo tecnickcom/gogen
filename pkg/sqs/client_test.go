@@ -39,10 +39,6 @@ func TestNew(t *testing.T) {
 	require.Equal(t, wt, got.waitTimeSeconds)
 	require.Equal(t, vt, got.visibilityTimeout)
 
-	got, err = New(context.TODO(), "http://invalid-url.domain.invalid\u007F", "")
-	require.Error(t, err)
-	require.Nil(t, got)
-
 	// make AWS lib to return an error
 	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
@@ -52,18 +48,18 @@ func TestNew(t *testing.T) {
 }
 
 type sqsmock struct {
-	deleteFn     func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
-	listQueuesFn func(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error)
-	receiveFn    func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
-	sendFn       func(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
+	deleteFn             func(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+	getQueueAttributesFn func(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error)
+	receiveFn            func(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
+	sendFn               func(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
 }
 
 func (s sqsmock) DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	return s.deleteFn(ctx, params, optFns...)
 }
 
-func (s sqsmock) ListQueues(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error) {
-	return s.listQueuesFn(ctx, params, optFns...)
+func (s sqsmock) GetQueueAttributes(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
+	return s.getQueueAttributesFn(ctx, params, optFns...)
 }
 
 func (s sqsmock) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
@@ -454,24 +450,24 @@ func TestHealthCheck(t *testing.T) {
 	}{
 		{
 			name: "success",
-			mock: sqsmock{listQueuesFn: func(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error) {
-				return &sqs.ListQueuesOutput{
-					QueueUrls: []string{queueURL},
+			mock: sqsmock{getQueueAttributesFn: func(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
+				return &sqs.GetQueueAttributesOutput{
+					Attributes: map[string]string{string(types.QueueAttributeNameLastModifiedTimestamp): "2022-01-02 03:04:05"},
 				}, nil
 			}},
 			wantErr: false,
 		},
 		{
 			name: "no queue",
-			mock: sqsmock{listQueuesFn: func(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error) {
-				return &sqs.ListQueuesOutput{}, nil
+			mock: sqsmock{getQueueAttributesFn: func(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
+				return &sqs.GetQueueAttributesOutput{}, nil
 			}},
 			wantErr: true,
 		},
 		{
 			name: "error",
-			mock: sqsmock{listQueuesFn: func(ctx context.Context, params *sqs.ListQueuesInput, optFns ...func(*sqs.Options)) (*sqs.ListQueuesOutput, error) {
-				return &sqs.ListQueuesOutput{}, fmt.Errorf("error")
+			mock: sqsmock{getQueueAttributesFn: func(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
+				return &sqs.GetQueueAttributesOutput{}, fmt.Errorf("error")
 			}},
 			wantErr: true,
 		},
