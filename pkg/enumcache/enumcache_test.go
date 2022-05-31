@@ -41,18 +41,68 @@ func Test_New_Set_ID_Name(t *testing.T) {
 	require.Equal(t, "bravo", name)
 }
 
+func Test_SetAllIDByName(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.NotNil(t, ec)
+
+	e := IDByName{
+		"first":  11,
+		"second": 23,
+		"third":  31,
+	}
+
+	ec.SetAllIDByName(e)
+
+	id, err := ec.ID("second")
+	require.NoError(t, err)
+	require.Equal(t, 23, id)
+
+	name, err := ec.Name(23)
+	require.NoError(t, err)
+	require.Equal(t, "second", name)
+}
+
+func Test_SetAllNameByID(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.NotNil(t, ec)
+
+	e := NameByID{
+		11: "first",
+		23: "second",
+		31: "third",
+	}
+
+	ec.SetAllNameByID(e)
+
+	id, err := ec.ID("second")
+	require.NoError(t, err)
+	require.Equal(t, 23, id)
+
+	name, err := ec.Name(23)
+	require.NoError(t, err)
+	require.Equal(t, "second", name)
+}
+
 func Test_SortNames(t *testing.T) {
 	t.Parallel()
 
 	ec := New()
 	require.NotNil(t, ec)
 
-	ec.Set(1, "delta")
-	ec.Set(2, "charlie")
-	ec.Set(4, "bravo")
-	ec.Set(8, "foxtrot")
-	ec.Set(16, "echo")
-	ec.Set(32, "alpha")
+	e := NameByID{
+		1:  "delta",
+		2:  "charlie",
+		4:  "bravo",
+		8:  "foxtrot",
+		16: "echo",
+		32: "alpha",
+	}
+
+	ec.SetAllNameByID(e)
 
 	sorted := ec.SortNames()
 	expected := []string{"alpha", "bravo", "charlie", "delta", "echo", "foxtrot"}
@@ -66,12 +116,16 @@ func Test_SortIDs(t *testing.T) {
 	ec := New()
 	require.NotNil(t, ec)
 
-	ec.Set(55, "delta")
-	ec.Set(33, "charlie")
-	ec.Set(22, "bravo")
-	ec.Set(66, "foxtrot")
-	ec.Set(44, "echo")
-	ec.Set(11, "alpha")
+	e := NameByID{
+		55: "delta",
+		33: "charlie",
+		22: "bravo",
+		66: "foxtrot",
+		44: "echo",
+		11: "alpha",
+	}
+
+	ec.SetAllNameByID(e)
 
 	sorted := ec.SortIDs()
 	expected := []int{11, 22, 33, 44, 55, 66}

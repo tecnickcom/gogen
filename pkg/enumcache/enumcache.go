@@ -9,18 +9,24 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/enumbitmap"
 )
 
+// IDByName type maps strings to integers IDs.
+type IDByName map[string]int
+
+// NameByID maps integers to string names.
+type NameByID map[int]string
+
 // EnumCache handles name and id value mapping.
 type EnumCache struct {
 	sync.RWMutex
-	id   map[string]int
-	name map[int]string
+	id   IDByName
+	name NameByID
 }
 
 // New returns a new empty EnumCache.
 func New() *EnumCache {
 	return &EnumCache{
-		id:   make(map[string]int),
-		name: make(map[int]string),
+		id:   make(IDByName),
+		name: make(NameByID),
 	}
 }
 
@@ -31,6 +37,28 @@ func (ec *EnumCache) Set(id int, name string) {
 
 	ec.name[id] = name
 	ec.id[name] = id
+}
+
+// SetAllIDByName sets all the specified enumeration ID values indexed by Name.
+func (ec *EnumCache) SetAllIDByName(enum IDByName) {
+	ec.Lock()
+	defer ec.Unlock()
+
+	for name, id := range enum {
+		ec.name[id] = name
+		ec.id[name] = id
+	}
+}
+
+// SetAllNameByID sets all the specified enumeration Name values indexed by ID.
+func (ec *EnumCache) SetAllNameByID(enum NameByID) {
+	ec.Lock()
+	defer ec.Unlock()
+
+	for id, name := range enum {
+		ec.name[id] = name
+		ec.id[name] = id
+	}
 }
 
 // ID returns the numerical ID associated to the given name.

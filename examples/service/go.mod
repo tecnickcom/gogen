@@ -7,7 +7,7 @@ replace github.com/nexmoinc/gosrvlib => ../..
 require (
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v0.9.1
-	github.com/nexmoinc/gosrvlib v1.28.0
+	github.com/nexmoinc/gosrvlib v1.29.0
 	github.com/prometheus/client_golang v1.12.1
 	github.com/rakyll/gotest v0.0.6
 	github.com/spf13/cobra v1.4.0
@@ -90,7 +90,7 @@ require (
 	google.golang.org/genproto v0.0.0-20220527130721-00d5c0f3be58 // indirect
 	google.golang.org/grpc v1.46.2 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
-	gopkg.in/ini.v1 v1.66.5 // indirect
+	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
