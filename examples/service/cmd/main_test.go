@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// nolint:paralleltest
 func TestProgramVersion(t *testing.T) {
 	os.Args = []string{cli.AppName, "version"}
 	out := testutil.CaptureOutput(t, func() {
@@ -28,6 +29,7 @@ func TestProgramVersion(t *testing.T) {
 	}
 }
 
+// nolint:paralleltest
 func TestMainCliError(t *testing.T) {
 	oldLogFatal := logging.LogFatal
 
@@ -39,6 +41,7 @@ func TestMainCliError(t *testing.T) {
 	require.Panics(t, main, "Expected to fail because of invalid argument name")
 }
 
+// nolint:paralleltest
 func TestMainCliExecuteError(t *testing.T) {
 	oldLogFatal := logging.LogFatal
 
