@@ -29,6 +29,7 @@ type Client struct {
 	queueURL *string
 
 	// messageGroupID is a tag that specifies that a message belongs to a specific message group.
+	// This is only valid for FIFO queues.
 	messageGroupID *string
 
 	// waitTimeSeconds is the duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
@@ -46,16 +47,22 @@ type Client struct {
 }
 
 // New creates a new instance of the SQS client wrapper.
+// msgGroupID is required for FIFO queues, leave it empty for standard queues.
 func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Client, error) {
 	cfg, err := loadConfig(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create a new sqs client: %w", err)
 	}
 
+	var awsMsgGroupID *string
+	if msgGroupID != "" {
+		awsMsgGroupID = aws.String(msgGroupID)
+	}
+
 	return &Client{
 		sqs:               sqs.NewFromConfig(cfg.awsConfig),
 		queueURL:          aws.String(queueURL),
-		messageGroupID:    aws.String(msgGroupID),
+		messageGroupID:    awsMsgGroupID,
 		waitTimeSeconds:   cfg.waitTimeSeconds,
 		visibilityTimeout: cfg.visibilityTimeout,
 		hcGetQueueAttributesInput: &sqs.GetQueueAttributesInput{
