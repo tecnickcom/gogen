@@ -1,2 +1,2 @@
-// Package sqs provides a basic FIFO client for AWS SQS (Amazon Simple Queue Service).
+// Package sqs provides a basic client for AWS SQS (Amazon Simple Queue Service).
 package sqs

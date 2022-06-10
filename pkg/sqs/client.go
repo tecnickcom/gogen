@@ -6,10 +6,18 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+)
+
+const (
+	fifoSuffix = ".fifo"
+
+	regexMessageGroupID = `^[[:graph:]]{1,128}$`
 )
 
 // SQS represents the mockable functions in the AWS SDK SQS client.
@@ -29,7 +37,7 @@ type Client struct {
 	queueURL *string
 
 	// messageGroupID is a tag that specifies that a message belongs to a specific message group.
-	// This is only valid for FIFO queues.
+	// This must be specified for FIFO queues and must be left nil for standard queues.
 	messageGroupID *string
 
 	// waitTimeSeconds is the duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
@@ -47,7 +55,7 @@ type Client struct {
 }
 
 // New creates a new instance of the SQS client wrapper.
-// msgGroupID is required for FIFO queues, leave it empty for standard queues.
+// msgGroupID is required for FIFO queues.
 func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Client, error) {
 	cfg, err := loadConfig(ctx, opts...)
 	if err != nil {
@@ -55,7 +63,13 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 	}
 
 	var awsMsgGroupID *string
-	if msgGroupID != "" {
+
+	if strings.HasSuffix(queueURL, fifoSuffix) {
+		re := regexp.MustCompile(regexMessageGroupID)
+		if !re.MatchString(msgGroupID) {
+			return nil, fmt.Errorf("a valid msgGroupID is required for FIFO queue")
+		}
+
 		awsMsgGroupID = aws.String(msgGroupID)
 	}
 

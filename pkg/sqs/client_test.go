@@ -26,7 +26,32 @@ func TestNew(t *testing.T) {
 	got, err := New(
 		context.TODO(),
 		"https://test_queue.invalid/queue0.fifo",
-		"TEST_MSG_GROUP_ID_0",
+		"",
+		WithAWSOptions(o),
+		WithWaitTimeSeconds(wt),
+		WithVisibilityTimeout(vt),
+	)
+
+	require.Error(t, err)
+	require.Nil(t, got)
+
+	got, err = New(
+		context.TODO(),
+		"https://test_queue.invalid/queue1.fifo",
+		"alpha beta",
+		WithAWSOptions(o),
+		WithWaitTimeSeconds(wt),
+		WithVisibilityTimeout(vt),
+	)
+
+	require.Error(t, err)
+	require.Nil(t, got)
+
+	msgGrpID := `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!"#$%&'()*+,\-./:;<=>?@[\\\]^_` + "`" + `{|}~`
+	got, err = New(
+		context.TODO(),
+		"https://test_queue.invalid/queue2.fifo",
+		msgGrpID,
 		WithAWSOptions(o),
 		WithWaitTimeSeconds(wt),
 		WithVisibilityTimeout(vt),
@@ -34,8 +59,26 @@ func TestNew(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, got)
-	require.Equal(t, aws.String("https://test_queue.invalid/queue0.fifo"), got.queueURL)
-	require.Equal(t, aws.String("TEST_MSG_GROUP_ID_0"), got.messageGroupID)
+	require.Equal(t, aws.String("https://test_queue.invalid/queue2.fifo"), got.queueURL)
+	require.Equal(t, aws.String(msgGrpID), got.messageGroupID)
+	require.Equal(t, wt, got.waitTimeSeconds)
+	require.Equal(t, vt, got.visibilityTimeout)
+
+	got, err = New(
+		context.TODO(),
+		"https://test_queue.invalid/queue3.standard",
+		"SOMETHING_TO_IGNORE",
+		WithAWSOptions(o),
+		WithWaitTimeSeconds(wt),
+		WithVisibilityTimeout(vt),
+	)
+
+	var expMessageGroupID *string
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, aws.String("https://test_queue.invalid/queue3.standard"), got.queueURL)
+	require.Equal(t, expMessageGroupID, got.messageGroupID)
 	require.Equal(t, wt, got.waitTimeSeconds)
 	require.Equal(t, vt, got.visibilityTimeout)
 
