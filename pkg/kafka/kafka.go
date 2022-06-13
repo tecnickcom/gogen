@@ -1,2 +1,2 @@
-// Package kafka provides a simple abstraction to send and pull messages to Apache Kafka.
+// Package kafka provides a simple abstraction to send and pull Apache Kafka messages.
 package kafka

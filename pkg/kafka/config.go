@@ -1,15 +1,19 @@
 package kafka
 
 import (
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"time"
+)
+
+const (
+	defaultSessionTimeout = time.Second * 10
 )
 
 type config struct {
-	configMap *kafka.ConfigMap
+	sessionTimeout time.Duration
 }
 
 func defaultConfig() *config {
 	return &config{
-		configMap: &kafka.ConfigMap{},
+		sessionTimeout: defaultSessionTimeout,
 	}
 }
