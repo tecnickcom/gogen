@@ -7,6 +7,10 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+const (
+	network = "tcp"
+)
+
 type consumerClient interface {
 	ReadMessage(ctx context.Context) (kafka.Message, error)
 	Close() error
@@ -14,12 +18,15 @@ type consumerClient interface {
 
 // Consumer represents a wrapper around kafka.Consumer.
 type Consumer struct {
-	cfg    *config
-	client consumerClient
+	cfg     *config
+	client  consumerClient
+	checkFn func(ctx context.Context, address string) error
+	brokers []string
 }
 
 // NewConsumer creates a new instance of Consumer.
-func NewConsumer(urls []string, topic, groupID string, opts ...Option) (*Consumer, error) {
+// Please call the HealthCheck() method to check if the connection is working.
+func NewConsumer(brokers []string, topic, groupID string, opts ...Option) (*Consumer, error) {
 	cfg := defaultConfig()
 
 	for _, applyOpt := range opts {
@@ -27,7 +34,7 @@ func NewConsumer(urls []string, topic, groupID string, opts ...Option) (*Consume
 	}
 
 	params := kafka.ReaderConfig{
-		Brokers:        urls,
+		Brokers:        brokers,
 		Topic:          topic,
 		GroupID:        groupID,
 		SessionTimeout: cfg.sessionTimeout,
@@ -38,7 +45,19 @@ func NewConsumer(urls []string, topic, groupID string, opts ...Option) (*Consume
 		return nil, fmt.Errorf("invalid parameters: %w", err)
 	}
 
-	return &Consumer{cfg: cfg, client: kafka.NewReader(params)}, nil
+	client := kafka.NewReader(params)
+
+	checkFn := func(ctx context.Context, address string) error {
+		_, err := client.Config().Dialer.LookupPartitions(ctx, network, address, topic)
+		return err // nolint: wrapcheck
+	}
+
+	return &Consumer{
+		cfg:     cfg,
+		client:  client,
+		checkFn: checkFn,
+		brokers: brokers,
+	}, nil
 }
 
 // Close cleans up Consumer's internal resources.
@@ -59,4 +78,15 @@ func (c *Consumer) Receive(ctx context.Context) ([]byte, error) {
 	}
 
 	return msg.Value, nil
+}
+
+// HealthCheck checks if the consumer is working.
+func (c *Consumer) HealthCheck(ctx context.Context) error {
+	for _, address := range c.brokers {
+		if err := c.checkFn(ctx, address); err == nil {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("unable to connect to Kafka")
 }

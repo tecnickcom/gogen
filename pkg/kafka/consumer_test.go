@@ -15,7 +15,7 @@ func Test_NewConsumer(t *testing.T) {
 
 	testCases := []struct {
 		name    string
-		urls    []string
+		brokers []string
 		topic   string
 		groupID string
 		options []Option
@@ -23,7 +23,7 @@ func Test_NewConsumer(t *testing.T) {
 	}{
 		{
 			name:    "success",
-			urls:    []string{"url1", "url2"},
+			brokers: []string{"url1", "url2"},
 			topic:   "topic1",
 			groupID: "one",
 			options: []Option{
@@ -33,10 +33,10 @@ func Test_NewConsumer(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "error",
-			urls:    nil,
-			topic:   "topic1",
-			groupID: "one",
+			name:    "invalid parameters",
+			brokers: nil,
+			topic:   "topic3",
+			groupID: "three",
 			wantErr: true,
 		},
 	}
@@ -47,7 +47,7 @@ func Test_NewConsumer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			consumer, err := NewConsumer(tt.urls, tt.topic, tt.groupID, tt.options...)
+			consumer, err := NewConsumer(tt.brokers, tt.topic, tt.groupID, tt.options...)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -67,6 +67,10 @@ func (m mockConsumerClient) ReadMessage(_ context.Context) (kafka.Message, error
 	return kafka.Message{Value: []byte{1}}, nil
 }
 
+func (m mockConsumerClient) Config() kafka.ReaderConfig {
+	return kafka.ReaderConfig{}
+}
+
 func (m mockConsumerClient) Close() error {
 	return nil
 }
@@ -75,6 +79,10 @@ type mockConsumerClientError struct{}
 
 func (m mockConsumerClientError) ReadMessage(_ context.Context) (kafka.Message, error) {
 	return kafka.Message{}, fmt.Errorf("error Receive")
+}
+
+func (m mockConsumerClientError) Config() kafka.ReaderConfig {
+	return kafka.ReaderConfig{}
 }
 
 func (m mockConsumerClientError) Close() error {
@@ -108,4 +116,31 @@ func Test_Consumer_Receive(t *testing.T) {
 
 	err = consumer.Close()
 	require.Error(t, err)
+}
+
+func Test_Consumer_HealthCheck(t *testing.T) {
+	t.Parallel()
+
+	consumer, err := NewConsumer(
+		[]string{"url.invalid"},
+		"topic2",
+		"group2",
+		WithSessionTimeout(time.Millisecond*13),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, consumer)
+
+	ctx := context.TODO()
+
+	consumer.client = &mockConsumerClient{}
+	err = consumer.HealthCheck(ctx)
+	require.Error(t, err)
+
+	consumer.checkFn = func(ctx context.Context, address string) error {
+		return nil
+	}
+
+	err = consumer.HealthCheck(ctx)
+	require.NoError(t, err)
 }
