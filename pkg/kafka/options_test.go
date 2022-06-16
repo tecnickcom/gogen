@@ -16,3 +16,11 @@ func Test_WithSessionTimeout(t *testing.T) {
 	WithSessionTimeout(v)(cfg)
 	require.Equal(t, v, cfg.sessionTimeout)
 }
+
+func Test_WithFirstOffset(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+	WithFirstOffset()(cfg)
+	require.Equal(t, int64(-2), cfg.startOffset)
+}

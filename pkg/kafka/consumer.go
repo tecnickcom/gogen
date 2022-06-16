@@ -26,16 +26,19 @@ func NewConsumer(urls []string, topic, groupID string, opts ...Option) (*Consume
 		applyOpt(cfg)
 	}
 
-	r := kafka.NewReader(
-		kafka.ReaderConfig{
-			Brokers:        urls,
-			Topic:          topic,
-			GroupID:        groupID,
-			SessionTimeout: cfg.sessionTimeout,
-		},
-	)
+	params := kafka.ReaderConfig{
+		Brokers:        urls,
+		Topic:          topic,
+		GroupID:        groupID,
+		SessionTimeout: cfg.sessionTimeout,
+		StartOffset:    cfg.startOffset,
+	}
 
-	return &Consumer{cfg: cfg, client: r}, nil
+	if err := params.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid parameters: %w", err)
+	}
+
+	return &Consumer{cfg: cfg, client: kafka.NewReader(params)}, nil
 }
 
 // Close cleans up Consumer's internal resources.

@@ -2,6 +2,8 @@ package kafka
 
 import (
 	"time"
+
+	"github.com/segmentio/kafka-go"
 )
 
 const (
@@ -10,10 +12,12 @@ const (
 
 type config struct {
 	sessionTimeout time.Duration
+	startOffset    int64
 }
 
 func defaultConfig() *config {
 	return &config{
 		sessionTimeout: defaultSessionTimeout,
+		startOffset:    kafka.LastOffset,
 	}
 }

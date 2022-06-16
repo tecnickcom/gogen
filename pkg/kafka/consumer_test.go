@@ -28,8 +28,16 @@ func Test_NewConsumer(t *testing.T) {
 			groupID: "one",
 			options: []Option{
 				WithSessionTimeout(time.Millisecond * 10),
+				WithFirstOffset(),
 			},
 			wantErr: false,
+		},
+		{
+			name:    "error",
+			urls:    nil,
+			topic:   "topic1",
+			groupID: "one",
+			wantErr: true,
 		},
 	}
 
@@ -88,12 +96,12 @@ func Test_Consumer_Receive(t *testing.T) {
 
 	ctx := context.TODO()
 
-	consumer.client = mockConsumerClient{}
+	consumer.client = &mockConsumerClient{}
 	msg, err := consumer.Receive(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, msg)
 
-	consumer.client = mockConsumerClientError{}
+	consumer.client = &mockConsumerClientError{}
 	msg, err = consumer.Receive(ctx)
 	require.Error(t, err)
 	require.Nil(t, msg)

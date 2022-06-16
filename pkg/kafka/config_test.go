@@ -12,4 +12,5 @@ func Test_defaultConfig(t *testing.T) {
 	cfg := defaultConfig()
 	require.NotNil(t, cfg)
 	require.NotEmpty(t, cfg.sessionTimeout)
+	require.Equal(t, int64(-1), cfg.startOffset)
 }
