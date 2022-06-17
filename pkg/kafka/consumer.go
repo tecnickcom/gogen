@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/multierr"
 )
 
 const (
@@ -82,11 +83,16 @@ func (c *Consumer) Receive(ctx context.Context) ([]byte, error) {
 
 // HealthCheck checks if the consumer is working.
 func (c *Consumer) HealthCheck(ctx context.Context) error {
+	var errors error
+
 	for _, address := range c.brokers {
-		if err := c.checkFn(ctx, address); err == nil {
+		err := c.checkFn(ctx, address)
+		if err == nil {
 			return nil
 		}
+
+		errors = multierr.Append(errors, err)
 	}
 
-	return fmt.Errorf("unable to connect to Kafka")
+	return fmt.Errorf("unable to connect to Kafka: %w", errors)
 }
