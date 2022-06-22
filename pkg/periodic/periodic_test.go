@@ -112,7 +112,7 @@ func Test_Start_Stop(t *testing.T) {
 	require.NotNil(t, p)
 	require.NoError(t, err)
 
-	p.Start()
+	p.Start(context.TODO())
 
 	wait := 3 * interval
 	time.Sleep(wait)

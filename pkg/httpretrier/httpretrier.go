@@ -161,7 +161,7 @@ func (c *HTTPRetrier) retry(r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
-			c.doError = fmt.Errorf("context canceled")
+			c.doError = fmt.Errorf("request context has been canceled: %w", r.Context().Err())
 			return
 		case d := <-c.resetTimer:
 			c.setTimer(d)

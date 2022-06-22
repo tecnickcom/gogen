@@ -55,8 +55,8 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 }
 
 // Start the periodic execution.
-func (p *Periodic) Start() {
-	p.ctx, p.cancel = context.WithCancel(context.Background())
+func (p *Periodic) Start(ctx context.Context) {
+	p.ctx, p.cancel = context.WithCancel(ctx)
 
 	go p.loop()
 }
@@ -70,6 +70,8 @@ func (p *Periodic) Stop() {
 }
 
 func (p *Periodic) loop() {
+	defer p.cancel()
+
 	p.timer = time.NewTimer(1 * time.Nanosecond)
 
 	for {
