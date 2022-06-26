@@ -80,6 +80,11 @@ func Test_WithRegionFromURL(t *testing.T) {
 			want: Options{config.WithRegion("ap-southeast-1")},
 		},
 		{
+			name: "Valid AWS URL with custom service",
+			url:  "https://some-service.af-south-1.amazonaws.com",
+			want: Options{config.WithRegion("af-south-1")},
+		},
+		{
 			name:          "Load default region",
 			url:           "https://no-region-2.with-default.example.com",
 			defaultRegion: "ap-southeast-2",
