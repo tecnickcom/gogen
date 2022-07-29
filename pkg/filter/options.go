@@ -51,3 +51,16 @@ func WithQueryFilterKey(key string) Option {
 		return nil
 	}
 }
+
+// WithMaxResults sets the maximum length of the slice returned by Apply().
+func WithMaxResults(maxResults int) Option {
+	return func(p *Processor) error {
+		if maxResults < 1 {
+			return fmt.Errorf("maxResults cannot be less than 1, got %d", maxResults)
+		}
+
+		p.maxResults = maxResults
+
+		return nil
+	}
+}

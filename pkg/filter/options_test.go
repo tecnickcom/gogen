@@ -126,3 +126,40 @@ func TestWithQueryFilterKey(t *testing.T) {
 		})
 	}
 }
+
+func TestWithMaxResults(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		maxResults int
+		wantErr    bool
+	}{
+		{
+			name:       "success",
+			maxResults: 1,
+			wantErr:    false,
+		},
+		{
+			name:       "error - < 1",
+			maxResults: 0,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opt := WithMaxResults(tt.maxResults)
+			err := opt(&Processor{})
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

@@ -1,9 +1,11 @@
-package filter
+package filter_test
 
 import (
 	"fmt"
 	"log"
 	"net/url"
+
+	"github.com/nexmoinc/gosrvlib/pkg/filter"
 )
 
 type Address struct {
@@ -28,8 +30,8 @@ func ExampleNew_fromURL() {
 	// Initialize the filter with options
 	// * WithJSONValues: We want to be lenient on the typing since we create the filter from JSON which handles a few types
 	// * WithFieldNameTag: to express the filter based on JSON tags and not the actual field names
-	f, err := New(
-		WithFieldNameTag("json"),
+	f, err := filter.New(
+		filter.WithFieldNameTag("json"),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +60,7 @@ func ExampleNew_fromURL() {
 	//   ]
 	// ]
 	// It means that either the name OR the age must match exactly AND the country must match its regular expression.
-	rules, err := f.ParseURLQuery(u)
+	rules, err := f.ParseURLQuery(u.Query())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,16 +91,21 @@ func ExampleNew_fromURL() {
 	}
 
 	// Filters the list in place
-	err = f.Apply(rules, &list)
+	sliceLen, totalMatches, err := f.Apply(rules, &list)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Println(sliceLen)
+	fmt.Println(totalMatches)
 
 	for _, id := range list {
 		fmt.Println(id)
 	}
 
 	// Output:
+	// 2
+	// 2
 	// {doe 35 {UK}}
 	// {dupont 42 {FR}}
 }
