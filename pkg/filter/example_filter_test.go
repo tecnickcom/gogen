@@ -8,17 +8,19 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/filter"
 )
 
+// Address is an example structure type used to test nested structures.
 type Address struct {
 	Country string `json:"country"`
 }
 
+// ID is an example structure type.
 type ID struct {
 	Name string  `json:"name"`
 	Age  int     `json:"age"`
 	Addr Address `json:"address"`
 }
 
-func ExampleNew_fromURL() {
+func ExampleProcessor_Apply() {
 	// Simulate an encoded query passed in the http.Request of a http.Handler
 	encodedJSONFilter := "%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22UK%7CFR%22%7D%5D%5D"
 

@@ -20,14 +20,12 @@ const (
 	defaultMaxResults = 1<<31 - 1 // math.MaxInt32
 )
 
-// ParseJSON parses and returns a [][]Rule from its JSON representation.
-func ParseJSON(s string) ([][]Rule, error) {
-	var r [][]Rule
-	if err := json.Unmarshal([]byte(s), &r); err != nil {
-		return nil, fmt.Errorf("failed unmarshaling rules: %w", err)
-	}
-
-	return r, nil
+// Processor provides the filtering logic and methods.
+type Processor struct {
+	fields            fieldGetter
+	maxRules          int
+	maxResults        int
+	urlQueryFilterKey string
 }
 
 // New returns a new Processor with the rules and the given options.
@@ -49,14 +47,6 @@ func New(opts ...Option) (*Processor, error) {
 	}
 
 	return p, nil
-}
-
-// Processor provides the filtering logic and methods.
-type Processor struct {
-	fields            fieldGetter
-	maxRules          int
-	maxResults        int
-	urlQueryFilterKey string
 }
 
 // ParseURLQuery parses and returns the defined query parameter from a *url.URL.
@@ -214,4 +204,14 @@ func (p *Processor) evaluateRule(rule *Rule, obj interface{}) (bool, error) {
 	}
 
 	return rule.Evaluate(value)
+}
+
+// ParseJSON parses and returns a [][]Rule from its JSON representation.
+func ParseJSON(s string) ([][]Rule, error) {
+	var r [][]Rule
+	if err := json.Unmarshal([]byte(s), &r); err != nil {
+		return nil, fmt.Errorf("failed unmarshaling rules: %w", err)
+	}
+
+	return r, nil
 }
