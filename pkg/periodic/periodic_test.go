@@ -133,10 +133,10 @@ func TestPeriodic_setTimer(t *testing.T) {
 	t.Parallel()
 
 	c := &Periodic{
-		timer: time.NewTimer(10 * time.Millisecond),
+		timer: time.NewTimer(1 * time.Millisecond),
 	}
 
-	time.Sleep(2 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	c.setTimer(2 * time.Millisecond)
 	<-c.timer.C
 }

@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// nolint:gocognit
+// nolint:gocognit,paralleltest,tparallel
 func TestBootstrap(t *testing.T) {
 	t.Parallel()
 
@@ -73,7 +73,7 @@ func TestBootstrap(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			// cannot run in parallel because signals are received by all parallel tests
 
 			var ctx context.Context
 			ctx, logs := testutil.ContextWithLogObserver(zap.DebugLevel)

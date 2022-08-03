@@ -502,6 +502,37 @@ func TestFilter_Apply(t *testing.T) {
 			wantTotalMatches: 1,
 		},
 		{
+			name: "success - with embedding struct and field tags",
+			elements: &[]embeddingStruct{
+				{
+					simpleStruct: simpleStruct{
+						StringField: "value 1",
+					},
+				},
+				{
+					simpleStruct: simpleStruct{
+						StringField: "value 2",
+					},
+				},
+			},
+			opts: []Option{
+				WithFieldNameTag("json"),
+			},
+			rules: [][]Rule{{{
+				Field: "string_field",
+				Type:  "equal",
+				Value: "value 1",
+			}}},
+			want: &[]embeddingStruct{
+				{
+					simpleStruct: simpleStruct{
+						StringField: "value 1",
+					},
+				},
+			},
+			wantTotalMatches: 1,
+		},
+		{
 			name:     "success - with root field selector",
 			elements: &[]int{41, 42, 43},
 			rules: [][]Rule{{{
