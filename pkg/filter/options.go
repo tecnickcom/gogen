@@ -23,22 +23,6 @@ func WithFieldNameTag(tag string) Option {
 	}
 }
 
-// WithMaxRules sets the maximum number of rules to pass to the Processor.Apply() function without errors.
-// If this option is not set, it defaults to 3.
-//
-// Return an error if max is less than 1.
-func WithMaxRules(max int) Option {
-	return func(p *Processor) error {
-		if max < 1 {
-			return fmt.Errorf("max rules must be stricly positive")
-		}
-
-		p.maxRules = max
-
-		return nil
-	}
-}
-
 // WithQueryFilterKey sets the query parameter key that Processor.ParseURLQuery() looks for.
 func WithQueryFilterKey(key string) Option {
 	return func(p *Processor) error {
@@ -52,14 +36,34 @@ func WithQueryFilterKey(key string) Option {
 	}
 }
 
-// WithMaxResults sets the maximum length of the slice returned by Apply().
-func WithMaxResults(maxResults int) Option {
+// WithMaxRules sets the maximum number of rules to pass to the Processor.Apply() function without errors.
+// If this option is not set, it defaults to 3.
+//
+// Return an error if max is less than 1.
+func WithMaxRules(max uint) Option {
 	return func(p *Processor) error {
-		if maxResults < 1 {
-			return fmt.Errorf("maxResults cannot be less than 1, got %d", maxResults)
+		if max < 1 {
+			return fmt.Errorf("maxRules must be at least 1")
 		}
 
-		p.maxResults = maxResults
+		p.maxRules = max
+
+		return nil
+	}
+}
+
+// WithMaxResults sets the maximum length of the slice returned by Apply() and ApplySubset().
+func WithMaxResults(max uint) Option {
+	return func(p *Processor) error {
+		if max < 1 {
+			return fmt.Errorf("maxResults must be at least 1")
+		}
+
+		if max > MaxResults {
+			return fmt.Errorf("maxResults must be less than MaxResults")
+		}
+
+		p.maxResults = max
 
 		return nil
 	}

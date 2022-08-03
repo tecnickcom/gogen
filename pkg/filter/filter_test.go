@@ -13,11 +13,11 @@ func strPtr(v string) *string {
 	return &v
 }
 
-func getSliceLen(slice interface{}) int {
+func getSliceLen(slice interface{}) uint {
 	rSlice := reflect.ValueOf(slice)
 	rSlice = reflect.Indirect(rSlice)
 
-	return rSlice.Len()
+	return uint(rSlice.Len())
 }
 
 func TestParseJSON(t *testing.T) {
@@ -233,7 +233,7 @@ func TestFilter_Apply(t *testing.T) {
 		opts             []Option
 		elements         interface{}
 		want             interface{}
-		wantTotalMatches int
+		wantTotalMatches uint
 		wantErr          bool
 	}{
 		{
@@ -828,9 +828,9 @@ func TestFilter_ApplySubset(t *testing.T) {
 		rules            [][]Rule
 		opts             []Option
 		elements         interface{}
-		offset           int
-		length           int
-		wantTotalMatches int
+		offset           uint
+		length           uint
+		wantTotalMatches uint
 		want             interface{}
 		wantErr          bool
 	}{
@@ -880,19 +880,19 @@ func TestFilter_ApplySubset(t *testing.T) {
 			wantTotalMatches: 5,
 		},
 		{
-			name:     "error - offset < 0",
-			elements: &[]string{"1", "2", "3", "4", "5"},
-			rules:    [][]Rule{{trueRegex}},
-			offset:   -1,
-			length:   10,
-			wantErr:  true,
-		},
-		{
 			name:     "error - length < 1",
 			elements: &[]string{"1", "2", "3", "4", "5"},
 			rules:    [][]Rule{{trueRegex}},
 			offset:   0,
 			length:   0,
+			wantErr:  true,
+		},
+		{
+			name:     "error - length > p.maxResults",
+			elements: &[]string{"1", "2", "3", "4", "5"},
+			rules:    [][]Rule{{trueRegex}},
+			offset:   0,
+			length:   MaxResults + 1,
 			wantErr:  true,
 		},
 	}

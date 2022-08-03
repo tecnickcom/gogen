@@ -43,53 +43,6 @@ func TestWithFieldNameTag(t *testing.T) {
 	}
 }
 
-func TestWithMaxRules(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		max     int
-		wantErr bool
-	}{
-		{
-			name:    "success - 1",
-			max:     1,
-			wantErr: false,
-		},
-		{
-			name:    "success - 42",
-			max:     42,
-			wantErr: false,
-		},
-		{
-			name:    "error - 0",
-			max:     0,
-			wantErr: true,
-		},
-		{
-			name:    "error - -1",
-			max:     -1,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			opt := WithMaxRules(tt.max)
-			err := opt(&Processor{})
-
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
 func TestWithQueryFilterKey(t *testing.T) {
 	t.Parallel()
 
@@ -127,12 +80,54 @@ func TestWithQueryFilterKey(t *testing.T) {
 	}
 }
 
+func TestWithMaxRules(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		max     uint
+		wantErr bool
+	}{
+		{
+			name:    "success - 1",
+			max:     1,
+			wantErr: false,
+		},
+		{
+			name:    "success - 42",
+			max:     42,
+			wantErr: false,
+		},
+		{
+			name:    "error - 0",
+			max:     0,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opt := WithMaxRules(tt.max)
+			err := opt(&Processor{})
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestWithMaxResults(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name       string
-		maxResults int
+		maxResults uint
 		wantErr    bool
 	}{
 		{
@@ -143,6 +138,11 @@ func TestWithMaxResults(t *testing.T) {
 		{
 			name:       "error - < 1",
 			maxResults: 0,
+			wantErr:    true,
+		},
+		{
+			name:       "error - > MaxResults",
+			maxResults: MaxResults + 1,
 			wantErr:    true,
 		},
 	}

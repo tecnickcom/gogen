@@ -10,21 +10,27 @@ import (
 )
 
 const (
-	defaultMaxRules = 3
+	// MaxResults is the maximum number of results that can be returned.
+	MaxResults = 1<<31 - 1 // math.MaxInt32
+
+	// DefaultMaxResults is the default number of results for Apply.
+	// Can be overridden with WithMaxResults().
+	DefaultMaxResults = MaxResults
+
+	// DefaultMaxRules is the default maximum number of rules.
+	// Can be overridden with WithMaxRules().
+	DefaultMaxRules = 3
 
 	// DefaultURLQueryFilterKey is the default URL query key used by Processor.ParseURLQuery().
 	// Can be customized with WithQueryFilterKey().
 	DefaultURLQueryFilterKey = "filter"
-
-	// defaultMaxResults is the default number of results for Apply. Can be overridden with WithMaxResults().
-	defaultMaxResults = 1<<31 - 1 // math.MaxInt32
 )
 
 // Processor provides the filtering logic and methods.
 type Processor struct {
 	fields            fieldGetter
-	maxRules          int
-	maxResults        int
+	maxRules          uint
+	maxResults        uint
 	urlQueryFilterKey string
 }
 
@@ -35,8 +41,8 @@ type Processor struct {
 // "[a,[b,c],d]" evaluates to "a AND (b OR c) AND d".
 func New(opts ...Option) (*Processor, error) {
 	p := &Processor{
-		maxRules:          defaultMaxRules,
-		maxResults:        defaultMaxResults,
+		maxRules:          DefaultMaxRules,
+		maxResults:        DefaultMaxResults,
 		urlQueryFilterKey: DefaultURLQueryFilterKey,
 	}
 
@@ -69,7 +75,7 @@ func (p *Processor) ParseURLQuery(q url.Values) ([][]Rule, error) {
 // This is a shortcut to ApplySubset with 0 offset and maxResults length.
 //
 // Returns the length of the filtered slice, the total number of elements that matched the filter, and the eventual error.
-func (p *Processor) Apply(rules [][]Rule, slicePtr interface{}) (sliceLen, totalMatches int, err error) {
+func (p *Processor) Apply(rules [][]Rule, slicePtr interface{}) (sliceLen, totalMatches uint, err error) {
 	return p.ApplySubset(rules, slicePtr, 0, p.maxResults)
 }
 
@@ -80,13 +86,13 @@ func (p *Processor) Apply(rules [][]Rule, slicePtr interface{}) (sliceLen, total
 // Depending on length, the filtered slice will only contain a set number of elements.
 //
 // Returns the length of the filtered slice, the total number of elements that matched the filter, and the eventual error.
-func (p *Processor) ApplySubset(rules [][]Rule, slicePtr interface{}, offset, length int) (sliceLen, totalMatches int, err error) {
-	if offset < 0 {
-		return 0, 0, errors.New("offset must be positive")
+func (p *Processor) ApplySubset(rules [][]Rule, slicePtr interface{}, offset, length uint) (sliceLen, totalMatches uint, err error) {
+	if length < 1 {
+		return 0, 0, errors.New("length must be at least 1")
 	}
 
-	if length < 1 {
-		return 0, 0, errors.New("length must be strictly positive")
+	if length > p.maxResults {
+		return 0, 0, errors.New("length must be less than maxResults")
 	}
 
 	err = p.checkRulesCount(rules)
@@ -108,16 +114,19 @@ func (p *Processor) ApplySubset(rules [][]Rule, slicePtr interface{}, offset, le
 		return p.evaluateRules(rules, obj)
 	}
 
-	return p.filterSliceValue(vSlice, offset, length, matcher)
+	n, m, err := p.filterSliceValue(vSlice, offset, int(length), matcher)
+
+	return uint(n), m, err
 }
 
 func (p *Processor) checkRulesCount(rules [][]Rule) error {
-	count := 0
+	var count int
+
 	for i := range rules {
 		count += len(rules[i])
 	}
 
-	if count > p.maxRules {
+	if uint(count) > p.maxRules {
 		return fmt.Errorf("too many rules: got %d max is %d", count, p.maxRules)
 	}
 
@@ -129,7 +138,7 @@ func (p *Processor) checkRulesCount(rules [][]Rule) error {
 //
 // n is number of matched elements in the slice.
 // m is number of total matched elements.
-func (p *Processor) filterSliceValue(slice reflect.Value, offset, length int, matcher func(interface{}) (bool, error)) (n, m int, err error) {
+func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length int, matcher func(interface{}) (bool, error)) (n int, m uint, err error) {
 	skip := offset
 
 	for i := 0; i < slice.Len(); i++ {
