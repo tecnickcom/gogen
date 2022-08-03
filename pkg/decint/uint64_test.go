@@ -21,12 +21,12 @@ func TestFloatToUint(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    maxFloat,
-			want: maxInt,
+			v:    MaxFloat,
+			want: MaxInt,
 		},
 		{
 			name: "min",
-			v:    -maxFloat,
+			v:    -MaxFloat,
 			want: 0,
 		},
 	}
@@ -57,8 +57,8 @@ func TestUintToFloat(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    maxInt, // 2^53
-			want: maxFloat,
+			v:    MaxInt, // 2^53
+			want: MaxFloat,
 		},
 	}
 
@@ -90,7 +90,7 @@ func TestStringToUint(t *testing.T) {
 		{
 			name: "max",
 			v:    "9007199254.740992",
-			want: maxInt,
+			want: MaxInt,
 		},
 		{
 			name: "min",
@@ -133,7 +133,7 @@ func TestUintToString(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    maxInt,
+			v:    MaxInt,
 			want: "9007199254.740992",
 		},
 	}

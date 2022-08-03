@@ -11,7 +11,7 @@
 //    00010000 =  16 dec = FIFTH
 //    00100000 =  32 dec = SIXTH
 //    01000000 =  64 dec = SEVENTH
-//    10000000 = 128 dec = EIGHT VALUE
+//    10000000 = 128 dec = EIGHTH
 //    00001001 = 1 + 8 = 9 dec = FIRST + FOURTH
 package enumbitmap
 

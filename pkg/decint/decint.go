@@ -8,4 +8,10 @@ const (
 	precision float64 = 1e+06
 
 	stringFormat = "%.6f"
+
+	// MaxInt is the maximum integer number that can be safely represented (2^53).
+	MaxInt = 9_007_199_254_740_992
+
+	// MaxFloat is the maximum float number that can be safely represented (2^53 / 1e+06).
+	MaxFloat = 9_007_199_254.740_992
 )

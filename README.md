@@ -6,9 +6,15 @@
 
 *Go Service Library*
 
-This Open Source project contains a collection of common GO packages that forms the base structure of a service.
+This Open Source project contains a collection of high-quality GO packages.
 
-It also contains a project generator for new services.
+This package collection forms the base structure for production-ready web-services.
+
+A new service can be generated in seconds by using the command `make project CONFIG=project.cfg`.
+The new generated project name, description, etc..., can be set in the CONFIG file.
+
+Each package follows the same conventions and they can be individually imported in any project.
+
 
 [![check](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/nexmoinc/gosrvlib/badge.svg?branch=main)](https://coveralls.io/github/nexmoinc/gosrvlib?branch=main)

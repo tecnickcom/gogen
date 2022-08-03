@@ -6,11 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	maxInt   = 9_007_199_254_740_992 // = 2^53
-	maxFloat = 9_007_199_254.740_992 // = 2^53 / 1e+06
-)
-
 func TestFloatToInt(t *testing.T) {
 	t.Parallel()
 
@@ -26,13 +21,13 @@ func TestFloatToInt(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    maxFloat,
-			want: maxInt,
+			v:    MaxFloat,
+			want: MaxInt,
 		},
 		{
 			name: "min",
-			v:    -maxFloat,
-			want: -maxInt,
+			v:    -MaxFloat,
+			want: -MaxInt,
 		},
 	}
 
@@ -62,13 +57,13 @@ func TestIntToFloat(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    maxInt,
-			want: maxFloat,
+			v:    MaxInt,
+			want: MaxFloat,
 		},
 		{
 			name: "min",
-			v:    -maxInt,
-			want: -maxFloat,
+			v:    -MaxInt,
+			want: -MaxFloat,
 		},
 	}
 
@@ -100,12 +95,12 @@ func TestStringToInt(t *testing.T) {
 		{
 			name: "max",
 			v:    "9007199254.740992",
-			want: maxInt,
+			want: MaxInt,
 		},
 		{
 			name: "min",
 			v:    "-9007199254.740992",
-			want: -maxInt,
+			want: -MaxInt,
 		},
 		{
 			name:    "error",
@@ -143,12 +138,12 @@ func TestIntToString(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    maxInt,
+			v:    MaxInt,
 			want: "9007199254.740992",
 		},
 		{
 			name: "min",
-			v:    -maxInt,
+			v:    -MaxInt,
 			want: "-9007199254.740992",
 		},
 	}
