@@ -48,7 +48,7 @@ func (b *responseWriterWrapper) Flush() {
 	}
 }
 
-// nolint:wrapcheck
+//nolint:wrapcheck
 func (b *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	hj, ok := b.ResponseWriter.(http.Hijacker)
 	if !ok {
@@ -58,7 +58,7 @@ func (b *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return hj.Hijack()
 }
 
-// nolint:wrapcheck
+//nolint:wrapcheck
 func (b *responseWriterWrapper) Push(target string, opts *http.PushOptions) error {
 	pusher, ok := b.ResponseWriter.(http.Pusher)
 	if !ok {
@@ -68,7 +68,7 @@ func (b *responseWriterWrapper) Push(target string, opts *http.PushOptions) erro
 	return pusher.Push(target, opts)
 }
 
-// nolint:wrapcheck
+//nolint:wrapcheck
 func (b *responseWriterWrapper) ReadFrom(r io.Reader) (int64, error) {
 	if b.tee != nil {
 		n, err := io.Copy(b, r)

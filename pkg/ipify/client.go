@@ -67,7 +67,7 @@ func (c *Client) GetPublicIP(ctx context.Context) (string, error) {
 		return c.errorIP, fmt.Errorf("build request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req) // nolint:bodyclose
+	resp, err := c.httpClient.Do(req) //nolint:bodyclose
 	if err != nil {
 		return c.errorIP, fmt.Errorf("failed performing ipify request: %w", err)
 	}

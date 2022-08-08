@@ -103,5 +103,5 @@ func (p *Periodic) run() {
 	p.task(ctx)
 	cancel()
 
-	p.resetTimer <- time.Duration(p.interval + rand.Int63n(p.jitter)) // nolint:gosec
+	p.resetTimer <- time.Duration(p.interval + rand.Int63n(p.jitter)) //nolint:gosec
 }

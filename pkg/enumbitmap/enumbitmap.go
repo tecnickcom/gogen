@@ -3,16 +3,16 @@
 //
 // Example:
 //
-//    00000000 =   0 dec = NONE
-//    00000001 =   1 dec = FIRST
-//    00000010 =   2 dec = SECOND
-//    00000100 =   4 dec = THIRD
-//    00001000 =   8 dec = FOURTH
-//    00010000 =  16 dec = FIFTH
-//    00100000 =  32 dec = SIXTH
-//    01000000 =  64 dec = SEVENTH
-//    10000000 = 128 dec = EIGHTH
-//    00001001 = 1 + 8 = 9 dec = FIRST + FOURTH
+//	00000000 =   0 dec = NONE
+//	00000001 =   1 dec = FIRST
+//	00000010 =   2 dec = SECOND
+//	00000100 =   4 dec = THIRD
+//	00001000 =   8 dec = FOURTH
+//	00010000 =  16 dec = FIFTH
+//	00100000 =  32 dec = SIXTH
+//	01000000 =  64 dec = SEVENTH
+//	10000000 = 128 dec = EIGHTH
+//	00001001 = 1 + 8 = 9 dec = FIRST + FOURTH
 package enumbitmap
 
 import (

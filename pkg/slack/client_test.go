@@ -67,7 +67,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-// nolint:gocognit
+//nolint:gocognit
 func TestClient_HealthCheck(t *testing.T) {
 	t.Parallel()
 

@@ -45,16 +45,16 @@ func New(ctx context.Context, db *sql.DB, queries EnumTableQuery) (EnumDB, error
 	return enum, nil
 }
 
-// nolint:interfacer
+//nolint:interfacer
 func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (*enumcache.EnumCache, error) {
-	stmt, err := db.PrepareContext(ctx, query) // nolint:sqlclosecheck
+	stmt, err := db.PrepareContext(ctx, query) //nolint:sqlclosecheck
 	if err != nil {
 		return nil, fmt.Errorf("failed preparing statement: %w", err)
 	}
 
 	defer logging.Close(ctx, stmt, "error closing statement")
 
-	rows, err := stmt.QueryContext(ctx) // nolint:sqlclosecheck
+	rows, err := stmt.QueryContext(ctx) //nolint:sqlclosecheck
 	if err != nil {
 		return nil, fmt.Errorf("failed executing query: %w", err)
 	}

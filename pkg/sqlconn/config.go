@@ -43,7 +43,7 @@ type config struct {
 	pingTimeout         time.Duration
 }
 
-// nolint:gocyclo
+//nolint:gocyclo
 func (c *config) validate() error {
 	if strings.TrimSpace(c.driver) == "" {
 		return fmt.Errorf("database driver must be set")

@@ -28,7 +28,7 @@ func (c *Options) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
 		o[k] = (func(*config.LoadOptions) error)(v)
 	}
 
-	return config.LoadDefaultConfig(ctx, o...) // nolint: wrapcheck
+	return config.LoadDefaultConfig(ctx, o...) //nolint: wrapcheck
 }
 
 // WithAWSOption allows to add an arbitrary AWS option.
@@ -43,10 +43,10 @@ func (c *Options) WithRegion(region string) {
 
 // WithRegionFromURL allows to specify the AWS region extracted from the provided URL.
 // If the URL does not contain a region, a default one will be returned with the order of precedence:
-//   * the specified defaultRegion;
-//   * the AWS_REGION environment variable;
-//   * the AWS_DEFAULT_REGION environment variable;
-//   * the region set in the awsDefaultRegion constant.
+//   - the specified defaultRegion;
+//   - the AWS_REGION environment variable;
+//   - the AWS_DEFAULT_REGION environment variable;
+//   - the region set in the awsDefaultRegion constant.
 func (c *Options) WithRegionFromURL(url, defaultRegion string) {
 	c.WithRegion(awsRegionFromURL(url, defaultRegion))
 }

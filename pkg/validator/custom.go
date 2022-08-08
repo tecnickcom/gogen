@@ -84,8 +84,9 @@ func isUSTerritory(ctx context.Context, fl vt.FieldLevel) bool {
 // This tag should never be used alone.
 // The combined tag will be checked only if this validator returns false.
 // Examples:
-//     "falseif=Country US|usstate" checks if the field is a valid US state only if the Country field is set to "US".
-//     "falseif=Country|usstate" checks if the field is a valid US state only if the Country field is set and not empty.
+//
+//	"falseif=Country US|usstate" checks if the field is a valid US state only if the Country field is set to "US".
+//	"falseif=Country|usstate" checks if the field is a valid US state only if the Country field is set and not empty.
 func isFalseIf(ctx context.Context, fl vt.FieldLevel) bool {
 	param := strings.TrimSpace(fl.Param())
 	if param == "" {
@@ -108,7 +109,8 @@ func isFalseIf(ctx context.Context, fl vt.FieldLevel) bool {
 }
 
 // hasDefaultvalue returns true if the field has a default value (nil/zero) or if is unset/invalid.
-// nolint:exhaustive
+//
+//nolint:exhaustive
 func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool {
 	switch kind {
 	case reflect.Invalid:
@@ -121,7 +123,8 @@ func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool
 }
 
 // hasNotValue returns true if the field has not the specified value.
-// nolint:gocognit,gocyclo,exhaustive
+//
+//nolint:gocognit,gocyclo,exhaustive
 func hasNotValue(value reflect.Value, kind reflect.Kind, paramValue string) bool {
 	switch kind {
 	case reflect.String:

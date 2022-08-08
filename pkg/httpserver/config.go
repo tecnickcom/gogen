@@ -36,42 +36,44 @@ func GetPublicIPDefaultFunc() GetPublicIPFunc {
 }
 
 type config struct {
-	router               Router
-	serverAddr           string
-	serverReadTimeout    time.Duration
-	serverWriteTimeout   time.Duration
-	shutdownTimeout      time.Duration
-	tlsConfig            *tls.Config
-	instrumentHandler    InstrumentHandler
-	defaultEnabledRoutes []defaultRoute
-	indexHandlerFunc     IndexHandlerFunc
-	ipHandlerFunc        http.HandlerFunc
-	metricsHandlerFunc   http.HandlerFunc
-	pingHandlerFunc      http.HandlerFunc
-	pprofHandlerFunc     http.HandlerFunc
-	statusHandlerFunc    http.HandlerFunc
-	traceIDHeaderName    string
-	redactFn             RedactFn
+	router                  Router
+	serverAddr              string
+	serverReadHeaderTimeout time.Duration
+	serverReadTimeout       time.Duration
+	serverWriteTimeout      time.Duration
+	shutdownTimeout         time.Duration
+	tlsConfig               *tls.Config
+	instrumentHandler       InstrumentHandler
+	defaultEnabledRoutes    []defaultRoute
+	indexHandlerFunc        IndexHandlerFunc
+	ipHandlerFunc           http.HandlerFunc
+	metricsHandlerFunc      http.HandlerFunc
+	pingHandlerFunc         http.HandlerFunc
+	pprofHandlerFunc        http.HandlerFunc
+	statusHandlerFunc       http.HandlerFunc
+	traceIDHeaderName       string
+	redactFn                RedactFn
 }
 
 func defaultConfig() *config {
 	defaultInstrumentHandler := func(path string, handler http.HandlerFunc) http.Handler { return handler }
 
 	return &config{
-		serverAddr:           ":8017",
-		serverReadTimeout:    1 * time.Minute,
-		serverWriteTimeout:   1 * time.Minute,
-		shutdownTimeout:      30 * time.Second,
-		instrumentHandler:    defaultInstrumentHandler,
-		defaultEnabledRoutes: nil,
-		indexHandlerFunc:     defaultIndexHandler,
-		ipHandlerFunc:        defaultIPHandler(GetPublicIPDefaultFunc()),
-		metricsHandlerFunc:   notImplementedHandler,
-		pingHandlerFunc:      defaultPingHandler,
-		pprofHandlerFunc:     profiling.PProfHandler,
-		statusHandlerFunc:    defaultStatusHandler,
-		traceIDHeaderName:    traceid.DefaultHeader,
-		redactFn:             redact.HTTPData,
+		serverAddr:              ":8017",
+		serverReadHeaderTimeout: 1 * time.Minute,
+		serverReadTimeout:       1 * time.Minute,
+		serverWriteTimeout:      1 * time.Minute,
+		shutdownTimeout:         30 * time.Second,
+		instrumentHandler:       defaultInstrumentHandler,
+		defaultEnabledRoutes:    nil,
+		indexHandlerFunc:        defaultIndexHandler,
+		ipHandlerFunc:           defaultIPHandler(GetPublicIPDefaultFunc()),
+		metricsHandlerFunc:      notImplementedHandler,
+		pingHandlerFunc:         defaultPingHandler,
+		pprofHandlerFunc:        profiling.PProfHandler,
+		statusHandlerFunc:       defaultStatusHandler,
+		traceIDHeaderName:       traceid.DefaultHeader,
+		redactFn:                redact.HTTPData,
 	}
 }
 

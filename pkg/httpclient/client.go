@@ -91,7 +91,7 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 
 	resp, err = c.client.Do(r)
 	if err != nil {
-		return nil, err // nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	if debug {

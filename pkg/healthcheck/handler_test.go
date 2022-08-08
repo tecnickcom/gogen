@@ -104,7 +104,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			h.ServeHTTP(rr, req)
 			el := time.Since(st)
 
-			resp := rr.Result() // nolint:bodyclose
+			resp := rr.Result() //nolint:bodyclose
 			require.NotNil(t, resp)
 
 			defer func() {

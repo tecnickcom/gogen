@@ -62,7 +62,7 @@ func TestSendStatus(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SendStatus(testutil.Context(), rr, http.StatusUnauthorized)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -84,7 +84,7 @@ func TestSendText(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SendText(testutil.Context(), rr, http.StatusOK, data)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -114,7 +114,7 @@ func TestSendJSON(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SendJSON(testutil.Context(), rr, http.StatusOK, data)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -144,7 +144,7 @@ func TestSendXML(t *testing.T) {
 	rr := httptest.NewRecorder()
 	SendXML(testutil.Context(), rr, http.StatusOK, XMLHeader, data)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {

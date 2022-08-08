@@ -44,7 +44,7 @@ func NewConsumer(urls, topics []string, groupID string, opts ...Option) (*Consum
 
 // Close cleans up Consumer's internal resources.
 func (c *Consumer) Close() error {
-	return c.client.Close() // nolint: wrapcheck
+	return c.client.Close() //nolint: wrapcheck
 }
 
 // Receive reads one message from the Kafka; is blocked if no messages in the queue.

@@ -31,6 +31,16 @@ func TestWithServerAddr(t *testing.T) {
 	require.Equal(t, v, cfg.serverAddr)
 }
 
+func TestWithServerReadHeaderTimeout(t *testing.T) {
+	t.Parallel()
+
+	v := 7 * time.Second
+	cfg := &config{}
+	err := WithServerReadHeaderTimeout(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, v, cfg.serverReadHeaderTimeout)
+}
+
 func TestWithServerReadTimeout(t *testing.T) {
 	t.Parallel()
 

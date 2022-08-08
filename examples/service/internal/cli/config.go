@@ -59,5 +59,5 @@ func (c *appConfig) Validate() error {
 
 	v, _ := validator.New(opts...)
 
-	return v.ValidateStruct(c) // nolint:wrapcheck
+	return v.ValidateStruct(c) //nolint:wrapcheck
 }

@@ -230,5 +230,5 @@ func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
 		},
 	)
 
-	return claims, err // nolint:wrapcheck
+	return claims, err //nolint:wrapcheck
 }

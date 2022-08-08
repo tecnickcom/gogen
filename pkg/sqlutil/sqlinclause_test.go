@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint:dupl
+//nolint:dupl
 func TestBuildInClauseString(t *testing.T) {
 	t.Parallel()
 
@@ -55,7 +55,7 @@ func TestBuildInClauseString(t *testing.T) {
 	}
 }
 
-// nolint:dupl
+//nolint:dupl
 func TestBuildNotInClauseString(t *testing.T) {
 	t.Parallel()
 
@@ -104,7 +104,7 @@ func TestBuildNotInClauseString(t *testing.T) {
 	}
 }
 
-// nolint:dupl
+//nolint:dupl
 func TestBuildInClauseInt(t *testing.T) {
 	t.Parallel()
 
@@ -153,7 +153,7 @@ func TestBuildInClauseInt(t *testing.T) {
 	}
 }
 
-// nolint:dupl
+//nolint:dupl
 func TestBuildNotInClauseInt(t *testing.T) {
 	t.Parallel()
 
@@ -202,7 +202,7 @@ func TestBuildNotInClauseInt(t *testing.T) {
 	}
 }
 
-// nolint:dupl
+//nolint:dupl
 func TestBuildInClauseUint(t *testing.T) {
 	t.Parallel()
 
@@ -251,7 +251,7 @@ func TestBuildInClauseUint(t *testing.T) {
 	}
 }
 
-// nolint:dupl
+//nolint:dupl
 func TestBuildNotInClauseUint(t *testing.T) {
 	t.Parallel()
 

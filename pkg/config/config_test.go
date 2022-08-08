@@ -247,7 +247,7 @@ func Test_validationError(t *testing.T) {
 	require.EqualError(t, err, "provider config provider requires PREFIX_VAR to be set")
 }
 
-// nolint:gocognit
+//nolint:gocognit
 func Test_loadRemoteConfig(t *testing.T) {
 	t.Parallel()
 
@@ -601,7 +601,7 @@ func Test_loadFromRemoteSource(t *testing.T) {
 	}
 }
 
-// nolint:gocognit,tparallel
+//nolint:gocognit,tparallel
 func Test_loadConfig(t *testing.T) {
 	t.Parallel()
 
@@ -994,7 +994,7 @@ func Test_loadConfig(t *testing.T) {
 		},
 	}
 
-	// nolint:paralleltest
+	//nolint:paralleltest
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {

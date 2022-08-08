@@ -33,7 +33,7 @@ func TestHTTPHandler_handleGenUID(t *testing.T) {
 
 	(&HTTPHandler{}).handleGenUID(rr, req)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {

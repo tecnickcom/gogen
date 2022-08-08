@@ -9,10 +9,10 @@ import (
 
 var (
 	// programVersion contains the version of the application injected at compile time.
-	programVersion = "0.0.0" // nolint:gochecknoglobals
+	programVersion = "0.0.0" //nolint:gochecknoglobals
 
 	// programRelease contains the release of the application injected at compile time.
-	programRelease = "0" // nolint:gochecknoglobals
+	programRelease = "0" //nolint:gochecknoglobals
 )
 
 func main() {

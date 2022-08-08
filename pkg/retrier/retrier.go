@@ -125,7 +125,7 @@ func (r *Retrier) exec(task TaskFn) bool {
 		return true
 	}
 
-	r.resetTimer <- time.Duration(int64(r.nextDelay) + rand.Int63n(int64(r.jitter))) // nolint:gosec
+	r.resetTimer <- time.Duration(int64(r.nextDelay) + rand.Int63n(int64(r.jitter))) //nolint:gosec
 	r.nextDelay *= r.delayFactor
 
 	return false

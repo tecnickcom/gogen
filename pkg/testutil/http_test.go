@@ -24,7 +24,7 @@ func TestRouterWithHandler(t *testing.T) {
 	})
 	router.ServeHTTP(rr, req)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {

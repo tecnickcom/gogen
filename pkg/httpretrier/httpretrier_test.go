@@ -266,7 +266,7 @@ func TestRetryIfForReadRequests(t *testing.T) {
 	}
 }
 
-// nolint:gocognit
+//nolint:gocognit
 func TestHTTPRetrier_Do(t *testing.T) {
 	t.Parallel()
 

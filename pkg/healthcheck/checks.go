@@ -34,7 +34,7 @@ func CheckHTTPStatus(ctx context.Context, httpClient HTTPClient, method string, 
 		cfg.configureRequest(req)
 	}
 
-	resp, err := httpClient.Do(req) // nolint:bodyclose
+	resp, err := httpClient.Do(req) //nolint:bodyclose
 	if err != nil {
 		return fmt.Errorf("healthcheck request: %w", err)
 	}

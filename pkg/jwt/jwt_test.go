@@ -152,7 +152,7 @@ func TestLoginHandler(t *testing.T) {
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", strings.NewReader(tt.body))
 			c.LoginHandler(rr, req)
 
-			resp := rr.Result() // nolint:bodyclose
+			resp := rr.Result() //nolint:bodyclose
 			require.NotNil(t, resp)
 
 			defer func() {
@@ -241,7 +241,7 @@ func TestRenewHandler(t *testing.T) {
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", strings.NewReader(reqBody))
 			c.LoginHandler(rr, req)
 
-			resp := rr.Result() // nolint:bodyclose
+			resp := rr.Result() //nolint:bodyclose
 			require.NotNil(t, resp)
 
 			defer func() {
@@ -265,7 +265,7 @@ func TestRenewHandler(t *testing.T) {
 			req2.Header.Set(tt.authorizationHeader, header)
 			c.RenewHandler(rr2, req2)
 
-			resp2 := rr2.Result() // nolint:bodyclose
+			resp2 := rr2.Result() //nolint:bodyclose
 			require.NotNil(t, resp2)
 
 			defer func() {
@@ -333,7 +333,7 @@ func TestIsAuthorized(t *testing.T) {
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", strings.NewReader(reqBody))
 			c.LoginHandler(rr, req)
 
-			resp := rr.Result() // nolint:bodyclose
+			resp := rr.Result() //nolint:bodyclose
 			require.NotNil(t, resp)
 
 			defer func() {
@@ -360,7 +360,7 @@ func TestIsAuthorized(t *testing.T) {
 			if tt.status == 0 {
 				require.True(t, got)
 			} else {
-				resp2 := rr2.Result() // nolint:bodyclose
+				resp2 := rr2.Result() //nolint:bodyclose
 				require.NotNil(t, resp2)
 
 				defer func() {
@@ -380,7 +380,7 @@ func testUserHash(username string) ([]byte, error) {
 		return nil, fmt.Errorf("invalid username")
 	}
 
-	return bcrypt.GenerateFromPassword([]byte(username), bcrypt.MinCost) // nolint:wrapcheck
+	return bcrypt.GenerateFromPassword([]byte(username), bcrypt.MinCost) //nolint:wrapcheck
 }
 
 type testSigningMethodError struct {

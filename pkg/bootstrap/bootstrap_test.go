@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// nolint:gocognit,paralleltest,tparallel
+//nolint:gocognit,paralleltest,tparallel
 func TestBootstrap(t *testing.T) {
 	t.Parallel()
 
@@ -109,7 +109,7 @@ func TestBootstrap(t *testing.T) {
 				opts = append(opts, WithCreateMetricsClientFunc(tt.createMetricsClientFunc))
 			} else {
 				fn := func() (metrics.Client, error) {
-					return prometheus.New() // nolint:wrapcheck
+					return prometheus.New() //nolint:wrapcheck
 				}
 				opts = append(opts, WithCreateMetricsClientFunc(fn))
 			}

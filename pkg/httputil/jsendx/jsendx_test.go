@@ -29,7 +29,7 @@ func TestSend(t *testing.T) {
 	rr := httptest.NewRecorder()
 	Send(testutil.Context(), rr, http.StatusOK, params, "hello test")
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -121,7 +121,7 @@ func TestNewRouter(t *testing.T) {
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, httptest.NewRequest(tt.method, tt.path, nil))
 
-			resp := rr.Result() // nolint:bodyclose
+			resp := rr.Result() //nolint:bodyclose
 			require.NotNil(t, resp)
 
 			defer func() {
@@ -161,7 +161,7 @@ func TestDefaultIndexHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -216,7 +216,7 @@ func TestDefaultIPHandler(t *testing.T) {
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 			DefaultIPHandler(appInfo, tt.ipFunc).ServeHTTP(rr, req)
 
-			resp := rr.Result() // nolint:bodyclose
+			resp := rr.Result() //nolint:bodyclose
 			require.NotNil(t, resp)
 
 			defer func() {
@@ -242,7 +242,7 @@ func TestDefaultIPHandler(t *testing.T) {
 	}
 }
 
-// nolint:dupl
+//nolint:dupl
 func TestDefaultPingHandler(t *testing.T) {
 	t.Parallel()
 
@@ -256,7 +256,7 @@ func TestDefaultPingHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultPingHandler(appInfo)(rr, req)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -275,7 +275,7 @@ func TestDefaultPingHandler(t *testing.T) {
 	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.4.5\",\"release\":\"3\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
-// nolint:dupl
+//nolint:dupl
 func TestDefaultStatusHandler(t *testing.T) {
 	t.Parallel()
 
@@ -289,7 +289,7 @@ func TestDefaultStatusHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultStatusHandler(appInfo)(rr, req)
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -320,7 +320,7 @@ func TestHealthCheckResultWriter(t *testing.T) {
 	rr := httptest.NewRecorder()
 	HealthCheckResultWriter(appInfo)(testutil.Context(), rr, http.StatusOK, "test body")
 
-	resp := rr.Result() // nolint:bodyclose
+	resp := rr.Result() //nolint:bodyclose
 	require.NotNil(t, resp)
 
 	defer func() {

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint:gocognit,paralleltest,tparallel
+//nolint:gocognit,paralleltest,tparallel
 func TestNew(t *testing.T) {
 	t.Parallel()
 

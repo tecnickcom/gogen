@@ -18,7 +18,7 @@ func newMockConnectFunc(db *sql.DB, err error) ConnectFunc {
 	}
 }
 
-// nolint:gocognit
+//nolint:gocognit
 func TestConnect(t *testing.T) {
 	t.Parallel()
 

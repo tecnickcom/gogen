@@ -26,6 +26,14 @@ func WithServerAddr(addr string) Option {
 	}
 }
 
+// WithServerReadHeaderTimeout sets the shutdown timeout.
+func WithServerReadHeaderTimeout(timeout time.Duration) Option {
+	return func(cfg *config) error {
+		cfg.serverReadHeaderTimeout = timeout
+		return nil
+	}
+}
+
 // WithServerReadTimeout sets the shutdown timeout.
 func WithServerReadTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {

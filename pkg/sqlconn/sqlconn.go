@@ -107,7 +107,7 @@ func checkConnection(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("failed ping on database: %w", err)
 	}
 
-	// nolint:rowserrcheck
+	//nolint:rowserrcheck
 	rows, err := db.QueryContext(ctx, "SELECT 1")
 	if err != nil {
 		return fmt.Errorf("failed running check query on database: %w", err)

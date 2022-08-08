@@ -127,7 +127,7 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 			defer t.Send(labelStatus + labelTime)
 		}
 
-		return resp, err // nolint:wrapcheck
+		return resp, err //nolint:wrapcheck
 	})
 }
 

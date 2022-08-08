@@ -89,7 +89,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("build request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req) // nolint:bodyclose
+	resp, err := c.httpClient.Do(req) //nolint:bodyclose
 	if err != nil {
 		return fmt.Errorf("healthcheck request: %w", err)
 	}
@@ -156,7 +156,7 @@ func (c *Client) sendData(ctx context.Context, reqData *message) error {
 		return fmt.Errorf("create retrier: %w", err)
 	}
 
-	resp, err := hr.Do(r) // nolint:bodyclose
+	resp, err := hr.Do(r) //nolint:bodyclose
 	if err != nil {
 		return fmt.Errorf("execute request: %w", err)
 	}
@@ -171,7 +171,7 @@ func (c *Client) sendData(ctx context.Context, reqData *message) error {
 }
 
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
-	return httpretrier.New(c.httpClient, httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests), httpretrier.WithAttempts(c.retryAttempts)) // nolint:wrapcheck
+	return httpretrier.New(c.httpClient, httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests), httpretrier.WithAttempts(c.retryAttempts)) //nolint:wrapcheck
 }
 
 func stringValueOrDefault(v, def string) string {

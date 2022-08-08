@@ -93,7 +93,7 @@ TEST.inbound.test.POST.out:1\|c`
 	)
 	require.NoError(t, err, "New() unexpected error = %v", err)
 
-	defer c.Close() // nolint:errcheck
+	defer c.Close() //nolint:errcheck
 
 	rr := httptest.NewRecorder()
 	ctx := context.Background()
@@ -134,7 +134,7 @@ TEST.outbound.GET.out:1\|c`
 	)
 	require.NoError(t, err, "New() unexpected error = %v", err)
 
-	defer c.Close() // nolint:errcheck
+	defer c.Close() //nolint:errcheck
 
 	server := httptest.NewServer(
 		http.HandlerFunc(
@@ -150,7 +150,7 @@ TEST.outbound.GET.out:1\|c`
 	client.Timeout = 1 * time.Second
 	client.Transport = c.InstrumentRoundTripper(client.Transport)
 
-	// nolint:noctx
+	//nolint:noctx
 	resp, err := client.Get(server.URL)
 	require.NoError(t, err, "client.Get() unexpected error = %v", err)
 	require.NotNil(t, resp)

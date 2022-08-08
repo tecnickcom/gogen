@@ -90,11 +90,12 @@ func startServer(ctx context.Context, cfg *config) error {
 
 	// create and start the http server
 	s := &http.Server{
-		Addr:         cfg.serverAddr,
-		Handler:      RequestInjectHandler(l, cfg.traceIDHeaderName, cfg.redactFn, cfg.router),
-		ReadTimeout:  cfg.serverReadTimeout,
-		TLSConfig:    cfg.tlsConfig,
-		WriteTimeout: cfg.serverWriteTimeout,
+		Addr:              cfg.serverAddr,
+		Handler:           RequestInjectHandler(l, cfg.traceIDHeaderName, cfg.redactFn, cfg.router),
+		ReadHeaderTimeout: cfg.serverReadHeaderTimeout,
+		ReadTimeout:       cfg.serverReadTimeout,
+		TLSConfig:         cfg.tlsConfig,
+		WriteTimeout:      cfg.serverWriteTimeout,
 	}
 
 	// start HTTP listener

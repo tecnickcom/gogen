@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint:gocognit
+//nolint:gocognit
 func TestCheckHttpStatus(t *testing.T) {
 	t.Parallel()
 

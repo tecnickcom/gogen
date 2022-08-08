@@ -13,7 +13,8 @@ import (
 )
 
 // LogFatal calls the default fatal logger.
-// nolint:gochecknoglobals
+//
+//nolint:gochecknoglobals
 var LogFatal = zap.L().Fatal
 
 type ctxKey struct{}
@@ -105,7 +106,7 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 		l = l.With(cfg.fields...)
 		l = WithLevelFunctionHook(l, cfg.incMetricLogLevel)
 	}
-	// nolint:wrapcheck
+	//nolint:wrapcheck
 	return l, err
 }
 

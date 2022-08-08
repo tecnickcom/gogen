@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint:gocognit,paralleltest,tparallel
+//nolint:gocognit,paralleltest,tparallel
 func Test_bind(t *testing.T) {
 	t.Parallel()
 

@@ -27,7 +27,7 @@ func (rw *mockResponseWriter) Header() http.Header {
 	return nil
 }
 
-// nolint:wrapcheck
+//nolint:wrapcheck
 func (rw *mockResponseWriter) Write(in []byte) (int, error) {
 	return rw.Buffer.Write(in)
 }

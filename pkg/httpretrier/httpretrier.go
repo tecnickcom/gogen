@@ -187,7 +187,7 @@ func (c *HTTPRetrier) run(r *http.Request) bool {
 		}
 	}
 
-	c.doResponse, c.doError = c.httpClient.Do(r) // nolint:bodyclose
+	c.doResponse, c.doError = c.httpClient.Do(r) //nolint:bodyclose
 
 	c.remainingAttempts--
 	if c.remainingAttempts == 0 || !c.retryIfFn(c.doResponse, c.doError) {
@@ -202,7 +202,7 @@ func (c *HTTPRetrier) run(r *http.Request) bool {
 	// set the original body for the next request
 	r.Body = bodyRC
 
-	c.resetTimer <- time.Duration(int64(c.nextDelay) + rand.Int63n(int64(c.jitter))) // nolint:gosec
+	c.resetTimer <- time.Duration(int64(c.nextDelay) + rand.Int63n(int64(c.jitter))) //nolint:gosec
 	c.nextDelay *= c.delayFactor
 
 	return false

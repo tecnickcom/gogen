@@ -18,7 +18,7 @@ func InitRandSeed() error {
 		rand.Seed(int64(binary.LittleEndian.Uint64(b[:])))
 	}
 
-	// nolint:wrapcheck
+	//nolint:wrapcheck
 	return err
 }
 

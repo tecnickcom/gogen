@@ -63,7 +63,7 @@ func (v *Validator) ValidateStructCtx(ctx context.Context, obj interface{}) (err
 		}
 	}
 
-	// nolint:wrapcheck
+	//nolint:wrapcheck
 	return err
 }
 
