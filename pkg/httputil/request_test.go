@@ -12,21 +12,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHeaderOrDefault(t *testing.T) {
+func TestAddBasicAuth(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-	require.NoError(t, err)
+	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	AddBasicAuth("key", "secret", r)
 
-	r.Header.Add("set-header", "test")
-
-	v1 := HeaderOrDefault(r, "unset-header", "default")
-	require.Equal(t, "default", v1)
-
-	v2 := HeaderOrDefault(r, "set-header", "default")
-	require.Equal(t, "test", v2)
+	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	wanted.Header.Set("Authorization", "Basic a2V5OnNlY3JldA==")
+	require.Equal(t, r, wanted)
 }
 
 func TestPathParam(t *testing.T) {
@@ -82,17 +78,77 @@ func TestPathParam(t *testing.T) {
 	}
 }
 
-func TestAddBasicAuth(t *testing.T) {
+func TestHeaderOrDefault(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 
-	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
-	AddBasicAuth("key", "secret", r)
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	require.NoError(t, err)
 
-	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
-	wanted.Header.Set("Authorization", "Basic a2V5OnNlY3JldA==")
-	require.Equal(t, r, wanted)
+	r.Header.Add("set-header", "test")
+
+	v1 := HeaderOrDefault(r, "unset-header", "default")
+	require.Equal(t, "default", v1)
+
+	v2 := HeaderOrDefault(r, "set-header", "default")
+	require.Equal(t, "test", v2)
+}
+
+func TestQueryStringOrDefault(t *testing.T) {
+	t.Parallel()
+
+	defaultVal := "default_string"
+
+	type args struct {
+		q   url.Values
+		key string
+		def string
+	}
+
+	tests := []struct {
+		name     string
+		args     args
+		wantResp string
+	}{
+		{
+			name: "get default value because empty input",
+			args: args{
+				q:   url.Values{"test-key": []string{""}},
+				key: "test-key",
+				def: defaultVal,
+			},
+			wantResp: defaultVal,
+		},
+		{
+			name: "get default value because the key is not present",
+			args: args{
+				q:   url.Values{"test-key": []string{"test-value"}},
+				key: "test-key-invalid",
+				def: defaultVal,
+			},
+			wantResp: defaultVal,
+		},
+		{
+			name: "get input value",
+			args: args{
+				q:   url.Values{"test-key": []string{"input_test"}},
+				key: "test-key",
+				def: defaultVal,
+			},
+			wantResp: "input_test",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := QueryStringOrDefault(tt.args.q, tt.args.key, tt.args.def)
+			require.Equal(t, tt.wantResp, got, "QueryStringOrDefault() = %v, wantResp %v", got, tt.wantResp)
+		})
+	}
 }
 
 func TestQueryIntOrDefault(t *testing.T) {
