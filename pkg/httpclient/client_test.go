@@ -34,7 +34,7 @@ func TestNew(t *testing.T) {
 	require.Equal(t, fn(http.DefaultTransport), got.client.Transport)
 }
 
-func TestDo(t *testing.T) {
+func TestClient_Do(t *testing.T) {
 	t.Parallel()
 
 	body := make([]byte, 0)
