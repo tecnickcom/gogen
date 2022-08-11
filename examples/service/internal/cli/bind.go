@@ -18,10 +18,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	httpClientTimeout = 1 * time.Minute
-)
-
 // bind is the entry point of the service, this is where the wiring of all components happens.
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.BindFunc {
 	return func(ctx context.Context, l *zap.Logger, m metrics.Client) error {
@@ -29,13 +25,26 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 		serviceBinder := httpserver.NopBinder()
 		statusHandler := jsendx.DefaultStatusHandler(appInfo)
 
-		// common HTTP client used for all outbound requests
-		httpClient := httpclient.New(
-			httpclient.WithTimeout(httpClientTimeout),
+		// common HTTP client options used for all outbound requests
+		httpClientOpts := []httpclient.Option{
 			httpclient.WithRoundTripper(m.InstrumentRoundTripper),
 			httpclient.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpclient.WithComponent(appInfo.ProgramName),
+		}
+
+		ipifyTimeout := time.Duration(cfg.Ipify.Timeout) * time.Second
+		ipifyHTTPClient := httpclient.New(
+			append(httpClientOpts, httpclient.WithTimeout(ipifyTimeout))...,
 		)
+
+		ipifyClient, err := ipify.New(
+			ipify.WithHTTPClient(ipifyHTTPClient),
+			ipify.WithTimeout(ipifyTimeout),
+			ipify.WithURL(cfg.Ipify.Address),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to build ipify client: %w", err)
+		}
 
 		if cfg.Enabled {
 			// wire the binder
@@ -50,16 +59,6 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 				healthcheck.WithResultWriter(jsendx.HealthCheckResultWriter(appInfo)),
 			)
 			statusHandler = healthCheckHandler.ServeHTTP
-		}
-
-		// ipify client
-		ipifyClient, err := ipify.New(
-			ipify.WithHTTPClient(httpClient),
-			ipify.WithTimeout(time.Duration(cfg.Ipify.Timeout)*time.Second),
-			ipify.WithURL(cfg.Ipify.Address),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to build ipify client: %w", err)
 		}
 
 		// start monitoring server
