@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWithRequestTimeout(t *testing.T) {
+func TestWithTimeout(t *testing.T) {
 	t.Parallel()
 
 	want := 17 * time.Second
 	c := &Client{}
-	WithRequestTimeout(want)(c)
-	require.Equal(t, want, c.requestTimeout, "WithTimeout() = %v, want %v", c.requestTimeout, want)
+	WithTimeout(want)(c)
+	require.Equal(t, want, c.timeout, "WithTimeout() = %v, want %v", c.timeout, want)
 }
 
 func TestWithPingTimeout(t *testing.T) {

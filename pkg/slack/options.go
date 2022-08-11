@@ -7,10 +7,10 @@ import (
 // Option is the interface that allows to set client options.
 type Option func(c *Client)
 
-// WithRequestTimeout overrides the default request timeout.
-func WithRequestTimeout(timeout time.Duration) Option {
+// WithTimeout overrides the default request timeout.
+func WithTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
-		c.requestTimeout = timeout
+		c.timeout = timeout
 	}
 }
 

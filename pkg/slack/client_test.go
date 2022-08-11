@@ -29,13 +29,13 @@ func TestNew(t *testing.T) {
 		{
 			name:        "succeeds with defaults",
 			serviceAddr: "http://service.domain.invalid:1234",
-			wantTimeout: defaultRequestTimeout,
+			wantTimeout: defaultTimeout,
 			wantErr:     false,
 		},
 		{
 			name:        "succeeds with overridden timeout",
 			serviceAddr: "http://service.domain.invalid:1234",
-			opts:        []Option{WithRequestTimeout(2 * time.Second)},
+			opts:        []Option{WithTimeout(2 * time.Second)},
 			wantTimeout: 2 * time.Second,
 			wantErr:     false,
 		},

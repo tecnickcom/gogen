@@ -15,13 +15,13 @@ import (
 )
 
 const (
-	contentType           = "Content-Type"
-	mimeTypeJSON          = "application/json"
-	defaultPingURL        = "https://status.slack.com/api/v2.0.0/current"
-	defaultRequestTimeout = 1 * time.Second
-	defaultPingTimeout    = 1 * time.Second
-	failStatus            = "active"
-	failService           = "Apps/Integrations/APIs"
+	contentType        = "Content-Type"
+	mimeTypeJSON       = "application/json"
+	defaultPingURL     = "https://status.slack.com/api/v2.0.0/current"
+	defaultTimeout     = 1 * time.Second
+	defaultPingTimeout = 1 * time.Second
+	failStatus         = "active"
+	failService        = "Apps/Integrations/APIs"
 )
 
 // HTTPClient contains the function to perform the actual HTTP request.
@@ -31,16 +31,16 @@ type HTTPClient interface {
 
 // Client is the implementation of the service client.
 type Client struct {
-	httpClient     HTTPClient
-	address        string
-	requestTimeout time.Duration
-	pingTimeout    time.Duration
-	retryAttempts  uint
-	pingURL        string
-	username       string
-	iconEmoji      string
-	iconURL        string
-	channel        string
+	httpClient    HTTPClient
+	address       string
+	timeout       time.Duration
+	pingTimeout   time.Duration
+	retryAttempts uint
+	pingURL       string
+	username      string
+	iconEmoji     string
+	iconURL       string
+	channel       string
 }
 
 // New creates a new instance of the Slack service client.
@@ -52,15 +52,15 @@ func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*C
 	}
 
 	c := &Client{
-		address:        address.String(),
-		requestTimeout: defaultRequestTimeout,
-		pingTimeout:    defaultPingTimeout,
-		retryAttempts:  httpretrier.DefaultAttempts,
-		pingURL:        defaultPingURL,
-		username:       username,
-		iconEmoji:      iconEmoji,
-		iconURL:        iconURL,
-		channel:        channel,
+		address:       address.String(),
+		timeout:       defaultTimeout,
+		pingTimeout:   defaultPingTimeout,
+		retryAttempts: httpretrier.DefaultAttempts,
+		pingURL:       defaultPingURL,
+		username:      username,
+		iconEmoji:     iconEmoji,
+		iconURL:       iconURL,
+		channel:       channel,
 	}
 
 	for _, applyOpt := range opts {
@@ -68,7 +68,7 @@ func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*C
 	}
 
 	if c.httpClient == nil {
-		c.httpClient = &http.Client{Timeout: c.requestTimeout}
+		c.httpClient = &http.Client{Timeout: c.timeout}
 	}
 
 	return c, nil
