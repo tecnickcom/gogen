@@ -1,4 +1,50 @@
 // Package filter provides generic filtering capabilities for struct slices.
+//
+// Example:
+// The following pretty-printed JSON:
+//
+//	[
+//	  [
+//	    {
+//	      "field": "name",
+//	      "type": "equal",
+//	      "value": "doe"
+//	    },
+//	    {
+//	      "field": "age",
+//	      "type": "equal",
+//	      "value": 42
+//	    }
+//	  ],
+//	  [
+//	    {
+//	      "field": "address.country",
+//	      "type": "regexp",
+//	      "value": "^EN$|^FR$"
+//	    }
+//	  ]
+//	]
+//
+// can be represented in one line as:
+//
+//	[[{"field":"name","type":"equal","value":"doe"},{"field":"age","type":"equal","value":42}],[{"field":"address.country","type":"regexp","value":"^EN$|^FR$"}]]
+//
+// and URL-encoded as a query parameter:
+//
+//	filter=%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22%5EEN%24%7C%5EFR%24%22%7D%5D%5D
+//
+// the equivalent logic is:
+//
+// ((name=doe OR age=42) AND (address.country match "EN" or "FR"))
+//
+// The list of supported rule types is listed in the rule.go file:
+// * equal    : matches exactly the reference value.
+// * notequal : matches when the value is different from the reference value (opposite of TypeEqual).
+// * regexp   : matches the value against a reference regular expression.
+// * lt       : matches when the value is less than the reference.
+// * lte      : matches when the value is less than or equal the reference.
+// * gt       : matches when the value is greater than reference.
+// * gte      : matches when the value is greater than or equal the reference.
 package filter
 
 import (

@@ -48,7 +48,7 @@ linters:
     # - cyclop            # checks function and package cyclomatic complexity [fast: false, auto-fix: false]
     - depguard          # Go linter that checks if package imports are in a list of acceptable packages [fast: false, auto-fix: false]
     - dogsled           # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f()) [fast: true, auto-fix: false]
-    - dupl              # Tool for code clone detection [fast: true, auto-fix: false]
+    # - dupl              # Tool for code clone detection [fast: true, auto-fix: false]
     - durationcheck     # check for two durations multiplied together [fast: false, auto-fix: false]
     - errname           # Checks that sentinel errors are prefixed with the `Err` and error types are suffixed with the `Error`. [fast: false, auto-fix: false]
     - errorlint         # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13. [fast: false, auto-fix: false]

@@ -5,6 +5,31 @@ import (
 	"strings"
 )
 
+const (
+	// TypeEqual is a filter type that matches exactly the reference value.
+	TypeEqual = "equal"
+
+	// TypeNotEqual is a filter type that matches when the value is different from the reference value (opposite of TypeEqual).
+	TypeNotEqual = "notequal"
+
+	// TypeRegexp is a filter type that matches the value against a reference regular expression.
+	// The reference value must be a regular expression that can compile.
+	// Works only with strings (anything else will evaluate to false).
+	TypeRegexp = "regexp"
+
+	// TypeLT is a filter type that matches when the value is less than reference.
+	TypeLT = "lt"
+
+	// TypeLTE is a filter type that matches when the value is less than or equal the reference.
+	TypeLTE = "lte"
+
+	// TypeGT is a filter type that matches when the value is greater than reference.
+	TypeGT = "gt"
+
+	// TypeGTE is a filter type that matches when the value is greater than or equal the reference.
+	TypeGTE = "gte"
+)
+
 // Rule is an individual filter that can be evaluated against any value.
 type Rule struct {
 	// Field is a dot separated selector that is used to target a specific field of the evaluated value.
@@ -51,6 +76,24 @@ func (r *Rule) getEvaluator() (Evaluator, error) {
 		return newNot(newEqual(r.Value)), nil
 	case TypeRegexp:
 		return newRegexp(r.Value)
+	case TypeLT:
+		return newLT(r.Value)
+	case TypeLTE:
+		return newLTE(r.Value)
+	case TypeGT:
+		e, err := newLTE(r.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		return newNot(e), nil
+	case TypeGTE:
+		e, err := newLT(r.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		return newNot(e), nil
 	default:
 		return nil, fmt.Errorf("type %s is not supported", r.Type)
 	}

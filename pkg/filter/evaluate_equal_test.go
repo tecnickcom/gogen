@@ -117,6 +117,30 @@ func TestEqual_Evaluate(t *testing.T) {
 			value: 42.1,
 			want:  false,
 		},
+		{
+			name:  "false - uint8 / string",
+			ref:   uint8(42),
+			value: "42",
+			want:  false,
+		},
+		{
+			name:  "false - string / string",
+			ref:   "ciao",
+			value: "hello",
+			want:  false,
+		},
+		{
+			name:  "true - string / string",
+			ref:   "hello",
+			value: "hello",
+			want:  true,
+		},
+		{
+			name:  "true - nil / nil",
+			ref:   nil,
+			value: nil,
+			want:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -125,45 +149,7 @@ func TestEqual_Evaluate(t *testing.T) {
 			t.Parallel()
 
 			res := newEqual(tt.ref).Evaluate(tt.value)
-			require.Equal(t, tt.want, res, "Evaluate() = %v, want %v", tt.value, tt.want)
-		})
-	}
-}
-
-func TestNot_Evaluate(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		internal Evaluator
-		ref      interface{}
-		value    interface{}
-		want     bool
-	}{
-		{
-			name:     "true",
-			internal: newEqual(1),
-			ref:      1,
-			value:    2,
-			want:     true,
-		},
-		{
-			name:     "false",
-			internal: newEqual(1),
-			ref:      1,
-			value:    1,
-			want:     false,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			res := newNot(tt.internal).Evaluate(tt.value)
-
-			require.Equal(t, tt.want, res, "Evaluate = %v, want %v", res, tt.want)
+			require.Equal(t, tt.want, res)
 		})
 	}
 }

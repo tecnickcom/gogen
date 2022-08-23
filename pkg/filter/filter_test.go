@@ -131,6 +131,7 @@ func TestFilter_ParseURLQuery(t *testing.T) {
 		wantErr  bool
 	}{
 		{
+			// [[{"field":"Age","type":"equal","value":42}]]
 			name:     "success - default key",
 			rawQuery: "filter=%5B%5B%7B%22field%22%3A%22Age%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A42%7D%5D%5D",
 			want: [][]Rule{{{
@@ -141,6 +142,7 @@ func TestFilter_ParseURLQuery(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			// [[{"field":"Age","type":"equal","value":42}]]
 			name:     "success - custom key",
 			rawQuery: "myCustomFilter=%5B%5B%7B%22field%22%3A%22Age%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A42%7D%5D%5D",
 			opts:     []Option{WithQueryFilterKey("myCustomFilter")},
@@ -385,6 +387,152 @@ func TestFilter_Apply(t *testing.T) {
 				},
 			},
 			wantTotalMatches: 1,
+		},
+		{
+			name: "success - int lt",
+			elements: &[]simpleStruct{
+				{
+					IntField: 41,
+				},
+				{
+					IntField: 42,
+				},
+				{
+					IntField: 43,
+				},
+			},
+			rules: [][]Rule{{{
+				Field: "IntField",
+				Type:  "lt",
+				Value: 42,
+			}}},
+			want: &[]simpleStruct{
+				{
+					IntField: 41,
+				},
+			},
+			wantTotalMatches: 1,
+		},
+		{
+			name: "success - int lte",
+			elements: &[]simpleStruct{
+				{
+					IntField: 41,
+				},
+				{
+					IntField: 42,
+				},
+				{
+					IntField: 43,
+				},
+			},
+			rules: [][]Rule{{{
+				Field: "IntField",
+				Type:  "lte",
+				Value: 42,
+			}}},
+			want: &[]simpleStruct{
+				{
+					IntField: 41,
+				},
+				{
+					IntField: 42,
+				},
+			},
+			wantTotalMatches: 2,
+		},
+		{
+			name: "success - int gt",
+			elements: &[]simpleStruct{
+				{
+					IntField: 41,
+				},
+				{
+					IntField: 42,
+				},
+				{
+					IntField: 43,
+				},
+			},
+			rules: [][]Rule{{{
+				Field: "IntField",
+				Type:  "gt",
+				Value: 42,
+			}}},
+			want: &[]simpleStruct{
+				{
+					IntField: 43,
+				},
+			},
+			wantTotalMatches: 1,
+		},
+		{
+			name: "success - int gte",
+			elements: &[]simpleStruct{
+				{
+					IntField: 41,
+				},
+				{
+					IntField: 42,
+				},
+				{
+					IntField: 43,
+				},
+			},
+			rules: [][]Rule{{{
+				Field: "IntField",
+				Type:  "gte",
+				Value: 42,
+			}}},
+			want: &[]simpleStruct{
+				{
+					IntField: 42,
+				},
+				{
+					IntField: 43,
+				},
+			},
+			wantTotalMatches: 2,
+		},
+		{
+			name: "error - non numeric type for gt",
+			elements: &[]simpleStruct{
+				{
+					IntField: 41,
+				},
+				{
+					IntField: 42,
+				},
+				{
+					IntField: 43,
+				},
+			},
+			rules: [][]Rule{{{
+				Field: "IntField",
+				Type:  "gt",
+				Value: "error",
+			}}},
+			wantErr: true,
+		},
+		{
+			name: "error - non numeric type for gte",
+			elements: &[]simpleStruct{
+				{
+					IntField: 41,
+				},
+				{
+					IntField: 42,
+				},
+				{
+					IntField: 43,
+				},
+			},
+			rules: [][]Rule{{{
+				Field: "IntField",
+				Type:  "gte",
+				Value: "error",
+			}}},
+			wantErr: true,
 		},
 		{
 			name: "success - invalid filter value type",

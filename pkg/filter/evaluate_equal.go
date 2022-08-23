@@ -1,32 +1,19 @@
 package filter
 
-const (
-	// TypeEqual is a filter type that matches exactly the reference value.
-	TypeEqual = "equal"
-)
-
 type equal struct {
 	ref interface{}
 }
 
-func newEqual(reference interface{}) Evaluator {
+func newEqual(r interface{}) Evaluator {
 	return &equal{
-		ref: convertValues(reference),
+		ref: convertValue(r),
 	}
 }
 
-// Evaluate returns whether reference and actual are considered equal.
+// Evaluate returns whether reference and actual value are considered equal.
 // It converts numerical values implicitly before comparison.
-func (e *equal) Evaluate(value interface{}) bool {
-	value = convertValues(value)
+func (e *equal) Evaluate(v interface{}) bool {
+	v = convertValue(v)
 
-	if value == e.ref {
-		return true
-	}
-
-	if isNil(value) && isNil(e.ref) {
-		return true
-	}
-
-	return false
+	return (v == e.ref) || (isNil(v) && isNil(e.ref))
 }

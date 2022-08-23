@@ -7,7 +7,7 @@ replace github.com/nexmoinc/gosrvlib => ../..
 require (
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v0.9.1
-	github.com/nexmoinc/gosrvlib v1.45.0
+	github.com/nexmoinc/gosrvlib v1.46.0
 	github.com/prometheus/client_golang v1.13.0
 	github.com/rakyll/gotest v0.0.6
 	github.com/spf13/cobra v1.5.0
@@ -70,7 +70,7 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/subosito/gotenv v1.4.0 // indirect
+	github.com/subosito/gotenv v1.4.1 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.4 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.4 // indirect
 	go.etcd.io/etcd/client/v2 v2.305.4 // indirect
@@ -80,15 +80,15 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
 	golang.org/x/mod v0.5.0 // indirect
-	golang.org/x/net v0.0.0-20220812174116-3211cb980234 // indirect
-	golang.org/x/oauth2 v0.0.0-20220808172628-8227340efae7 // indirect
+	golang.org/x/net v0.0.0-20220822230855-b0a4917ee28c // indirect
+	golang.org/x/oauth2 v0.0.0-20220822191816-0ebed06d0094 // indirect
 	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.5 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/api v0.93.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220822141531-cb6d359b7ced // indirect
+	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc // indirect
 	google.golang.org/grpc v1.48.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
