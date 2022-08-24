@@ -41,16 +41,17 @@
 //	((name==doe OR age<=42) AND (address.country match "EN" or "FR"))
 //
 // The supported rule types are listed in the rule.go file:
-// * "regexp" : matches the value against a reference regular expression.
-// * "=="     : Equal to - matches exactly the reference value.
-// * "="      : Equal fold - matches when strings, interpreted as UTF-8, are equal under simple Unicode case-folding, which is a more general form of case-insensitivity. For example "AB" will match "ab".
-// * "^="     : Starts with - (strings only) matches when the value begins with the reference string.
-// * "=$"     : Ends with - (strings only) matches when the value ends with the reference string.
-// * "~="     : Contains -(strings only)  matches when the reference string is a sub-string of the value.
-// * "<"      : Less than - matches when the value is less than the reference.
-// * "<="     : Less than or equal to - matches when the value is less than or equal the reference.
-// * ">"      : Greater than - matches when the value is greater than reference.
-// * ">="     : Greater than or equal to - matches when the value is greater than or equal the reference.
+//
+//   - "regexp" : matches the value against a reference regular expression.
+//   - "=="     : Equal to - matches exactly the reference value.
+//   - "="      : Equal fold - matches when strings, interpreted as UTF-8, are equal under simple Unicode case-folding, which is a more general form of case-insensitivity. For example "AB" will match "ab".
+//   - "^="     : Starts with - (strings only) matches when the value begins with the reference string.
+//   - "=$"     : Ends with - (strings only) matches when the value ends with the reference string.
+//   - "~="     : Contains -(strings only)  matches when the reference string is a sub-string of the value.
+//   - "<"      : Less than - matches when the value is less than the reference.
+//   - "<="     : Less than or equal to - matches when the value is less than or equal the reference.
+//   - ">"      : Greater than - matches when the value is greater than reference.
+//   - ">="     : Greater than or equal to - matches when the value is greater than or equal the reference.
 //
 // Every rule type can be prefixed with "!" to get the negated value.
 // For example "!==" is equivalent to "Not Equal", matching values that are different.
