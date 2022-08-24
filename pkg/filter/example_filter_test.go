@@ -74,8 +74,6 @@ func ExampleProcessor_Apply() {
 	// the equivalent logic is:
 	//
 	//	((name==doe OR age<=42) AND (address.country match "EN" or "FR"))
-	//
-	// It means that either the name OR the age must match exactly AND the country must match its regular expression.
 	rules, err := f.ParseURLQuery(u.Query())
 	if err != nil {
 		log.Fatal(err)
