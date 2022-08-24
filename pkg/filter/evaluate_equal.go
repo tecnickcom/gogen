@@ -5,9 +5,7 @@ type equal struct {
 }
 
 func newEqual(r interface{}) Evaluator {
-	return &equal{
-		ref: convertValue(r),
-	}
+	return &equal{ref: convertValue(r)}
 }
 
 // Evaluate returns whether reference and actual value are considered equal.

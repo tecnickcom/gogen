@@ -5,9 +5,7 @@ type not struct {
 }
 
 func newNot(e Evaluator) Evaluator {
-	return &not{
-		Not: e,
-	}
+	return &not{Not: e}
 }
 
 // Evaluate returns the opposite (boolean NOT) of the internal evaluator.

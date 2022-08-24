@@ -1,4 +1,7 @@
 // Package filter provides generic filtering capabilities for struct slices.
+// The filter can be specified as a slice of slices.
+// The first slice contains the rule sets that will be combined with a boolean AND.
+// The sub slices contains the rules that will be combined with boolean OR.
 //
 // Example:
 // The following pretty-printed JSON:
@@ -7,12 +10,12 @@
 //	  [
 //	    {
 //	      "field": "name",
-//	      "type": "equal",
+//	      "type": "==",
 //	      "value": "doe"
 //	    },
 //	    {
 //	      "field": "age",
-//	      "type": "equal",
+//	      "type": "<=",
 //	      "value": 42
 //	    }
 //	  ],
@@ -27,24 +30,30 @@
 //
 // can be represented in one line as:
 //
-//	[[{"field":"name","type":"equal","value":"doe"},{"field":"age","type":"equal","value":42}],[{"field":"address.country","type":"regexp","value":"^EN$|^FR$"}]]
+//	[[{"field":"name","type":"==","value":"doe"},{"field":"age","type":"<=","value":42}],[{"field":"address.country","type":"regexp","value":"^EN$|^FR$"}]]
 //
 // and URL-encoded as a query parameter:
 //
-//	filter=%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22%5EEN%24%7C%5EFR%24%22%7D%5D%5D
+//	filter=%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22%3D%3D%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22%3C%3D%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22%5EEN%24%7C%5EFR%24%22%7D%5D%5D
 //
 // the equivalent logic is:
 //
-// ((name=doe OR age=42) AND (address.country match "EN" or "FR"))
+//	((name==doe OR age<=42) AND (address.country match "EN" or "FR"))
 //
-// The list of supported rule types is listed in the rule.go file:
-// * equal    : matches exactly the reference value.
-// * notequal : matches when the value is different from the reference value (opposite of TypeEqual).
-// * regexp   : matches the value against a reference regular expression.
-// * lt       : matches when the value is less than the reference.
-// * lte      : matches when the value is less than or equal the reference.
-// * gt       : matches when the value is greater than reference.
-// * gte      : matches when the value is greater than or equal the reference.
+// The supported rule types are listed in the rule.go file:
+// * "regexp" : matches the value against a reference regular expression.
+// * "=="     : Equal to - matches exactly the reference value.
+// * "="      : Equal fold - matches when strings, interpreted as UTF-8, are equal under simple Unicode case-folding, which is a more general form of case-insensitivity. For example "AB" will match "ab".
+// * "^="     : Starts with - (strings only) matches when the value begins with the reference string.
+// * "=$"     : Ends with - (strings only) matches when the value ends with the reference string.
+// * "~="     : Contains -(strings only)  matches when the reference string is a sub-string of the value.
+// * "<"      : Less than - matches when the value is less than the reference.
+// * "<="     : Less than or equal to - matches when the value is less than or equal the reference.
+// * ">"      : Greater than - matches when the value is greater than reference.
+// * ">="     : Greater than or equal to - matches when the value is greater than or equal the reference.
+//
+// Every rule type can be prefixed with "!" to get the negated value.
+// For example "!==" is equivalent to "Not Equal", matching values that are different.
 package filter
 
 import (

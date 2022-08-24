@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLTE_Evaluate(t *testing.T) {
+func TestGTE_Evaluate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -24,9 +24,9 @@ func TestLTE_Evaluate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "true - smaller int",
+			name:    "true - greater int",
 			ref:     5,
-			value:   4,
+			value:   6,
 			want:    true,
 			wantErr: false,
 		},
@@ -38,16 +38,16 @@ func TestLTE_Evaluate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "false - greater int",
+			name:    "false - smaller int",
 			ref:     5,
-			value:   6,
+			value:   4,
 			want:    false,
 			wantErr: false,
 		},
 		{
-			name:    "true - smaller string",
+			name:    "true - greater string",
 			ref:     5,
-			value:   "ciao",
+			value:   "ciao,hello",
 			want:    true,
 			wantErr: false,
 		},
@@ -59,15 +59,15 @@ func TestLTE_Evaluate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "false - greater string",
-			ref:     3,
+			name:    "false - smaller string",
+			ref:     5,
 			value:   "ciao",
 			want:    false,
 			wantErr: false,
 		},
 		{
-			name:    "true - smaller slice",
-			ref:     5,
+			name:    "true - greater slice",
+			ref:     3,
 			value:   []int{1, 2, 3, 4},
 			want:    true,
 			wantErr: false,
@@ -80,9 +80,9 @@ func TestLTE_Evaluate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "true - greater slice",
+			name:    "true - smaller slice",
 			ref:     5,
-			value:   []int{1, 2, 3, 4, 5, 6},
+			value:   []int{1, 2, 3, 4},
 			want:    false,
 			wantErr: false,
 		},
@@ -107,7 +107,7 @@ func TestLTE_Evaluate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			eval, err := newLTE(tt.ref)
+			eval, err := newGTE(tt.ref)
 
 			require.Equal(t, tt.wantErr, err != nil)
 

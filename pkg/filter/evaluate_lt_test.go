@@ -17,10 +17,10 @@ func TestLT_Evaluate(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "true - nil value",
+			name:    "false - nil value",
 			ref:     5,
 			value:   nil,
-			want:    true,
+			want:    false,
 			wantErr: false,
 		},
 		{

@@ -6,28 +6,40 @@ import (
 )
 
 const (
-	// TypeEqual is a filter type that matches exactly the reference value.
-	TypeEqual = "equal"
-
-	// TypeNotEqual is a filter type that matches when the value is different from the reference value (opposite of TypeEqual).
-	TypeNotEqual = "notequal"
+	// TypePrefixNot is a prefix that can be added to any type to get the negated value (opposite match).
+	TypePrefixNot = "!"
 
 	// TypeRegexp is a filter type that matches the value against a reference regular expression.
 	// The reference value must be a regular expression that can compile.
 	// Works only with strings (anything else will evaluate to false).
 	TypeRegexp = "regexp"
 
+	// TypeEqual is a filter type that matches exactly the reference value.
+	TypeEqual = "=="
+
+	// TypeEqualFold is a filter type that matches when strings, interpreted as UTF-8, are equal under simple Unicode case-folding, which is a more general form of case-insensitivity. For example "AB" will match "ab".
+	TypeEqualFold = "="
+
+	// TypeHasPrefix is a filter type that matches when the value begins with the reference string.
+	TypeHasPrefix = "^="
+
+	// TypeHasSuffix  is a filter type that matches when the value ends with the reference string.
+	TypeHasSuffix = "=$"
+
+	// TypeContains  is a filter type that matches when the reference string is a sub-string of the value.
+	TypeContains = "~="
+
 	// TypeLT is a filter type that matches when the value is less than reference.
-	TypeLT = "lt"
+	TypeLT = "<"
 
 	// TypeLTE is a filter type that matches when the value is less than or equal the reference.
-	TypeLTE = "lte"
+	TypeLTE = "<="
 
 	// TypeGT is a filter type that matches when the value is greater than reference.
-	TypeGT = "gt"
+	TypeGT = ">"
 
 	// TypeGTE is a filter type that matches when the value is greater than or equal the reference.
-	TypeGTE = "gte"
+	TypeGTE = ">="
 )
 
 // Rule is an individual filter that can be evaluated against any value.
@@ -69,31 +81,43 @@ func (r *Rule) Evaluate(value interface{}) (bool, error) {
 }
 
 func (r *Rule) getEvaluator() (Evaluator, error) {
-	switch strings.ToLower(r.Type) {
-	case TypeEqual:
-		return newEqual(r.Value), nil
-	case TypeNotEqual:
-		return newNot(newEqual(r.Value)), nil
+	t := strings.ToLower(r.Type)
+
+	if strings.HasPrefix(t, TypePrefixNot) {
+		e, err := r.getBaseTypeEvaluator(strings.TrimPrefix(t, TypePrefixNot))
+		if err != nil {
+			return nil, err
+		}
+
+		return newNot(e), nil
+	}
+
+	return r.getBaseTypeEvaluator(t)
+}
+
+//nolint:gocyclo
+func (r *Rule) getBaseTypeEvaluator(t string) (Evaluator, error) {
+	switch t {
 	case TypeRegexp:
 		return newRegexp(r.Value)
+	case TypeEqual:
+		return newEqual(r.Value), nil
+	case TypeEqualFold:
+		return newEqualFold(r.Value), nil
+	case TypeHasPrefix:
+		return newHasPrefix(r.Value)
+	case TypeHasSuffix:
+		return newHasSuffix(r.Value)
+	case TypeContains:
+		return newContains(r.Value)
 	case TypeLT:
 		return newLT(r.Value)
 	case TypeLTE:
 		return newLTE(r.Value)
 	case TypeGT:
-		e, err := newLTE(r.Value)
-		if err != nil {
-			return nil, err
-		}
-
-		return newNot(e), nil
+		return newGT(r.Value)
 	case TypeGTE:
-		e, err := newLT(r.Value)
-		if err != nil {
-			return nil, err
-		}
-
-		return newNot(e), nil
+		return newGTE(r.Value)
 	default:
 		return nil, fmt.Errorf("type %s is not supported", r.Type)
 	}

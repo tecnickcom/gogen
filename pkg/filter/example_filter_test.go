@@ -22,7 +22,7 @@ type ID struct {
 
 func ExampleProcessor_Apply() {
 	// Simulate an encoded query passed in the http.Request of a http.Handler
-	encodedJSONFilter := "%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22equal%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22UK%7CFR%22%7D%5D%5D"
+	encodedJSONFilter := "%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22%3D%3D%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22%3C%3D%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22%5EEN%24%7C%5EFR%24%22%7D%5D%5D"
 
 	u, err := url.Parse("https://server.com/items?filter=" + encodedJSONFilter)
 	if err != nil {
@@ -40,27 +40,41 @@ func ExampleProcessor_Apply() {
 	}
 
 	// The filter matches the following pretty printed json:
-	// [
-	//   [
-	//     {
-	//       "field": "name",
-	//       "type": "equal",
-	//       "value": "doe"
-	//     },
-	//     {
-	//       "field": "age",
-	//       "type": "equal",
-	//       "value": 42
-	//     }
-	//   ],
-	//   [
-	//     {
-	//       "field": "address.country",
-	//       "type": "regexp",
-	//       "value": "EN|FR"
-	//     }
-	//   ]
-	// ]
+	//
+	//	[
+	//	  [
+	//	    {
+	//	      "field": "name",
+	//	      "type": "==",
+	//	      "value": "doe"
+	//	    },
+	//	    {
+	//	      "field": "age",
+	//	      "type": "<=",
+	//	      "value": 42
+	//	    }
+	//	  ],
+	//	  [
+	//	    {
+	//	      "field": "address.country",
+	//	      "type": "regexp",
+	//	      "value": "^EN$|^FR$"
+	//	    }
+	//	  ]
+	//	]
+	//
+	// can be represented in one line as:
+	//
+	//	[[{"field":"name","type":"==","value":"doe"},{"field":"age","type":"<=","value":42}],[{"field":"address.country","type":"regexp","value":"^EN$|^FR$"}]]
+	//
+	// and URL-encoded as a query parameter:
+	//
+	//	filter=%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22%3D%3D%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22%3C%3D%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22%5EEN%24%7C%5EFR%24%22%7D%5D%5D
+	//
+	// the equivalent logic is:
+	//
+	//	((name==doe OR age<=42) AND (address.country match "EN" or "FR"))
+	//
 	// It means that either the name OR the age must match exactly AND the country must match its regular expression.
 	rules, err := f.ParseURLQuery(u.Query())
 	if err != nil {
@@ -71,9 +85,9 @@ func ExampleProcessor_Apply() {
 	list := []ID{
 		{
 			Name: "doe",
-			Age:  35,
+			Age:  55,
 			Addr: Address{
-				Country: "UK",
+				Country: "EN",
 			},
 		},
 		{
@@ -85,7 +99,7 @@ func ExampleProcessor_Apply() {
 		},
 		{
 			Name: "doe",
-			Age:  42,
+			Age:  41,
 			Addr: Address{
 				Country: "US",
 			},
@@ -108,6 +122,6 @@ func ExampleProcessor_Apply() {
 	// Output:
 	// 2
 	// 2
-	// {doe 35 {UK}}
+	// {doe 55 {EN}}
 	// {dupont 42 {FR}}
 }

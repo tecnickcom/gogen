@@ -54,12 +54,12 @@ func convertValue(v interface{}) interface{} {
 	}
 }
 
-func convertNumericValue(v interface{}) (interface{}, error) {
+func convertFloatValue(v interface{}) (float64, error) {
 	v = convertValue(v)
 
 	if reflect.ValueOf(v).Kind() != reflect.Float64 {
-		return nil, fmt.Errorf("rule value must be numerical (got %v (%v))", v, reflect.TypeOf(v))
+		return 0, fmt.Errorf("rule value must be numerical (got %v (%v))", v, reflect.TypeOf(v))
 	}
 
-	return v, nil
+	return reflect.ValueOf(v).Float(), nil
 }

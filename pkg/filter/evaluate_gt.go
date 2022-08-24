@@ -4,24 +4,24 @@ import (
 	"reflect"
 )
 
-type lt struct {
+type gt struct {
 	ref float64
 }
 
-func newLT(r interface{}) (Evaluator, error) {
+func newGT(r interface{}) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &lt{ref: v}, nil
+	return &gt{ref: v}, nil
 }
 
-// Evaluate returns whether the actual value is less than the reference.
+// Evaluate returns whether the actual value is greater than the reference.
 // It converts numerical values implicitly before comparison.
-// Returns the lenlths comparison for Array, Map, Slice or String.
+// Returns the lengths comparison for Array, Map, Slice or String.
 // Returns false if the value is nil.
-func (e *lt) Evaluate(v interface{}) bool {
+func (e *gt) Evaluate(v interface{}) bool {
 	v = convertValue(v)
 
 	if isNil(v) {
@@ -33,9 +33,9 @@ func (e *lt) Evaluate(v interface{}) bool {
 	//nolint:exhaustive
 	switch val.Kind() {
 	case reflect.Float64:
-		return val.Float() < e.ref
+		return val.Float() > e.ref
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		return val.Len() < int(e.ref)
+		return val.Len() > int(e.ref)
 	}
 
 	return false

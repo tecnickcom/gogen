@@ -5,40 +5,37 @@ import (
 )
 
 type lte struct {
-	ref interface{}
+	ref float64
 }
 
 func newLTE(r interface{}) (Evaluator, error) {
-	var err error
-
-	r, err = convertNumericValue(r)
+	v, err := convertFloatValue(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &lte{ref: r}, nil
+	return &lte{ref: v}, nil
 }
 
-// Evaluate returns whether the actual value is less than the reference.
+// Evaluate returns whether the actual value is less than or equal the reference.
 // It converts numerical values implicitly before comparison.
 // Returns the lengths comparison for Array, Map, Slice or String.
-// Returns true if the value is nil.
+// Returns false if the value is nil.
 func (e *lte) Evaluate(v interface{}) bool {
 	v = convertValue(v)
 
 	if isNil(v) {
-		return true
+		return false
 	}
 
 	val := reflect.ValueOf(v)
-	ref := reflect.ValueOf(e.ref).Float()
 
 	//nolint:exhaustive
 	switch val.Kind() {
 	case reflect.Float64:
-		return val.Float() <= ref
+		return val.Float() <= e.ref
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		return val.Len() <= int(ref)
+		return val.Len() <= int(e.ref)
 	}
 
 	return false

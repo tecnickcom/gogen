@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLTE_Evaluate(t *testing.T) {
+func TestGT_Evaluate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -24,44 +24,58 @@ func TestLTE_Evaluate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "true - smaller int",
-			ref:     5,
-			value:   4,
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name:    "true - equal int",
-			ref:     5,
-			value:   5,
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name:    "false - greater int",
+			name:    "true - greater int",
 			ref:     5,
 			value:   6,
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "false - equal int",
+			ref:     5,
+			value:   5,
 			want:    false,
 			wantErr: false,
 		},
 		{
-			name:    "true - smaller string",
+			name:    "false - small int",
 			ref:     5,
-			value:   "ciao",
+			value:   4,
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name:    "true - greater string",
+			ref:     5,
+			value:   "ciao,hello",
 			want:    true,
 			wantErr: false,
 		},
 		{
-			name:    "true - equal string",
+			name:    "false - equal string",
 			ref:     4,
 			value:   "ciao",
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name:    "false - smaller string",
+			ref:     5,
+			value:   "ciao",
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name:    "true - greater slice",
+			ref:     3,
+			value:   []int{1, 2, 3, 4},
 			want:    true,
 			wantErr: false,
 		},
 		{
-			name:    "false - greater string",
-			ref:     3,
-			value:   "ciao",
+			name:    "false - equal slice",
+			ref:     5,
+			value:   []int{1, 2, 3, 4, 5},
 			want:    false,
 			wantErr: false,
 		},
@@ -69,20 +83,6 @@ func TestLTE_Evaluate(t *testing.T) {
 			name:    "true - smaller slice",
 			ref:     5,
 			value:   []int{1, 2, 3, 4},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name:    "true - equal slice",
-			ref:     5,
-			value:   []int{1, 2, 3, 4, 5},
-			want:    true,
-			wantErr: false,
-		},
-		{
-			name:    "true - greater slice",
-			ref:     5,
-			value:   []int{1, 2, 3, 4, 5, 6},
 			want:    false,
 			wantErr: false,
 		},
@@ -107,7 +107,7 @@ func TestLTE_Evaluate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			eval, err := newLTE(tt.ref)
+			eval, err := newGT(tt.ref)
 
 			require.Equal(t, tt.wantErr, err != nil)
 

@@ -3,7 +3,7 @@
   "type": "array",
   "minItems": 1,
   "title": "Filter",
-  "description": "This is a double array representing filters combined with AND and OR operators. The first level is combined with an AND operator and the second one with an OR. For example: The JSON [[{\"field\":\"name\",\"type\":\"equal\",\"value\":\"doe\"},{\"field\":\"age\",\"type\":\"equal\",\"value\":42}],[{\"field\":\"address.country\",\"type\":\"regexp\",\"value\":\"^EN$|^FR$\"}]] is equivalent to the boolean logic ((name=doe OR age=42) AND (address.country match \"EN\" or \"FR\")).",
+  "description": "This is a double array representing filters combined with AND and OR operators. The first level is combined with an AND operator and the second one with an OR. For example: The JSON [[{\"field\":\"name\",\"type\":\"==\",\"value\":\"doe\"},{\"field\":\"age\",\"type\":\"<=\",\"value\":42}],[{\"field\":\"address.country\",\"type\":\"regexp\",\"value\":\"^EN$|^FR$\"}]] is equivalent to the boolean logic ((name==doe OR age<=42) AND (address.country match \"EN\" or \"FR\")).",
   "items": {
     "type": "array",
     "minItems": 1,
@@ -30,13 +30,21 @@
           "type": "string",
           "title": "The type of the rule",
           "enum": [
-            "equal",
-            "notequal",
             "regexp",
-            "lt",
-            "lte",
-            "gt",
-            "gte"
+            "!=",
+            "!=$",
+            "!==",
+            "!^=",
+            "!~=",
+            "<",
+            "<=",
+            "=",
+            "=$",
+            "==",
+            ">",
+            ">=",
+            "^=",
+            "~="
           ]
         },
         "value": {
@@ -61,12 +69,12 @@
       [
         {
           "field": "name",
-          "type": "equal",
+          "type": "==",
           "value": "doe"
         },
         {
           "field": "age",
-          "type": "equal",
+          "type": "<=",
           "value": 42
         }
       ],

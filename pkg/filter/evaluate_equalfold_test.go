@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEqual_Evaluate(t *testing.T) {
+func TestEqualFold_Evaluate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -136,10 +136,10 @@ func TestEqual_Evaluate(t *testing.T) {
 			want:  true,
 		},
 		{
-			name:  "false - case string / string",
-			ref:   "HELLO",
+			name:  "true - case string / string",
+			ref:   "HeLlo",
 			value: "hello",
-			want:  false,
+			want:  true,
 		},
 		{
 			name:  "true - nil / nil",
@@ -154,7 +154,7 @@ func TestEqual_Evaluate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			res := newEqual(tt.ref).Evaluate(tt.value)
+			res := newEqualFold(tt.ref).Evaluate(tt.value)
 			require.Equal(t, tt.want, res)
 		})
 	}

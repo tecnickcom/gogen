@@ -7,7 +7,7 @@ import (
 )
 
 type evalRegexp struct {
-	internal *regexp.Regexp
+	rxp *regexp.Regexp
 }
 
 func newRegexp(r interface{}) (Evaluator, error) {
@@ -21,18 +21,16 @@ func newRegexp(r interface{}) (Evaluator, error) {
 		return nil, fmt.Errorf("failed compiling regexp: %w", err)
 	}
 
-	return &evalRegexp{
-		internal: reg,
-	}, nil
+	return &evalRegexp{rxp: reg}, nil
 }
 
 // Evaluate returns whether the input value matches the reference regular expression.
 // It returns false if the input value is not a string.
-func (r *evalRegexp) Evaluate(v interface{}) bool {
+func (e *evalRegexp) Evaluate(v interface{}) bool {
 	s, ok := v.(string)
 	if !ok {
 		return false
 	}
 
-	return r.internal.MatchString(s)
+	return e.rxp.MatchString(s)
 }
