@@ -30,16 +30,16 @@ linters-settings:
 linters:
   enable:
     # Enabled by default:
-    - deadcode          # Finds unused code [fast: false, auto-fix: false]
+    # - deadcode          # Finds unused code [fast: false, auto-fix: false]
     - errcheck          # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases [fast: false, auto-fix: false]
     - gosimple          # Linter for Go source code that specializes in simplifying a code [fast: false, auto-fix: false]
     - govet             # Vet examines Go source code and reports suspicious constructs, such as Printf calls whose arguments do not align with the format string [fast: false, auto-fix: false]
     - ineffassign       # Detects when assignments to existing variables are not used [fast: true, auto-fix: false]
     - staticcheck       # Staticcheck is a go vet on steroids, applying a ton of static analysis checks [fast: false, auto-fix: false]
-    - structcheck       # Finds unused struct fields [fast: false, auto-fix: false]
+    # - structcheck       # Finds unused struct fields [fast: false, auto-fix: false]
     - typecheck         # Like the front-end of a Go compiler, parses and type-checks Go code [fast: false, auto-fix: false]
     - unused            # Checks Go code for unused constants, variables, functions and types [fast: false, auto-fix: false]
-    - varcheck          # Finds unused global variables and constants [fast: false, auto-fix: false]
+    # - varcheck          # Finds unused global variables and constants [fast: false, auto-fix: false]
     # Disabled by default:
     - asciicheck        # Simple linter to check that your code does not contain non-ASCII identifiers [fast: true, auto-fix: false]
     - bidichk           # Checks for dangerous unicode character sequences [fast: true, auto-fix: false]

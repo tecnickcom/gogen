@@ -1,3 +1,4 @@
+// Package main is an example gosrvlib service.
 package main
 
 import (
