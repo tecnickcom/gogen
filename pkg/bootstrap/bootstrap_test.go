@@ -17,8 +17,6 @@ import (
 
 //nolint:gocognit,paralleltest,tparallel
 func TestBootstrap(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		opts                    []Option
 		name                    string
