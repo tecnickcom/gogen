@@ -18,7 +18,6 @@ Each package follows the same conventions and they can be individually imported 
 
 [![check](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/nexmoinc/gosrvlib/badge.svg?branch=main)](https://coveralls.io/github/nexmoinc/gosrvlib?branch=main)
-[![whitesource](https://github.com/nexmoinc/gosrvlib/actions/workflows/whitesource.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/whitesource.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nexmoinc/gosrvlib)](https://goreportcard.com/report/github.com/nexmoinc/gosrvlib)
 [![Go Reference](https://pkg.go.dev/badge/github.com/nexmoinc/gosrvlib.svg)](https://pkg.go.dev/github.com/nexmoinc/gosrvlib)
 
