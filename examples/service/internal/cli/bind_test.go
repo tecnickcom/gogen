@@ -17,8 +17,6 @@ import (
 
 //nolint:gocognit,paralleltest,tparallel
 func Test_bind(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name           string
 		cfg            *appConfig
