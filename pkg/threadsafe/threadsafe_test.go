@@ -19,6 +19,28 @@ func TestAppend_simple(t *testing.T) {
 	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
 }
 
+func TestAppend_multiple(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.Mutex{}
+
+	slice := make([]string, 0, 2)
+	Append(mux, &slice, "Hello", "World")
+
+	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
+}
+
+func TestAppend_slice(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.Mutex{}
+
+	slice := make([]string, 0, 2)
+	Append(mux, &slice, []string{"Hello", "World"}...)
+
+	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
+}
+
 func TestAppend_concurrent(t *testing.T) {
 	t.Parallel()
 

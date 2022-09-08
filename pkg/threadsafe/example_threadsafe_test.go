@@ -21,6 +21,30 @@ func ExampleAppend_simple() {
 	// [Hello World]
 }
 
+func ExampleAppend_multiple() {
+	mux := &sync.Mutex{}
+
+	slice := make([]string, 0, 2)
+	threadsafe.Append(mux, &slice, "Hello", "World")
+
+	fmt.Println(slice)
+
+	// Output:
+	// [Hello World]
+}
+
+func ExampleAppend_slice() {
+	mux := &sync.Mutex{}
+
+	slice := make([]string, 0, 2)
+	threadsafe.Append(mux, &slice, []string{"Hello", "World"}...)
+
+	fmt.Println(slice)
+
+	// Output:
+	// [Hello World]
+}
+
 func ExampleAppend_concurrent() {
 	wg := &sync.WaitGroup{}
 	mux := &sync.RWMutex{}

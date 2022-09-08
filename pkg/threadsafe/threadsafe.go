@@ -6,9 +6,9 @@ import (
 )
 
 // Append is a thread-safe version of the Go built-in append function.
-func Append[T any](mux sync.Locker, slice *[]T, item T) {
+func Append[T any](mux sync.Locker, slice *[]T, item ...T) {
 	mux.Lock()
 	defer mux.Unlock()
 
-	*slice = append(*slice, item)
+	*slice = append(*slice, item...)
 }
