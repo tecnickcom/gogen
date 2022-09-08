@@ -1,14 +1,16 @@
 // Package threadsafe provides a collection of thread-safe functions that can be safely used between multiple goroutines.
+// Check the sub-packages for specific implementations.
 package threadsafe
 
 import (
 	"sync"
 )
 
-// Append is a thread-safe version of the Go built-in append function.
-func Append[T any](mux sync.Locker, slice *[]T, item ...T) {
-	mux.Lock()
-	defer mux.Unlock()
+// Locker is an interface that implements the Lock and Unlock methods.
+type Locker sync.Locker
 
-	*slice = append(*slice, item...)
+// RLocker is an interface that implements the RLock and RUnlock methods.
+type RLocker interface {
+	RLock()
+	RUnlock()
 }

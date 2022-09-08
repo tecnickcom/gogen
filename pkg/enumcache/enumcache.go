@@ -89,6 +89,9 @@ func (ec *EnumCache) Name(id int) (string, error) {
 
 // SortNames returns a list of sorted names.
 func (ec *EnumCache) SortNames() []string {
+	ec.RLock()
+	defer ec.RUnlock()
+
 	sorted := make([]string, 0, len(ec.id))
 	for name := range ec.id {
 		sorted = append(sorted, name)
@@ -101,6 +104,9 @@ func (ec *EnumCache) SortNames() []string {
 
 // SortIDs returns a list of sorted IDs.
 func (ec *EnumCache) SortIDs() []int {
+	ec.RLock()
+	defer ec.RUnlock()
+
 	sorted := make([]int, 0, len(ec.name))
 	for id := range ec.name {
 		sorted = append(sorted, id)
@@ -114,11 +120,17 @@ func (ec *EnumCache) SortIDs() []int {
 // DecodeBinaryMap decodes a int binary map into a list of string names.
 // The EnumCache must contain the mapping between the bit values and the names.
 func (ec *EnumCache) DecodeBinaryMap(v int) (s []string, err error) {
+	ec.RLock()
+	defer ec.RUnlock()
+
 	return enumbitmap.BitMapToStrings(ec.name, v) //nolint:wrapcheck
 }
 
 // EncodeBinaryMap encode a list of string names into a int binary map.
 // The EnumCache must contain the mapping between the bit values and the names.
 func (ec *EnumCache) EncodeBinaryMap(s []string) (v int, err error) {
+	ec.RLock()
+	defer ec.RUnlock()
+
 	return enumbitmap.StringsToBitMap(ec.id, s) //nolint:wrapcheck
 }
