@@ -140,6 +140,16 @@ ifeq ($(DOCKER),)
 	DOCKER=docker
 endif
 
+# Docker compose command
+ifeq ($(DOCKERCOMPOSE),)
+	DOCKERCOMPOSE=docker-compose
+	DOCKERCOMPOSEPLUGIN=$(DOCKER) compose
+	HASDOCKERCOMPOSE := $(shell $(DOCKERCOMPOSEPLUGIN) 2> /dev/null)
+	ifdef HASDOCKERCOMPOSE
+		DOCKERCOMPOSE=$(DOCKERCOMPOSEPLUGIN)
+	endif
+endif
+
 # Common commands
 GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) go
 GOFMT=gofmt
@@ -349,7 +359,7 @@ dockerdelete:
 # Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
-	docker build --pull --tag ${VENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+	$(DOCKER) build --pull --tag ${VENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
 
 # Create the directory with docker files to be packaged
 .PHONY: dockerdir
@@ -384,9 +394,9 @@ dockerpush:
 dockertest: dockertestenv dockerdev
 	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
 	@echo 0 > $(TARGETDIR)/make.exit
-	docker-compose down --volumes || true
-	docker-compose up --build --exit-code-from gosrvlibexample_integration || echo $${?} > $(TARGETDIR)/make.exit
-	docker-compose down --rmi local --volumes --remove-orphans || true
+	$(DOCKERCOMPOSE) down --volumes || true
+	$(DOCKERCOMPOSE) up --build --exit-code-from gosrvlibexample_integration || echo $${?} > $(TARGETDIR)/make.exit
+	$(DOCKERCOMPOSE) down --rmi local --volumes --remove-orphans || true
 	@exit `cat $(TARGETDIR)/make.exit`
 
 # Run the integration tests; locally we need to execute 'build' and 'docker' targets first
