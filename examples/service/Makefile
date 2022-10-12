@@ -395,7 +395,8 @@ dockertest: dockertestenv dockerdev
 	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
 	@echo 0 > $(TARGETDIR)/make.exit
 	$(DOCKERCOMPOSE) down --volumes || true
-	$(DOCKERCOMPOSE) up --build --exit-code-from gosrvlibexample_integration || echo $${?} > $(TARGETDIR)/make.exit
+	$(DOCKERCOMPOSE) up --build --exit-code-from ${PROJECT}_integration || echo $${?} > $(TARGETDIR)/make.exit
+	$(DOCKER) cp ${PROJECT}_integration:"/workspace/target/report/" $(TARGETDIR)/ ;
 	$(DOCKERCOMPOSE) down --rmi local --volumes --remove-orphans || true
 	@exit `cat $(TARGETDIR)/make.exit`
 
