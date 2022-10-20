@@ -1,7 +1,7 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni
-# @link        https://github.com/gosrvlibexample/gosrvlibexample
+# @link        https://github.com/gosrvlibexampleowner/gosrvlibexample
 # ------------------------------------------------------------------------------
 
 SHELL=/bin/bash

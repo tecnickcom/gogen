@@ -6,7 +6,7 @@ info:
     email: dev@example.com
   license:
     name: Internal use only. All rights reserved.
-    url: 'https://github.com/gosrvlibexample/gosrvlibexample/blob/main/LICENSE'
+    url: 'https://github.com/gosrvlibexampleowner/gosrvlibexample/blob/main/LICENSE'
   version: 1.0.0
 servers:
   - url: 'https://gosrvlibexample:8072/'

@@ -1,4 +1,4 @@
-module github.com/gosrvlibexample/gosrvlibexample
+module github.com/gosrvlibexampleowner/gosrvlibexample
 
 go 1.19
 

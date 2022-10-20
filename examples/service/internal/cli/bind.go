@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gosrvlibexample/gosrvlibexample/internal/httphandler"
-	instr "github.com/gosrvlibexample/gosrvlibexample/internal/metrics"
+	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/httphandler"
+	instr "github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/httpclient"

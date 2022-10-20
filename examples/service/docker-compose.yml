@@ -15,7 +15,7 @@ services:
       - ./target/binutil/dockerize:/usr/bin/dockerize
 
   gosrvlibexample:
-    image: gosrvlibexample/gosrvlibexample:latest
+    image: gosrvlibexampleowner/gosrvlibexample:latest
     container_name: gosrvlibexample
     restart: always
     env_file:

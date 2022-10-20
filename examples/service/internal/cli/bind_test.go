@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gosrvlibexample/gosrvlibexample/internal/metrics"
+	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
 	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
