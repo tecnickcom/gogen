@@ -1,4 +1,4 @@
-FROM gosrvlibexample/dev_gosrvlibexample
+FROM gosrvlibexampleowner/dev_gosrvlibexample
 
 RUN mkdir /workspace
 
