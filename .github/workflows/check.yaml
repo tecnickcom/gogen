@@ -69,6 +69,8 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v3
+      - name: install tools
+        run: pip install --upgrade --user jsonschema
       - name: setup go build environment
         uses: actions/setup-go@v3
         with:
@@ -81,7 +83,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-go-
       - name: unit tests
-        run: cd examples/service && make mod deps generate confcheck test GOPATH=$(go env GOPATH) 
+        run: cd examples/service && make mod deps gendoc generate confcheck test GOPATH=$(go env GOPATH) 
 
   example-integration-test:
     runs-on: ubuntu-latest

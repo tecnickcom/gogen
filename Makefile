@@ -151,7 +151,7 @@ ensuretarget:
 .PHONY: example
 example:
 	cd examples/service && \
-	make clean mod deps generate qa build
+	make clean mod deps gendoc generate qa build
 
 # Format the source code
 .PHONY: format

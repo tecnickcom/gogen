@@ -1,0 +1,25 @@
+---
+# yamllint disable rule:line-length
+project:
+  name: gosrvlibexample
+  category: Application
+  copyright_start_year: "2020"
+  copyright_owner: gosrvlibexampleowner
+  license_url: https://github.com/gosrvlibexampleowner/gosrvlibexample/blob/main/LICENSE
+  cvs: https://github.com/gosrvlibexampleowner/gosrvlibexample
+  tagline: gosrvlibexampleshortdesc
+  logo: doc/images/logo.png
+team:
+attachments:
+doclinks:
+  public:
+    general:
+      name: General
+      description: General project documentation
+      links:
+        github:
+          name: GitHup project page
+          url: gosrvlibexampleprojectlink
+slack:
+dependencies:
+environment:

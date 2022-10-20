@@ -1,0 +1,678 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "JSON schema for static documentation configuration",
+  "properties": {
+    "attachments": {
+      "description": "List of attachments",
+      "items": {
+        "description": "relative path to the attachment file",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "type": [
+        "array",
+        "null"
+      ]
+    },
+    "dependencies": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "additionalProperties": false,
+          "description": "Dependency",
+          "properties": {
+            "description": {
+              "description": "Dependency markdown description",
+              "examples": [
+                "__Description example__"
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "description": "Dependency name",
+              "examples": [
+                "Dependency example"
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "description"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "description": "Visibility",
+        "propertyNames": {
+          "format": "string"
+        },
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "description": "Project dependencies",
+      "propertyNames": {
+        "format": "string"
+      },
+      "title": "Dependencies",
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "doclinks": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "additionalProperties": false,
+          "description": "Document group",
+          "properties": {
+            "description": {
+              "description": "Group one-line description",
+              "examples": [
+                "General project information documents"
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "links": {
+              "additionalProperties": {
+                "name": {
+                  "description": "Document name",
+                  "examples": [
+                    "Information"
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "url": {
+                  "description": "Document link",
+                  "examples": [
+                    "https://example.com/doc"
+                  ],
+                  "format": "uri",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "description": "Document links",
+              "propertyNames": {
+                "format": "string"
+              },
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "name": {
+              "description": "Group name",
+              "examples": [
+                "General"
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "description",
+            "links"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "description": "Document visibility",
+        "propertyNames": {
+          "format": "string"
+        },
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "description": "Project-related documents",
+      "propertyNames": {
+        "format": "string"
+      },
+      "title": "Documentation",
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "environment": {
+      "additionalProperties": {
+        "additionalProperties": false,
+        "description": "Environment data",
+        "properties": {
+          "account": {
+            "description": "AWS account number",
+            "examples": [
+              "1234567890"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "alerts": {
+            "description": "Link to the project alerts page",
+            "examples": [
+              "https://grafana.example.com/myproject/alerts"
+            ],
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "alerts_config": {
+            "description": "Link to the alerts configuration",
+            "examples": [
+              "https://config.example.com/myproject/config.eyaml"
+            ],
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "configuration": {
+            "description": "Link to the project configuration file",
+            "examples": [
+              "https://example.com/configuration.eyaml"
+            ],
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dashboard": {
+            "description": "Link to the Grafana dashboard",
+            "examples": [
+              "https://grafana.example.com/myproject"
+            ],
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deployment": {
+            "description": "Link to the project deployment job",
+            "examples": [
+              "https://jenkins.example.com/myproject"
+            ],
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "description": "Environment one-line description",
+            "examples": [
+              "AWS ATMOS Production"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logs": {
+            "description": "Link to the project logs",
+            "examples": [
+              "https://kibana.example.com/myproject"
+            ],
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metrics": {
+            "default": "Link to the project metrics",
+            "description": "",
+            "examples": [
+              "https://minerva.example.com/myproject"
+            ],
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "description": "Environment name",
+            "examples": [
+              "ATMOS PROD"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "regions": {
+            "additionalProperties": {
+              "description": "Geo",
+              "items": {
+                "description": "region",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "description": "List of deployment regions",
+            "propertyNames": {
+              "format": "string"
+            },
+            "title": "Regions",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "resource": {
+            "additionalProperties": {
+              "properties": {
+                "description": {
+                  "description": "Resource group one-line description",
+                  "examples": [
+                    "Links to the Web API"
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "description": "Resource group name",
+                  "examples": [
+                    "api"
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "visibility": {
+                  "additionalProperties": {
+                    "additionalProperties": {
+                      "properties": {
+                        "description": {
+                          "description": "Resource one-line description",
+                          "examples": [
+                            "Links to the public API"
+                          ],
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "geos": {
+                          "additionalProperties": {
+                            "properties": {
+                              "geo": {
+                                "description": "Link to the geo link (geographical area containing multiple regions)",
+                                "examples": [
+                                  "https://eu.example.com/myproject"
+                                ],
+                                "format": "uri",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "regions": {
+                                "description": "Region-specific resource",
+                                "propertyNames": {
+                                  "format": "uri"
+                                },
+                                "type": [
+                                  "object",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "geo",
+                              "regions"
+                            ],
+                            "type": [
+                              "object",
+                              "null"
+                            ]
+                          },
+                          "description": "Geographical areas",
+                          "examples": [
+                            "AP",
+                            "EU",
+                            "US"
+                          ],
+                          "propertyNames": {
+                            "format": "string"
+                          },
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "description": "Resource name",
+                          "examples": [
+                            "myproject_public"
+                          ],
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "description",
+                        "geos"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "description": "Resource",
+                    "propertyNames": {
+                      "format": "string"
+                    },
+                    "title": "Resource",
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "description": "Resource visibility",
+                  "propertyNames": {
+                    "format": "string"
+                  },
+                  "title": "Visibility",
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "name",
+                "description",
+                "visibility"
+              ],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "description": "Environment-specific Resources",
+            "propertyNames": {
+              "format": "string"
+            },
+            "title": "Resources",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "account",
+          "alerts",
+          "alerts_config",
+          "configuration",
+          "dashboard",
+          "deployment",
+          "description",
+          "logs",
+          "metrics",
+          "name",
+          "regions",
+          "resource"
+        ],
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "description": "Environment-specific information",
+      "propertyNames": {
+        "format": "string"
+      },
+      "title": "Environment",
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "project": {
+      "additionalProperties": true,
+      "properties": {
+        "category": {
+          "default": "Application",
+          "description": "Software category",
+          "examples": [
+            "Application"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "copyright_owner": {
+          "description": "Copyright owner",
+          "examples": [
+            "MyCompany"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "copyright_start_year": {
+          "description": "Copyright start year",
+          "examples": [
+            "2022"
+          ],
+          "format": "integer",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cvs": {
+          "description": "Link to the Concurrent Versions System (CVS) project",
+          "examples": [
+            "https://example.com/project"
+          ],
+          "format": "uri",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license_url": {
+          "description": "Link to the license file",
+          "examples": [
+            "https://example.com/LICENSE"
+          ],
+          "format": "uri",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "logo": {
+          "description": "Logo image",
+          "examples": [
+            "doc/images/logo.png"
+          ],
+          "format": "uri",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Name of the service or project",
+          "examples": [
+            "myservice"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tagline": {
+          "description": "One-line project description",
+          "examples": [
+            "Example service"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "category",
+        "copyright_start_year",
+        "copyright_owner",
+        "cvs",
+        "license_url",
+        "name",
+        "tagline"
+      ],
+      "title": "Project",
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "slack": {
+      "additionalProperties": {
+        "description": "Slack channels",
+        "items": {
+          "description": "Slack channel",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "description": "List of project-related Slack channels",
+      "propertyNames": {
+        "format": "string"
+      },
+      "title": "Slack",
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "team": {
+      "additionalProperties": false,
+      "properties": {
+        "escalation": {
+          "description": "Link to a page containing escalation information",
+          "examples": [
+            "https://example.com/escalation"
+          ],
+          "format": "uri",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "info": {
+          "description": "Link to a page containing team's information",
+          "examples": [
+            "https://example.com/teaminfo"
+          ],
+          "format": "uri",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Team name",
+          "examples": [
+            "devteam"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "slack": {
+          "description": "Team's Slack channel",
+          "examples": [
+            "#ask-myteam"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "escalation",
+        "info",
+        "name",
+        "slack"
+      ],
+      "title": "Team",
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "project",
+    "team",
+    "attachments",
+    "doclinks",
+    "slack",
+    "dependencies",
+    "environment"
+  ],
+  "title": "config",
+  "type": "object"
+}

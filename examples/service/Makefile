@@ -8,13 +8,13 @@ SHELL=/bin/bash
 .SHELLFLAGS=-o pipefail -c
 
 # CVS path (path to the parent dir containing the project)
-CVSPATH=github.com/gosrvlibexample
+CVSPATH=github.com/gosrvlibexampleowner
 
 # Project owner
-OWNER=gosrvlibexample
+OWNER=gosrvlibexampleowner
 
 # Project vendor
-VENDOR=gosrvlibexample
+VENDOR=gosrvlibexampleowner
 
 # Project name
 PROJECT=gosrvlibexample
@@ -235,6 +235,7 @@ help:
 	@echo "    make dockertest    : Test the newly built docker container"
 	@echo "    make format        : Format the source code"
 	@echo "    make generate      : Generate go code automatically"
+	@echo "    make gendoc        : Generate static documentation from /doc/src"
 	@echo "    make install       : Install this application"
 	@echo "    make linter        : Check code against multiple linters"
 	@echo "    make mod           : Download dependencies"
@@ -246,7 +247,7 @@ help:
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo "To test and build everything from scratch:"
-	@echo "DEVMODE=LOCAL make format clean mod deps generate qa build docker dockertest"
+	@echo "DEVMODE=LOCAL make format clean mod deps gendoc generate qa build docker dockertest"
 	@echo ""
 
 # Alias for help target
@@ -281,8 +282,8 @@ clean:
 # Validate JSON configuration files against the JSON schema
 .PHONY: confcheck
 confcheck:
-	jsonschema -i resources/test/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
-	jsonschema -i resources/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema --output pretty --instance resources/test/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
+	jsonschema --output pretty --instance resources/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
 
 # Generate the coverage report
 .PHONY: coverage
@@ -338,6 +339,8 @@ endif
 .PHONY: deps
 deps: ensuretarget
 	curl --silent --show-error --fail --location https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.50.0
+	$(GO) install github.com/mikefarah/yq/v4@latest
+	$(GO) install github.com/hairyhenderson/gomplate/v3/cmd/gomplate@latest
 	$(GO) install github.com/rakyll/gotest
 	$(GO) install github.com/jstemmer/go-junit-report
 	$(GO) install github.com/golang/mock/mockgen
@@ -411,7 +414,7 @@ dockertestenv: ensuretarget
 ensuretarget:
 	@mkdir -p $(TARGETDIR)/test
 	@mkdir -p $(TARGETDIR)/report
-	@mkdir -p $(TARGETDIR)/binutil
+	@mkdir -p $(BINUTIL)
 
 # Format the source code
 .PHONY: format
@@ -425,6 +428,19 @@ generate:
 	rm -f internal/mocks/*.go
 	$(GO) generate $(GOPKGS)
 
+# Generate static documentation
+.PHONY: gendoc
+gendoc:
+	yq --input-format yaml --output-format json < doc/src/config.yaml . > doc/src/config.json
+	jsonschema --output pretty --instance doc/src/config.json doc/src/config.schema.json
+	gomplate \
+	--datasource config=./doc/src/config.json \
+	--template description=./doc/src/description.tmpl \
+	--template development=./doc/src/development.tmpl \
+	--template deployment=./doc/src/deployment.tmpl \
+	--file ./doc/src/README.tmpl \
+	--out README.md
+
 # Install this application
 .PHONY: install
 install: uninstall
@@ -435,9 +451,9 @@ install: uninstall
 	mkdir -p $(PATHINSTDOC)
 	cp -f ./LICENSE $(PATHINSTDOC)
 	cp -f ./README.md $(PATHINSTDOC)
-	cp -f ./CONFIG.md $(PATHINSTDOC)
 	cp -f ./VERSION $(PATHINSTDOC)
 	cp -f ./RELEASE $(PATHINSTDOC)
+	cp -f ./doc/*.md $(PATHINSTDOC)
 	chmod -R 644 $(PATHINSTDOC)*
 ifneq ($(strip $(INITPATH)),)
 	mkdir -p $(PATHINSTINIT)

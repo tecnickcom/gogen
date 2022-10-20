@@ -1,0 +1,123 @@
+<!-- Space: {{ if (datasource "config").team }}{{ (datasource "config").team.name }}{{ else }}{{ (datasource "config").project.name }}{{ end }} -->
+<!-- Parent: Projects -->
+<!-- Title: {{ (datasource "config").project.name }} -->
+{{ range (datasource "config").attachments }}<!-- Attachment: {{ . }} -->{{ end }}
+{{ if (datasource "config").project.logo }}<!-- Attachment: {{ (datasource "config").project.logo }} -->{{ end}}
+
+# {{ (datasource "config").project.name }}
+
+*{{ (datasource "config").project.tagline }}*
+
+![{{ (datasource "config").project.name }} logo]({{ (datasource "config").project.logo }})
+
+* **category:**    {{ (datasource "config").project.category }}
+* **copyright:**   {{ (datasource "config").project.copyright_start_year }}-{{ time.Now.UTC.Year }} {{ (datasource "config").project.copyright_owner }}
+* **license:**     [LICENSE]({{ (datasource "config").project.license_url }})
+* **cvs:**         {{ (datasource "config").project.cvs }}
+{{ if (datasource "config").team }}* **team:**        [{{ (datasource "config").team.name }}]({{ (datasource "config").team.info }}) ([{{ (datasource "config").team.slack }}](https://gosrvlibexample.slack.com/channels/{{ (datasource "config").team.slack }})) [escalation]({{ (datasource "config").team.escalation }}){{ end }}
+
+[![check]({{ (datasource "config").project.cvs }}/actions/workflows/check.yaml/badge.svg)]({{ (datasource "config").project.cvs }}/actions/workflows/check.yaml)
+
+----------
+
+## TOC
+* [Documentation](#documentation){{ range $visibility, $groups := (datasource "config").doclinks }}
+	* [{{ $visibility }}](#documentation_{{ $visibility }}){{ range $groupkey, $group := $groups }}
+		* [{{ $group.name }}](documentation_{{ $visibility }}_{{ $groupkey }}){{ end }}{{ end }}
+* [Slack](#slack)
+* [Environments](#environments){{ range $envkey, $env := (datasource "config").environment }}
+	* [{{ $env.name }}](#{{ $envkey }}){{ range $reskey, $resource := $env.resource }}
+		* [{{ $resource.name }}](#environment_{{ $envkey }}_{{ $reskey }}){{ end }}{{ end }}
+* [Description](#description)
+* [Dependencies](#dependencies)
+* [Deployment](#deployment)
+* [Development](#development)
+
+----------
+
+<a name="documentation"></a>
+## Documentation{{ range $visibility, $groups := (datasource "config").doclinks }}
+<a name="documentation_{{ $visibility }}"></a>
+* {{ $visibility }}{{ range $groupkey, $group := $groups }}
+	<a name="documentation_{{ $visibility }}_{{ $groupkey }}"></a>
+	* {{ $group.name }}  
+	_{{ $group.description }}_{{ range $link := $group.links }}
+		* [{{ $link.name }}]({{ $link.url }}){{ end }}{{ end }}
+{{ end }}
+
+----------
+
+{{ if (datasource "config").slack }}
+<a name="slack"></a>
+## Slack
+* Escalation channel(s):{{ range (datasource "config").slack.escalation }}
+	* [{{ . }}](https://gosrvlibexample.slack.com/channels/{{ . }}){{ end }}
+* Other channels:{{ range (datasource "config").slack.other }}
+	* [{{ . }}](https://gosrvlibexample.slack.com/channels/{{ . }}){{ end }}
+	
+----------
+{{end}}
+
+{{ if (datasource "config").environment }}
+<a name="environments"></a>
+## Environments{{ range $envkey, $env := (datasource "config").environment }}
+<a name="{{ $envkey }}"></a>
+### {{ $env.name }}  
+_({{ $env.account }}) {{ $env.description }}_
+* [configuration]({{ $env.configuration }})
+* [logs]({{ $env.logs }})
+* [deployment]({{ $env.deployment }})
+* [metrics]({{ $env.metrics }})
+* [dashboard]({{ $env.dashboard }})
+* [alerts]({{ $env.alerts }})
+* [alerts_config]({{ $env.alerts_config }})
+* regions:{{ range $geo, $reg := $env.regions }}
+	* {{ $geo }}:{{ range $reg }}
+		* {{ . }}{{ end }}{{ end }}
+{{ range $reskey, $resource := $env.resource }}
+<a name="environment_{{ $envkey }}_{{ $reskey }}"></a>
+* **{{ $resource.name }}**  
+_{{ $resource.description }}_{{ range $visibility, $data := $resource.visibility }}
+	* {{ $visibility }}{{ range $group := $data }}
+		* **{{ $group.name }}**  
+_{{ $group.description }}_{{ range $geo, $data := $group.geos }}
+			* {{ if $data.geo | strings.HasPrefix "http" }}[{{ $geo }}]({{ $data.geo }}){{ else }}{{ $geo }}: {{ if test.IsKind "invalid" $data.geo }}{{ else }} `{{ $data.geo }}`{{ end }}{{ end }}{{ range $region, $info := $data.regions }}
+				* {{ if $info | strings.HasPrefix "http" }}[{{ $region }}]({{ $info }}){{ else }}{{ $region }}: `{{ $info }}`{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}
+{{ end }}
+
+----------
+{{ end}}
+
+<a name="description"></a>
+## Description
+{{ template "description" }}
+
+----------
+
+{{ if (datasource "config").dependencies }}
+<a name="dependencies"></a>
+## Dependencies{{ range $visibility, $services := (datasource "config").dependencies }}
+
+<a name="dependencies_{{ $visibility }}"></a>
+### {{ $visibility }}{{ range $srvkey, $service := $services }}
+
+<a name="dependencies_{{ $visibility }}_{{ $srvkey }}"></a>
+#### {{ $service.name }} 
+{{ $service.description }}{{ end }}
+{{ end }}
+
+----------
+{{ end}}
+
+
+<a name="deployment"></a>
+## Deployment
+{{ template "deployment" }}
+
+----------
+
+<a name="development"></a>
+## Development
+{{ template "development" }}
+
+----------
