@@ -101,7 +101,7 @@ _({{ $env.account }}) {{ $env.description }}_
 #### Quick Selection Table
 {{ $cols := 3 }}| Resource | Visibility | Group | {{ range $geo, $reg := $env.regions }}{{ $cols = math.Add $cols 1 }} **{{ $geo }}** |{{ range $reg }}{{ $cols = math.Add $cols 1 }} **{{ . }}** |{{ end }}{{ end }}
 | {{ $cols = conv.ToInt $cols }}{{ strings.Repeat $cols  ":-: |" }}{{ range $reskey, $resource := $env.resource }}{{ range $visibility, $data := $resource.visibility }}
-|{{ range $group := $data }} **{{ $resource.name }}** | {{ $visibility }} | {{ $group.name }} |{{ range $geo, $data := $group.geos }}{{ if $data.geo | strings.HasPrefix "http" }} [▶]({{ $data.geo }}) |{{ else }}{{ if test.IsKind "invalid" $data.geo }} |{{ else }} `{{ $data.geo }}`|{{ end }}{{ end }}{{ range $region, $info := $data.regions }}{{ if $info | strings.HasPrefix "http" }} [▶]({{ $info }}) |{{ else }} `{{ $info }}` |{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}
+|{{ range $group := $data }} **{{ $resource.name }}** | {{ $visibility }} | {{ $group.name }} |{{ range $geo, $data := $group.geos }}{{ if $data.geo | strings.HasPrefix "http" }} [▶]({{ $data.geo }}) |{{ else }}{{ if test.IsKind "invalid" $data.geo }} |{{ else }} `{{ $data.geo }}`|{{ end }}{{ end }}{{ range $region, $info := $data.regions }}{{ if $info | strings.HasPrefix "http" }} [▶]({{ $info }}) |{{ else }} {{ if test.IsKind "invalid" $info }}{{ else }}`{{ $info }}`{{ end }} |{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}
 
 #### Data
 {{ if $env.configuration_template }}* [configuration template]({{ $env.configuration_template }}){{ end }}
@@ -123,7 +123,7 @@ _({{ $env.account }}) {{ $env.description }}_
 		* **{{ $group.name }}**  
 _{{ $group.description }}_{{ range $geo, $data := $group.geos }}
 			* {{ if $data.geo | strings.HasPrefix "http" }}[{{ $geo }}]({{ $data.geo }}){{ else }}{{ $geo }}: {{ if test.IsKind "invalid" $data.geo }}{{ else }} `{{ $data.geo }}`{{ end }}{{ end }}{{ range $region, $info := $data.regions }}
-				* {{ if $info | strings.HasPrefix "http" }}[{{ $region }}]({{ $info }}){{ else }}{{ $region }}: `{{ $info }}`{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}
+				* {{ if $info | strings.HasPrefix "http" }}[{{ $region }}]({{ $info }}){{ else }}{{ $region }}: {{ if test.IsKind "invalid" $info }}{{ else }}`{{ $info }}`{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}
 {{ end }}
 
 ----------
