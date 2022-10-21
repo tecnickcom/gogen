@@ -2,6 +2,7 @@
 # yamllint disable rule:line-length
 project:
   name: gosrvlibexample
+  title: gosrvlibexample
   category: Application
   copyright_start_year: "2020"
   copyright_owner: gosrvlibexampleowner
@@ -10,6 +11,11 @@ project:
   tagline: gosrvlibexampleshortdesc
   logo: doc/images/logo.png
 team:
+  name: gosrvlibexampleowner
+  title: gosrvlibexampleowner
+  info:
+  slack:
+  escalation:
 attachments:
 doclinks:
   public:

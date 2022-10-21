@@ -209,6 +209,17 @@
               "null"
             ]
           },
+          "configuration_template": {
+            "description": "Link to the project configuration template",
+            "examples": [
+              "https://example.com/configuration.pp"
+            ],
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dashboard": {
             "description": "Link to the Grafana dashboard",
             "examples": [
@@ -452,6 +463,7 @@
           "alerts",
           "alerts_config",
           "configuration",
+          "configuration_template",
           "dashboard",
           "deployment",
           "description",
@@ -563,6 +575,16 @@
             "string",
             "null"
           ]
+        },
+        "title": {
+          "description": "Project title - used as Confluence document name",
+          "examples": [
+            "my service"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [
@@ -644,6 +666,16 @@
           "description": "Team's Slack channel",
           "examples": [
             "#ask-myteam"
+          ],
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "description": "Team title - used as Confluence document space",
+          "examples": [
+            "MYTEAM"
           ],
           "type": [
             "string",
