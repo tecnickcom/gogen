@@ -39,6 +39,36 @@ type nopBinder struct{}
 
 func (b *nopBinder) BindHTTP(_ context.Context) []route.Route { return nil }
 
+func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) {
+	l.Debug("adding default routes")
+
+	routes := newDefaultRoutes(cfg)
+
+	l.Debug("adding service routes")
+
+	customRoutes := binder.BindHTTP(ctx)
+	// merge custom service routes with the default routes
+	routes = append(routes, customRoutes...)
+
+	for _, r := range routes {
+		l.Debug("binding route", zap.String("path", r.Path))
+		// Define the default middlewares and attach the custom middlewares.
+		middlewares := []route.Middleware{
+			loggerMiddleware(l, cfg.traceIDHeaderName, cfg.redactFn),
+			instrumentMiddleware(r.Path, cfg.instrumentHandler),
+		}
+		middlewares = append(middlewares, r.Middlewares...)
+		handler := applyMiddlewares(r.Handler, middlewares...)
+		cfg.router.Handler(r.Method, r.Path, handler)
+	}
+
+	// attach route index if enabled
+	if cfg.isIndexRouteEnabled() {
+		l.Debug("enabling route index handler")
+		cfg.router.Handler(http.MethodGet, indexPath, cfg.instrumentHandler(indexPath, cfg.indexHandlerFunc(routes)))
+	}
+}
+
 // Start configures and start a new HTTP http server.
 func Start(ctx context.Context, binder Binder, opts ...Option) error {
 	l := logging.WithComponent(ctx, "httpserver")
@@ -59,27 +89,7 @@ func Start(ctx context.Context, binder Binder, opts ...Option) error {
 		return err
 	}
 
-	l.Debug("adding default routes")
-
-	routes := newDefaultRoutes(cfg)
-
-	l.Debug("adding service routes")
-
-	customRoutes := binder.BindHTTP(ctx)
-
-	// merge custom service routes with the default routes
-	routes = append(routes, customRoutes...)
-
-	for _, r := range routes {
-		l.Debug("binding route", zap.String("path", r.Path))
-		cfg.router.Handler(r.Method, r.Path, cfg.instrumentHandler(r.Path, r.Handler))
-	}
-
-	// attach route index if enabled
-	if cfg.isIndexRouteEnabled() {
-		l.Debug("enabling route index handler")
-		cfg.router.Handler(http.MethodGet, indexPath, cfg.instrumentHandler(indexPath, cfg.indexHandlerFunc(routes)))
-	}
+	loadRoutes(ctx, l, binder, cfg)
 
 	// wrap router with default middlewares
 	return startServer(ctx, cfg)
@@ -91,7 +101,7 @@ func startServer(ctx context.Context, cfg *config) error {
 	// create and start the http server
 	s := &http.Server{
 		Addr:              cfg.serverAddr,
-		Handler:           RequestInjectHandler(l, cfg.traceIDHeaderName, cfg.redactFn, cfg.router),
+		Handler:           cfg.router,
 		ReadHeaderTimeout: cfg.serverReadHeaderTimeout,
 		ReadTimeout:       cfg.serverReadTimeout,
 		TLSConfig:         cfg.tlsConfig,

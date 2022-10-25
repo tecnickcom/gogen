@@ -4,11 +4,32 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/nexmoinc/gosrvlib/pkg/uidc"
 	"go.uber.org/zap"
 )
+
+func instrumentMiddleware(path string, handler InstrumentHandler) route.Middleware {
+	return func(next http.Handler) http.Handler {
+		return handler(path, next.ServeHTTP)
+	}
+}
+
+func loggerMiddleware(rootLogger *zap.Logger, traceIDHeaderName string, redactFn RedactFn) route.Middleware {
+	return func(next http.Handler) http.Handler {
+		return RequestInjectHandler(rootLogger, traceIDHeaderName, redactFn, next)
+	}
+}
+
+func applyMiddlewares(next http.Handler, middlewares ...route.Middleware) http.Handler {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		next = middlewares[i](next)
+	}
+
+	return next
+}
 
 // RequestInjectHandler wraps all incoming requests and injects a logger in the request scoped context.
 func RequestInjectHandler(rootLogger *zap.Logger, traceIDHeaderName string, redactFn RedactFn, next http.Handler) http.Handler {

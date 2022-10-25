@@ -5,6 +5,9 @@ import (
 	"net/http"
 )
 
+// Middleware is a function that wraps a http.Handler.
+type Middleware func(next http.Handler) http.Handler
+
 // Route contains the HTTP route description.
 type Route struct {
 	// Method is the HTTP method (e.g.: GET, POST, PUT, DELETE, ...).
@@ -18,6 +21,9 @@ type Route struct {
 
 	// Description is the description of this route that is displayed by the /index endpoint.
 	Description string `json:"description"`
+
+	// Middlewares is a list of middlewares to apply to this route.
+	Middlewares []Middleware `json:"-"`
 }
 
 // Index contains the list of routes attached to the current service.
