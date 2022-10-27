@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint: paralleltest
+//nolint:paralleltest
 func Test_loadConfig(t *testing.T) {
 	var (
 		wt     int32 = 13

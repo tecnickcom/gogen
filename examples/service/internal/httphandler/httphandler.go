@@ -5,7 +5,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
+	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/uidc"
 )
@@ -32,13 +32,13 @@ type HTTPHandler struct {
 }
 
 // BindHTTP implements the function to bind the handler to a server.
-func (h *HTTPHandler) BindHTTP(_ context.Context) []route.Route {
-	return []route.Route{
+func (h *HTTPHandler) BindHTTP(_ context.Context) []httpserver.Route {
+	return []httpserver.Route{
 		{
 			Method:      http.MethodGet,
 			Path:        "/uid",
-			Handler:     h.handleGenUID,
 			Description: "Generates a random UID",
+			Handler:     h.handleGenUID,
 		},
 	}
 }

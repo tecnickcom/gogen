@@ -50,7 +50,7 @@ func NewConsumer(brokers []string, topic, groupID string, opts ...Option) (*Cons
 
 	checkFn := func(ctx context.Context, address string) error {
 		_, err := client.Config().Dialer.LookupPartitions(ctx, network, address, topic)
-		return err //nolint: wrapcheck
+		return err //nolint:wrapcheck
 	}
 
 	return &Consumer{

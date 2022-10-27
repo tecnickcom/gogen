@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 // Option is a type alias for a function that configures the HTTP httpServer instance.
 type Option func(*config) error
 
 // WithRouter replaces the default router used by the httpServer (mostly used for test purposes with a mock router).
-func WithRouter(r Router) Option {
+func WithRouter(r *httprouter.Router) Option {
 	return func(cfg *config) error {
 		cfg.router = r
 		return nil
@@ -75,16 +77,8 @@ func WithTLSCertData(pemCert, pemKey []byte) Option {
 	}
 }
 
-// WithInstrumentHandler set the http.Handler wrap function to collect metrics.
-func WithInstrumentHandler(handler InstrumentHandler) Option {
-	return func(cfg *config) error {
-		cfg.instrumentHandler = handler
-		return nil
-	}
-}
-
 // WithEnableDefaultRoutes sets the default routes to be enabled on the server.
-func WithEnableDefaultRoutes(ids ...defaultRoute) Option {
+func WithEnableDefaultRoutes(ids ...DefaultRoute) Option {
 	return func(cfg *config) error {
 		cfg.defaultEnabledRoutes = ids
 		return nil
@@ -159,6 +153,58 @@ func WithTraceIDHeaderName(name string) Option {
 func WithRedactFn(fn RedactFn) Option {
 	return func(cfg *config) error {
 		cfg.redactFn = fn
+		return nil
+	}
+}
+
+// WithMiddlewareFn adds one or more middleware handler functions to all routes (endpoints).
+// These middleware handlers are applied in the provided order after the default ones and before the custom route ones.
+func WithMiddlewareFn(fn ...MiddlewareFn) Option {
+	return func(cfg *config) error {
+		cfg.middleware = append(cfg.middleware, fn...)
+		return nil
+	}
+}
+
+// WithNotFoundHandlerFunc http handler called when no matching route is found.
+func WithNotFoundHandlerFunc(handler http.HandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.notFoundHandlerFunc = handler
+		return nil
+	}
+}
+
+// WithMethodNotAllowedHandlerFunc http handler called when a request cannot be routed.
+func WithMethodNotAllowedHandlerFunc(handler http.HandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.methodNotAllowedHandlerFunc = handler
+		return nil
+	}
+}
+
+// WithPanicHandlerFunc http handler to handle panics recovered from http handlers.
+func WithPanicHandlerFunc(handler http.HandlerFunc) Option {
+	return func(cfg *config) error {
+		cfg.panicHandlerFunc = handler
+		return nil
+	}
+}
+
+// WithoutRouteLogger disables the logger handler for all routes.
+func WithoutRouteLogger() Option {
+	return func(cfg *config) error {
+		cfg.disableRouteLogger = true
+		return nil
+	}
+}
+
+// WithoutDefaultRouteLogger disables the logger handler for the specified default routes.
+func WithoutDefaultRouteLogger(routes ...DefaultRoute) Option {
+	return func(cfg *config) error {
+		for _, route := range routes {
+			cfg.disableDefaultRouteLogger[route] = true
+		}
+
 		return nil
 	}
 }

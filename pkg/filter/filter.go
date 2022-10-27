@@ -230,7 +230,7 @@ func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length in
 	return n, m, nil
 }
 
-// nolint: gocognit
+//nolint:gocognit
 func (p *Processor) evaluateRules(rules [][]Rule, obj interface{}) (bool, error) {
 	for i := range rules {
 		orResult := false

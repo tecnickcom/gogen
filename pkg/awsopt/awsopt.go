@@ -28,7 +28,7 @@ func (c *Options) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
 		o[k] = (func(*config.LoadOptions) error)(v)
 	}
 
-	return config.LoadDefaultConfig(ctx, o...) //nolint: wrapcheck
+	return config.LoadDefaultConfig(ctx, o...) //nolint:wrapcheck
 }
 
 // WithAWSOption allows to add an arbitrary AWS option.

@@ -24,7 +24,7 @@ func isNil(v interface{}) bool {
 	return false
 }
 
-// nolint: gocyclo
+//nolint:gocyclo
 func convertValue(v interface{}) interface{} {
 	switch v := v.(type) {
 	case int:

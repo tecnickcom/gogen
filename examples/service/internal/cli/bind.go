@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/httphandler"
@@ -61,13 +62,19 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			statusHandler = healthCheckHandler.ServeHTTP
 		}
 
+		middleware := func(args httpserver.MiddlewareArgs, next http.Handler) http.Handler {
+			return m.InstrumentHandler(args.Path, next.ServeHTTP)
+		}
+
 		// start monitoring server
 		httpMonitoringOpts := []httpserver.Option{
 			httpserver.WithServerAddr(cfg.MonitoringAddress),
 			httpserver.WithMetricsHandlerFunc(m.MetricsHandlerFunc()),
-			httpserver.WithInstrumentHandler(m.InstrumentHandler),
 			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
-			httpserver.WithRouter(jsendx.NewRouter(appInfo, m.InstrumentHandler)), // set default 404, 405 and panic handlers
+			httpserver.WithMiddlewareFn(middleware),
+			httpserver.WithNotFoundHandlerFunc(jsendx.DefaultNotFoundHandlerFunc(appInfo)),
+			httpserver.WithMethodNotAllowedHandlerFunc(jsendx.DefaultMethodNotAllowedHandlerFunc(appInfo)),
+			httpserver.WithPanicHandlerFunc(jsendx.DefaultPanicHandlerFunc(appInfo)),
 			httpserver.WithEnableAllDefaultRoutes(),
 			httpserver.WithIndexHandlerFunc(jsendx.DefaultIndexHandler(appInfo)),
 			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, ipifyClient.GetPublicIP)),
@@ -85,7 +92,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 		// start public server
 		httpPublicOpts := []httpserver.Option{
 			httpserver.WithServerAddr(cfg.PublicAddress),
-			httpserver.WithInstrumentHandler(m.InstrumentHandler),
+			httpserver.WithMiddlewareFn(middleware),
 			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
 		}

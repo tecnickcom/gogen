@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-//nolint:gocognit,paralleltest,tparallel
+//nolint:gocognit,paralleltest
 func TestBootstrap(t *testing.T) {
 	tests := []struct {
 		opts                    []Option

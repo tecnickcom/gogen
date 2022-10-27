@@ -1,4 +1,4 @@
-//go:generate mockgen -package httpserver -destination ./mock_test.go . Router,Binder
+//go:generate mockgen -package httpserver -destination ./mock_test.go . Binder
 
 package httpserver
 
@@ -14,10 +14,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
-	"github.com/nexmoinc/gosrvlib/pkg/redact"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
-	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -32,80 +29,10 @@ func Test_nopBinder_BindHTTP(t *testing.T) {
 	require.Nil(t, NopBinder().BindHTTP(context.Background()))
 }
 
-func Test_defaultRouter(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name        string
-		method      string
-		path        string
-		setupRouter func(Router)
-		wantStatus  int
-	}{
-		{
-			name:       "should handle 404",
-			method:     http.MethodGet,
-			path:       "/not/found",
-			wantStatus: http.StatusNotFound,
-		},
-		{
-			name:   "should handle 405",
-			method: http.MethodPost,
-			setupRouter: func(r Router) {
-				fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
-				})
-				r.Handler(http.MethodGet, "/not/allowed", fn)
-			},
-			path:       "/not/allowed",
-			wantStatus: http.StatusMethodNotAllowed,
-		},
-		{
-			name:   "should handle panic in handler",
-			method: http.MethodGet,
-			setupRouter: func(r Router) {
-				fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					panic("panicking!")
-				})
-				r.Handler(http.MethodGet, "/panic", fn)
-			},
-			path:       "/panic",
-			wantStatus: http.StatusInternalServerError,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			defaultInstrumentHandler := func(path string, handler http.HandlerFunc) http.Handler { return handler }
-			r := defaultRouter(testutil.Context(), traceid.DefaultHeader, redact.HTTPData, defaultInstrumentHandler)
-
-			if tt.setupRouter != nil {
-				tt.setupRouter(r)
-			}
-
-			rr := httptest.NewRecorder()
-			r.ServeHTTP(rr, httptest.NewRequest(tt.method, tt.path, nil))
-
-			resp := rr.Result() //nolint:bodyclose
-			require.NotNil(t, resp)
-
-			defer func() {
-				err := resp.Body.Close()
-				require.NoError(t, err, "error closing resp.Body")
-			}()
-
-			require.Equal(t, tt.wantStatus, resp.StatusCode, "status code got = %d, want = %d", resp.StatusCode, tt.wantStatus)
-		})
-	}
-}
-
 func Test_defaultIndexHandler(t *testing.T) {
 	t.Parallel()
 
-	routes := []route.Route{
+	routes := []Route{
 		{
 			Method:      http.MethodGet,
 			Path:        "/get",
@@ -136,7 +63,7 @@ func Test_defaultIndexHandler(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
-	expBody, _ := json.Marshal(&route.Index{Routes: routes})
+	expBody, _ := json.Marshal(&Index{Routes: routes})
 
 	require.Equal(t, string(expBody)+"\n", string(body))
 }
@@ -163,6 +90,7 @@ func Test_defaultIPHandler(t *testing.T) {
 			wantErr: true,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -267,8 +195,8 @@ func (c *customMiddlewareBinder) handler(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (c *customMiddlewareBinder) middleware(ch chan struct{}) route.Middleware {
-	return func(next http.Handler) http.Handler {
+func (c *customMiddlewareBinder) middleware(ch chan struct{}) MiddlewareFn {
+	return func(_ MiddlewareArgs, next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ch <- struct{}{}
 			next.ServeHTTP(w, r)
@@ -276,14 +204,14 @@ func (c *customMiddlewareBinder) middleware(ch chan struct{}) route.Middleware {
 	}
 }
 
-func (c *customMiddlewareBinder) BindHTTP(ctx context.Context) []route.Route {
-	return []route.Route{
+func (c *customMiddlewareBinder) BindHTTP(ctx context.Context) []Route {
+	return []Route{
 		{
 			Method:      http.MethodGet,
 			Path:        "/hello",
-			Handler:     c.handler,
 			Description: "Index endpoint",
-			Middlewares: []route.Middleware{c.middleware(c.firstMiddleware), c.middleware(c.secondMiddleware)},
+			Handler:     c.handler,
+			Middleware:  []MiddlewareFn{c.middleware(c.firstMiddleware), c.middleware(c.secondMiddleware)},
 		},
 	}
 }
@@ -301,7 +229,7 @@ func Test_customMiddlewares(t *testing.T) {
 
 	l := zap.NewNop()
 	cfg := defaultConfig()
-	cfg.router = defaultRouter(ctx, cfg.traceIDHeaderName, cfg.redactFn, cfg.instrumentHandler)
+	cfg.setRouter(ctx)
 	loadRoutes(ctx, l, binder, cfg)
 
 	go func() {
@@ -326,7 +254,6 @@ func Test_customMiddlewares(t *testing.T) {
 	require.NoError(t, ctx.Err(), "context should not be canceled")
 }
 
-//nolint:gocognit
 func TestStart(t *testing.T) {
 	t.Parallel()
 
@@ -335,7 +262,6 @@ func TestStart(t *testing.T) {
 		opts           []Option
 		failListenPort int
 		setupBinder    func(*MockBinder)
-		setupRouter    func(*MockRouter)
 		wantErr        bool
 	}{
 		{
@@ -361,9 +287,6 @@ func TestStart(t *testing.T) {
 			setupBinder: func(b *MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
 			},
-			setupRouter: func(r *MockRouter) {
-				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-			},
 			failListenPort: 12345,
 			wantErr:        true,
 		},
@@ -373,12 +296,10 @@ func TestStart(t *testing.T) {
 				WithServerAddr(":11111"),
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithEnableAllDefaultRoutes(),
+				WithInstrumentHandler(func(path string, handler http.HandlerFunc) http.Handler { return handler }),
 			},
 			setupBinder: func(b *MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
-			},
-			setupRouter: func(r *MockRouter) {
-				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(6)
 			},
 			wantErr: false,
 		},
@@ -420,12 +341,10 @@ YlAqGKDZ+A+l
 			setupBinder: func(b *MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
 			},
-			setupRouter: func(r *MockRouter) {
-				r.EXPECT().Handler(gomock.Any(), gomock.Any(), gomock.Any()).Times(6)
-			},
 			wantErr: false,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -445,12 +364,6 @@ YlAqGKDZ+A+l
 				time.Sleep(100 * time.Millisecond)
 			}()
 			opts := tt.opts
-
-			mockRouter := NewMockRouter(mockCtrl)
-			if tt.setupRouter != nil {
-				tt.setupRouter(mockRouter)
-				opts = append(opts, WithRouter(mockRouter))
-			}
 
 			if tt.failListenPort != 0 {
 				l, err := net.Listen("tcp", fmt.Sprintf(":%d", tt.failListenPort))

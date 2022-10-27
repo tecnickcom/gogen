@@ -11,14 +11,21 @@ import (
 func Test_newDefaultRoutes(t *testing.T) {
 	t.Parallel()
 
-	cfg := &config{
-		defaultEnabledRoutes: allDefaultRoutes(),
-		metricsHandlerFunc:   func(w http.ResponseWriter, r *http.Request) {},
-		pingHandlerFunc:      func(w http.ResponseWriter, r *http.Request) {},
-		pprofHandlerFunc:     func(w http.ResponseWriter, r *http.Request) {},
-		statusHandlerFunc:    func(w http.ResponseWriter, r *http.Request) {},
-		ipHandlerFunc:        func(w http.ResponseWriter, r *http.Request) {},
-	}
+	cfg := defaultConfig()
+
+	cfg.defaultEnabledRoutes = allDefaultRoutes()
+	cfg.metricsHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+	cfg.pingHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+	cfg.pprofHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+	cfg.statusHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+	cfg.ipHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+
+	cfg.disableDefaultRouteLogger[IndexRoute] = true
+	cfg.disableDefaultRouteLogger[IPRoute] = true
+	cfg.disableDefaultRouteLogger[MetricsRoute] = true
+	cfg.disableDefaultRouteLogger[PingRoute] = true
+	cfg.disableDefaultRouteLogger[PprofRoute] = true
+	cfg.disableDefaultRouteLogger[StatusRoute] = true
 
 	routes := newDefaultRoutes(cfg)
 	expFuncs := []http.HandlerFunc{
@@ -35,6 +42,8 @@ func Test_newDefaultRoutes(t *testing.T) {
 		for _, r := range routes {
 			if reflect.ValueOf(expFn).Pointer() == reflect.ValueOf(r.Handler).Pointer() {
 				boundCount++
+
+				require.True(t, r.DisableLogger, r.Path)
 			}
 		}
 	}

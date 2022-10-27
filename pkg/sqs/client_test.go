@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint: paralleltest
+//nolint:paralleltest
 func TestNew(t *testing.T) {
 	var (
 		wt int32 = 13

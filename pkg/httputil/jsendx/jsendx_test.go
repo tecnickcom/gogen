@@ -10,9 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/julienschmidt/httprouter"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
-	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -59,79 +57,103 @@ func TestSend(t *testing.T) {
 	Send(testutil.Context(), mockWriter, http.StatusOK, params, "message")
 }
 
-func TestNewRouter(t *testing.T) {
+//nolint:dupl
+func TestDefaultNotFoundHandlerFunc(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name        string
-		method      string
-		path        string
-		setupRouter func(*httprouter.Router)
-		wantStatus  int
-	}{
-		{
-			name:       "should handle 404",
-			method:     http.MethodGet,
-			path:       "/not/found",
-			wantStatus: http.StatusNotFound,
-		},
-		{
-			name:   "should handle 405",
-			method: http.MethodPost,
-			setupRouter: func(r *httprouter.Router) {
-				fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
-				})
-				r.Handler(http.MethodGet, "/not/allowed", fn)
-			},
-			path:       "/not/allowed",
-			wantStatus: http.StatusMethodNotAllowed,
-		},
-		{
-			name:   "should handle panic in handler",
-			method: http.MethodGet,
-			setupRouter: func(r *httprouter.Router) {
-				fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					panic("panicking!")
-				})
-				r.Handler(http.MethodGet, "/panic", fn)
-			},
-			path:       "/panic",
-			wantStatus: http.StatusInternalServerError,
-		},
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "1.1.1",
+		ProgramRelease: "1",
 	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 
-			defaultInstrumentHandler := func(path string, handler http.HandlerFunc) http.Handler { return handler }
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	DefaultNotFoundHandlerFunc(appInfo)(rr, req)
 
-			params := &AppInfo{
-				ProgramName:    "test",
-				ProgramVersion: "1.2.3",
-				ProgramRelease: "12345",
-			}
-			r := NewRouter(params, defaultInstrumentHandler)
+	resp := rr.Result() //nolint:bodyclose
+	require.NotNil(t, resp)
 
-			if tt.setupRouter != nil {
-				tt.setupRouter(r)
-			}
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
 
-			rr := httptest.NewRecorder()
-			r.ServeHTTP(rr, httptest.NewRequest(tt.method, tt.path, nil))
+	bodyData, _ := io.ReadAll(resp.Body)
 
-			resp := rr.Result() //nolint:bodyclose
-			require.NotNil(t, resp)
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
 
-			defer func() {
-				err := resp.Body.Close()
-				require.NoError(t, err, "error closing resp.Body")
-			}()
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"1.1.1\",\"release\":\"1\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":404,\"message\":\"Not Found\",\"data\":\"invalid endpoint\"}\n", body)
+}
 
-			require.Equal(t, tt.wantStatus, resp.StatusCode, "status code got = %d, want = %d", resp.StatusCode, tt.wantStatus)
-		})
+//nolint:dupl
+func TestDefaultMethodNotAllowedHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "2.2.2",
+		ProgramRelease: "2",
 	}
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	DefaultMethodNotAllowedHandlerFunc(appInfo)(rr, req)
+
+	resp := rr.Result() //nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	bodyData, _ := io.ReadAll(resp.Body)
+
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+	require.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"2.2.2\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":405,\"message\":\"Method Not Allowed\",\"data\":\"the request cannot be routed\"}\n", body)
+}
+
+//nolint:dupl
+func TestDefaultPanicHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	appInfo := &AppInfo{
+		ProgramName:    "Test",
+		ProgramVersion: "3.3.3",
+		ProgramRelease: "3",
+	}
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	DefaultPanicHandlerFunc(appInfo)(rr, req)
+
+	resp := rr.Result() //nolint:bodyclose
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	bodyData, _ := io.ReadAll(resp.Body)
+
+	body := string(bodyData)
+	body = testutil.ReplaceDateTime(body, "<DT>")
+	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.3.3\",\"release\":\"3\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"error\",\"code\":500,\"message\":\"Internal Server Error\",\"data\":\"internal error\"}\n", body)
 }
 
 func TestDefaultIndexHandler(t *testing.T) {
@@ -139,11 +161,11 @@ func TestDefaultIndexHandler(t *testing.T) {
 
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "1.2.3",
-		ProgramRelease: "1",
+		ProgramVersion: "4.4.4",
+		ProgramRelease: "4",
 	}
 
-	routes := []route.Route{
+	routes := []httpserver.Route{
 		{
 			Method:      http.MethodGet,
 			Path:        "/get",
@@ -176,7 +198,7 @@ func TestDefaultIndexHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"1.2.3\",\"release\":\"1\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":{\"routes\":[{\"method\":\"GET\",\"path\":\"/get\",\"description\":\"Get endpoint\"},{\"method\":\"POST\",\"path\":\"/post\",\"description\":\"Post endpoint\"}]}}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"4.4.4\",\"release\":\"4\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":{\"routes\":[{\"method\":\"GET\",\"path\":\"/get\",\"description\":\"Get endpoint\"},{\"method\":\"POST\",\"path\":\"/post\",\"description\":\"Post endpoint\"}]}}\n", body)
 }
 
 func TestDefaultIPHandler(t *testing.T) {
@@ -184,8 +206,8 @@ func TestDefaultIPHandler(t *testing.T) {
 
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "2.3.4",
-		ProgramRelease: "2",
+		ProgramVersion: "5.5.5",
+		ProgramRelease: "5",
 	}
 
 	tests := []struct {
@@ -207,6 +229,7 @@ func TestDefaultIPHandler(t *testing.T) {
 			wantErr: true,
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -233,10 +256,10 @@ func TestDefaultIPHandler(t *testing.T) {
 
 			if tt.wantErr {
 				require.Equal(t, http.StatusFailedDependency, resp.StatusCode)
-				require.Equal(t, "{\"program\":\"Test\",\"version\":\"2.3.4\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":424,\"message\":\"Failed Dependency\",\"data\":\"ERROR\"}\n", body)
+				require.Equal(t, "{\"program\":\"Test\",\"version\":\"5.5.5\",\"release\":\"5\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":424,\"message\":\"Failed Dependency\",\"data\":\"ERROR\"}\n", body)
 			} else {
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				require.Equal(t, "{\"program\":\"Test\",\"version\":\"2.3.4\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"0.0.0.0\"}\n", body)
+				require.Equal(t, "{\"program\":\"Test\",\"version\":\"5.5.5\",\"release\":\"5\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"0.0.0.0\"}\n", body)
 			}
 		})
 	}
@@ -248,8 +271,8 @@ func TestDefaultPingHandler(t *testing.T) {
 
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "3.4.5",
-		ProgramRelease: "3",
+		ProgramVersion: "6.6.6",
+		ProgramRelease: "6",
 	}
 
 	rr := httptest.NewRecorder()
@@ -272,7 +295,7 @@ func TestDefaultPingHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.4.5\",\"release\":\"3\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.6.6\",\"release\":\"6\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 //nolint:dupl
@@ -281,8 +304,8 @@ func TestDefaultStatusHandler(t *testing.T) {
 
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "5.6.7",
-		ProgramRelease: "4",
+		ProgramVersion: "7.7.7",
+		ProgramRelease: "7",
 	}
 
 	rr := httptest.NewRecorder()
@@ -305,7 +328,7 @@ func TestDefaultStatusHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"5.6.7\",\"release\":\"4\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"7.7.7\",\"release\":\"7\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 func TestHealthCheckResultWriter(t *testing.T) {
@@ -313,8 +336,8 @@ func TestHealthCheckResultWriter(t *testing.T) {
 
 	appInfo := &AppInfo{
 		ProgramName:    "Test",
-		ProgramVersion: "6.7.8",
-		ProgramRelease: "5",
+		ProgramVersion: "8.8.8",
+		ProgramRelease: "8",
 	}
 
 	rr := httptest.NewRecorder()
@@ -336,5 +359,5 @@ func TestHealthCheckResultWriter(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.7.8\",\"release\":\"5\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
+	require.Equal(t, "{\"program\":\"Test\",\"version\":\"8.8.8\",\"release\":\"8\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
 }

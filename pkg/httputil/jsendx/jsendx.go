@@ -4,16 +4,11 @@ package jsendx
 import (
 	"context"
 	"net/http"
-	"runtime/debug"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
 	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
 	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
-	"github.com/nexmoinc/gosrvlib/pkg/httpserver/route"
 	"github.com/nexmoinc/gosrvlib/pkg/httputil"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"go.uber.org/zap"
 )
 
 const (
@@ -57,6 +52,15 @@ type AppInfo struct {
 	ProgramRelease string
 }
 
+// RouterArgs extra arguments for the router.
+type RouterArgs struct {
+	// TraceIDHeaderName is the Trace ID header name.
+	TraceIDHeaderName string
+
+	// RedactFunc is the function used to redact HTTP request and response dumps in the logs.
+	RedactFunc httpserver.RedactFn
+}
+
 // Wrap sends an Response object.
 func Wrap(statusCode int, info *AppInfo, data interface{}) *Response {
 	now := time.Now().UTC()
@@ -79,34 +83,38 @@ func Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppI
 	httputil.SendJSON(ctx, w, statusCode, Wrap(statusCode, info, data))
 }
 
-// NewRouter create a new router configured to responds with JSend wrapper responses for 404, 405 and panic.
-func NewRouter(info *AppInfo, instrumentHandler httpserver.InstrumentHandler) *httprouter.Router {
-	r := httprouter.New()
+// DefaultNotFoundHandlerFunc http handler called when no matching route is found.
+func DefaultNotFoundHandlerFunc(info *AppInfo) http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			Send(r.Context(), w, http.StatusNotFound, info, "invalid endpoint")
+		},
+	)
+}
 
-	r.NotFound = instrumentHandler("404", func(w http.ResponseWriter, r *http.Request) {
-		Send(r.Context(), w, http.StatusNotFound, info, "invalid endpoint")
-	})
+// DefaultMethodNotAllowedHandlerFunc http handler called when a request cannot be routed.
+func DefaultMethodNotAllowedHandlerFunc(info *AppInfo) http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			Send(r.Context(), w, http.StatusMethodNotAllowed, info, "the request cannot be routed")
+		},
+	)
+}
 
-	r.MethodNotAllowed = instrumentHandler("405", func(w http.ResponseWriter, r *http.Request) {
-		Send(r.Context(), w, http.StatusMethodNotAllowed, info, "the request cannot be routed")
-	})
-
-	r.PanicHandler = func(w http.ResponseWriter, r *http.Request, p interface{}) {
-		logging.FromContext(r.Context()).Error("panic",
-			zap.Any("err", p),
-			zap.String("stacktrace", string(debug.Stack())),
-		)
-		Send(r.Context(), w, http.StatusInternalServerError, info, "internal error")
-	}
-
-	return r
+// DefaultPanicHandlerFunc http handler to handle panics recovered from http handlers.
+func DefaultPanicHandlerFunc(info *AppInfo) http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			Send(r.Context(), w, http.StatusInternalServerError, info, "internal error")
+		},
+	)
 }
 
 // DefaultIndexHandler returns the route index in JSendX format.
 func DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFunc {
-	return func(routes []route.Route) http.HandlerFunc {
+	return func(routes []httpserver.Route) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			data := &route.Index{Routes: routes}
+			data := &httpserver.Index{Routes: routes}
 			Send(r.Context(), w, http.StatusOK, info, data)
 		}
 	}
