@@ -176,7 +176,7 @@ func (c *config) commonMiddleware(noRouteLogger bool) []MiddlewareFn {
 
 func (c *config) setRouter(ctx context.Context) {
 	l := logging.FromContext(ctx)
-	middleware := c.commonMiddleware(true)
+	middleware := c.commonMiddleware(false)
 
 	if c.router.NotFound == nil {
 		c.router.NotFound = ApplyMiddleware(
