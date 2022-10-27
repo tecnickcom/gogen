@@ -9,5 +9,5 @@ metadata:
     backstage.io/techdocs-ref: url:https://github.com/nexmoinc/gosrvlib/tree/main
 spec:
   type: library
-  owner: api.eng.oss@vonage.com
+  owner: nexmoinc/nexmo-oss
   lifecycle: production
