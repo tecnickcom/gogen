@@ -25,7 +25,7 @@
 * [Dependencies](#dependencies)
 * [Documentation](#documentation){{ range $visibility, $groups := (datasource "config").doclinks }}
 	* [{{ $visibility }}](#documentation_{{ $visibility }}){{ range $groupkey, $group := $groups }}
-		* [{{ $group.name }}](documentation_{{ $visibility }}_{{ $groupkey }}){{ end }}{{ end }}
+		* [{{ $group.name }}](#documentation_{{ $visibility }}_{{ $groupkey }}){{ end }}{{ end }}
 * [Slack](#slack)
 * [Development](#development)
 * [Deployment](#deployment)

@@ -24,7 +24,7 @@
 * [Dependencies](#dependencies)
 * [Documentation](#documentation)
 	* [public](#documentation_public)
-		* [General](documentation_public_general)
+		* [General](#documentation_public_general)
 * [Slack](#slack)
 * [Development](#development)
 * [Deployment](#deployment)
