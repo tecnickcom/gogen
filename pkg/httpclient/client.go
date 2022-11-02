@@ -16,8 +16,9 @@ import (
 // Client wraps the default HTTP client functionalities and adds logging and instrumentation capabilities.
 type Client struct {
 	client            *http.Client
-	traceIDHeaderName string
 	component         string
+	logPrefix         string
+	traceIDHeaderName string
 	redactFn          RedactFn
 }
 
@@ -52,11 +53,11 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	ctx, cancel := context.WithTimeout(r.Context(), c.client.Timeout)
 	defer cancel()
 
-	l := logging.WithComponent(ctx, c.component)
+	l := logging.WithComponent(ctx, c.logPrefix+c.component)
 	debug := l.Check(zap.DebugLevel, "debug") != nil
 
 	defer func() {
-		l = l.With(zap.Duration("duration", time.Since(start)))
+		l = l.With(zap.Duration(c.logPrefix+"duration", time.Since(start)))
 
 		if err != nil {
 			l.Error("error", zap.Error(err))
@@ -64,11 +65,11 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 		}
 
 		if debug {
-			l.Debug("outbound")
+			l.Debug(c.logPrefix + "outbound")
 			return
 		}
 
-		l.Info("outbound")
+		l.Info(c.logPrefix + "outbound")
 	}()
 
 	reqID := traceid.FromContext(ctx, uidc.NewID128())
@@ -77,16 +78,16 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	r = r.WithContext(ctx)
 
 	l = l.With(
-		zap.String("traceid", reqID),
-		zap.String("request_method", r.Method),
-		zap.String("request_path", r.URL.Path),
-		zap.String("request_query", r.URL.RawQuery),
-		zap.String("request_uri", r.RequestURI),
+		zap.String(c.logPrefix+"traceid", reqID),
+		zap.String(c.logPrefix+"request_method", r.Method),
+		zap.String(c.logPrefix+"request_path", r.URL.Path),
+		zap.String(c.logPrefix+"request_query", r.URL.RawQuery),
+		zap.String(c.logPrefix+"request_uri", r.RequestURI),
 	)
 
 	if debug {
 		reqDump, _ := httputil.DumpRequestOut(r, true)
-		l = l.With(zap.String("request", c.redactFn(string(reqDump))))
+		l = l.With(zap.String(c.logPrefix+"request", c.redactFn(string(reqDump))))
 	}
 
 	resp, err = c.client.Do(r)
@@ -96,7 +97,7 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 
 	if debug {
 		respDump, _ := httputil.DumpResponse(resp, true)
-		l = l.With(zap.String("response", c.redactFn(string(respDump))))
+		l = l.With(zap.String(c.logPrefix+"response", c.redactFn(string(respDump))))
 	}
 
 	return resp, nil

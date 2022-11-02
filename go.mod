@@ -16,7 +16,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/jstemmer/go-junit-report v1.0.0
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/prometheus/client_golang v1.13.0
+	github.com/prometheus/client_golang v1.13.1
 	github.com/rakyll/gotest v0.0.6
 	github.com/segmentio/kafka-go v0.4.36
 	github.com/spf13/pflag v1.0.5

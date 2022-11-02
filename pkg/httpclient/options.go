@@ -48,3 +48,10 @@ func WithRedactFn(fn RedactFn) Option {
 		c.redactFn = fn
 	}
 }
+
+// WithLogPrefix specifies a string prefix to be added to each log field name in the Do method.
+func WithLogPrefix(prefix string) Option {
+	return func(c *Client) {
+		c.logPrefix = prefix
+	}
+}

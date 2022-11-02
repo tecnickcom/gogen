@@ -52,3 +52,12 @@ func TestWithRedactFn(t *testing.T) {
 	WithRedactFn(v)(c)
 	require.Equal(t, "alphatest", c.redactFn("alpha"))
 }
+
+func TestWithLogPrefix(t *testing.T) {
+	t.Parallel()
+
+	c := &Client{}
+	v := "prefixtest_"
+	WithLogPrefix(v)(c)
+	require.Equal(t, v, c.logPrefix)
+}

@@ -19,12 +19,14 @@ func TestNew(t *testing.T) {
 	timeout := 17 * time.Second
 	traceid := "test-header-123"
 	component := "test-component"
+	logPrefix := "prefixtest_"
 	fn := func(next http.RoundTripper) http.RoundTripper { return next }
 	opts := []Option{
 		WithTimeout(timeout),
 		WithRoundTripper(fn),
 		WithTraceIDHeaderName(traceid),
 		WithComponent(component),
+		WithLogPrefix(logPrefix),
 	}
 	got := New(opts...)
 	require.NotNil(t, got, "New() returned client should not be nil")
