@@ -53,7 +53,7 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	ctx, cancel := context.WithTimeout(r.Context(), c.client.Timeout)
 	defer cancel()
 
-	l := logging.WithComponent(ctx, c.logPrefix+c.component)
+	l := logging.FromContext(ctx).With(zap.String(c.logPrefix+"component", c.component))
 	debug := l.Check(zap.DebugLevel, "debug") != nil
 
 	defer func() {
