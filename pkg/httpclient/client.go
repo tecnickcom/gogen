@@ -47,6 +47,8 @@ func New(opts ...Option) *Client {
 }
 
 // Do performs the HTTP request with added trace ID, logging and metrics.
+//
+//nolint:gocognit
 func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	start := time.Now()
 
@@ -60,7 +62,7 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 		l = l.With(zap.Duration(c.logPrefix+"duration", time.Since(start)))
 
 		if err != nil {
-			l.Error("error", zap.Error(err))
+			l.Error(c.logPrefix+"error", zap.Error(err))
 			return
 		}
 
@@ -86,19 +88,24 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 	)
 
 	if debug {
-		reqDump, _ := httputil.DumpRequestOut(r, true)
-		l = l.With(zap.String(c.logPrefix+"request", c.redactFn(string(reqDump))))
+		reqDump, errd := httputil.DumpRequestOut(r, true)
+		if errd == nil {
+			l = l.With(
+				zap.String(c.logPrefix+"request", c.redactFn(string(reqDump))),
+			)
+		}
 	}
 
 	resp, err = c.client.Do(r)
-	if err != nil {
-		return nil, err //nolint:wrapcheck
+
+	if debug && resp != nil {
+		respDump, errd := httputil.DumpResponse(resp, true)
+		if errd == nil {
+			l = l.With(
+				zap.String(c.logPrefix+"response", c.redactFn(string(respDump))),
+			)
+		}
 	}
 
-	if debug {
-		respDump, _ := httputil.DumpResponse(resp, true)
-		l = l.With(zap.String(c.logPrefix+"response", c.redactFn(string(respDump))))
-	}
-
-	return resp, nil
+	return resp, err //nolint:wrapcheck
 }

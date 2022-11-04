@@ -1,16 +1,18 @@
 package httpclient
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap"
 )
 
 func TestNew(t *testing.T) {
@@ -36,61 +38,150 @@ func TestNew(t *testing.T) {
 	require.Equal(t, fn(http.DefaultTransport), got.client.Transport)
 }
 
+//nolint:gocognit
 func TestClient_Do(t *testing.T) {
 	t.Parallel()
 
+	bodyStr := `TEST BODY OK`
 	body := make([]byte, 0)
+
 	for i := 0; i < 100; i++ {
-		body = append(body, []byte(`TEST BODY OK\n`)...)
+		body = append(body, []byte(bodyStr+`\n`)...)
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(body)
 	}))
-	defer server.Close()
 
-	client := New()
+	t.Cleanup(
+		func() {
+			server.Close()
+		},
+	)
 
-	ctx := context.Background()
+	tests := []struct {
+		name          string
+		logLevel      string
+		logSinkScheme string
+		requestAddr   string
+		opts          []Option
+		wantErr       bool
+	}{
+		{
+			name:          "no options, info level",
+			logLevel:      "info",
+			logSinkScheme: "memdiffa",
+			requestAddr:   server.URL,
+		},
+		{
+			name:          "no options, debug level",
+			logLevel:      "debug",
+			logSinkScheme: "memdiffb",
+			requestAddr:   server.URL,
+		},
+		{
+			name:          "prefix, debug level",
+			logLevel:      "debug",
+			logSinkScheme: "memdiffc",
+			requestAddr:   server.URL,
+			opts:          []Option{WithLogPrefix("testprefix_")},
+		},
+		{
+			name:          "no options, error",
+			logLevel:      "debug",
+			logSinkScheme: "memdiffd",
+			requestAddr:   "/error",
+			wantErr:       true,
+		},
+	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/error", nil)
-	require.NoError(t, err, "failed creating http request: %v", err)
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	resp, err := client.Do(req)
-	require.Nil(t, resp)
-	require.Error(t, err, "client.Do with invalid URL: an error was expected")
+			client := New(tt.opts...)
+			ctx := context.Background()
 
-	req, err = http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
-	require.NoError(t, err, "failed creating http request: %v", err)
+			// Create a sink instance, and register it with zap for the "memory" protocol.
+			sink := &MemorySink{new(bytes.Buffer)}
+			err := zap.RegisterSink(tt.logSinkScheme, func(*url.URL) (zap.Sink, error) {
+				return sink, nil
+			})
+			require.NoError(t, err)
 
-	resp, err = client.Do(req)
-	require.NoError(t, err, "client.Do(): unexpected error = %v", err)
+			l, err := logging.NewLogger(
+				logging.WithFields(
+					zap.String("program", "test_log"),
+					zap.String("version", "1.2.3"),
+					zap.String("release", "4"),
+				),
+				logging.WithFormatStr("json"),
+				logging.WithLevelStr(tt.logLevel),
+				logging.WithOutputPaths([]string{tt.logSinkScheme + "://"}),      // Redirect all messages to the MemorySink.
+				logging.WithErrorOutputPaths([]string{tt.logSinkScheme + "://"}), // Redirect all errors to the MemorySink.
+			)
+			require.NoError(t, err)
+			require.NotNil(t, l)
 
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err, "error closing resp.Body")
-	}()
+			ctx = logging.WithLogger(ctx, l)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, tt.requestAddr, nil)
+			require.NoError(t, err)
 
-	require.NotNil(t, resp, "returned response should not be nil")
+			resp, err := client.Do(req)
 
-	l, err := logging.NewLogger(logging.WithLevel(zapcore.DebugLevel))
-	require.NoError(t, err, "failed creating logger: %v", err)
+			t.Cleanup(
+				func() {
+					if resp != nil {
+						err := resp.Body.Close()
+						require.NoError(t, err, "error closing resp.Body")
+					}
+				},
+			)
 
-	ctx = logging.WithLogger(ctx, l)
-	req, err = http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
-	require.NoError(t, err, "failed creating http request with context: %v", err)
+			// check logs
+			out := sink.String()
+			require.NotEmpty(t, out, "captured log output")
+			require.Contains(t, out, `"`+client.logPrefix+`traceid"`)
 
-	resp, err = client.Do(req)
-	require.NoError(t, err, "client.Do() with context unexpected error = %v", err)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Contains(t, out, `"`+client.logPrefix+`error"`)
+				return
+			}
 
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err, "error closing resp.Body")
-	}()
+			defer func() {
+				err := resp.Body.Close()
+				require.NoError(t, err)
+			}()
 
-	require.NotNil(t, resp, "returned response should not be nil")
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			responseBody, errb := io.ReadAll(resp.Body)
+			require.NoError(t, errb)
+			require.Equal(t, body, responseBody)
+			require.Contains(t, out, `"`+client.logPrefix+`outbound"`)
 
-	responseBody, err := io.ReadAll(resp.Body)
-	require.NoError(t, err, "failed reading the body content: %v", err)
-	require.Equal(t, body, responseBody)
+			if tt.logLevel == "debug" {
+				require.Contains(t, out, `"`+client.logPrefix+`request":"GET / HTTP/1.1`)
+				require.Contains(t, out, `"`+client.logPrefix+`response":"HTTP/1.1 200 OK`)
+				require.Contains(t, out, bodyStr)
+			} else {
+				require.NotContains(t, out, `"`+client.logPrefix+`request":`)
+				require.NotContains(t, out, `"`+client.logPrefix+`response":`)
+				require.NotContains(t, out, bodyStr)
+			}
+		})
+	}
 }
+
+// MemorySink implements zap.Sink by writing all messages to a buffer.
+type MemorySink struct {
+	*bytes.Buffer
+}
+
+// Implement Close and Sync as no-ops to satisfy the interface. The Write
+// method is provided by the embedded buffer.
+
+func (s *MemorySink) Close() error { return nil }
+func (s *MemorySink) Sync() error  { return nil }
