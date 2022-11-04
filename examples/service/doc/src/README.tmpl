@@ -14,24 +14,24 @@
 * **copyright:**   {{ (datasource "config").project.copyright_start_year }}-{{ time.Now.UTC.Year }} {{ (datasource "config").project.copyright_owner }}
 * **license:**     [LICENSE]({{ (datasource "config").project.license_url }})
 * **cvs:**         {{ (datasource "config").project.cvs }}
-{{ if (datasource "config").team }}* **team:**        [{{ (datasource "config").team.name }}]({{ (datasource "config").team.info }}) ([{{ (datasource "config").team.slack }}](https://gosrvlibexample.slack.com/channels/{{ (datasource "config").team.slack }})) [escalation]({{ (datasource "config").team.escalation }}){{ end }}
+{{ if (datasource "config").team }}* **team:**        [{{ (datasource "config").team.name }}]({{ (datasource "config").team.info }}) ([{{ (datasource "config").team.slack }}](https://gosrvlibexampleowner.slack.com/channels/{{ (datasource "config").team.slack }})) [escalation]({{ (datasource "config").team.escalation }}){{ end }}
 
 [![check]({{ (datasource "config").project.cvs }}/actions/workflows/check.yaml/badge.svg)]({{ (datasource "config").project.cvs }}/actions/workflows/check.yaml)
 
 ----------
 
 ## TOC
-* [Description](#description)
-* [Dependencies](#dependencies)
+* [Description](#description){{ if (datasource "config").dependencies }}
+* [Dependencies](#dependencies){{ end }}
 * [Documentation](#documentation){{ range $visibility, $groups := (datasource "config").doclinks }}
 	* [{{ $visibility }}](#documentation_{{ $visibility }}){{ range $groupkey, $group := $groups }}
-		* [{{ $group.name }}](#documentation_{{ $visibility }}_{{ $groupkey }}){{ end }}{{ end }}
-* [Slack](#slack)
+		* [{{ $group.name }}](#documentation_{{ $visibility }}_{{ $groupkey }}){{ end }}{{ end }}{{ if (datasource "config").slack }}
+* [Slack](#slack){{ end }}
 * [Development](#development)
-* [Deployment](#deployment)
+* [Deployment](#deployment){{ if (datasource "config").environment }}
 * [Environments](#environments){{ range $envkey, $env := (datasource "config").environment }}
 	* [{{ $env.name }}](#{{ $envkey }}){{ range $reskey, $resource := $env.resource }}
-		* [{{ $resource.name }}](#environment_{{ $envkey }}_{{ $reskey }}){{ end }}{{ end }}
+		* [{{ $resource.name }}](#environment_{{ $envkey }}_{{ $reskey }}){{ end }}{{ end }}{{ end }}
 
 ----------
 
@@ -70,14 +70,16 @@
 
 {{ if (datasource "config").slack }}
 <a name="slack"></a>
-## Slack
-* Escalation channel(s):{{ range (datasource "config").slack.escalation }}
-	* [{{ . }}](https://gosrvlibexample.slack.com/channels/{{ . }}){{ end }}
-* Other channels:{{ range (datasource "config").slack.other }}
-	* [{{ . }}](https://gosrvlibexample.slack.com/channels/{{ . }}){{ end }}
-	
+## Slack{{ range $group, $channels := (datasource "config").slack }}
+
+<a name="slack_{{ $group }}"></a>
+### {{ $group }}{{ range $chkey, $ch := $channels }}
+
+* [#{{ $ch.channel }}](https://gosrvlibexampleowner.slack.com/channels/{{ $ch.channel }}){{ if $ch.description }} {{ $ch.description }}{{ end }}{{ end }}
+{{ end }}
+
 ----------
-{{end}}
+{{ end }}
 
 <a name="development"></a>
 ## Development

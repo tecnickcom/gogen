@@ -604,20 +604,50 @@
     },
     "slack": {
       "additionalProperties": {
-        "description": "Slack channels",
-        "items": {
-          "description": "Slack channel",
+        "additionalProperties": {
+          "additionalProperties": false,
+          "description": "Channel",
+          "properties": {
+            "channel": {
+              "description": "Slack channel",
+              "examples": [
+                "#-example-channel"
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description": {
+              "description": "Slack channel markdown description",
+              "examples": [
+                "__Description example__"
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "channel",
+            "description"
+          ],
           "type": [
-            "string",
+            "object",
             "null"
           ]
         },
+        "description": "Group",
+        "propertyNames": {
+          "format": "string"
+        },
         "type": [
-          "array",
+          "object",
           "null"
         ]
       },
-      "description": "List of project-related Slack channels",
+      "description": "Slack channels",
       "propertyNames": {
         "format": "string"
       },
