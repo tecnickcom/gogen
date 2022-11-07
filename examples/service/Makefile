@@ -282,8 +282,8 @@ clean:
 # Validate JSON configuration files against the JSON schema
 .PHONY: confcheck
 confcheck:
-	jsonschema --output pretty --instance resources/test/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
-	jsonschema --output pretty --instance resources/etc/${PROJECT}/config.json resources/etc/${PROJECT}/config.schema.json
+	check-jsonschema --schemafile resources/etc/${PROJECT}/config.schema.json resources/test/etc/${PROJECT}/config.json 
+	check-jsonschema --schemafile resources/etc/${PROJECT}/config.schema.json resources/etc/${PROJECT}/config.json
 
 # Generate the coverage report
 .PHONY: coverage
@@ -432,7 +432,7 @@ generate:
 .PHONY: gendoc
 gendoc:
 	yq --input-format yaml --output-format json < doc/src/config.yaml . > doc/src/config.json
-	jsonschema --output pretty --instance doc/src/config.json doc/src/config.schema.json
+	check-jsonschema --schemafile doc/src/config.schema.json doc/src/config.json
 	gomplate \
 	--datasource config=./doc/src/config.json \
 	--template description=./doc/src/description.tmpl \

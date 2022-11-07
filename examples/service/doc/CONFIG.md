@@ -64,15 +64,15 @@ The configuration format is a single JSON structure with the following fields:
 
 ## Validate Configuration
 
-The jsonschema Python program can be used to check the validity of the configuration file against the JSON schema.
+The check-jsonschema Python program can be used to check the validity of the configuration file against the JSON schema.
 It can be installed using the Python pip install tool:
 
 ```
-sudo pip install jsonschema
+sudo pip install check-jsonschema
 ```
 
 Example usage:
 
 ```
-json validate --schema-file=/etc/gosrvlibexample/config.schema.json --document-file=/etc/gosrvlibexample/config.json
+check-jsonschema --schemafile resources/etc/gosrvlibexample/config.schema.json resources/etc/gosrvlibexample/config.json
 ```
