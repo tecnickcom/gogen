@@ -106,6 +106,9 @@ DOCKER_REGISTRY_DEV=
 # Docker repository for the prod environment
 DOCKER_REGISTRY_PROD=
 
+# Command used to check the configuration files
+CONFCHECKCMD=check-jsonschema --schemafile resources/etc/${PROJECT}/config.schema.json
+
 # Set default AWS region (if using AWS for deployments)
 ifeq ($(AWS_DEFAULT_REGION),)
 	AWS_DEFAULT_REGION=eu-west-1
@@ -282,8 +285,8 @@ clean:
 # Validate JSON configuration files against the JSON schema
 .PHONY: confcheck
 confcheck:
-	check-jsonschema --schemafile resources/etc/${PROJECT}/config.schema.json resources/test/etc/${PROJECT}/config.json 
-	check-jsonschema --schemafile resources/etc/${PROJECT}/config.schema.json resources/etc/${PROJECT}/config.json
+	${CONFCHECKCMD} resources/test/etc/${PROJECT}/config.json
+	${CONFCHECKCMD} resources/etc/${PROJECT}/config.json
 
 # Generate the coverage report
 .PHONY: coverage
