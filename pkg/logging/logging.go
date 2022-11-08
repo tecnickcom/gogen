@@ -102,12 +102,14 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 	}
 
 	l, err := zapCfg.Build()
-	if err == nil {
-		l = l.With(cfg.fields...)
-		l = WithLevelFunctionHook(l, cfg.incMetricLogLevel)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
 	}
-	//nolint:wrapcheck
-	return l, err
+
+	l = l.With(cfg.fields...)
+	l = WithLevelFunctionHook(l, cfg.incMetricLogLevel)
+
+	return l, nil
 }
 
 // NopLogger returns a no operation logger.
@@ -140,7 +142,7 @@ func FromContext(ctx context.Context) *zap.Logger {
 		return l
 	}
 
-	return zap.NewNop()
+	return NopLogger()
 }
 
 // WithLogger returns a new context with the given logger.
