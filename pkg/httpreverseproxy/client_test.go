@@ -11,6 +11,7 @@ import (
 	libhttputil "github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestNew(t *testing.T) {
@@ -34,14 +35,20 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name:        "succeeds with custom http client",
-			serviceAddr: "http://service.domain.invalid:1236/",
+			serviceAddr: "http://service.domain.invalid:1235/",
 			opts:        []Option{WithHTTPClient(&testHTTPClient{})},
 			wantErr:     false,
 		},
 		{
 			name:        "succeeds with custom reverse proxy",
-			serviceAddr: "http://service.domain.invalid:1237/",
+			serviceAddr: "http://service.domain.invalid:1236/",
 			opts:        []Option{WithReverseProxy(&httputil.ReverseProxy{})},
+			wantErr:     false,
+		},
+		{
+			name:        "succeeds with custom logger",
+			serviceAddr: "http://service.domain.invalid:1237/",
+			opts:        []Option{WithLogger(zap.NewNop())},
 			wantErr:     false,
 		},
 	}
@@ -64,21 +71,26 @@ func TestNew(t *testing.T) {
 	}
 }
 
+//nolint:gocognit
 func TestClient_ForwardRequest(t *testing.T) {
 	t.Parallel()
 
-	doneCh := make(chan struct{})
+	const timeout = 1 * time.Second
 
 	// setup target test server
 	targetMux := http.NewServeMux()
 
 	targetServer := httptest.NewServer(targetMux)
-	defer targetServer.Close()
+
+	t.Cleanup(
+		func() {
+			targetServer.Close()
+		},
+	)
 
 	targetMux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			libhttputil.SendStatus(r.Context(), w, http.StatusOK)
-			close(doneCh)
 		}()
 
 		rd, err := httputil.DumpRequest(r, false)
@@ -92,29 +104,96 @@ func TestClient_ForwardRequest(t *testing.T) {
 		require.Equal(t, r.Header.Get("X-Forwarded-For"), "127.0.0.1")
 	})
 
-	// setup proxy test server
-	c, err := New(targetServer.URL)
-	require.NoError(t, err)
+	targetMux.HandleFunc("/badrequest", func(w http.ResponseWriter, r *http.Request) {
+		libhttputil.SendStatus(r.Context(), w, http.StatusBadRequest)
+	})
 
-	proxyMux := testutil.RouterWithHandler(http.MethodGet, "/proxy/*path", c.ForwardRequest)
+	targetMux.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(1 + timeout)
+	})
 
-	proxyServer := httptest.NewServer(proxyMux)
-	defer proxyServer.Close()
+	tests := []struct {
+		name       string
+		path       string
+		status     int
+		withLogger bool
+		wantErr    bool
+	}{
+		{
+			name:   "success OK",
+			path:   "/proxy/test",
+			status: http.StatusOK,
+		},
+		{
+			name:   "Not Found",
+			path:   "/proxy/notfound",
+			status: http.StatusNotFound,
+		},
+		{
+			name:   "Bad Request",
+			path:   "/proxy/badrequest",
+			status: http.StatusBadRequest,
+		},
+		{
+			name:    "Backend Error",
+			path:    "/proxy/error",
+			wantErr: true,
+		},
+		{
+			name:       "Backend Error with logger",
+			path:       "/proxy/error",
+			withLogger: true,
+			wantErr:    true,
+		},
+	}
 
-	// perform test
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, proxyServer.URL+"/proxy/test", nil)
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	hc := &http.Client{Timeout: 1 * time.Second}
-	resp, err := hc.Do(req)
-	require.NotNil(t, resp)
+			opts := []Option{}
+			if tt.withLogger {
+				opts = append(opts, WithLogger(zap.NewNop()))
+			}
 
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err)
-	}()
+			// setup proxy test server
+			c, err := New(targetServer.URL, opts...)
+			require.NoError(t, err)
 
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+			proxyMux := testutil.RouterWithHandler(http.MethodGet, "/proxy/*path", c.ForwardRequest)
 
-	<-doneCh
+			proxyServer := httptest.NewServer(proxyMux)
+
+			t.Cleanup(
+				func() {
+					proxyServer.Close()
+				},
+			)
+
+			ctx := testutil.Context()
+
+			// perform test
+			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+tt.path, nil)
+
+			hc := &http.Client{Timeout: timeout}
+			resp, err := hc.Do(req)
+
+			t.Cleanup(
+				func() {
+					if resp != nil {
+						err := resp.Body.Close()
+						require.NoError(t, err)
+					}
+				},
+			)
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.status, resp.StatusCode)
+			}
+		})
+	}
 }

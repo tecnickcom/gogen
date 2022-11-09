@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 type testHTTPClient struct{}
@@ -29,4 +30,13 @@ func TestWithReverseProxy(t *testing.T) {
 	c := &Client{}
 	WithReverseProxy(v)(c)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(c.proxy).Pointer())
+}
+
+func TestWithLogger(t *testing.T) {
+	t.Parallel()
+
+	l := zap.NewNop()
+	c := &Client{}
+	WithLogger(l)(c)
+	require.Equal(t, reflect.ValueOf(l).Pointer(), reflect.ValueOf(c.logger).Pointer())
 }
