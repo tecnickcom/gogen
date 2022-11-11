@@ -6,6 +6,7 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/randkey"
 )
 
+//nolint:testableexamples
 func ExampleNew() {
 	// generate a new key
 	k := randkey.New()
@@ -13,6 +14,7 @@ func ExampleNew() {
 	fmt.Println(k)
 }
 
+//nolint:testableexamples
 func ExampleRandKey_Key() {
 	// generate a new random key as uint64
 	k := randkey.New().Key()
@@ -20,6 +22,7 @@ func ExampleRandKey_Key() {
 	fmt.Println(k)
 }
 
+//nolint:testableexamples
 func ExampleRandKey_String() {
 	// generate a new random key as 36-char encoded string
 	k := randkey.New().String()
@@ -27,6 +30,7 @@ func ExampleRandKey_String() {
 	fmt.Println(k)
 }
 
+//nolint:testableexamples
 func ExampleRandKey_Hex() {
 	// generate a new random key as fixed-length 16 digits hexadecimal string key.
 	k := randkey.New().Hex()

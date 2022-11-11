@@ -124,7 +124,6 @@ func TestS3Client_GetObject(t *testing.T) {
 		want    *Object
 		wantErr bool
 	}{
-
 		{
 			name:   "success",
 			key:    "k1",

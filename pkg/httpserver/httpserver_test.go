@@ -63,7 +63,8 @@ func Test_defaultIndexHandler(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
-	expBody, _ := json.Marshal(&Index{Routes: routes})
+	expBody, err := json.Marshal(&Index{Routes: routes})
+	require.NoError(t, err)
 
 	require.Equal(t, string(expBody)+"\n", string(body))
 }

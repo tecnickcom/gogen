@@ -119,7 +119,7 @@ func (ec *EnumCache) SortIDs() []int {
 
 // DecodeBinaryMap decodes a int binary map into a list of string names.
 // The EnumCache must contain the mapping between the bit values and the names.
-func (ec *EnumCache) DecodeBinaryMap(v int) (s []string, err error) {
+func (ec *EnumCache) DecodeBinaryMap(v int) ([]string, error) {
 	ec.RLock()
 	defer ec.RUnlock()
 
@@ -128,7 +128,7 @@ func (ec *EnumCache) DecodeBinaryMap(v int) (s []string, err error) {
 
 // EncodeBinaryMap encode a list of string names into a int binary map.
 // The EnumCache must contain the mapping between the bit values and the names.
-func (ec *EnumCache) EncodeBinaryMap(s []string) (v int, err error) {
+func (ec *EnumCache) EncodeBinaryMap(s []string) (int, error) {
 	ec.RLock()
 	defer ec.RUnlock()
 

@@ -7,6 +7,7 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/uid"
 )
 
+//nolint:testableexamples
 func ExampleNewID64() {
 	err := uid.InitRandSeed()
 	if err != nil {
@@ -18,6 +19,7 @@ func ExampleNewID64() {
 	fmt.Println(v)
 }
 
+//nolint:testableexamples
 func ExampleNewID128() {
 	err := uid.InitRandSeed()
 	if err != nil {

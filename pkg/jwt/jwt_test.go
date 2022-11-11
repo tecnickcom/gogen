@@ -383,8 +383,7 @@ func testUserHash(username string) ([]byte, error) {
 	return bcrypt.GenerateFromPassword([]byte(username), bcrypt.MinCost) //nolint:wrapcheck
 }
 
-type testSigningMethodError struct {
-}
+type testSigningMethodError struct{}
 
 func (c *testSigningMethodError) Verify(signingString, signature string, key interface{}) error {
 	return fmt.Errorf("VERIFY ERROR")

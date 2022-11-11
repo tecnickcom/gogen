@@ -14,13 +14,9 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-const (
-	regexPatternEmptySpaces = `\s{1,}`
-)
+const regexPatternEmptySpaces = `\s{1,}`
 
-var (
-	regexEmptySpaces = regexp.MustCompile(regexPatternEmptySpaces)
-)
+var regexEmptySpaces = regexp.MustCompile(regexPatternEmptySpaces)
 
 // StringKey stores the encoded key.
 type StringKey struct {

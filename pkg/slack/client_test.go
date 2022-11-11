@@ -14,6 +14,8 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
+	timeout := 100 * time.Millisecond
+
 	tests := []struct {
 		name        string
 		serviceAddr string
@@ -33,10 +35,10 @@ func TestNew(t *testing.T) {
 			wantErr:     false,
 		},
 		{
-			name:        "succeeds with overridden timeout",
+			name:        "succeeds with overridden timeouts",
 			serviceAddr: "http://service.domain.invalid:1234",
-			opts:        []Option{WithTimeout(2 * time.Second)},
-			wantTimeout: 2 * time.Second,
+			opts:        []Option{WithTimeout(timeout), WithPingTimeout(timeout)},
+			wantTimeout: timeout,
 			wantErr:     false,
 		},
 	}
@@ -55,6 +57,7 @@ func TestNew(t *testing.T) {
 				"#default-channel",
 				tt.opts...,
 			)
+
 			if tt.wantErr {
 				require.Nil(t, c, "New() returned client should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
@@ -71,6 +74,8 @@ func TestNew(t *testing.T) {
 func TestClient_HealthCheck(t *testing.T) {
 	t.Parallel()
 
+	timeout := 100 * time.Millisecond
+
 	tests := []struct {
 		name                  string
 		pingHandlerDelay      time.Duration
@@ -81,7 +86,7 @@ func TestClient_HealthCheck(t *testing.T) {
 	}{
 		{
 			name:                  "returns error because of timeout",
-			pingHandlerDelay:      2 * time.Second,
+			pingHandlerDelay:      timeout + 1,
 			pingHandlerStatusCode: http.StatusOK,
 			pingBody:              &status{Status: "ok"},
 			wantErr:               true,
@@ -161,6 +166,8 @@ func TestClient_HealthCheck(t *testing.T) {
 				"",
 				WithRetryAttempts(1),
 				WithPingURL(ts.URL),
+				WithTimeout(timeout),
+				WithPingTimeout(timeout),
 			)
 			require.NoError(t, err, "Client.HealthCheck() create client unexpected error = %v", err)
 
@@ -180,6 +187,8 @@ func TestClient_HealthCheck(t *testing.T) {
 
 func TestClient_Send(t *testing.T) {
 	t.Parallel()
+
+	timeout := 100 * time.Millisecond
 
 	tests := []struct {
 		name           string
@@ -207,7 +216,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "fails because of timeout",
 			webhookHandler: func(w http.ResponseWriter, r *http.Request) {
-				time.Sleep(2 * time.Second)
+				time.Sleep(timeout + 1)
 				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
 			},
 			text:      "text TIMEOUT",
@@ -259,7 +268,15 @@ func TestClient_Send(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 
-			c, err := New(ts.URL, "default-username", ":default-iconEmoji:", "https://default.iconURL.invalid", "#default-channel")
+			c, err := New(
+				ts.URL,
+				"default-username",
+				":default-iconEmoji:",
+				"https://default.iconURL.invalid",
+				"#default-channel",
+				WithTimeout(timeout),
+				WithPingTimeout(timeout),
+			)
 			require.NoError(t, err, "create client unexpected error = %v", err)
 
 			if tt.clientFunc != nil {

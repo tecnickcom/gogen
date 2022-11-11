@@ -142,7 +142,7 @@ func (c *Client) Send(ctx context.Context, text, username, iconEmoji, iconURL, c
 
 // sendData sends the specified data.
 func (c *Client) sendData(ctx context.Context, reqData *message) error {
-	reqBody, _ := json.Marshal(reqData)
+	reqBody, _ := json.Marshal(reqData) //nolint:errchkjson
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, c.address, bytes.NewReader(reqBody))
 	if err != nil {

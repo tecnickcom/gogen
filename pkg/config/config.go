@@ -75,6 +75,8 @@ type Configuration interface {
 }
 
 // Viper is the local interface to the actual viper to allow for mocking.
+//
+//nolint:interfacebloat
 type Viper interface {
 	AddConfigPath(in string)
 	AddRemoteProvider(provider, endpoint, path string) error

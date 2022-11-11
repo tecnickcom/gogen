@@ -73,7 +73,7 @@ func (c *Client) ListKeys(ctx context.Context, prefix string) ([]string, error) 
 		return nil, fmt.Errorf("cannot list s3 keys: %w", err)
 	}
 
-	var keysList = make([]string, 0, len(l.Contents))
+	keysList := make([]string, 0, len(l.Contents))
 	for _, key := range l.Contents {
 		keysList = append(keysList, aws.ToString(key.Key))
 	}

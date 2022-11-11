@@ -45,6 +45,7 @@ func ExampleFromContext() {
 	// default-2-616841
 }
 
+//nolint:dupword
 func ExampleSetHTTPRequestHeaderFromContext() {
 	ctx := context.Background()
 

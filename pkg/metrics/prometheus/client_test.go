@@ -28,14 +28,15 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "succeeds with custom options",
-			opts: []Option{WithCollector(
-				prometheus.NewGauge(
-					prometheus.GaugeOpts{
-						Name: "test",
-						Help: "Test collector.",
-					},
+			opts: []Option{
+				WithCollector(
+					prometheus.NewGauge(
+						prometheus.GaugeOpts{
+							Name: "test",
+							Help: "Test collector.",
+						},
+					),
 				),
-			),
 			},
 			wantErr: false,
 		},
@@ -46,14 +47,15 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "fails with duplicate collector",
-			opts: []Option{WithCollector(
-				prometheus.NewGauge(
-					prometheus.GaugeOpts{
-						Name: NameInFlightRequests,
-						Help: "Test collector.",
-					},
+			opts: []Option{
+				WithCollector(
+					prometheus.NewGauge(
+						prometheus.GaugeOpts{
+							Name: NameInFlightRequests,
+							Help: "Test collector.",
+						},
+					),
 				),
-			),
 			},
 			wantErr: true,
 		},

@@ -13,7 +13,7 @@ import (
 func TestWithConnectFunc(t *testing.T) {
 	t.Parallel()
 
-	v := func(ctx context.Context, cfg *config) (db *sql.DB, err error) {
+	v := func(ctx context.Context, cfg *config) (*sql.DB, error) {
 		// mock function
 		return nil, nil
 	}

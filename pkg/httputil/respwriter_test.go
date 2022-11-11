@@ -33,7 +33,6 @@ func (rw *mockResponseWriter) Write(in []byte) (int, error) {
 }
 
 func (rw *mockResponseWriter) WriteHeader(statusCode int) {
-
 }
 
 func (rw *mockResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
@@ -46,8 +45,7 @@ func (rw *mockResponseWriter) Push(target string, opts *http.PushOptions) error 
 	return nil
 }
 
-type mockBrokenResponseWriter struct {
-}
+type mockBrokenResponseWriter struct{}
 
 func newMockBrokenResponseWriter() *mockBrokenResponseWriter {
 	return &mockBrokenResponseWriter{}
@@ -62,7 +60,6 @@ func (rw *mockBrokenResponseWriter) Write(in []byte) (int, error) {
 }
 
 func (rw *mockBrokenResponseWriter) WriteHeader(statusCode int) {
-
 }
 
 func TestNewWrapResponseWriter(t *testing.T) {
@@ -100,8 +97,8 @@ func Test_responseWriterWrapper_Status(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	ww := responseWriterWrapper{ResponseWriter: rr}
-	ww.WriteHeader(207)
-	require.Equal(t, 207, ww.Status())
+	ww.WriteHeader(http.StatusMultiStatus)
+	require.Equal(t, http.StatusMultiStatus, ww.Status())
 }
 
 func Test_responseWriterWrapper_Tee(t *testing.T) {
@@ -135,10 +132,10 @@ func Test_responseWriterWrapper_WriteHeader(t *testing.T) {
 	t.Parallel()
 
 	ww := responseWriterWrapper{ResponseWriter: httptest.NewRecorder()}
-	ww.WriteHeader(204)
-	require.Equal(t, 204, ww.Status())
-	ww.WriteHeader(301)
-	require.Equal(t, 204, ww.Status())
+	ww.WriteHeader(http.StatusNoContent)
+	require.Equal(t, http.StatusNoContent, ww.Status())
+	ww.WriteHeader(http.StatusMovedPermanently)
+	require.Equal(t, http.StatusNoContent, ww.Status())
 }
 
 func Test_responseWriterWrapper_Hijack(t *testing.T) {

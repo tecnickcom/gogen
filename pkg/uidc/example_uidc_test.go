@@ -6,12 +6,14 @@ import (
 	"github.com/nexmoinc/gosrvlib/pkg/uidc"
 )
 
+//nolint:testableexamples
 func ExampleNewID64() {
 	v := uidc.NewID64()
 
 	fmt.Println(v)
 }
 
+//nolint:testableexamples
 func ExampleNewID128() {
 	v := uidc.NewID128()
 

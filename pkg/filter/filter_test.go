@@ -195,6 +195,7 @@ func TestFilter_ParseURLQuery(t *testing.T) {
 	}
 }
 
+//nolint:maintidx
 func TestFilter_Apply(t *testing.T) {
 	t.Parallel()
 

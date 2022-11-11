@@ -71,7 +71,7 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 	}
 
 	// sub-command to print the version
-	var versionCmd = &cobra.Command{
+	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print this program version",
 		Run: func(cmd *cobra.Command, args []string) {

@@ -38,15 +38,18 @@ func New(opts ...Option) (*Validator, error) {
 }
 
 // ValidateStruct validates the structure fields tagged with "validate" and returns a multierror.
-func (v *Validator) ValidateStruct(obj interface{}) (err error) {
+func (v *Validator) ValidateStruct(obj interface{}) error {
 	return v.ValidateStructCtx(context.Background(), obj)
 }
 
 // ValidateStructCtx validates the structure fields tagged with "validate" and returns a multierror.
-func (v *Validator) ValidateStructCtx(ctx context.Context, obj interface{}) (err error) {
+func (v *Validator) ValidateStructCtx(ctx context.Context, obj interface{}) error {
 	vErr := v.v.StructCtx(ctx, obj)
 
-	var valErr vt.ValidationErrors
+	var (
+		valErr vt.ValidationErrors
+		err    error
+	)
 
 	if errors.As(vErr, &valErr) {
 		for _, fe := range valErr {
@@ -68,7 +71,7 @@ func (v *Validator) ValidateStructCtx(ctx context.Context, obj interface{}) (err
 }
 
 // tagError set the error message associated with the validation tag.
-func (v *Validator) tagError(fe vt.FieldError, tag string) (err error) {
+func (v *Validator) tagError(fe vt.FieldError, tag string) error {
 	tagParts := strings.SplitN(tag, "=", 2)
 	tagKey := tagParts[0]
 	tagParam := fe.Param()

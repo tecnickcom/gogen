@@ -24,12 +24,12 @@ const (
 )
 
 // BitMapToStrings converts a int bitmap value into a string slice.
-func BitMapToStrings(enum map[int]string, v int) (s []string, err error) {
+func BitMapToStrings(enum map[int]string, v int) ([]string, error) {
 	if v == 0 {
 		return []string{}, nil
 	}
 
-	s = make([]string, 0, maxBit)
+	s := make([]string, 0, maxBit)
 	errBits := make([]int, 0, maxBit)
 
 	i := 1
@@ -47,6 +47,8 @@ func BitMapToStrings(enum map[int]string, v int) (s []string, err error) {
 		i = (i << 1)
 	}
 
+	var err error
+
 	if len(errBits) > 0 {
 		err = fmt.Errorf("unknown bit values: %v", errBits)
 	}
@@ -55,8 +57,10 @@ func BitMapToStrings(enum map[int]string, v int) (s []string, err error) {
 }
 
 // StringsToBitMap converts a string slice into a int bitmap value.
-func StringsToBitMap(enum map[string]int, s []string) (v int, err error) {
+func StringsToBitMap(enum map[string]int, s []string) (int, error) {
 	errStrings := make([]string, 0, maxBit)
+
+	var v int
 
 	for _, key := range s {
 		id, ok := enum[key]
@@ -66,6 +70,8 @@ func StringsToBitMap(enum map[string]int, s []string) (v int, err error) {
 			errStrings = append(errStrings, key)
 		}
 	}
+
+	var err error
 
 	if len(errStrings) > 0 {
 		err = fmt.Errorf("unknown string values: %q", errStrings)

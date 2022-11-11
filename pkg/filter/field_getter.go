@@ -12,9 +12,7 @@ const (
 	FieldNameSeparator = "."
 )
 
-var (
-	errFieldNotFound = errors.New("field not found")
-)
+var errFieldNotFound = errors.New("field not found")
 
 // reflectPath represents a field path (e.g. address.country) as the indices of the fields (e.g. [2,1]) that can be used with reflect.Value.Field(i int).
 type reflectPath []int

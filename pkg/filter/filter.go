@@ -131,7 +131,7 @@ func (p *Processor) ParseURLQuery(q url.Values) ([][]Rule, error) {
 // This is a shortcut to ApplySubset with 0 offset and maxResults length.
 //
 // Returns the length of the filtered slice, the total number of elements that matched the filter, and the eventual error.
-func (p *Processor) Apply(rules [][]Rule, slicePtr interface{}) (sliceLen, totalMatches uint, err error) {
+func (p *Processor) Apply(rules [][]Rule, slicePtr interface{}) (uint, uint, error) {
 	return p.ApplySubset(rules, slicePtr, 0, p.maxResults)
 }
 
@@ -142,7 +142,7 @@ func (p *Processor) Apply(rules [][]Rule, slicePtr interface{}) (sliceLen, total
 // Depending on length, the filtered slice will only contain a set number of elements.
 //
 // Returns the length of the filtered slice, the total number of elements that matched the filter, and the eventual error.
-func (p *Processor) ApplySubset(rules [][]Rule, slicePtr interface{}, offset, length uint) (sliceLen, totalMatches uint, err error) {
+func (p *Processor) ApplySubset(rules [][]Rule, slicePtr interface{}, offset, length uint) (uint, uint, error) {
 	if length < 1 {
 		return 0, 0, errors.New("length must be at least 1")
 	}
@@ -151,7 +151,7 @@ func (p *Processor) ApplySubset(rules [][]Rule, slicePtr interface{}, offset, le
 		return 0, 0, errors.New("length must be less than maxResults")
 	}
 
-	err = p.checkRulesCount(rules)
+	err := p.checkRulesCount(rules)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -194,8 +194,13 @@ func (p *Processor) checkRulesCount(rules [][]Rule) error {
 //
 // n is number of matched elements in the slice.
 // m is number of total matched elements.
-func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length int, matcher func(interface{}) (bool, error)) (n int, m uint, err error) {
+func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length int, matcher func(interface{}) (bool, error)) (int, uint, error) {
 	skip := offset
+
+	var (
+		n int
+		m uint
+	)
 
 	for i := 0; i < slice.Len(); i++ {
 		value := slice.Index(i)

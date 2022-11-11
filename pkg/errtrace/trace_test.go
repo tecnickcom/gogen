@@ -20,7 +20,7 @@ func TestTrace(t *testing.T) {
 	want := "/pkg/errtrace/trace_test.go, line: 13, function: github.com/nexmoinc/gosrvlib/pkg/errtrace.errorTest, error: ERROR FUNC"
 	require.Contains(t, err.Error(), want, "unexpected output %v, want %v", err, want)
 
-	var testErr = Trace(fmt.Errorf("ERROR VAR"))
+	testErr := Trace(fmt.Errorf("ERROR VAR"))
 
 	want = "/pkg/errtrace/trace_test.go, line: 23, function: github.com/nexmoinc/gosrvlib/pkg/errtrace.TestTrace, error: ERROR VAR"
 	require.Contains(t, testErr.Error(), want, "unexpected output %v, want %v", testErr, want)

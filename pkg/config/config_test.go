@@ -219,7 +219,7 @@ func Test_loadLocalConfig(t *testing.T) {
 				defer func() { _ = os.RemoveAll(configDir) }()
 
 				tmpFilePath := filepath.Join(configDir, "config.json")
-				require.NoError(t, os.WriteFile(tmpFilePath, tt.configContent, 0600), "failed writing temp config file: %v", err)
+				require.NoError(t, os.WriteFile(tmpFilePath, tt.configContent, 0o600), "failed writing temp config file: %v", err)
 			}
 
 			v := tt.setupViper(ctrl)
@@ -601,7 +601,7 @@ func Test_loadFromRemoteSource(t *testing.T) {
 	}
 }
 
-//nolint:gocognit,tparallel
+//nolint:gocognit,tparallel,maintidx
 func Test_loadConfig(t *testing.T) {
 	t.Parallel()
 
@@ -1009,7 +1009,7 @@ func Test_loadConfig(t *testing.T) {
 				defer func() { _ = os.RemoveAll(tmpConfigDir) }()
 
 				tmpFilePath := filepath.Join(tmpConfigDir, "config.json")
-				require.NoError(t, os.WriteFile(tmpFilePath, tt.configContent, 0600), "failed writing temp config file: %v", err)
+				require.NoError(t, os.WriteFile(tmpFilePath, tt.configContent, 0o600), "failed writing temp config file: %v", err)
 			}
 
 			var localViper Viper
@@ -1088,7 +1088,7 @@ func TestLoad(t *testing.T) {
   }
 }
 `)
-	require.NoError(t, os.WriteFile(tmpFilePath, configContent, 0600), "failed writing temp config file: %v", err)
+	require.NoError(t, os.WriteFile(tmpFilePath, configContent, 0o600), "failed writing temp config file: %v", err)
 
 	targetConfig := &testConfig{}
 

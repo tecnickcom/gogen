@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:gocognit,paralleltest,tparallel
+//nolint:gocognit,paralleltest
 func Test_bind(t *testing.T) {
 	tests := []struct {
 		name           string

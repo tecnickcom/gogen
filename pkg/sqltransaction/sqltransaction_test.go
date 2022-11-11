@@ -95,3 +95,58 @@ func Test_Exec(t *testing.T) {
 		})
 	}
 }
+
+type dbMock struct {
+	*sql.DB
+	givenOptions *sql.TxOptions
+}
+
+func (d *dbMock) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	d.givenOptions = opts
+	return d.DB.BeginTx(ctx, opts) //nolint:wrapcheck
+}
+
+func Test_ExecWithOptions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		options *sql.TxOptions
+	}{
+		{
+			name:    "without options",
+			options: nil,
+		},
+		{
+			name: "with READ_COMMITTED isolation level",
+			options: &sql.TxOptions{
+				Isolation: sql.LevelReadCommitted,
+			},
+		},
+		{
+			name: "with ReadOnly",
+			options: &sql.TxOptions{
+				ReadOnly: true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockDB, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer func() { _ = mockDB.Close() }()
+
+			mock.ExpectBegin()
+			mock.ExpectCommit()
+
+			db := &dbMock{DB: mockDB}
+			err = ExecWithOptions(testutil.Context(), db, func(ctx context.Context, tx *sql.Tx) error { return nil }, tt.options)
+			require.NoError(t, err)
+			require.Equal(t, tt.options, db.givenOptions)
+		})
+	}
+}

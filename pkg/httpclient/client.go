@@ -49,7 +49,7 @@ func New(opts ...Option) *Client {
 // Do performs the HTTP request with added trace ID, logging and metrics.
 //
 //nolint:gocognit
-func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
+func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	start := time.Now()
 
 	ctx, cancel := context.WithTimeout(r.Context(), c.client.Timeout)
@@ -57,6 +57,8 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 
 	l := logging.FromContext(ctx).With(zap.String(c.logPrefix+"component", c.component))
 	debug := l.Check(zap.DebugLevel, "debug") != nil
+
+	var err error
 
 	defer func() {
 		l = l.With(zap.Duration(c.logPrefix+"duration", time.Since(start)))
@@ -95,6 +97,8 @@ func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
 			)
 		}
 	}
+
+	var resp *http.Response
 
 	resp, err = c.client.Do(r)
 

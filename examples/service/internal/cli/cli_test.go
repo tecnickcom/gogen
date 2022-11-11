@@ -55,7 +55,8 @@ func TestNew(t *testing.T) {
 			osArgs:     []string{AppName, "-c"},
 			wantErr:    true,
 			wantOutput: matchErrorOutput,
-		}, {
+		},
+		{
 			name:       "fails with incomplete config dir (long)",
 			osArgs:     []string{AppName, "--configDir"},
 			wantErr:    true,

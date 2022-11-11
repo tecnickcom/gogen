@@ -92,9 +92,11 @@ func TestCheckHttpStatus(t *testing.T) {
 			checkMethod:     http.MethodGet,
 			checkTimeout:    1 * time.Second,
 			checkWantStatus: http.StatusOK,
-			checkOpts: []CheckOption{WithConfigureRequest(func(r *http.Request) {
-
-			})},
+			checkOpts: []CheckOption{
+				WithConfigureRequest(
+					func(r *http.Request) {},
+				),
+			},
 			handlerMethod:     http.MethodGet,
 			handlerStatusCode: http.StatusOK,
 			wantErr:           false,
@@ -122,7 +124,7 @@ func TestCheckHttpStatus(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 
-			var testHTTPClient = &http.Client{Timeout: 2 * time.Second}
+			testHTTPClient := &http.Client{Timeout: 2 * time.Second}
 
 			err := CheckHTTPStatus(tt.checkContext, testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
 			t.Logf("check error: %v", err)
