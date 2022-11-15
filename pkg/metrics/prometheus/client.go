@@ -111,7 +111,7 @@ func (c *Client) defaultCollectors() error {
 			Name: NameAPIRequests,
 			Help: "Total number of http requests.",
 		},
-		[]string{labelCode, labelMethod},
+		[]string{labelHandler, labelCode, labelMethod},
 	)
 
 	c.collectorRequestDuration = prometheus.NewHistogramVec(
@@ -129,7 +129,7 @@ func (c *Client) defaultCollectors() error {
 			Help:    "Response size in bytes.",
 			Buckets: c.inboundResponseSizeBuckets,
 		},
-		[]string{},
+		[]string{labelHandler, labelMethod},
 	)
 
 	c.collectorRequestSize = prometheus.NewHistogramVec(
@@ -138,7 +138,7 @@ func (c *Client) defaultCollectors() error {
 			Help:    "Requests size in bytes.",
 			Buckets: c.inboundRequestSizeBuckets,
 		},
-		[]string{},
+		[]string{labelHandler, labelMethod},
 	)
 
 	c.collectorOutboundRequests = prometheus.NewCounterVec(
@@ -214,9 +214,9 @@ func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
 // InstrumentHandler wraps an http.Handler to collect Prometheus metrics.
 func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
 	var h http.Handler
-	h = promhttp.InstrumentHandlerRequestSize(c.collectorRequestSize, handler)
-	h = promhttp.InstrumentHandlerResponseSize(c.collectorResponseSize, h)
-	h = promhttp.InstrumentHandlerCounter(c.collectorAPIRequests, h)
+	h = promhttp.InstrumentHandlerRequestSize(c.collectorRequestSize.MustCurryWith(prometheus.Labels{labelHandler: path}), handler)
+	h = promhttp.InstrumentHandlerResponseSize(c.collectorResponseSize.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
+	h = promhttp.InstrumentHandlerCounter(c.collectorAPIRequests.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
 	h = promhttp.InstrumentHandlerDuration(c.collectorRequestDuration.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
 	h = promhttp.InstrumentHandlerInFlight(c.collectorInFlightRequests, h)
 
