@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"net/http"
+	"time"
 )
 
 // Route contains the HTTP route description.
@@ -23,6 +24,10 @@ type Route struct {
 
 	// DisableLogger disable the default logger when set to true.
 	DisableLogger bool `json:"-"`
+
+	// Timeout time limit after which a request receives a 503 Service Unavailable.
+	// If set, overrides the common value set with WithRequestTimeout.
+	Timeout time.Duration `json:"-"`
 }
 
 // Index contains the list of routes attached to the current service.

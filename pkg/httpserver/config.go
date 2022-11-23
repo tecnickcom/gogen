@@ -20,6 +20,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const timeoutMessage = "TIMEOUT"
+
 // RedactFn is an alias for a redact function.
 type RedactFn func(s string) string
 
@@ -39,6 +41,7 @@ type config struct {
 	router                      *httprouter.Router
 	serverAddr                  string
 	traceIDHeaderName           string
+	requestTimeout              time.Duration
 	serverReadHeaderTimeout     time.Duration
 	serverReadTimeout           time.Duration
 	serverWriteTimeout          time.Duration
@@ -164,11 +167,24 @@ func validateAddr(addr string) error {
 	return nil
 }
 
-func (c *config) commonMiddleware(noRouteLogger bool) []MiddlewareFn {
+func (c *config) commonMiddleware(noRouteLogger bool, rTimeout time.Duration) []MiddlewareFn {
 	middleware := []MiddlewareFn{}
 
 	if !c.disableRouteLogger && !noRouteLogger {
 		middleware = append(middleware, LoggerMiddlewareFn)
+	}
+
+	timeout := c.requestTimeout
+	if rTimeout > 0 {
+		timeout = rTimeout
+	}
+
+	if timeout > 0 {
+		timeoutMiddlewareFn := func(_ MiddlewareArgs, next http.Handler) http.Handler {
+			return http.TimeoutHandler(next, timeout, timeoutMessage)
+		}
+
+		middleware = append(middleware, timeoutMiddlewareFn)
 	}
 
 	return append(middleware, c.middleware...)
@@ -176,7 +192,7 @@ func (c *config) commonMiddleware(noRouteLogger bool) []MiddlewareFn {
 
 func (c *config) setRouter(ctx context.Context) {
 	l := logging.FromContext(ctx)
-	middleware := c.commonMiddleware(false)
+	middleware := c.commonMiddleware(false, 0)
 
 	if c.router.NotFound == nil {
 		c.router.NotFound = ApplyMiddleware(

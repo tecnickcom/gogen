@@ -196,6 +196,11 @@ func (c *customMiddlewareBinder) handler(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
+func (c *customMiddlewareBinder) slowHandler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(2 * time.Millisecond)
+	w.WriteHeader(http.StatusOK)
+}
+
 func (c *customMiddlewareBinder) middleware(ch chan struct{}) MiddlewareFn {
 	return func(_ MiddlewareArgs, next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -210,9 +215,18 @@ func (c *customMiddlewareBinder) BindHTTP(ctx context.Context) []Route {
 		{
 			Method:      http.MethodGet,
 			Path:        "/hello",
-			Description: "Index endpoint",
+			Description: "Test endpoint",
 			Handler:     c.handler,
 			Middleware:  []MiddlewareFn{c.middleware(c.firstMiddleware), c.middleware(c.secondMiddleware)},
+			Timeout:     10 * time.Second,
+		},
+		{
+			Method:      http.MethodGet,
+			Path:        "/timeout",
+			Description: "Timeout endpoint",
+			Handler:     c.slowHandler,
+			Middleware:  []MiddlewareFn{c.middleware(c.firstMiddleware), c.middleware(c.secondMiddleware)},
+			Timeout:     1 * time.Millisecond,
 		},
 	}
 }
@@ -252,6 +266,13 @@ func Test_customMiddlewares(t *testing.T) {
 	require.NoError(t, err, "failed to create request")
 	cfg.router.ServeHTTP(resp, req)
 	require.Equal(t, http.StatusOK, resp.Code, "unexpected response code")
+	require.NoError(t, ctx.Err(), "context should not be canceled")
+
+	resp = httptest.NewRecorder()
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost:1234/timeout", nil)
+	require.NoError(t, err, "failed to create request")
+	cfg.router.ServeHTTP(resp, req)
+	require.Equal(t, http.StatusServiceUnavailable, resp.Code, "unexpected response code")
 	require.NoError(t, ctx.Err(), "context should not be canceled")
 }
 
@@ -295,6 +316,7 @@ func TestStart(t *testing.T) {
 			name: "succeed",
 			opts: []Option{
 				WithServerAddr(":11111"),
+				WithRequestTimeout(1 * time.Minute),
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithEnableAllDefaultRoutes(),
 				WithInstrumentHandler(func(path string, handler http.HandlerFunc) http.Handler { return handler }),

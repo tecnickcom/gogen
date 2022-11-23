@@ -80,6 +80,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, ipifyClient.GetPublicIP)),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
+			httpserver.WithRequestTimeout(1 * time.Minute),
 		}
 
 		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
@@ -95,6 +96,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			httpserver.WithMiddlewareFn(middleware),
 			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
+			httpserver.WithRequestTimeout(1 * time.Minute),
 		}
 
 		if err := httpserver.Start(ctx, serviceBinder, httpPublicOpts...); err != nil {

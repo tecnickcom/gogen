@@ -28,6 +28,15 @@ func WithServerAddr(addr string) Option {
 	}
 }
 
+// WithRequestTimeout sets a time limit for all routes after which a request receives a 503 Service Unavailable.
+// Alternatively a custom timeout handler like http.TimeoutHandler can be added via WithMiddlewareFn().
+func WithRequestTimeout(timeout time.Duration) Option {
+	return func(cfg *config) error {
+		cfg.requestTimeout = timeout
+		return nil
+	}
+}
+
 // WithServerReadHeaderTimeout sets the shutdown timeout.
 func WithServerReadHeaderTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {

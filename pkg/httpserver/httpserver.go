@@ -45,7 +45,7 @@ func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) 
 		l.Debug("binding route", zap.String("path", r.Path))
 
 		// Add default and custom middleware functions
-		middleware := cfg.commonMiddleware(r.DisableLogger)
+		middleware := cfg.commonMiddleware(r.DisableLogger, r.Timeout)
 		middleware = append(middleware, r.Middleware...)
 
 		args := MiddlewareArgs{
@@ -67,7 +67,7 @@ func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) 
 		l.Debug("enabling route index handler")
 
 		_, disableLogger := cfg.disableDefaultRouteLogger[IndexRoute]
-		middleware := cfg.commonMiddleware(disableLogger)
+		middleware := cfg.commonMiddleware(disableLogger, 0)
 
 		args := MiddlewareArgs{
 			Method:            http.MethodGet,
