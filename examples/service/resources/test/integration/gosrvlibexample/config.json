@@ -6,8 +6,14 @@
     "network": "",
     "address": ""
   },
-  "monitoring_address": ":8072",
-  "public_address": ":8071",
+  "monitoring": {
+    "address": ":8072",
+    "timeout": 60
+  },
+  "public": {
+    "address": ":8071",
+    "timeout": 60
+  },
   "ipify": {
     "address": "http://gosrvlibexample_smocker_ipify:8080",
     "timeout": 2

@@ -55,8 +55,13 @@ The configuration format is a single JSON structure with the following fields:
     * **network**: (OPTIONAL) Network type used by the Syslog (i.e. udp or tcp)
     * **address**: (OPTIONAL) Network address of the Syslog daemon (ip:port) or just (:port)
 
-* **monitoring_address**: Monitoring HTTP address (ip:port) or just (:port)
-* **public_address**: Public service HTTP address (ip:port) or just (:port)
+* **monitoring**: Monitoring HTTP server
+    * **address**:  *HTTP address (ip:port) or just (:port)*
+    * **timeout**:  *HTTP request timeout [seconds]*
+
+* **public**: Public HTTP server
+    * **address**:  *HTTP address (ip:port) or just (:port)*
+    * **timeout**:  *HTTP request timeout [seconds]*
 
 * **ipify**:  *ipify service client*
     * **address**:  *Base URL of the service*

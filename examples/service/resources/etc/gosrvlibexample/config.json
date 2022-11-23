@@ -10,8 +10,14 @@
     "network": "",
     "address": ""
   },
-  "monitoring_address": "",
-  "public_address": "",
+  "monitoring": {
+    "address": "",
+    "timeout": 60
+  },
+  "public": {
+    "address": "",
+    "timeout": 60
+  },
   "ipify": {
     "address": "",
     "timeout": 1

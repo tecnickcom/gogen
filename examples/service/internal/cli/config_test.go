@@ -16,9 +16,7 @@ func Test_appConfig_SetDefaults(t *testing.T) {
 	c.SetDefaults(v)
 
 	require.True(t, v.GetBool("enabled"))
-	require.NotEmpty(t, v.GetString("monitoring_address"))
-	require.NotEmpty(t, v.GetString("public_address"))
-	require.Equal(t, 5, len(v.AllKeys()))
+	require.Equal(t, 7, len(v.AllKeys()))
 }
 
 func getValidTestConfig() appConfig {
@@ -31,9 +29,15 @@ func getValidTestConfig() appConfig {
 				Address: "127.0.0.1:1234",
 			},
 		},
-		Enabled:           true,
-		MonitoringAddress: ":1233",
-		PublicAddress:     ":1231",
+		Enabled: true,
+		Monitoring: serverConfig{
+			Address: ":1233",
+			Timeout: 1,
+		},
+		Public: serverConfig{
+			Address: ":1231",
+			Timeout: 1,
+		},
 		Ipify: ipifyConfig{
 			Address: "https://test.ipify.url.invalid",
 			Timeout: 1,
@@ -85,23 +89,33 @@ func Test_appConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "empty monitoring_address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.MonitoringAddress = ""; return cfg },
+			name:    "empty monitoring.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Monitoring.Address = ""; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "invalid monitoring_address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.MonitoringAddress = "-WRONG_MONITORING_ADDRESS-"; return cfg },
+			name:    "invalid monitoring.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Monitoring.Address = "-WRONG_MONITORING_ADDRESS-"; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "empty public_address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.PublicAddress = ""; return cfg },
+			name:    "empty monitoring.timeout",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Monitoring.Timeout = 0; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "invalid public_address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.PublicAddress = "-WRONG_PUBLIC_ADDRESS-"; return cfg },
+			name:    "empty public.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Public.Address = ""; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "invalid public.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Public.Address = "-WRONG_PUBLIC_ADDRESS-"; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty public.timeout",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Public.Timeout = 0; return cfg },
 			wantErr: true,
 		},
 		{

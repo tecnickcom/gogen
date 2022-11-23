@@ -68,7 +68,8 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 
 		// start monitoring server
 		httpMonitoringOpts := []httpserver.Option{
-			httpserver.WithServerAddr(cfg.MonitoringAddress),
+			httpserver.WithServerAddr(cfg.Monitoring.Address),
+			httpserver.WithRequestTimeout(time.Duration(cfg.Monitoring.Timeout) * time.Second),
 			httpserver.WithMetricsHandlerFunc(m.MetricsHandlerFunc()),
 			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpserver.WithMiddlewareFn(middleware),
@@ -80,7 +81,6 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			httpserver.WithIPHandlerFunc(jsendx.DefaultIPHandler(appInfo, ipifyClient.GetPublicIP)),
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
-			httpserver.WithRequestTimeout(1 * time.Minute),
 		}
 
 		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
@@ -92,11 +92,11 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 
 		// start public server
 		httpPublicOpts := []httpserver.Option{
-			httpserver.WithServerAddr(cfg.PublicAddress),
+			httpserver.WithServerAddr(cfg.Public.Address),
+			httpserver.WithRequestTimeout(time.Duration(cfg.Public.Timeout) * time.Second),
 			httpserver.WithMiddlewareFn(middleware),
 			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
-			httpserver.WithRequestTimeout(1 * time.Minute),
 		}
 
 		if err := httpserver.Start(ctx, serviceBinder, httpPublicOpts...); err != nil {

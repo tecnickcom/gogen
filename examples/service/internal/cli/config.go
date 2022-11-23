@@ -28,22 +28,30 @@ type ipifyConfig struct {
 	Timeout int    `mapstructure:"timeout" validate:"required,min=1"`
 }
 
+// serverConfig contains the HTTP server configuration.
+type serverConfig struct {
+	Address string `mapstructure:"address" validate:"required,hostname_port"`
+	Timeout int    `mapstructure:"timeout" validate:"required,min=1"`
+}
+
 // appConfig contains the full application configuration.
 type appConfig struct {
 	config.BaseConfig `mapstructure:",squash" validate:"required"`
-	Enabled           bool        `mapstructure:"enabled"`
-	MonitoringAddress string      `mapstructure:"monitoring_address" validate:"required,hostname_port"`
-	PublicAddress     string      `mapstructure:"public_address" validate:"required,hostname_port"`
-	Ipify             ipifyConfig `mapstructure:"ipify" validate:"required"`
+	Enabled           bool         `mapstructure:"enabled"`
+	Monitoring        serverConfig `mapstructure:"monitoring" validate:"required,hostname_port"`
+	Public            serverConfig `mapstructure:"public" validate:"required,hostname_port"`
+	Ipify             ipifyConfig  `mapstructure:"ipify" validate:"required"`
 }
 
 // SetDefaults sets the default configuration values in Viper.
 func (c *appConfig) SetDefaults(v config.Viper) {
 	v.SetDefault("enabled", true)
 
-	// Setting the default monitoring_address port to the same as service_port will start a single HTTP server
-	v.SetDefault("monitoring_address", ":8072")
-	v.SetDefault("public_address", ":8071")
+	v.SetDefault("monitoring.address", ":8072")
+	v.SetDefault("monitoring.timeout", 60)
+
+	v.SetDefault("public.address", ":8071")
+	v.SetDefault("public.timeout", 60)
 
 	v.SetDefault("ipify.address", "https://api.ipify.org")
 	v.SetDefault("ipify.timeout", 1)

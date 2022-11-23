@@ -28,9 +28,15 @@ func Test_bind(t *testing.T) {
 		{
 			name: "fails with monitor port already bound",
 			cfg: &appConfig{
-				Enabled:           false,
-				MonitoringAddress: ":30040",
-				PublicAddress:     ":30041",
+				Enabled: false,
+				Monitoring: serverConfig{
+					Address: ":30040",
+					Timeout: 60,
+				},
+				Public: serverConfig{
+					Address: ":30041",
+					Timeout: 60,
+				},
 			},
 			preBindAddr:    ":30040",
 			wantErr:        true,
@@ -39,9 +45,15 @@ func Test_bind(t *testing.T) {
 		{
 			name: "fails with bad ipify address",
 			cfg: &appConfig{
-				Enabled:           true,
-				MonitoringAddress: ":30040",
-				PublicAddress:     ":30041",
+				Enabled: true,
+				Monitoring: serverConfig{
+					Address: ":30040",
+					Timeout: 60,
+				},
+				Public: serverConfig{
+					Address: ":30041",
+					Timeout: 60,
+				},
 				Ipify: ipifyConfig{
 					Address: "test.ipify.url.invalid\u007F",
 					Timeout: 1,
@@ -53,9 +65,15 @@ func Test_bind(t *testing.T) {
 		{
 			name: "fails with service port already bound",
 			cfg: &appConfig{
-				Enabled:           false,
-				MonitoringAddress: ":30040",
-				PublicAddress:     ":30041",
+				Enabled: false,
+				Monitoring: serverConfig{
+					Address: ":30040",
+					Timeout: 60,
+				},
+				Public: serverConfig{
+					Address: ":30041",
+					Timeout: 60,
+				},
 			},
 			preBindAddr:    ":30041",
 			wantErr:        true,
@@ -64,27 +82,45 @@ func Test_bind(t *testing.T) {
 		{
 			name: "succeed with separate ports",
 			cfg: &appConfig{
-				Enabled:           false,
-				MonitoringAddress: ":30040",
-				PublicAddress:     ":30041",
+				Enabled: false,
+				Monitoring: serverConfig{
+					Address: ":30040",
+					Timeout: 60,
+				},
+				Public: serverConfig{
+					Address: ":30041",
+					Timeout: 60,
+				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "succeed with same ports",
 			cfg: &appConfig{
-				Enabled:           false,
-				MonitoringAddress: ":30040",
-				PublicAddress:     ":30040",
+				Enabled: false,
+				Monitoring: serverConfig{
+					Address: ":30040",
+					Timeout: 60,
+				},
+				Public: serverConfig{
+					Address: ":30041",
+					Timeout: 60,
+				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "succeed with enabled flag set",
 			cfg: &appConfig{
-				Enabled:           true,
-				MonitoringAddress: ":30040",
-				PublicAddress:     ":30040",
+				Enabled: true,
+				Monitoring: serverConfig{
+					Address: ":30040",
+					Timeout: 60,
+				},
+				Public: serverConfig{
+					Address: ":30041",
+					Timeout: 60,
+				},
 			},
 			wantErr: false,
 		},

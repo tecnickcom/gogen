@@ -86,15 +86,71 @@
       "type": "boolean",
       "default": true
     },
-    "monitoring_address": {
-      "description": "Monitoring HTTP address (ip:port) or just (:port)",
-      "type": "string",
-      "default": ":8082"
+    "monitoring": {
+      "type": "object",
+      "title": "Monitoring HTTP server",
+      "description": "Configuration of the monitoring server",
+      "examples": [
+        {
+          "address": ":8072",
+          "timeout": 60
+        }
+      ],
+      "required": [
+        "address",
+        "timeout"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "HTTP address (ip:port) or just (:port)",
+          "default": "",
+          "examples": [
+            ":8072"
+          ]
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "HTTP request timeout [seconds]",
+          "examples": [
+            60
+          ]
+        }
+      }
     },
-    "public_address": {
-      "description": "Public service HTTP address (ip:port) or just (:port)",
-      "type": "string",
-      "default": ":8081"
+    "public": {
+      "type": "object",
+      "title": "Public HTTP server",
+      "description": "Configuration of the public server",
+      "examples": [
+        {
+          "address": ":8071",
+          "timeout": 60
+        }
+      ],
+      "required": [
+        "address",
+        "timeout"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "HTTP address (ip:port) or just (:port)",
+          "default": "",
+          "examples": [
+            ":8071"
+          ]
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "HTTP request timeout [seconds]",
+          "examples": [
+            60
+          ]
+        }
+      }
     },
     "ipify": {
       "type": "object",
@@ -135,8 +191,8 @@
   "required": [
     "log",
     "enabled",
-    "monitoring_address",
-    "public_address",
+    "monitoring",
+    "public",
     "ipify"
   ]
 }
