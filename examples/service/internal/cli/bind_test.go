@@ -15,8 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:gocognit,paralleltest
+//nolint:gocognit,paralleltest,tparallel
 func Test_bind(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		fcfg           func(cfg appConfig) appConfig
