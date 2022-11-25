@@ -88,6 +88,7 @@ func Test_bind(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.preBindAddr != "" {
 				l, err := net.Listen("tcp", tt.preBindAddr)
@@ -115,6 +116,7 @@ func Test_bind(t *testing.T) {
 			testBootstrapOpts := []bootstrap.Option{
 				bootstrap.WithContext(testCtx),
 				bootstrap.WithLogger(logging.FromContext(testCtx)),
+				bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
 			}
 			err := bootstrap.Bootstrap(testBindFn, testBootstrapOpts...)
 			if tt.wantErr {
