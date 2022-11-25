@@ -22,39 +22,51 @@ const (
 	fieldTagName = "mapstructure"
 )
 
-// ipifyConfig contains ipify client configuration.
-type ipifyConfig struct {
+type cfgServer struct {
+	Address string `mapstructure:"address" validate:"required,hostname_port"`
+	Timeout int    `mapstructure:"timeout" validate:"required,min=1"`
+}
+
+type cfgServerMonitoring cfgServer
+
+type cfgServerPublic cfgServer
+
+// cfgServers contains the configuration for all exposed servers.
+type cfgServers struct {
+	Monitoring cfgServerMonitoring `mapstructure:"monitoring" validate:"required,hostname_port"`
+	Public     cfgServerPublic     `mapstructure:"public" validate:"required,hostname_port"`
+}
+
+type cfgClientIpify struct {
 	Address string `mapstructure:"address" validate:"required,url"`
 	Timeout int    `mapstructure:"timeout" validate:"required,min=1"`
 }
 
-// serverConfig contains the HTTP server configuration.
-type serverConfig struct {
-	Address string `mapstructure:"address" validate:"required,hostname_port"`
-	Timeout int    `mapstructure:"timeout" validate:"required,min=1"`
+// cfgClients contains the configuration for all external clients.
+type cfgClients struct {
+	Ipify cfgClientIpify `mapstructure:"ipify" validate:"required"`
 }
 
 // appConfig contains the full application configuration.
 type appConfig struct {
 	config.BaseConfig `mapstructure:",squash" validate:"required"`
-	Enabled           bool         `mapstructure:"enabled"`
-	Monitoring        serverConfig `mapstructure:"monitoring" validate:"required,hostname_port"`
-	Public            serverConfig `mapstructure:"public" validate:"required,hostname_port"`
-	Ipify             ipifyConfig  `mapstructure:"ipify" validate:"required"`
+	Enabled           bool       `mapstructure:"enabled"`
+	Servers           cfgServers `mapstructure:"servers" validate:"required"`
+	Clients           cfgClients `mapstructure:"clients" validate:"required"`
 }
 
 // SetDefaults sets the default configuration values in Viper.
 func (c *appConfig) SetDefaults(v config.Viper) {
 	v.SetDefault("enabled", true)
 
-	v.SetDefault("monitoring.address", ":8072")
-	v.SetDefault("monitoring.timeout", 60)
+	v.SetDefault("servers.monitoring.address", ":8072")
+	v.SetDefault("servers.monitoring.timeout", 60)
 
-	v.SetDefault("public.address", ":8071")
-	v.SetDefault("public.timeout", 60)
+	v.SetDefault("servers.public.address", ":8071")
+	v.SetDefault("servers.public.timeout", 60)
 
-	v.SetDefault("ipify.address", "https://api.ipify.org")
-	v.SetDefault("ipify.timeout", 1)
+	v.SetDefault("clients.ipify.address", "https://api.ipify.org")
+	v.SetDefault("clients.ipify.timeout", 1)
 }
 
 // Validate performs the validation of the configuration values.

@@ -7,7 +7,7 @@ replace github.com/nexmoinc/gosrvlib => ../..
 require (
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v1.0.0
-	github.com/nexmoinc/gosrvlib v1.61.0
+	github.com/nexmoinc/gosrvlib v1.62.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/rakyll/gotest v0.0.6
 	github.com/spf13/cobra v1.6.1

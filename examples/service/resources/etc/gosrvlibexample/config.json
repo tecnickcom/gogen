@@ -1,25 +1,29 @@
 {
-  "remoteConfigProvider": "",
-  "remoteConfigEndpoint": "",
-  "remoteConfigPath": "",
-  "remoteConfigSecretKeyring": "",
+  "clients": {
+    "ipify": {
+      "address": "",
+      "timeout": 1
+    }
+  },
   "enabled": true,
   "log": {
+    "address": "",
     "format": "JSON",
     "level": "INFO",
-    "network": "",
-    "address": ""
+    "network": ""
   },
-  "monitoring": {
-    "address": "",
-    "timeout": 60
-  },
-  "public": {
-    "address": "",
-    "timeout": 60
-  },
-  "ipify": {
-    "address": "",
-    "timeout": 1
+  "remoteConfigEndpoint": "",
+  "remoteConfigPath": "",
+  "remoteConfigProvider": "",
+  "remoteConfigSecretKeyring": "",
+  "servers": {
+    "monitoring": {
+      "address": "",
+      "timeout": 60
+    },
+    "public": {
+      "address": "",
+      "timeout": 60
+    }
   }
 }

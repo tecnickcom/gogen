@@ -33,7 +33,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 			httpclient.WithComponent(appInfo.ProgramName),
 		}
 
-		ipifyTimeout := time.Duration(cfg.Ipify.Timeout) * time.Second
+		ipifyTimeout := time.Duration(cfg.Clients.Ipify.Timeout) * time.Second
 		ipifyHTTPClient := httpclient.New(
 			append(httpClientOpts, httpclient.WithTimeout(ipifyTimeout))...,
 		)
@@ -41,7 +41,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 		ipifyClient, err := ipify.New(
 			ipify.WithHTTPClient(ipifyHTTPClient),
 			ipify.WithTimeout(ipifyTimeout),
-			ipify.WithURL(cfg.Ipify.Address),
+			ipify.WithURL(cfg.Clients.Ipify.Address),
 		)
 		if err != nil {
 			return fmt.Errorf("failed to build ipify client: %w", err)
@@ -68,8 +68,8 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 
 		// start monitoring server
 		httpMonitoringOpts := []httpserver.Option{
-			httpserver.WithServerAddr(cfg.Monitoring.Address),
-			httpserver.WithRequestTimeout(time.Duration(cfg.Monitoring.Timeout) * time.Second),
+			httpserver.WithServerAddr(cfg.Servers.Monitoring.Address),
+			httpserver.WithRequestTimeout(time.Duration(cfg.Servers.Monitoring.Timeout) * time.Second),
 			httpserver.WithMetricsHandlerFunc(m.MetricsHandlerFunc()),
 			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpserver.WithMiddlewareFn(middleware),
@@ -92,8 +92,8 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics) bootstrap.
 
 		// start public server
 		httpPublicOpts := []httpserver.Option{
-			httpserver.WithServerAddr(cfg.Public.Address),
-			httpserver.WithRequestTimeout(time.Duration(cfg.Public.Timeout) * time.Second),
+			httpserver.WithServerAddr(cfg.Servers.Public.Address),
+			httpserver.WithRequestTimeout(time.Duration(cfg.Servers.Public.Timeout) * time.Second),
 			httpserver.WithMiddlewareFn(middleware),
 			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),

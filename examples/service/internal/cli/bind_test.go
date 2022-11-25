@@ -19,108 +19,69 @@ import (
 func Test_bind(t *testing.T) {
 	tests := []struct {
 		name           string
-		cfg            *appConfig
+		fcfg           func(cfg appConfig) appConfig
 		preBindAddr    string
 		pingAddr       string
 		wantErr        bool
 		wantTimeoutErr bool
 	}{
 		{
-			name: "fails with monitor port already bound",
-			cfg: &appConfig{
-				Enabled: false,
-				Monitoring: serverConfig{
-					Address: ":30040",
-					Timeout: 60,
-				},
-				Public: serverConfig{
-					Address: ":30041",
-					Timeout: 60,
-				},
+			name: "fails with monitor server port already bound",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.Enabled = false
+				cfg.Servers.Monitoring.Address = ":30044"
+				cfg.Servers.Public.Address = ":30045"
+				return cfg
 			},
-			preBindAddr:    ":30040",
+			preBindAddr:    ":30044",
 			wantErr:        true,
 			wantTimeoutErr: false,
 		},
 		{
-			name: "fails with bad ipify address",
-			cfg: &appConfig{
-				Enabled: true,
-				Monitoring: serverConfig{
-					Address: ":30040",
-					Timeout: 60,
-				},
-				Public: serverConfig{
-					Address: ":30041",
-					Timeout: 60,
-				},
-				Ipify: ipifyConfig{
-					Address: "test.ipify.url.invalid\u007F",
-					Timeout: 1,
-				},
+			name: "fails with public server port already bound",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.Enabled = false
+				cfg.Servers.Monitoring.Address = ":30046"
+				cfg.Servers.Public.Address = ":30047"
+				return cfg
+			},
+			preBindAddr:    ":30047",
+			wantErr:        true,
+			wantTimeoutErr: false,
+		},
+		{
+			name: "fails with same server ports",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.Enabled = false
+				cfg.Servers.Monitoring.Address = ":30043"
+				cfg.Servers.Public.Address = ":30043"
+				return cfg
+			},
+			wantErr: true,
+		},
+		{
+			name: "fails with bad ipify client address",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.Clients.Ipify.Address = "test.ipify.url.invalid\u007F"
+				return cfg
 			},
 			wantErr:        true,
 			wantTimeoutErr: false,
 		},
 		{
-			name: "fails with service port already bound",
-			cfg: &appConfig{
-				Enabled: false,
-				Monitoring: serverConfig{
-					Address: ":30040",
-					Timeout: 60,
-				},
-				Public: serverConfig{
-					Address: ":30041",
-					Timeout: 60,
-				},
-			},
-			preBindAddr:    ":30041",
-			wantErr:        true,
-			wantTimeoutErr: false,
-		},
-		{
-			name: "succeed with separate ports",
-			cfg: &appConfig{
-				Enabled: false,
-				Monitoring: serverConfig{
-					Address: ":30040",
-					Timeout: 60,
-				},
-				Public: serverConfig{
-					Address: ":30041",
-					Timeout: 60,
-				},
+			name: "succeed with separate server ports",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.Enabled = false
+				cfg.Servers.Monitoring.Address = ":30041"
+				cfg.Servers.Public.Address = ":30042"
+				return cfg
 			},
 			wantErr: false,
 		},
 		{
-			name: "succeed with same ports",
-			cfg: &appConfig{
-				Enabled: false,
-				Monitoring: serverConfig{
-					Address: ":30040",
-					Timeout: 60,
-				},
-				Public: serverConfig{
-					Address: ":30041",
-					Timeout: 60,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "succeed with enabled flag set",
-			cfg: &appConfig{
-				Enabled: true,
-				Monitoring: serverConfig{
-					Address: ":30040",
-					Timeout: 60,
-				},
-				Public: serverConfig{
-					Address: ":30041",
-					Timeout: 60,
-				},
+			name: "success with all features enabled",
+			fcfg: func(cfg appConfig) appConfig {
+				return cfg
 			},
 			wantErr: false,
 		},
@@ -134,10 +95,12 @@ func Test_bind(t *testing.T) {
 				defer func() { _ = l.Close() }()
 			}
 
+			cfg := tt.fcfg(getValidTestConfig())
+
 			mtr := metrics.New()
 
 			testBindFn := bind(
-				tt.cfg,
+				&cfg,
 				&jsendx.AppInfo{
 					ProgramName:    "test",
 					ProgramVersion: "0.0.0",

@@ -29,18 +29,22 @@ func getValidTestConfig() appConfig {
 				Address: "127.0.0.1:1234",
 			},
 		},
+		Clients: cfgClients{
+			Ipify: cfgClientIpify{
+				Address: "https://test.ipify.url.invalid",
+				Timeout: 13,
+			},
+		},
 		Enabled: true,
-		Monitoring: serverConfig{
-			Address: ":1233",
-			Timeout: 1,
-		},
-		Public: serverConfig{
-			Address: ":1231",
-			Timeout: 1,
-		},
-		Ipify: ipifyConfig{
-			Address: "https://test.ipify.url.invalid",
-			Timeout: 1,
+		Servers: cfgServers{
+			Monitoring: cfgServerMonitoring{
+				Address: ":1233",
+				Timeout: 11,
+			},
+			Public: cfgServerPublic{
+				Address: ":1231",
+				Timeout: 12,
+			},
 		},
 	}
 }
@@ -89,48 +93,76 @@ func Test_appConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "empty monitoring.address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Monitoring.Address = ""; return cfg },
+			name:    "empty servers",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers = cfgServers{}; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "invalid monitoring.address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Monitoring.Address = "-WRONG_MONITORING_ADDRESS-"; return cfg },
+			name:    "empty servers.monitoring",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Monitoring = cfgServerMonitoring{}; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "empty monitoring.timeout",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Monitoring.Timeout = 0; return cfg },
+			name:    "empty servers.monitoring.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Monitoring.Address = ""; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "empty public.address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Public.Address = ""; return cfg },
+			name: "invalid servers.monitoring.address",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.Servers.Monitoring.Address = "-WRONG_MONITORING_ADDRESS-"
+				return cfg
+			},
 			wantErr: true,
 		},
 		{
-			name:    "invalid public.address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Public.Address = "-WRONG_PUBLIC_ADDRESS-"; return cfg },
+			name:    "empty servers.monitoring.timeout",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Monitoring.Timeout = 0; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "empty public.timeout",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Public.Timeout = 0; return cfg },
+			name:    "empty servers.public",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Public = cfgServerPublic{}; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "empty ipify.address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Ipify.Address = ""; return cfg },
+			name:    "empty servers.public.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Public.Address = ""; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "invalid ipify.address",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Ipify.Address = "-WRONG_IPIFY_ADDRESS-"; return cfg },
+			name:    "invalid servers.public.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Public.Address = "-WRONG_PUBLIC_ADDRESS-"; return cfg },
 			wantErr: true,
 		},
 		{
-			name:    "empty ipify.timeout",
-			fcfg:    func(cfg appConfig) appConfig { cfg.Ipify.Timeout = 0; return cfg },
+			name:    "empty servers.public.timeout",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Public.Timeout = 0; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty clients",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Clients = cfgClients{}; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty clients.ipify",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Clients.Ipify = cfgClientIpify{}; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty clients.ipify.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Clients.Ipify.Address = ""; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "invalid clients.ipify.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Clients.Ipify.Address = "-WRONG_IPIFY_ADDRESS-"; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty clients.ipify.timeout",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Clients.Ipify.Timeout = 0; return cfg },
 			wantErr: true,
 		},
 	}
