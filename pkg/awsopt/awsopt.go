@@ -13,7 +13,7 @@ import (
 const (
 	// awsRegionFromURLRegexp is a regular expression used to extract the region from URL.
 	// protocol://service-code.region-code.amazonaws.com
-	awsRegionFromURLRegexp = `^https://[^.]+.([^.]+).amazonaws.com`
+	awsRegionFromURLRegexp = `^https://[^\.]+\.([^\.]+)\.amazonaws\.com`
 
 	awsDefaultRegion = "us-east-2"
 )

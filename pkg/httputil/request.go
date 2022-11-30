@@ -2,6 +2,7 @@ package httputil
 
 import (
 	"encoding/base64"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -43,7 +44,7 @@ func QueryStringOrDefault(q url.Values, key string, defaultValue string) string 
 
 // QueryIntOrDefault returns the integer value of the specified URL query parameter or a default value.
 func QueryIntOrDefault(q url.Values, key string, defaultValue int) int {
-	if v, err := strconv.ParseInt(q.Get(key), 10, 64); err == nil {
+	if v, err := strconv.ParseInt(q.Get(key), 10, 64); err == nil && v >= math.MinInt && v <= math.MaxInt {
 		return int(v)
 	}
 
@@ -52,7 +53,7 @@ func QueryIntOrDefault(q url.Values, key string, defaultValue int) int {
 
 // QueryUintOrDefault returns the unsigned integer value of the specified URL query parameter or a default value.
 func QueryUintOrDefault(q url.Values, key string, defaultValue uint) uint {
-	if v, err := strconv.ParseUint(q.Get(key), 10, 64); err == nil {
+	if v, err := strconv.ParseUint(q.Get(key), 10, 64); err == nil && v <= math.MaxUint {
 		return uint(v)
 	}
 
