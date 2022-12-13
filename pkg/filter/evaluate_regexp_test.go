@@ -44,6 +44,27 @@ func TestRegexp_Evaluate(t *testing.T) {
 			want:    false,
 			wantErr: false,
 		},
+		{
+			name:    "true - matching regexp with string alias",
+			ref:     "[a-d]+",
+			value:   stringAlias("abcdaabbccdd"),
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "false - not matching regexp with string alias",
+			ref:     "^[a-d]+$",
+			value:   stringAlias("abcdaxabbccdd"),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name:    "false - struct input",
+			ref:     ".*",
+			value:   []struct{}{},
+			want:    false,
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {

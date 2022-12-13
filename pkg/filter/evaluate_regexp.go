@@ -27,7 +27,7 @@ func newRegexp(r interface{}) (Evaluator, error) {
 // Evaluate returns whether the input value matches the reference regular expression.
 // It returns false if the input value is not a string.
 func (e *evalRegexp) Evaluate(v interface{}) bool {
-	s, ok := v.(string)
+	s, ok := convertStringValue(v)
 	if !ok {
 		return false
 	}

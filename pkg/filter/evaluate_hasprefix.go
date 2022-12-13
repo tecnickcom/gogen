@@ -22,7 +22,7 @@ func newHasPrefix(r interface{}) (Evaluator, error) {
 // Evaluate returns whether the input value begins with the reference string.
 // It returns false if the input value is not a string.
 func (e *evalHasPrefix) Evaluate(v interface{}) bool {
-	s, ok := v.(string)
+	s, ok := convertStringValue(v)
 	if !ok {
 		return false
 	}

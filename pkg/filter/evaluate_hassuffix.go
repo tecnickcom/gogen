@@ -22,7 +22,7 @@ func newHasSuffix(r interface{}) (Evaluator, error) {
 // Evaluate returns whether the input value ends with the reference string.
 // It returns false if the input value is not a string.
 func (e *evalHasSuffix) Evaluate(v interface{}) bool {
-	s, ok := v.(string)
+	s, ok := convertStringValue(v)
 	if !ok {
 		return false
 	}

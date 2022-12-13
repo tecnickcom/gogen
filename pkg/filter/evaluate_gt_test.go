@@ -66,6 +66,27 @@ func TestGT_Evaluate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "true - greater string with string alias",
+			ref:     5,
+			value:   stringAlias("ciao,hello"),
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "false - equal string with string alias",
+			ref:     4,
+			value:   stringAlias("ciao"),
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name:    "false - smaller string with string alias",
+			ref:     5,
+			value:   stringAlias("ciao"),
+			want:    false,
+			wantErr: false,
+		},
+		{
 			name:    "true - greater slice",
 			ref:     3,
 			value:   []int{1, 2, 3, 4},

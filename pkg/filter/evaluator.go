@@ -49,9 +49,33 @@ func convertValue(v interface{}) interface{} {
 		return float64(v)
 	case float32:
 		return float64(v)
-	default:
-		return v
 	}
+
+	if s, ok := convertStringValue(v); ok {
+		return s
+	}
+
+	return v
+}
+
+func convertStringValue(v interface{}) (string, bool) {
+	if v == nil {
+		return "", false
+	}
+
+	if s, ok := v.(string); ok {
+		return s, true
+	}
+
+	// Convert string aliases back to string
+	vv := reflect.ValueOf(v)
+	st := reflect.TypeOf("")
+
+	if !vv.CanConvert(st) {
+		return "", false
+	}
+
+	return vv.Convert(st).String(), true
 }
 
 func convertFloatValue(v interface{}) (float64, error) {

@@ -66,6 +66,27 @@ func TestLTE_Evaluate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "true - smaller string with string alias",
+			ref:     5,
+			value:   stringAlias("ciao"),
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "true - equal string with string alias",
+			ref:     4,
+			value:   stringAlias("ciao"),
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "false - greater string with string alias",
+			ref:     3,
+			value:   stringAlias("ciao"),
+			want:    false,
+			wantErr: false,
+		},
+		{
 			name:    "true - smaller slice",
 			ref:     5,
 			value:   []int{1, 2, 3, 4},
