@@ -10,7 +10,7 @@
 ![gosrvlibexample logo](doc/images/logo.png)
 
 * **category:**    Application
-* **copyright:**   2020-2022 gosrvlibexampleowner
+* **copyright:**   2020-2023 gosrvlibexampleowner
 * **license:**     [LICENSE](https://github.com/gosrvlibexampleowner/gosrvlibexample/blob/main/LICENSE)
 * **cvs:**         https://github.com/gosrvlibexampleowner/gosrvlibexample
 * **team:**        [gosrvlibexampleowner](<no value>) ([<no value>](https://gosrvlibexampleowner.slack.com/channels/<no value>)) [escalation](<no value>)
