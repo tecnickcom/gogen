@@ -100,12 +100,6 @@ DOCKERPREFIX=
 # Suffix for the published docker container name
 DOCKERSUFFIX=
 
-# Docker repository for the dev environment
-DOCKER_REGISTRY_DEV=
-
-# Docker repository for the prod environment
-DOCKER_REGISTRY_PROD=
-
 # Command used to check the configuration files
 CONFCHECKCMD=check-jsonschema --schemafile resources/etc/${PROJECT}/config.schema.json
 
@@ -113,14 +107,6 @@ CONFCHECKCMD=check-jsonschema --schemafile resources/etc/${PROJECT}/config.schem
 ifeq ($(AWS_DEFAULT_REGION),)
 	AWS_DEFAULT_REGION=eu-west-1
 endif
-
-# AWS command to get the ECR Docker login for the current environment
-# AWS_ECR_GET_LOGIN_ENV="aws ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION} | sed 's|https://||'"
-AWS_ECR_GET_LOGIN_ENV="echo skip"
-
-# AWS command to get the ECR Docker login for DEV environment
-# AWS_ECR_GET_LOGIN_DEV="aws --profile YOURDEVPROFILE ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION} | sed 's|https://||'"
-AWS_ECR_GET_LOGIN_DEV="echo skip"
 
 # STATIC is a flag to indicate whether to build using static or dynamic linking
 STATIC=1
@@ -189,11 +175,42 @@ endif
 
 # Deployment environment
 ifeq ($(DEPLOY_ENV),)
-	DEPLOY_ENV=dev
+	DEPLOY_ENV=int
 endif
+
+# Docker repository for the DEV environment
+DOCKER_REGISTRY_DEV=
+
+# Docker repository for the QA environment
+DOCKER_REGISTRY_QA=
+
+# Docker repository for the PROD environment
+DOCKER_REGISTRY_PROD=
+
+# Docker repository for the current environment
+DOCKER_REGISTRY=
+
+# Docker repository from where to pull the image
+DOCKER_REGISTRY_PULL=
+
+# Docker repository where to push the image
+DOCKER_REGISTRY_PUSH=
+
+# Command used to login into the Docker pull repository
+# Example: "aws --profile MYENVPROFILE ecr get-login --no-include-email --region ${AWS_REGION} | sed 's|https://||'"
+DOCKER_LOGIN_PULL="echo skip"
+
+# Command used to login into the Docker push repository
+# Example: "aws --profile MYENVPROFILE ecr get-login --no-include-email --region ${AWS_REGION} | sed 's|https://||'"
+DOCKER_LOGIN_PUSH="echo skip"
 
 # INT - integration environment via docker-compose
 ifeq ($(DEPLOY_ENV), int)
+	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
+	#DOCKER_REGISTRY_PULL=
+	#DOCKER_REGISTRY_PUSH=
+	#DOCKER_LOGIN_PULL=
+	#DOCKER_LOGIN_PUSH=
 	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
 	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
 	API_TEST_FILE=*.yaml
@@ -202,14 +219,33 @@ endif
 # Development environment
 ifeq ($(DEPLOY_ENV), dev)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
+	#DOCKER_REGISTRY_PULL=
+	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_DEV}
+	#DOCKER_LOGIN_PULL=
+	#DOCKER_LOGIN_PUSH=
 	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
 	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
 	API_TEST_FILE=*.yaml
 endif
 
+# QA environment
+ifeq ($(DEPLOY_ENV), qa)
+	DOCKER_REGISTRY=${DOCKER_REGISTRY_QA}
+	DOCKER_REGISTRY_PULL=${DOCKER_REGISTRY_DEV}
+	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_QA}
+	#DOCKER_LOGIN_PULL=
+	#DOCKER_LOGIN_PUSH=
+	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
+	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
+endif
+
 # Production environment
 ifeq ($(DEPLOY_ENV), prod)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_PROD}
+	DOCKER_REGISTRY_PULL=${DOCKER_REGISTRY_QA}
+	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_PROD}
+	#DOCKER_LOGIN_PULL=
+	#DOCKER_LOGIN_PUSH=
 	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
 	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
 	API_TEST_FILE=*.yaml
@@ -381,20 +417,20 @@ endif
 # Promote docker image from DEV to PROD
 .PHONY: dockerpromote
 dockerpromote:
-	$(shell eval ${AWS_ECR_GET_LOGIN_ENV})
-	$(shell eval ${AWS_ECR_GET_LOGIN_DEV})
-	$(DOCKER) pull "${DOCKER_REGISTRY_DEV}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	$(DOCKER) tag "${DOCKER_REGISTRY_DEV}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)" "${DOCKER_REGISTRY_PROD}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	$(DOCKER) push "${DOCKER_REGISTRY_PROD}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(shell eval ${DOCKER_LOGIN_PULL})
+	$(DOCKER) pull "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) tag "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(shell eval ${DOCKER_LOGIN_PUSH})
+	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
 
 # Push docker container to the remote repository
 .PHONY: dockerpush
 dockerpush:
-	$(shell eval ${AWS_ECR_GET_LOGIN_ENV})
-	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	$(DOCKER) push "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
-	$(DOCKER) push "${DOCKER_REGISTRY}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
+	$(shell eval ${DOCKER_LOGIN_PUSH})
+	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
+	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 
 .PHONY: dockertest
 dockertest: dockertestenv dockerdev
