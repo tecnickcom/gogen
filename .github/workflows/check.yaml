@@ -47,6 +47,11 @@ jobs:
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: target/report/coverage.out
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v3
+        with:
+          name: code-coverage-report
+          path: target/report/coverage.out
 
   sonar:
     runs-on: ubuntu-latest
@@ -57,16 +62,12 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Generate go files hash
-        id: go_hash
-        run: echo "value=${{ hashFiles('**/*.go','!vendor/**') }}" >>"$GITHUB_OUTPUT"
-      - name: Get cover profile from cache
-        id: cover_cache
-        uses: actions/cache@v3
+      - name: Download code coverage results
+        uses: actions/download-artifact@v3
         with:
+          name: code-coverage-report
           path: target/report/coverage.out
-          key: go_cover_profile_${{ steps.go_hash.outputs.value }}
-      - name: Get version
+      - name: Read version
         id: read_version
         run: echo "value=$(cat VERSION)" >>"$GITHUB_OUTPUT"
       - name: SonarCloud Scan
