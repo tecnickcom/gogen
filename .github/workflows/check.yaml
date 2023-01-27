@@ -48,63 +48,32 @@ jobs:
         with:
           path-to-profile: target/report/coverage.out
 
-  example-lint:
+  sonar:
     runs-on: ubuntu-latest
+    needs: test
+    continue-on-error: true
     steps:
       - name: checkout repository
         uses: actions/checkout@v3
-      - name: setup go build environment
-        uses: actions/setup-go@v3
         with:
-          go-version-file: 'go.mod'
-          check-latest: true
-      - name: dependency cache
-        uses: actions/cache@v2
+          fetch-depth: 0
+      - name: Generate go files hash
+        id: go_hash
+        run: echo "value=${{ hashFiles('**/*.go','!vendor/**') }}" >>"$GITHUB_OUTPUT"
+      - name: Get cover profile from cache
+        id: cover_cache
+        uses: actions/cache@v3
         with:
-          path: $(go env GOPATH)/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
-      - name: linter
-        run: cd examples/service && make mod deps linter GOPATH=$(go env GOPATH)
-
-  example-test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v3
-      - name: install tools
-        run: pip install --upgrade check-jsonschema
-      - name: setup go build environment
-        uses: actions/setup-go@v3
+          path: target/report/coverage.out
+          key: go_cover_profile_${{ steps.go_hash.outputs.value }}
+      - name: Get version
+        id: read_version
+        run: echo "value=$(cat VERSION)" >>"$GITHUB_OUTPUT"
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          go-version-file: 'go.mod'
-          check-latest: true
-      - name: dependency cache
-        uses: actions/cache@v2
-        with:
-          path: $(go env GOPATH)/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
-      - name: unit tests
-        run: cd examples/service && make mod deps gendoc generate confcheck test GOPATH=$(go env GOPATH)
-
-  example-integration-test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v3
-      - name: setup go build environment
-        uses: actions/setup-go@v3
-        with:
-          go-version-file: 'go.mod'
-          check-latest: true
-      - name: dependency cache
-        uses: actions/cache@v2
-        with:
-          path: $(go env GOPATH)/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
-      - name: set RELEASE number
-        run: cd examples/service && echo ${GITHUB_RUN_NUMBER} > RELEASE
-      - name: integration tests
-        run: cd examples/service && make mod deps generate build docker dockertest GOPATH=$(go env GOPATH)
+          args: >
+            -Dsonar.projectVersion=${{ steps.read_version.outputs.value }}
