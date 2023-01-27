@@ -47,6 +47,9 @@ jobs:
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: target/report/coverage.out
+      - name: hash go files
+        id: go_hash
+        run: echo "value=${{ hashFiles('**/*.go','!vendor/**') }}" >>"$GITHUB_OUTPUT"
       - name: cache coverage
         id: cover_cache
         uses: actions/cache@v3
@@ -63,6 +66,9 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: hash go files
+        id: go_hash
+        run: echo "value=${{ hashFiles('**/*.go','!vendor/**') }}" >>"$GITHUB_OUTPUT"
       - name: Get coverage from cache
         id: cover_cache
         uses: actions/cache@v3
