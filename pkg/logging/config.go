@@ -18,6 +18,7 @@ type config struct {
 }
 
 func defaultConfig() *config {
+	// Return default configuration fields.
 	return &config{
 		fields:            make([]zap.Field, 0, 3),
 		format:            JSONFormat,

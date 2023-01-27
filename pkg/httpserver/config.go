@@ -141,27 +141,29 @@ func (c *config) validate() error {
 
 // validateAddr checks if a http server bind address is valid.
 func validateAddr(addr string) error {
+	addrErr := fmt.Errorf("invalid http server address: %s", addr)
+
 	if !strings.Contains(addr, ":") {
-		return fmt.Errorf("invalid http server address: %s", addr)
+		return addrErr
 	}
 
 	parts := strings.Split(addr, ":")
 	if len(parts) != 2 {
-		return fmt.Errorf("invalid http server address: %s", addr)
+		return addrErr
 	}
 
 	port := parts[1]
 	if port == "" {
-		return fmt.Errorf("invalid http server address: %s", addr)
+		return addrErr
 	}
 
 	portInt, err := strconv.Atoi(port)
 	if err != nil {
-		return fmt.Errorf("invalid http server address: %s", addr)
+		return addrErr
 	}
 
 	if portInt < 1 || portInt > math.MaxUint16 {
-		return fmt.Errorf("invalid http server address: %s", addr)
+		return addrErr
 	}
 
 	return nil
