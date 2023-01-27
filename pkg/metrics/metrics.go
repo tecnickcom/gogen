@@ -56,12 +56,14 @@ func (c *Default) MetricsHandlerFunc() http.HandlerFunc {
 
 // IncLogLevelCounter is an empty function.
 func (c *Default) IncLogLevelCounter(level string) {
-	// Default empty function.
+	// Do nothing.
+	_ = 0
 }
 
 // IncErrorCounter is an empty function.
 func (c *Default) IncErrorCounter(task, operation, code string) {
-	// Default empty function.
+	// Do nothing.
+	_ = 0
 }
 
 // Close method.
