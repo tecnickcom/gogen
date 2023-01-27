@@ -20,7 +20,7 @@ Each package follows the same conventions and they can be individually imported 
 [![Coverage Status](https://coveralls.io/repos/github/nexmoinc/gosrvlib/badge.svg?branch=main)](https://coveralls.io/github/nexmoinc/gosrvlib?branch=main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/nexmoinc/gosrvlib)](https://goreportcard.com/report/github.com/nexmoinc/gosrvlib)
 [![Go Reference](https://pkg.go.dev/badge/github.com/nexmoinc/gosrvlib.svg)](https://pkg.go.dev/github.com/nexmoinc/gosrvlib)
-
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
 
 * **category**    Library
 * **license**     [MIT](https://github.com/nexmoinc/gosrvlib/blob/main/LICENSE)
