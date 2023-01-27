@@ -18,13 +18,14 @@ type config struct {
 }
 
 func defaultConfig() *config {
-	// Return default configuration fields.
 	return &config{
 		fields:            make([]zap.Field, 0, 3),
 		format:            JSONFormat,
 		level:             zap.DebugLevel,
 		outputPaths:       []string{"stderr"},
 		errorOutputPaths:  []string{"stderr"},
-		incMetricLogLevel: func(string) {},
+		incMetricLogLevel: func(string) {
+			// Default empty function.
+		},
 	}
 }
