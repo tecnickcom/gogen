@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"net/http"
+	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
@@ -109,17 +110,26 @@ func writeHeaders(w http.ResponseWriter, statusCode int, contentType string) {
 
 // logResponse logs the response.
 func logResponse(ctx context.Context, statusCode int, dataKey string, data interface{}) {
+	resTime := time.Now().UTC()
+
+	reqTime, ok := GetRequestTimeFromContext(ctx)
+	if !ok {
+		reqTime = resTime
+	}
+
 	l := logging.FromContext(ctx)
-	reqLog := l.With(
+	resLog := l.With(
 		zap.Int("response_code", statusCode),
 		zap.String("response_message", http.StatusText(statusCode)),
 		zap.Any("response_status", Status(statusCode)),
+		zap.Time("response_time", resTime),
+		zap.Duration("response_duration", resTime.Sub(reqTime)),
 		zap.Any(dataKey, data),
 	)
 
 	if statusCode >= http.StatusBadRequest { // 400+
-		reqLog.Error("Request")
+		resLog.Error("Response")
 	} else {
-		reqLog.Debug("Request")
+		resLog.Debug("Response")
 	}
 }

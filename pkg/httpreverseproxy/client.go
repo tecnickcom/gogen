@@ -6,6 +6,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	libhttputil "github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
@@ -106,8 +107,16 @@ func (c *httpWrapper) RoundTrip(r *http.Request) (*http.Response, error) {
 
 func defaultErrorHandler(logger *zap.Logger) errHandler {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
+		resTime := time.Now().UTC()
+		ctx := r.Context()
+
+		reqTime, ok := libhttputil.GetRequestTimeFromContext(ctx)
+		if !ok {
+			reqTime = resTime
+		}
+
 		logger.With(
-			zap.String("traceid", traceid.FromContext(r.Context(), "")),
+			zap.String(traceid.DefaultLogKey, traceid.FromContext(ctx, "")),
 			zap.String("request_method", r.Method),
 			zap.String("request_path", r.URL.Path),
 			zap.String("request_query", r.URL.RawQuery),
@@ -115,6 +124,9 @@ func defaultErrorHandler(logger *zap.Logger) errHandler {
 			zap.Int("response_code", http.StatusBadGateway),
 			zap.String("response_message", http.StatusText(http.StatusBadGateway)),
 			zap.Any("response_status", libhttputil.Status(http.StatusBadGateway)),
+			zap.Time("request_time", reqTime),
+			zap.Time("response_time", resTime),
+			zap.Duration("response_duration", resTime.Sub(reqTime)),
 		).Error("proxy_error", zap.Error(err))
 
 		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)

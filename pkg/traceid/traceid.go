@@ -5,6 +5,7 @@ package traceid
 import (
 	"context"
 	"net/http"
+	"regexp"
 )
 
 const (
@@ -13,7 +14,14 @@ const (
 
 	// DefaultValue is the default trace ID value.
 	DefaultValue = ""
+
+	// DefaultLogKey is the default log field key for the Trace ID.
+	DefaultLogKey = "traceid"
 )
+
+const regexPatternValidID = `^[0-9A-Za-z\-\_\.]{1,64}$`
+
+var regexValidID = regexp.MustCompile(regexPatternValidID)
 
 // ctxKey is used to store the trace ID in the context.
 type ctxKey struct{}
@@ -52,7 +60,7 @@ func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, heade
 func FromHTTPRequestHeader(r *http.Request, header, defaultValue string) string {
 	id := r.Header.Get(header)
 
-	if id == "" {
+	if !regexValidID.MatchString(id) {
 		return defaultValue
 	}
 

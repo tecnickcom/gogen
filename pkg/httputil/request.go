@@ -1,15 +1,22 @@
 package httputil
 
 import (
+	"context"
 	"encoding/base64"
 	"math"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 )
+
+type timeCtxKey string
+
+// ReqTimeCtxKey is the Context key to retrieve the request time.
+const ReqTimeCtxKey = timeCtxKey("request_time")
 
 // AddBasicAuth decorates the provided http.Request with Basic Authorization.
 func AddBasicAuth(apiKey, apiSecret string, r *http.Request) {
@@ -58,4 +65,22 @@ func QueryUintOrDefault(q url.Values, key string, defaultValue uint) uint {
 	}
 
 	return defaultValue
+}
+
+// WithRequestTime returns a new context with the added request time.
+func WithRequestTime(ctx context.Context, t time.Time) context.Context {
+	return context.WithValue(ctx, ReqTimeCtxKey, t)
+}
+
+// GetRequestTimeFromContext returns the request time from the context.
+func GetRequestTimeFromContext(ctx context.Context) (time.Time, bool) {
+	v := ctx.Value(ReqTimeCtxKey)
+	t, ok := v.(time.Time)
+
+	return t, ok
+}
+
+// GetRequestTime returns the request time from the http request.
+func GetRequestTime(r *http.Request) (time.Time, bool) {
+	return GetRequestTimeFromContext(r.Context())
 }

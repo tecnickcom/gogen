@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  lint:
+  example-lint:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
@@ -31,7 +31,7 @@ jobs:
       - name: linter
         run: cd examples/service && make mod deps linter GOPATH=$(go env GOPATH)
 
-  test:
+  example-test:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
@@ -52,7 +52,7 @@ jobs:
       - name: unit tests
         run: cd examples/service && make mod deps gendoc generate confcheck test GOPATH=$(go env GOPATH)
 
-  integration-test:
+  example-integration-test:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository

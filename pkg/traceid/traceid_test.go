@@ -66,20 +66,54 @@ func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 func TestFromHTTPRequestHeader(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	tests := []struct {
+		name string
+		id   string
+		def  string
+		want string
+	}{
+		{
+			name: "set value",
+			id:   "0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz",
+			def:  "default-1-968041",
+			want: "0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz",
+		},
+		{
+			name: "default if empty",
+			id:   "",
+			def:  "default-2-103992",
+			want: "default-2-103992",
+		},
+		{
+			name: "default if invalid characters",
+			id:   "0123#~'",
+			def:  "default-3-103993",
+			want: "default-3-103993",
+		},
+		{
+			name: "default if too long",
+			id:   "0123456789012345678901234567890123456789012345678901234567890123456789",
+			def:  "default-4-103994",
+			want: "default-4-103994",
+		},
+	}
 
-	// header not set should return default
-	r1, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-	require.NoError(t, err)
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	v1 := FromHTTPRequestHeader(r1, DefaultHeader, "default-1-103993")
-	require.Equal(t, "default-1-103993", v1)
+			ctx := context.Background()
 
-	// header set should return actual value
-	r2, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
-	require.NoError(t, err)
-	r2.Header.Add(DefaultHeader, "test-1-413579")
+			r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			require.NoError(t, err)
 
-	v2 := FromHTTPRequestHeader(r2, DefaultHeader, "default-2-968041")
-	require.Equal(t, "test-1-413579", v2)
+			if tt.id != "" {
+				r.Header.Add(DefaultHeader, tt.id)
+			}
+
+			v := FromHTTPRequestHeader(r, DefaultHeader, tt.def)
+			require.Equal(t, tt.want, v)
+		})
+	}
 }

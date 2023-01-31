@@ -3,7 +3,9 @@ package httpserver
 import (
 	"net/http"
 	"net/http/httputil"
+	"time"
 
+	libhttputil "github.com/nexmoinc/gosrvlib/pkg/httputil"
 	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/nexmoinc/gosrvlib/pkg/uidc"
@@ -37,18 +39,18 @@ type MiddlewareFn func(args MiddlewareArgs, next http.Handler) http.Handler
 // RequestInjectHandler wraps all incoming requests and injects a logger in the request scoped context.
 func RequestInjectHandler(logger *zap.Logger, traceIDHeaderName string, redactFn RedactFn, next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
+		reqTime := time.Now().UTC()
 		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, uidc.NewID128())
 
 		l := logger.With(
-			zap.String("traceid", reqID),
+			zap.String(traceid.DefaultLogKey, reqID),
+			zap.Time("request_time", reqTime),
 			zap.String("request_method", r.Method),
 			zap.String("request_path", r.URL.Path),
 			zap.String("request_query", r.URL.RawQuery),
+			zap.String("request_remote_address", r.RemoteAddr),
 			zap.String("request_uri", r.RequestURI),
 			zap.String("request_user_agent", r.UserAgent()),
-			zap.String("request_remote_address", r.RemoteAddr),
 			zap.String("request_x_forwarded_for", r.Header.Get("X-Forwarded-For")),
 		)
 
@@ -57,8 +59,10 @@ func RequestInjectHandler(logger *zap.Logger, traceIDHeaderName string, redactFn
 			l = l.With(zap.String("request", redactFn(string(reqDump))))
 		}
 
-		ctx = logging.WithLogger(ctx, l)
+		ctx := r.Context()
+		ctx = libhttputil.WithRequestTime(ctx, reqTime)
 		ctx = traceid.NewContext(ctx, reqID)
+		ctx = logging.WithLogger(ctx, l)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}

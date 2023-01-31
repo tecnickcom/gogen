@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
@@ -279,4 +280,34 @@ func TestQueryUintOrDefault(t *testing.T) {
 			require.Equal(t, tt.wantResp, got, "QueryUintOrDefault() = %v, wantResp %v", got, tt.wantResp)
 		})
 	}
+}
+
+func TestGetRequestTimeFromContext(t *testing.T) {
+	t.Parallel()
+
+	testTime := time.Date(2023, time.January, 31, 10, 0, 0, 0, time.UTC)
+
+	ctx := context.Background()
+	ctx = WithRequestTime(ctx, testTime)
+
+	outTime, ok := GetRequestTimeFromContext(ctx)
+
+	require.True(t, ok)
+	require.Equal(t, testTime, outTime)
+}
+
+func TestGetRequestTime(t *testing.T) {
+	t.Parallel()
+
+	testTime := time.Date(2023, time.January, 31, 11, 0, 0, 0, time.UTC)
+
+	ctx := context.Background()
+	ctx = WithRequestTime(ctx, testTime)
+
+	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+
+	outTime, ok := GetRequestTime(r)
+
+	require.True(t, ok)
+	require.Equal(t, testTime, outTime)
 }

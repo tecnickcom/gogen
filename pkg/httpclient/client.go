@@ -50,7 +50,7 @@ func New(opts ...Option) *Client {
 //
 //nolint:gocognit
 func (c *Client) Do(r *http.Request) (*http.Response, error) {
-	start := time.Now()
+	reqTime := time.Now().UTC()
 
 	ctx, cancel := context.WithTimeout(r.Context(), c.client.Timeout)
 	defer cancel()
@@ -61,7 +61,11 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	var err error
 
 	defer func() {
-		l = l.With(zap.Duration(c.logPrefix+"duration", time.Since(start)))
+		resTime := time.Now().UTC()
+		l = l.With(
+			zap.Time(c.logPrefix+"response_time", resTime),
+			zap.Duration(c.logPrefix+"response_duration", resTime.Sub(reqTime)),
+		)
 
 		if err != nil {
 			l.Error(c.logPrefix+"error", zap.Error(err))
@@ -82,7 +86,8 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	r = r.WithContext(ctx)
 
 	l = l.With(
-		zap.String(c.logPrefix+"traceid", reqID),
+		zap.String(c.logPrefix+traceid.DefaultLogKey, reqID),
+		zap.Time(c.logPrefix+"request_time", reqTime),
 		zap.String(c.logPrefix+"request_method", r.Method),
 		zap.String(c.logPrefix+"request_path", r.URL.Path),
 		zap.String(c.logPrefix+"request_query", r.URL.RawQuery),
