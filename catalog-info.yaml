@@ -7,6 +7,7 @@ metadata:
   annotations:
     github.com/project-slug: nexmoinc/gosrvlib
     backstage.io/techdocs-ref: url:https://github.com/nexmoinc/gosrvlib/tree/main
+    sonarqube.org/project-key: nexmoinc_gosrvlib
 spec:
   type: library
   owner: nexmoinc/nexmo-oss
