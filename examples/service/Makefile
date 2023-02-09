@@ -377,7 +377,7 @@ endif
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl --silent --show-error --fail --location https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.50.1
+	curl --silent --show-error --fail --location https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.51.1
 	$(GO) install github.com/mikefarah/yq/v4@latest
 	$(GO) install github.com/hairyhenderson/gomplate/v3/cmd/gomplate@latest
 	$(GO) install github.com/rakyll/gotest
@@ -472,7 +472,7 @@ generate:
 gendoc:
 	yq --input-format yaml --output-format json < doc/src/config.yaml . > doc/src/config.json
 	check-jsonschema --schemafile doc/src/config.schema.json doc/src/config.json
-	gomplate \
+	ASSUME_NO_MOVING_GC_UNSAFE_RISK_IT_WITH=go1.20 gomplate \
 	--datasource config=./doc/src/config.json \
 	--template description=./doc/src/description.tmpl \
 	--template development=./doc/src/development.tmpl \

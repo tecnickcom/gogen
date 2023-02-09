@@ -23,7 +23,7 @@ jobs:
           go-version-file: 'go.mod'
           check-latest: true
       - name: dependency cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: $(go env GOPATH)/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -44,7 +44,7 @@ jobs:
           go-version-file: 'go.mod'
           check-latest: true
       - name: dependency cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: $(go env GOPATH)/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -63,7 +63,7 @@ jobs:
           go-version-file: 'go.mod'
           check-latest: true
       - name: dependency cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: $(go env GOPATH)/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}

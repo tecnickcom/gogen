@@ -62,10 +62,8 @@ func Test_WithRegion(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest,tparallel
+//nolint:paralleltest
 func Test_WithRegionFromURL(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name                string
 		url                 string

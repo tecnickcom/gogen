@@ -22,7 +22,7 @@ func ExampleNew() {
 
 	interval := 10 * time.Millisecond
 	jitter := 1 * time.Millisecond
-	timeout := 1 * time.Millisecond
+	timeout := 2 * time.Millisecond
 
 	// create a new periodic job
 	p, err := periodic.New(interval, jitter, timeout, task)

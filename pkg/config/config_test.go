@@ -401,9 +401,8 @@ func Test_loadRemoteConfig(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest,tparallel
 func Test_loadFromEnvVarSource(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name              string
 		setupConfigSource func() *remoteSourceConfig
@@ -601,10 +600,8 @@ func Test_loadFromRemoteSource(t *testing.T) {
 	}
 }
 
-//nolint:gocognit,tparallel,maintidx
+//nolint:gocognit,paralleltest,maintidx
 func Test_loadConfig(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name             string
 		setupLocalViper  func(ctrl *gomock.Controller) Viper
