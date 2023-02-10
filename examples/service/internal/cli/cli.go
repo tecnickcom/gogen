@@ -6,11 +6,11 @@ import (
 	"os"
 
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
-	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
-	"github.com/nexmoinc/gosrvlib/pkg/config"
-	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
 	"github.com/spf13/cobra"
+	"github.com/vonage/gosrvlib/pkg/bootstrap"
+	"github.com/vonage/gosrvlib/pkg/config"
+	"github.com/vonage/gosrvlib/pkg/httputil/jsendx"
+	"github.com/vonage/gosrvlib/pkg/logging"
 )
 
 type bootstrapFunc func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error

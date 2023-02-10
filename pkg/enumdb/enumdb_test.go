@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 func TestNew(t *testing.T) {

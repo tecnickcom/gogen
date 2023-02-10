@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/cli"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/testutil"
 	"go.uber.org/zap"
 )
 

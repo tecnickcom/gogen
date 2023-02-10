@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/nexmoinc/gosrvlib/pkg/config"
-	"github.com/nexmoinc/gosrvlib/pkg/validator"
+	"github.com/vonage/gosrvlib/pkg/config"
+	"github.com/vonage/gosrvlib/pkg/validator"
 )
 
 const (

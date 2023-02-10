@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 func TestPProfHandler(t *testing.T) {

@@ -3,7 +3,7 @@ package paging_test
 import (
 	"fmt"
 
-	"github.com/nexmoinc/gosrvlib/pkg/paging"
+	"github.com/vonage/gosrvlib/pkg/paging"
 )
 
 func ExampleNew() {

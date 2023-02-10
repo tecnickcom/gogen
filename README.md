@@ -8,7 +8,7 @@
 
 This Open Source project contains a collection of high-quality GO (golang) packages.
 
-The packages documentation is available at: [https://pkg.go.dev/github.com/nexmoinc/gosrvlib](https://pkg.go.dev/github.com/nexmoinc/gosrvlib)
+The packages documentation is available at: [https://pkg.go.dev/github.com/vonage/gosrvlib](https://pkg.go.dev/github.com/vonage/gosrvlib)
 
 This package collection forms the base structure for production-ready web-services.
 
@@ -17,25 +17,25 @@ The new generated project name, description, etc..., can be set in the file spec
 
 Each package follows the same conventions and they can be individually imported in any project.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/nexmoinc/gosrvlib.svg)](https://pkg.go.dev/github.com/nexmoinc/gosrvlib)   
-[![check](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml/badge.svg)](https://github.com/nexmoinc/gosrvlib/actions/workflows/check.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/nexmoinc/gosrvlib/badge.svg?branch=main)](https://coveralls.io/github/nexmoinc/gosrvlib?branch=main)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=coverage)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
-[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)  
-[![Go Report Card](https://goreportcard.com/badge/github.com/nexmoinc/gosrvlib)](https://goreportcard.com/report/github.com/nexmoinc/gosrvlib)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
-[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)  
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=bugs)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
-[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=nexmoinc_gosrvlib&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=nexmoinc_gosrvlib)
+[![Go Reference](https://pkg.go.dev/badge/github.com/vonage/gosrvlib.svg)](https://pkg.go.dev/github.com/vonage/gosrvlib)   
+[![check](https://github.com/vonage/gosrvlib/actions/workflows/check.yaml/badge.svg)](https://github.com/vonage/gosrvlib/actions/workflows/check.yaml)
+[![Coverage Status](https://coveralls.io/repos/github/vonage/gosrvlib/badge.svg?branch=main)](https://coveralls.io/github/vonage/gosrvlib?branch=main)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=coverage)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)  
+[![Go Report Card](https://goreportcard.com/badge/github.com/vonage/gosrvlib)](https://goreportcard.com/report/github.com/vonage/gosrvlib)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)  
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=bugs)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=vonage_gosrvlib&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=vonage_gosrvlib)
 
 
 * **category**    Library
-* **license**     [MIT](https://github.com/nexmoinc/gosrvlib/blob/main/LICENSE)
-* **link**        https://github.com/nexmoinc/gosrvlib
+* **license**     [MIT](https://github.com/vonage/gosrvlib/blob/main/LICENSE)
+* **link**        https://github.com/vonage/gosrvlib
 
 -----------------------------------------------------------------
 

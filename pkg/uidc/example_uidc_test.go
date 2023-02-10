@@ -3,7 +3,7 @@ package uidc_test
 import (
 	"fmt"
 
-	"github.com/nexmoinc/gosrvlib/pkg/uidc"
+	"github.com/vonage/gosrvlib/pkg/uidc"
 )
 
 //nolint:testableexamples

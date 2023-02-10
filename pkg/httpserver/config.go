@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/nexmoinc/gosrvlib/pkg/ipify"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/profiling"
-	"github.com/nexmoinc/gosrvlib/pkg/redact"
-	"github.com/nexmoinc/gosrvlib/pkg/traceid"
+	"github.com/vonage/gosrvlib/pkg/ipify"
+	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/profiling"
+	"github.com/vonage/gosrvlib/pkg/redact"
+	"github.com/vonage/gosrvlib/pkg/traceid"
 	"go.uber.org/zap"
 )
 

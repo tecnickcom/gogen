@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 )
 

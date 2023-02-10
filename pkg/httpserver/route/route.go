@@ -3,7 +3,7 @@
 package route
 
 import (
-	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
+	"github.com/vonage/gosrvlib/pkg/httpserver"
 )
 
 // Route is deprecated.

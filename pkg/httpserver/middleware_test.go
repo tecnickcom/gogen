@@ -5,12 +5,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/nexmoinc/gosrvlib/pkg/httputil"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/redact"
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
-	"github.com/nexmoinc/gosrvlib/pkg/traceid"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/httputil"
+	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/redact"
+	"github.com/vonage/gosrvlib/pkg/testutil"
+	"github.com/vonage/gosrvlib/pkg/traceid"
 	"go.uber.org/zap/zapcore"
 )
 

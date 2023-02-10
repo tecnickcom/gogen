@@ -1,4 +1,4 @@
-module github.com/nexmoinc/gosrvlib
+module github.com/vonage/gosrvlib
 
 go 1.20
 

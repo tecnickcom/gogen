@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/nexmoinc/gosrvlib/pkg/filter"
+	"github.com/vonage/gosrvlib/pkg/filter"
 )
 
 // Address is an example structure type used to test nested structures.

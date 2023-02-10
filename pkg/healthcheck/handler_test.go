@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nexmoinc/gosrvlib/pkg/httputil"
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/httputil"
+	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 func TestNewHandler(t *testing.T) {

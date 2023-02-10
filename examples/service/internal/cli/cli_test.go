@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/bootstrap"
+	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 //nolint:gocognit,paralleltest,tparallel

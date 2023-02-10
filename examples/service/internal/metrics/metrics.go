@@ -2,9 +2,9 @@
 package metrics
 
 import (
-	"github.com/nexmoinc/gosrvlib/pkg/metrics"
-	prom "github.com/nexmoinc/gosrvlib/pkg/metrics/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/vonage/gosrvlib/pkg/metrics"
+	prom "github.com/vonage/gosrvlib/pkg/metrics/prometheus"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"runtime/debug"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/httpserver"
+	"github.com/vonage/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 )
 

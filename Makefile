@@ -1,14 +1,14 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni
-# @link        https://github.com/nexmoinc/gosrvlib
+# @link        https://github.com/vonage/gosrvlib
 # ------------------------------------------------------------------------------
 
 SHELL=/bin/bash
 .SHELLFLAGS=-o pipefail -c
 
 # CVS path (path to the parent dir containing the project)
-CVSPATH=github.com/nexmoinc
+CVSPATH=github.com/vonage
 
 # Project owner
 OWNER=vonage

@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/nexmoinc/gosrvlib/pkg/periodic"
+	"github.com/vonage/gosrvlib/pkg/periodic"
 )
 
 func ExampleNew() {

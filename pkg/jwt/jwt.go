@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/nexmoinc/gosrvlib/pkg/httputil"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/httputil"
+	"github.com/vonage/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/nexmoinc/gosrvlib/pkg/enumbitmap"
+	"github.com/vonage/gosrvlib/pkg/enumbitmap"
 )
 
 // IDByName type maps strings to integers IDs.

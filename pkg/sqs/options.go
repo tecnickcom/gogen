@@ -1,7 +1,7 @@
 package sqs
 
 import (
-	"github.com/nexmoinc/gosrvlib/pkg/awsopt"
+	"github.com/vonage/gosrvlib/pkg/awsopt"
 )
 
 // Option is a type to allow setting custom client options.

@@ -1,6 +1,6 @@
 site_name: "gosrvlib"
 site_description: "Documentation on the gosrvlib library"
-repo_url: https://github.com/nexmoinc/gosrvlib
+repo_url: https://github.com/vonage/gosrvlib
 edit_uri: edit/main/
 repo_name: "GitHub"
 docs_dir: .

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/logging"
 )
 
 // ConnectFunc is the type of function called to perform the actual DB connection.

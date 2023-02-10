@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/nexmoinc/gosrvlib/pkg/traceid"
+	"github.com/vonage/gosrvlib/pkg/traceid"
 )
 
 func ExampleNewContext() {

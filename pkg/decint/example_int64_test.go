@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/nexmoinc/gosrvlib/pkg/decint"
+	"github.com/vonage/gosrvlib/pkg/decint"
 )
 
 func ExampleFloatToInt() {

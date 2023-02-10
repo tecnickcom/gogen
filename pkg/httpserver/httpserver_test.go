@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/testutil"
 	"go.uber.org/zap"
 )
 

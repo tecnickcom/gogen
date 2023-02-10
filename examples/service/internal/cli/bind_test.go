@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
-	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
-	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/bootstrap"
+	"github.com/vonage/gosrvlib/pkg/httputil/jsendx"
+	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 //nolint:gocognit,paralleltest,tparallel

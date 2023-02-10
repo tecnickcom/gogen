@@ -8,14 +8,14 @@ import (
 
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/httphandler"
 	instr "github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
-	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
-	"github.com/nexmoinc/gosrvlib/pkg/healthcheck"
-	"github.com/nexmoinc/gosrvlib/pkg/httpclient"
-	"github.com/nexmoinc/gosrvlib/pkg/httpserver"
-	"github.com/nexmoinc/gosrvlib/pkg/httputil/jsendx"
-	"github.com/nexmoinc/gosrvlib/pkg/ipify"
-	"github.com/nexmoinc/gosrvlib/pkg/metrics"
-	"github.com/nexmoinc/gosrvlib/pkg/traceid"
+	"github.com/vonage/gosrvlib/pkg/bootstrap"
+	"github.com/vonage/gosrvlib/pkg/healthcheck"
+	"github.com/vonage/gosrvlib/pkg/httpclient"
+	"github.com/vonage/gosrvlib/pkg/httpserver"
+	"github.com/vonage/gosrvlib/pkg/httputil/jsendx"
+	"github.com/vonage/gosrvlib/pkg/ipify"
+	"github.com/vonage/gosrvlib/pkg/metrics"
+	"github.com/vonage/gosrvlib/pkg/traceid"
 	"go.uber.org/zap"
 )
 

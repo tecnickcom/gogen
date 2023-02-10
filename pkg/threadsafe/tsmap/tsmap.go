@@ -2,7 +2,7 @@
 package tsmap
 
 import (
-	"github.com/nexmoinc/gosrvlib/pkg/threadsafe"
+	"github.com/vonage/gosrvlib/pkg/threadsafe"
 )
 
 // Set is a thread-safe function to assign a value to a key in a map.

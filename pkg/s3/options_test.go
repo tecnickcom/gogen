@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/nexmoinc/gosrvlib/pkg/awsopt"
 	"github.com/stretchr/testify/require"
+	"github.com/vonage/gosrvlib/pkg/awsopt"
 )
 
 func Test_WithAWSOptions(t *testing.T) {

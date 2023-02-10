@@ -3,8 +3,8 @@ package main
 
 import (
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/cli"
-	"github.com/nexmoinc/gosrvlib/pkg/bootstrap"
-	"github.com/nexmoinc/gosrvlib/pkg/logging"
+	"github.com/vonage/gosrvlib/pkg/bootstrap"
+	"github.com/vonage/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 )
 

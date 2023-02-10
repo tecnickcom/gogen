@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	libhttputil "github.com/nexmoinc/gosrvlib/pkg/httputil"
-	"github.com/nexmoinc/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	libhttputil "github.com/vonage/gosrvlib/pkg/httputil"
+	"github.com/vonage/gosrvlib/pkg/testutil"
 	"go.uber.org/zap"
 )
 
