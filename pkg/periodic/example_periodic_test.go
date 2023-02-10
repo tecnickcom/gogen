@@ -20,8 +20,8 @@ func ExampleNew() {
 		count <- (v + 1)
 	}
 
-	interval := 10 * time.Millisecond
-	jitter := 1 * time.Millisecond
+	interval := 20 * time.Millisecond
+	jitter := 2 * time.Millisecond
 	timeout := 2 * time.Millisecond
 
 	// create a new periodic job
