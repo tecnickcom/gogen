@@ -10,5 +10,5 @@ metadata:
     sonarqube.org/project-key: Vonage_gosrvlib
 spec:
   type: library
-  owner: vonage/nexmo-oss
+  owner: Vonage/nexmo-oss
   lifecycle: production
