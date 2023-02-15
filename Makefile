@@ -13,6 +13,9 @@ OWNER=Vonage
 # Project vendor
 VENDOR=${OWNER}
 
+# Lowercase VENDOR name for Docker
+LCVENDOR=$(shell echo "${VENDOR}" | tr '[:upper:]' '[:lower:]')
+
 # CVS path (path to the parent dir containing the project)
 CVSPATH=github.com/${VENDOR}
 
@@ -124,7 +127,7 @@ dbuild: dockerdev
 	@mkdir -p $(TARGETDIR)
 	@rm -rf $(TARGETDIR)/*
 	@echo 0 > $(TARGETDIR)/make.exit
-	CVSPATH=$(CVSPATH) VENDOR=$(VENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' $(CURRENTDIR)/dockerbuild.sh
+	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' $(CURRENTDIR)dockerbuild.sh
 	@exit `cat $(TARGETDIR)/make.exit`
 
 # Get the test dependencies
@@ -138,7 +141,7 @@ deps: ensuretarget
 # Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
-	$(DOCKER) build --pull --tag ${VENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
 
 # Create the trget directories if missing
 .PHONY: ensuretarget

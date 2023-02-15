@@ -18,11 +18,11 @@ set -e -u +x
 : ${CVSPATH:=project}
 : ${VENDOR:=vendor}
 : ${PROJECT:=project}
-: ${SSH_PRIVATE_KEY:=$(cat ~/.ssh/id_rsa)}
-: ${SSH_PUBLIC_KEY:=$(cat ~/.ssh/id_rsa.pub)}
+: ${SSH_PRIVATE_KEY:=$(cat ~/.ssh/id_rsa || cat ~/.ssh/id_ed25519)}
+: ${SSH_PUBLIC_KEY:=$(cat ~/.ssh/id_rsa.pub || cat ~/.ssh/id_ed25519.pub)}
 
 # make target to execute
-: ${MAKETARGET:=mod deps generate qa build}
+: ${MAKETARGET:=format clean mod deps gendoc generate qa build}
 
 # Define the project root path
 PRJPATH=/root/src/${CVSPATH}/${PROJECT}

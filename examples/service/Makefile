@@ -13,6 +13,9 @@ OWNER=gosrvlibexampleowner
 # Project vendor
 VENDOR=${OWNER}
 
+# Lowercase VENDOR name for Docker
+LCVENDOR=$(shell echo "${VENDOR}" | tr '[:upper:]' '[:lower:]')
+
 # CVS path (path to the parent dir containing the project)
 CVSPATH=github.com/${VENDOR}
 
@@ -26,7 +29,7 @@ VERSION=$(shell cat VERSION)
 RELEASE=$(shell cat RELEASE)
 
 # Name of RPM or DEB package
-PKGNAME=${VENDOR}-${PROJECT}
+PKGNAME=${LCVENDOR}-${PROJECT}
 
 # Current directory
 CURRENTDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
@@ -86,13 +89,13 @@ PATHINSTDOC=$(DESTDIR)/$(DOCPATH)
 PATHINSTMAN=$(DESTDIR)/$(MANPATH)
 
 # DOCKER Packaging path (where BZ2s will be stored)
-PATHDOCKERPKG=$(CURRENTDIR)/target/DOCKER
+PATHDOCKERPKG=$(CURRENTDIR)target/DOCKER
 
 # RPM Packaging path (where RPMs will be stored)
-PATHRPMPKG=$(CURRENTDIR)/target/RPM
+PATHRPMPKG=$(CURRENTDIR)target/RPM
 
 # DEB Packaging path (where DEBs will be stored)
-PATHDEBPKG=$(CURRENTDIR)/target/DEB
+PATHDEBPKG=$(CURRENTDIR)target/DEB
 
 # Prefix for the published docker container name
 DOCKERPREFIX=
@@ -335,7 +338,7 @@ dbuild: dockerdev
 	@mkdir -p $(TARGETDIR)
 	@rm -rf $(TARGETDIR)/*
 	@echo 0 > $(TARGETDIR)/make.exit
-	CVSPATH=$(CVSPATH) VENDOR=$(VENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' $(CURRENTDIR)/dockerbuild.sh
+	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' $(CURRENTDIR)dockerbuild.sh
 	@exit `cat $(TARGETDIR)/make.exit`
 
 # Build the DEB package for Debian-like Linux distributions
@@ -391,17 +394,17 @@ docker: dockerdir dockerbuild
 # Build the docker container in the target/DOCKER directory
 .PHONY: dockerbuild
 dockerbuild:
-	$(DOCKER) build --no-cache --tag=${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
+	$(DOCKER) build --no-cache --tag=${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
 
 # Delete the Docker image
 .PHONY: dockerdelete
 dockerdelete:
-	$(DOCKER) rmi -f `docker images "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" -q`
+	$(DOCKER) rmi -f `docker images "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" -q`
 
 # Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
-	$(DOCKER) build --pull --tag ${VENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
 
 # Create the directory with docker files to be packaged
 .PHONY: dockerdir
@@ -427,9 +430,9 @@ dockerpromote:
 .PHONY: dockerpush
 dockerpush:
 	$(shell eval ${DOCKER_LOGIN_PUSH})
-	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) tag "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
 	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	$(DOCKER) tag "${VENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
+	$(DOCKER) tag "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 
 .PHONY: dockertest
