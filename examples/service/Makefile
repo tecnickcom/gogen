@@ -7,14 +7,14 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-o pipefail -c
 
-# CVS path (path to the parent dir containing the project)
-CVSPATH=github.com/gosrvlibexampleowner
-
 # Project owner
 OWNER=gosrvlibexampleowner
 
 # Project vendor
-VENDOR=gosrvlibexampleowner
+VENDOR=${OWNER}
+
+# CVS path (path to the parent dir containing the project)
+CVSPATH=github.com/${VENDOR}
 
 # Project name
 PROJECT=gosrvlibexample
