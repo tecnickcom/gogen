@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/ipify"
+	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/profiling"
+	"github.com/Vonage/gosrvlib/pkg/redact"
+	"github.com/Vonage/gosrvlib/pkg/traceid"
 	"github.com/julienschmidt/httprouter"
-	"github.com/vonage/gosrvlib/pkg/ipify"
-	"github.com/vonage/gosrvlib/pkg/logging"
-	"github.com/vonage/gosrvlib/pkg/profiling"
-	"github.com/vonage/gosrvlib/pkg/redact"
-	"github.com/vonage/gosrvlib/pkg/traceid"
 	"go.uber.org/zap"
 )
 

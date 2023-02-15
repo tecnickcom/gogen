@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/logging"
 )
 
 // Bootstrap is the function in charge of configuring the core components

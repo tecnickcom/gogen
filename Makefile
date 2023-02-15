@@ -1,20 +1,20 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni
-# @link        https://github.com/vonage/gosrvlib
+# @link        https://github.com/Vonage/gosrvlib
 # ------------------------------------------------------------------------------
 
 SHELL=/bin/bash
 .SHELLFLAGS=-o pipefail -c
 
-# CVS path (path to the parent dir containing the project)
-CVSPATH=github.com/vonage
-
 # Project owner
-OWNER=vonage
+OWNER=Vonage
 
 # Project vendor
-VENDOR=vonage
+VENDOR=${OWNER}
+
+# CVS path (path to the parent dir containing the project)
+CVSPATH=github.com/${VENDOR}
 
 # Project name
 PROJECT=gosrvlib

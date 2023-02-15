@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/testutil"
 	"go.uber.org/zap"
 )
 

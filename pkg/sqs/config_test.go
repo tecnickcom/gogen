@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Vonage/gosrvlib/pkg/awsopt"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/awsopt"
 )
 
 //nolint:paralleltest

@@ -3,9 +3,9 @@ package cli
 import (
 	"testing"
 
+	"github.com/Vonage/gosrvlib/pkg/config"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/config"
 )
 
 func Test_appConfig_SetDefaults(t *testing.T) {

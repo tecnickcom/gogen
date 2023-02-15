@@ -1,7 +1,7 @@
 package s3
 
 import (
-	"github.com/vonage/gosrvlib/pkg/awsopt"
+	"github.com/Vonage/gosrvlib/pkg/awsopt"
 )
 
 // Option is a type to allow setting custom client options.

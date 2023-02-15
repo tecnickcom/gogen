@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 )
 

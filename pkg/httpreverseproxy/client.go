@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	libhttputil "github.com/vonage/gosrvlib/pkg/httputil"
-	"github.com/vonage/gosrvlib/pkg/logging"
-	"github.com/vonage/gosrvlib/pkg/traceid"
+	libhttputil "github.com/Vonage/gosrvlib/pkg/httputil"
+	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/traceid"
 	"go.uber.org/zap"
 )
 

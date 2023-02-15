@@ -5,9 +5,9 @@ metadata:
   name: gosrvlib
   description: Collection of common GO packages that forms the base structure of a service.
   annotations:
-    github.com/project-slug: vonage/gosrvlib
-    backstage.io/techdocs-ref: url:https://github.com/vonage/gosrvlib/tree/main
-    sonarqube.org/project-key: vonage_gosrvlib
+    github.com/project-slug: Vonage/gosrvlib
+    backstage.io/techdocs-ref: url:https://github.com/Vonage/gosrvlib/tree/main
+    sonarqube.org/project-key: Vonage_gosrvlib
 spec:
   type: library
   owner: vonage/nexmo-oss

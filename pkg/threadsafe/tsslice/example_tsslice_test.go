@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/vonage/gosrvlib/pkg/threadsafe/tsslice"
+	"github.com/Vonage/gosrvlib/pkg/threadsafe/tsslice"
 )
 
 func ExampleAppend_simple() {

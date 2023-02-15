@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Vonage/gosrvlib/pkg/metrics"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/metrics"
 	"go.uber.org/zap"
 )
 

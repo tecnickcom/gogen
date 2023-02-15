@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/vonage/gosrvlib/pkg/validator"
+	"github.com/Vonage/gosrvlib/pkg/validator"
 )
 
 const (

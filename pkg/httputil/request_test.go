@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 func TestAddBasicAuth(t *testing.T) {

@@ -3,8 +3,8 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/vonage/gosrvlib/pkg/logging"
-	"github.com/vonage/gosrvlib/pkg/metrics"
+	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/metrics"
 	"go.uber.org/zap"
 )
 

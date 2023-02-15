@@ -2,7 +2,7 @@
 package tsslice
 
 import (
-	"github.com/vonage/gosrvlib/pkg/threadsafe"
+	"github.com/Vonage/gosrvlib/pkg/threadsafe"
 )
 
 // Append is a thread-safe version of the Go built-in append function.

@@ -5,9 +5,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/vonage/gosrvlib/pkg/httpserver"
-	"github.com/vonage/gosrvlib/pkg/httputil"
-	"github.com/vonage/gosrvlib/pkg/uidc"
+	"github.com/Vonage/gosrvlib/pkg/httpserver"
+	"github.com/Vonage/gosrvlib/pkg/httputil"
+	"github.com/Vonage/gosrvlib/pkg/uidc"
 )
 
 // Service is the interface representing the business logic of the service.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/vonage/gosrvlib/pkg/sqlutil"
+	"github.com/Vonage/gosrvlib/pkg/sqlutil"
 )
 
 func ExampleSQLUtil_QuoteID() {

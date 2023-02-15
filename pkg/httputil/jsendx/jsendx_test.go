@@ -9,10 +9,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Vonage/gosrvlib/pkg/httpserver"
+	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/httpserver"
-	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 func TestSend(t *testing.T) {

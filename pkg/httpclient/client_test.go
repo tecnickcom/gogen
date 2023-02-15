@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 )
 

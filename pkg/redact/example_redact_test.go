@@ -3,7 +3,7 @@ package redact_test
 import (
 	"fmt"
 
-	"github.com/vonage/gosrvlib/pkg/redact"
+	"github.com/Vonage/gosrvlib/pkg/redact"
 )
 
 func ExampleHTTPData() {

@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 func TestStatus_MarshalJSON(t *testing.T) {

@@ -6,10 +6,10 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"github.com/vonage/gosrvlib/pkg/logging"
-	"github.com/vonage/gosrvlib/pkg/redact"
-	"github.com/vonage/gosrvlib/pkg/traceid"
-	"github.com/vonage/gosrvlib/pkg/uidc"
+	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/redact"
+	"github.com/Vonage/gosrvlib/pkg/traceid"
+	"github.com/Vonage/gosrvlib/pkg/uidc"
 	"go.uber.org/zap"
 )
 

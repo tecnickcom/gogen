@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/logging"
 )
 
 const (

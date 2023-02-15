@@ -19,8 +19,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/vonage/gosrvlib/pkg/enumcache"
-	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/enumcache"
+	"github.com/Vonage/gosrvlib/pkg/logging"
 )
 
 // EnumDB maps each enumeration table name with the corresponding enumeration cache.

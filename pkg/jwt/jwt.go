@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/httputil"
+	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/golang-jwt/jwt"
-	"github.com/vonage/gosrvlib/pkg/httputil"
-	"github.com/vonage/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )

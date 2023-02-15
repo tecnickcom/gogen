@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/jmoiron/sqlx"
-	"github.com/vonage/gosrvlib/pkg/logging"
 	"go.uber.org/zap"
 )
 

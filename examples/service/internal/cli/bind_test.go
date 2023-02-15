@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/bootstrap"
+	"github.com/Vonage/gosrvlib/pkg/httputil/jsendx"
+	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/bootstrap"
-	"github.com/vonage/gosrvlib/pkg/httputil/jsendx"
-	"github.com/vonage/gosrvlib/pkg/logging"
-	"github.com/vonage/gosrvlib/pkg/testutil"
 )
 
 //nolint:gocognit,paralleltest,tparallel

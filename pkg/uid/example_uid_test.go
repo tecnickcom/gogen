@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/vonage/gosrvlib/pkg/uid"
+	"github.com/Vonage/gosrvlib/pkg/uid"
 )
 
 //nolint:testableexamples

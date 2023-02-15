@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/vonage/gosrvlib/pkg/httpretrier"
-	"github.com/vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/httpretrier"
+	"github.com/Vonage/gosrvlib/pkg/logging"
 )
 
 const (

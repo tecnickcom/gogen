@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	libhttputil "github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/tecnickcom/statsd/v2"
-	libhttputil "github.com/vonage/gosrvlib/pkg/httputil"
 )
 
 const (

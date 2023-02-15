@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/vonage/gosrvlib/pkg/healthcheck"
-	"github.com/vonage/gosrvlib/pkg/httpserver"
-	"github.com/vonage/gosrvlib/pkg/httputil"
+	"github.com/Vonage/gosrvlib/pkg/healthcheck"
+	"github.com/Vonage/gosrvlib/pkg/httpserver"
+	"github.com/Vonage/gosrvlib/pkg/httputil"
 )
 
 const (

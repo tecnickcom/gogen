@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Vonage/gosrvlib/pkg/bootstrap"
+	"github.com/Vonage/gosrvlib/pkg/config"
+	"github.com/Vonage/gosrvlib/pkg/httputil/jsendx"
+	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
 	"github.com/spf13/cobra"
-	"github.com/vonage/gosrvlib/pkg/bootstrap"
-	"github.com/vonage/gosrvlib/pkg/config"
-	"github.com/vonage/gosrvlib/pkg/httputil/jsendx"
-	"github.com/vonage/gosrvlib/pkg/logging"
 )
 
 type bootstrapFunc func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error

@@ -3,7 +3,7 @@ package stringkey_test
 import (
 	"fmt"
 
-	"github.com/vonage/gosrvlib/pkg/stringkey"
+	"github.com/Vonage/gosrvlib/pkg/stringkey"
 )
 
 func ExampleNew() {

@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/metrics"
+	"github.com/Vonage/gosrvlib/pkg/metrics/prometheus"
+	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
-	"github.com/vonage/gosrvlib/pkg/logging"
-	"github.com/vonage/gosrvlib/pkg/metrics"
-	"github.com/vonage/gosrvlib/pkg/metrics/prometheus"
-	"github.com/vonage/gosrvlib/pkg/testutil"
 	"go.uber.org/zap"
 )
 
