@@ -1,6 +1,10 @@
 package validator
 
 import (
+	"context"
+	"database/sql"
+	"database/sql/driver"
+	"reflect"
 	"testing"
 
 	vt "github.com/go-playground/validator/v10"
@@ -71,6 +75,34 @@ func TestWithCustomValidationTags(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ValidateValuer(field reflect.Value) interface{} {
+	if valuer, ok := field.Interface().(driver.Valuer); ok {
+		val, err := valuer.Value()
+		if err == nil {
+			return val
+		}
+	}
+
+	return nil
+}
+
+func TestWithCustomTypeFunc(t *testing.T) {
+	t.Parallel()
+
+	validator, err := New(WithCustomTypeFunc(ValidateValuer, sql.NullString{}, sql.NullInt64{}))
+	require.NoError(t, err)
+
+	type DBBackedUser struct {
+		Name sql.NullString `validate:"required"`
+		Age  sql.NullInt64  `validate:"required"`
+	}
+
+	x := DBBackedUser{Name: sql.NullString{String: "", Valid: true}, Age: sql.NullInt64{Int64: 0, Valid: false}}
+
+	err = validator.ValidateStructCtx(context.Background(), x)
+	require.NotNil(t, err)
 }
 
 func TestWithErrorTemplates(t *testing.T) {

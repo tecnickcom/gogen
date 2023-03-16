@@ -44,6 +44,14 @@ func WithCustomValidationTags(t map[string]vt.FuncCtx) Option {
 	}
 }
 
+// WithCustomTypeFunc registers a CustomTypeFunc against a number of types.
+func WithCustomTypeFunc(fn vt.CustomTypeFunc, types ...interface{}) Option {
+	return func(v *Validator) error {
+		v.v.RegisterCustomTypeFunc(fn, types...)
+		return nil
+	}
+}
+
 // WithErrorTemplates sets basic template-based error message translations.
 // The argument t maps tags to html templates that uses the Error data.
 // These translations takes precedence over the parent library translation object.
