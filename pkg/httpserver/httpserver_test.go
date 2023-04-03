@@ -192,11 +192,11 @@ type customMiddlewareBinder struct {
 	secondMiddleware chan struct{}
 }
 
-func (c *customMiddlewareBinder) handler(w http.ResponseWriter, r *http.Request) {
+func (c *customMiddlewareBinder) handler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (c *customMiddlewareBinder) slowHandler(w http.ResponseWriter, r *http.Request) {
+func (c *customMiddlewareBinder) slowHandler(w http.ResponseWriter, _ *http.Request) {
 	time.Sleep(2 * time.Millisecond)
 	w.WriteHeader(http.StatusOK)
 }
@@ -210,7 +210,7 @@ func (c *customMiddlewareBinder) middleware(ch chan struct{}) MiddlewareFn {
 	}
 }
 
-func (c *customMiddlewareBinder) BindHTTP(ctx context.Context) []Route {
+func (c *customMiddlewareBinder) BindHTTP(_ context.Context) []Route {
 	return []Route{
 		{
 			Method:      http.MethodGet,

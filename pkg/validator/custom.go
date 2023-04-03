@@ -35,26 +35,26 @@ func CustomValidationTags() map[string]vt.FuncCtx {
 }
 
 // isE164 checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345).
-func isE164NoPlus(ctx context.Context, fl vt.FieldLevel) bool {
+func isE164NoPlus(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexE164NoPlus.MatchString(field.String())
 }
 
 // isEIN checks if the fields value is a valid EIN US tax code (e.g.: 12-3456789 or 123456789).
-func isEIN(ctx context.Context, fl vt.FieldLevel) bool {
+func isEIN(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexEIN.MatchString(field.String())
 }
 
 // isUSZIPCode checks if the fields value is a valid US ZIP code (e.g.: 12345 or 12345-6789).
-func isUSZIPCode(ctx context.Context, fl vt.FieldLevel) bool {
+func isUSZIPCode(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexUSZIPCode.MatchString(field.String())
 }
 
 // isUSState checks if the fields value is a valid 2-letter US state.
 // NOTE: It includes the District of Columbia (DC).
-func isUSState(ctx context.Context, fl vt.FieldLevel) bool {
+func isUSState(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	if field.Kind() == reflect.String {
 		switch field.String() {
@@ -67,7 +67,7 @@ func isUSState(ctx context.Context, fl vt.FieldLevel) bool {
 }
 
 // isUSTerritory checks if the fields value is a valid 2-letter US territory (other than the official states and federal district).
-func isUSTerritory(ctx context.Context, fl vt.FieldLevel) bool {
+func isUSTerritory(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	if field.Kind() == reflect.String {
 		switch field.String() {
@@ -87,7 +87,7 @@ func isUSTerritory(ctx context.Context, fl vt.FieldLevel) bool {
 //
 //	"falseif=Country US|usstate" checks if the field is a valid US state only if the Country field is set to "US".
 //	"falseif=Country|usstate" checks if the field is a valid US state only if the Country field is set and not empty.
-func isFalseIf(ctx context.Context, fl vt.FieldLevel) bool {
+func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 	param := strings.TrimSpace(fl.Param())
 	if param == "" {
 		return true

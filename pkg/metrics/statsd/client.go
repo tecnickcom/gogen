@@ -82,7 +82,7 @@ func defaultClient() *Client {
 }
 
 // InstrumentDB wraps a sql.DB to collect metrics - [NOT IMPLEMENTED].
-func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
+func (c *Client) InstrumentDB(_ string, _ *sql.DB) error {
 	return nil
 }
 

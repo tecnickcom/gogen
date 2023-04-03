@@ -34,12 +34,12 @@ type Client interface {
 type Default struct{}
 
 // InstrumentDB wraps a sql.DB to collect metrics.
-func (c *Default) InstrumentDB(dbName string, db *sql.DB) error {
+func (c *Default) InstrumentDB(_ string, _ *sql.DB) error {
 	return nil
 }
 
 // InstrumentHandler returns the input handler.
-func (c *Default) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
+func (c *Default) InstrumentHandler(_ string, handler http.HandlerFunc) http.Handler {
 	return handler
 }
 
@@ -55,13 +55,13 @@ func (c *Default) MetricsHandlerFunc() http.HandlerFunc {
 }
 
 // IncLogLevelCounter is an empty function.
-func (c *Default) IncLogLevelCounter(level string) {
+func (c *Default) IncLogLevelCounter(_ string) {
 	// Do nothing.
 	_ = 0
 }
 
 // IncErrorCounter is an empty function.
-func (c *Default) IncErrorCounter(task, operation, code string) {
+func (c *Default) IncErrorCounter(_, _, _ string) {
 	// Do nothing.
 	_ = 0
 }

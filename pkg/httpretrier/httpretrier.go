@@ -93,7 +93,7 @@ func (c *HTTPRetrier) Do(r *http.Request) (*http.Response, error) {
 }
 
 // defaultRetryIf is the default function to check the retry condition.
-func defaultRetryIf(r *http.Response, err error) bool {
+func defaultRetryIf(_ *http.Response, err error) bool {
 	return err != nil
 }
 

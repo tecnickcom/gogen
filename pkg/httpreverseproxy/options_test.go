@@ -12,7 +12,7 @@ import (
 
 type testHTTPClient struct{}
 
-func (thc *testHTTPClient) Do(r *http.Request) (*http.Response, error) { return nil, nil }
+func (thc *testHTTPClient) Do(_ *http.Request) (*http.Response, error) { return nil, nil }
 
 func TestWithHTTPClient(t *testing.T) {
 	t.Parallel()

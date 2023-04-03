@@ -57,7 +57,7 @@ func Test_NewProducer(t *testing.T) {
 
 type mockProducerClient struct{}
 
-func (m mockProducerClient) WriteMessages(ctx context.Context, msg ...kafka.Message) error {
+func (m mockProducerClient) WriteMessages(_ context.Context, _ ...kafka.Message) error {
 	return nil
 }
 
@@ -67,7 +67,7 @@ func (m mockProducerClient) Close() error {
 
 type mockProducerClientError struct{}
 
-func (m mockProducerClientError) WriteMessages(ctx context.Context, msg ...kafka.Message) error {
+func (m mockProducerClientError) WriteMessages(_ context.Context, _ ...kafka.Message) error {
 	return fmt.Errorf("error WriteMessages")
 }
 

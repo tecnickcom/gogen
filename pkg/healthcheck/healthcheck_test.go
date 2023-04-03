@@ -13,7 +13,7 @@ type testHealthChecker struct {
 	err   error
 }
 
-func (th *testHealthChecker) HealthCheck(ctx context.Context) error {
+func (th *testHealthChecker) HealthCheck(_ context.Context) error {
 	if th.delay != 0 {
 		time.Sleep(th.delay)
 	}

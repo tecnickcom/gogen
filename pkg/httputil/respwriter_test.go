@@ -32,7 +32,7 @@ func (rw *mockResponseWriter) Write(in []byte) (int, error) {
 	return rw.Buffer.Write(in)
 }
 
-func (rw *mockResponseWriter) WriteHeader(statusCode int) {
+func (rw *mockResponseWriter) WriteHeader(_ int) {
 }
 
 func (rw *mockResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
@@ -40,7 +40,7 @@ func (rw *mockResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, nil
 }
 
-func (rw *mockResponseWriter) Push(target string, opts *http.PushOptions) error {
+func (rw *mockResponseWriter) Push(_ string, _ *http.PushOptions) error {
 	rw.pushCalled = true
 	return nil
 }
@@ -55,11 +55,11 @@ func (rw *mockBrokenResponseWriter) Header() http.Header {
 	return nil
 }
 
-func (rw *mockBrokenResponseWriter) Write(in []byte) (int, error) {
+func (rw *mockBrokenResponseWriter) Write(_ []byte) (int, error) {
 	return 0, nil
 }
 
-func (rw *mockBrokenResponseWriter) WriteHeader(statusCode int) {
+func (rw *mockBrokenResponseWriter) WriteHeader(_ int) {
 }
 
 func TestNewWrapResponseWriter(t *testing.T) {
