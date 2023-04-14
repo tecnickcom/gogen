@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"reflect"
 )
@@ -27,7 +28,7 @@ func IsZero[T any](v T) bool {
 	return reflect.ValueOf(&v).Elem().IsZero()
 }
 
-// Encode encodes and serialize the input data to a string.
+// Encode encodes and serialize the input data to a gob/base64 string.
 func Encode[T any](data T) (string, error) {
 	var buf bytes.Buffer
 
@@ -55,4 +56,19 @@ func Decode[T any](msg string, data T) error {
 	}
 
 	return nil
+}
+
+// Serialize encodes the input data to a string that can be used for object comparison (json/base64).
+func Serialize[T any](data T) (string, error) {
+	var buf bytes.Buffer
+
+	if IsNil(data) {
+		return "", nil
+	}
+
+	if err := json.NewEncoder(&buf).Encode(data); err != nil {
+		return "", fmt.Errorf("failed to json-encode: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }

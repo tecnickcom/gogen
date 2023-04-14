@@ -271,3 +271,85 @@ func TestDecode(t *testing.T) {
 		})
 	}
 }
+
+func TestSerialize(t *testing.T) {
+	t.Parallel()
+
+	var (
+		nilPointer *int
+		nilChan    chan int
+	)
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	tests := []struct {
+		name    string
+		value   any
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "unsupported type",
+			value:   make(chan int),
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "nil pointer",
+			value:   nilPointer,
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name:    "nil chan",
+			value:   nilChan,
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name:    "success empty string",
+			value:   "",
+			want:    "IiIK",
+			wantErr: false,
+		},
+		{
+			name:    "success with string",
+			value:   "test",
+			want:    "InRlc3QiCg==",
+			wantErr: false,
+		},
+		{
+			name:    "success with int",
+			value:   123,
+			want:    "MTIzCg==",
+			wantErr: false,
+		},
+		{
+			name:    "success with empty struct",
+			value:   &TestData{},
+			want:    "eyJBbHBoYSI6IiIsIkJldGEiOjB9Cg==",
+			wantErr: false,
+		},
+		{
+			name:    "success with struct",
+			value:   &TestData{Alpha: "abc123", Beta: -375},
+			want:    "eyJBbHBoYSI6ImFiYzEyMyIsIkJldGEiOi0zNzV9Cg==",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := Serialize(tt.value)
+
+			require.Equal(t, tt.wantErr, err != nil)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
