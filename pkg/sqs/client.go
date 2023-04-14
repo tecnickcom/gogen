@@ -1,14 +1,12 @@
 package sqs
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/gob"
 	"fmt"
 	"regexp"
 	"strings"
 
+	"github.com/Vonage/gosrvlib/pkg/typeutil"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -158,28 +156,13 @@ func (c *Client) Delete(ctx context.Context, receiptHandle string) error {
 
 // MessageEncode encodes and serialize the input data to a string compatible with SQS.
 func MessageEncode(data interface{}) (string, error) {
-	var buf bytes.Buffer
-
-	if err := gob.NewEncoder(&buf).Encode(data); err != nil {
-		return "", fmt.Errorf("failed to gob-encode the message: %w", err)
-	}
-
-	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+	return typeutil.Encode(data) //nolint:wrapcheck
 }
 
 // MessageDecode decodes a message encoded with MessageEncode to the provided data object.
 // The value underlying data must be a pointer to the correct type for the next data item received.
 func MessageDecode(msg string, data interface{}) error {
-	s, err := base64.StdEncoding.DecodeString(msg)
-	if err != nil {
-		return fmt.Errorf("failed to base64-decode the message: %w", err)
-	}
-
-	if err := gob.NewDecoder(bytes.NewBuffer(s)).Decode(data); err != nil {
-		return fmt.Errorf("failed to gob-decode the message: %w", err)
-	}
-
-	return nil
+	return typeutil.Decode(msg, data) //nolint:wrapcheck
 }
 
 // SendData delivers the specified data as message to the queue.
