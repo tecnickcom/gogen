@@ -208,10 +208,10 @@ func TestEncode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := Encode(tt.value)
+			enc, err := Encode(tt.value)
 
 			require.Equal(t, tt.wantErr, err != nil)
-			require.Equal(t, tt.wantEmpty, got == "")
+			require.Equal(t, tt.wantEmpty, enc == "")
 		})
 	}
 }
@@ -268,6 +268,50 @@ func TestDecode(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.want.Alpha, data.Alpha)
 			require.Equal(t, tt.want.Beta, data.Beta)
+		})
+	}
+}
+
+func TestEncodeDecode(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+		Gamma float32
+	}
+
+	tests := []struct {
+		name  string
+		value TestData
+	}{
+		{
+			name:  "empty",
+			value: TestData{},
+		},
+		{
+			name:  "full",
+			value: TestData{Alpha: "abc1234", Beta: -3756, Gamma: 0.1234},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			enc, err := Encode(tt.value)
+
+			require.NoError(t, err)
+
+			var data TestData
+
+			err = Decode(enc, &data)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.value.Alpha, data.Alpha)
+			require.Equal(t, tt.value.Beta, data.Beta)
+			require.Equal(t, tt.value.Gamma, data.Gamma)
 		})
 	}
 }
@@ -350,6 +394,106 @@ func TestSerialize(t *testing.T) {
 
 			require.Equal(t, tt.wantErr, err != nil)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestDeserialize(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	tests := []struct {
+		name    string
+		msg     string
+		want    TestData
+		wantErr bool
+	}{
+		{
+			name:    "success",
+			msg:     "eyJBbHBoYSI6ImFiYzEyMyIsIkJldGEiOi0zNzV9Cg==",
+			want:    TestData{Alpha: "abc123", Beta: -375},
+			wantErr: false,
+		},
+		{
+			name:    "invalid base64",
+			msg:     "你好世界",
+			want:    TestData{},
+			wantErr: true,
+		},
+		{
+			name:    "empty",
+			msg:     "",
+			want:    TestData{},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var data TestData
+
+			err := Deserialize(tt.msg, &data)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want.Alpha, data.Alpha)
+			require.Equal(t, tt.want.Beta, data.Beta)
+		})
+	}
+}
+
+func TestSerializeDeserialize(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+		Gamma float32
+	}
+
+	tests := []struct {
+		name  string
+		value TestData
+	}{
+		{
+			name:  "empty",
+			value: TestData{},
+		},
+		{
+			name:  "full",
+			value: TestData{Alpha: "abc1235", Beta: -3755, Gamma: 0.1235},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			enc, err := Serialize(tt.value)
+
+			require.NoError(t, err)
+
+			var data TestData
+
+			err = Deserialize(enc, &data)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.value.Alpha, data.Alpha)
+			require.Equal(t, tt.value.Beta, data.Beta)
+			require.Equal(t, tt.value.Gamma, data.Gamma)
 		})
 	}
 }

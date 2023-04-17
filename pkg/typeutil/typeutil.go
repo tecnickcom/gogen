@@ -72,3 +72,18 @@ func Serialize[T any](data T) (string, error) {
 
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
+
+// Deserialize decodes a message encoded with the Serialize function to the provided data object.
+// The value underlying data must be a pointer to the correct type for the next data item received.
+func Deserialize[T any](msg string, data T) error {
+	s, err := base64.StdEncoding.DecodeString(msg)
+	if err != nil {
+		return fmt.Errorf("failed to base64-decode: %w", err)
+	}
+
+	if err := json.NewDecoder(bytes.NewBuffer(s)).Decode(data); err != nil {
+		return fmt.Errorf("failed to json-decode: %w", err)
+	}
+
+	return nil
+}
