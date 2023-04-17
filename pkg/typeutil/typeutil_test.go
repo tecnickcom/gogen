@@ -2,6 +2,9 @@
 package typeutil
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -134,13 +137,147 @@ func TestIsZero(t *testing.T) {
 	})
 }
 
-func TestEncode(t *testing.T) {
+type mockWriter struct{}
+
+func (w *mockWriter) Write(_ []byte) (int, error) {
+	return 0, fmt.Errorf("write error")
+}
+
+func Test_base64Encoder(t *testing.T) {
 	t.Parallel()
 
-	var (
-		nilPointer *int
-		nilChan    chan int
-	)
+	tests := []struct {
+		name  string
+		value io.Writer
+	}{
+		{
+			name:  "bytes buffer",
+			value: new(bytes.Buffer),
+		},
+		{
+			name:  "mock writer",
+			value: &mockWriter{},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			enc := base64Encoder(tt.value)
+
+			require.NotNil(t, enc)
+		})
+	}
+}
+
+type mockWriteCloserCloseError struct{}
+
+func (w *mockWriteCloserCloseError) Write(_ []byte) (int, error) {
+	return 0, nil
+}
+
+func (w *mockWriteCloserCloseError) Close() error {
+	return fmt.Errorf("close error")
+}
+
+func Test_gobEncode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		data    any
+		enc     io.WriteCloser
+		wantErr bool
+	}{
+		{
+			name:    "close error",
+			data:    2,
+			enc:     &mockWriteCloserCloseError{},
+			wantErr: true,
+		},
+		{
+			name:    "writer error",
+			data:    3,
+			enc:     base64Encoder(&mockWriter{}),
+			wantErr: true,
+		},
+		{
+			name:    "data error",
+			data:    make(chan int),
+			enc:     base64Encoder(new(bytes.Buffer)),
+			wantErr: true,
+		},
+		{
+			name:    "success",
+			data:    5,
+			enc:     base64Encoder(new(bytes.Buffer)),
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := gobEncode(tt.enc, tt.data)
+
+			require.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func Test_jsonEncode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		data    any
+		enc     io.WriteCloser
+		wantErr bool
+	}{
+		{
+			name:    "close error",
+			data:    2,
+			enc:     &mockWriteCloserCloseError{},
+			wantErr: true,
+		},
+		{
+			name:    "writer error",
+			data:    3,
+			enc:     base64Encoder(&mockWriter{}),
+			wantErr: true,
+		},
+		{
+			name:    "data error",
+			data:    make(chan int),
+			enc:     base64Encoder(new(bytes.Buffer)),
+			wantErr: true,
+		},
+		{
+			name:    "success",
+			data:    5,
+			enc:     base64Encoder(new(bytes.Buffer)),
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := jsonEncode(tt.enc, tt.data)
+
+			require.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func TestEncode(t *testing.T) {
+	t.Parallel()
 
 	type TestData struct {
 		Alpha string
@@ -159,18 +296,7 @@ func TestEncode(t *testing.T) {
 			wantEmpty: true,
 			wantErr:   true,
 		},
-		{
-			name:      "nil pointer",
-			value:     nilPointer,
-			wantEmpty: true,
-			wantErr:   false,
-		},
-		{
-			name:      "nil chan",
-			value:     nilChan,
-			wantEmpty: true,
-			wantErr:   false,
-		},
+
 		{
 			name:      "success empty string",
 			value:     "",
@@ -319,11 +445,6 @@ func TestEncodeDecode(t *testing.T) {
 func TestSerialize(t *testing.T) {
 	t.Parallel()
 
-	var (
-		nilPointer *int
-		nilChan    chan int
-	)
-
 	type TestData struct {
 		Alpha string
 		Beta  int
@@ -340,18 +461,6 @@ func TestSerialize(t *testing.T) {
 			value:   make(chan int),
 			want:    "",
 			wantErr: true,
-		},
-		{
-			name:    "nil pointer",
-			value:   nilPointer,
-			want:    "",
-			wantErr: false,
-		},
-		{
-			name:    "nil chan",
-			value:   nilChan,
-			want:    "",
-			wantErr: false,
 		},
 		{
 			name:    "success empty string",

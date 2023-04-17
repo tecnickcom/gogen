@@ -7,7 +7,9 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"io"
 	"reflect"
+	"strings"
 )
 
 // IsNil returns true if the input value is nil.
@@ -28,61 +30,63 @@ func IsZero[T any](v T) bool {
 	return reflect.ValueOf(&v).Elem().IsZero()
 }
 
-// Encode encodes and serialize the input data to a gob/base64 string.
-func Encode[T any](data T) (string, error) {
+func base64Encoder(w io.Writer) io.WriteCloser {
+	return base64.NewEncoder(base64.StdEncoding, w)
+}
+
+func gobEncode(enc io.WriteCloser, data any) error {
+	if err := gob.NewEncoder(enc).Encode(data); err != nil {
+		return fmt.Errorf("gob: %w", err)
+	}
+
+	return enc.Close() //nolint:wrapcheck
+}
+
+func jsonEncode(enc io.WriteCloser, data any) error {
+	if err := json.NewEncoder(enc).Encode(data); err != nil {
+		return fmt.Errorf("JSON: %w", err)
+	}
+
+	return enc.Close() //nolint:wrapcheck
+}
+
+// Encode encodes the input data to gob/base64 format into a string.
+func Encode(data any) (string, error) {
 	var buf bytes.Buffer
-
-	if IsNil(data) {
-		return "", nil
+	if err := gobEncode(base64Encoder(&buf), data); err != nil {
+		return "", fmt.Errorf("encode: %w", err)
 	}
 
-	if err := gob.NewEncoder(&buf).Encode(data); err != nil {
-		return "", fmt.Errorf("failed to gob-encode: %w", err)
-	}
-
-	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+	return buf.String(), nil
 }
 
 // Decode decodes a message encoded with the Encode function to the provided data object.
 // The value underlying data must be a pointer to the correct type for the next data item received.
-func Decode[T any](msg string, data T) error {
-	s, err := base64.StdEncoding.DecodeString(msg)
-	if err != nil {
-		return fmt.Errorf("failed to base64-decode: %w", err)
-	}
-
-	if err := gob.NewDecoder(bytes.NewBuffer(s)).Decode(data); err != nil {
-		return fmt.Errorf("failed to gob-decode: %w", err)
+func Decode(msg string, data any) error {
+	decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(msg))
+	if err := gob.NewDecoder(decoder).Decode(data); err != nil {
+		return fmt.Errorf("decode: %w", err)
 	}
 
 	return nil
 }
 
-// Serialize encodes the input data to a string that can be used for object comparison (json/base64).
-func Serialize[T any](data T) (string, error) {
+// Serialize encodes the input data to JSON/base64 format into a string.
+func Serialize(data any) (string, error) {
 	var buf bytes.Buffer
-
-	if IsNil(data) {
-		return "", nil
+	if err := jsonEncode(base64Encoder(&buf), data); err != nil {
+		return "", fmt.Errorf("serialize: %w", err)
 	}
 
-	if err := json.NewEncoder(&buf).Encode(data); err != nil {
-		return "", fmt.Errorf("failed to json-encode: %w", err)
-	}
-
-	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+	return buf.String(), nil
 }
 
 // Deserialize decodes a message encoded with the Serialize function to the provided data object.
 // The value underlying data must be a pointer to the correct type for the next data item received.
-func Deserialize[T any](msg string, data T) error {
-	s, err := base64.StdEncoding.DecodeString(msg)
-	if err != nil {
-		return fmt.Errorf("failed to base64-decode: %w", err)
-	}
-
-	if err := json.NewDecoder(bytes.NewBuffer(s)).Decode(data); err != nil {
-		return fmt.Errorf("failed to json-decode: %w", err)
+func Deserialize(msg string, data any) error {
+	decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(msg))
+	if err := json.NewDecoder(decoder).Decode(data); err != nil {
+		return fmt.Errorf("deserialize: %w", err)
 	}
 
 	return nil
