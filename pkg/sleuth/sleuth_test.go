@@ -75,7 +75,7 @@ func Test_httpRequest(t *testing.T) {
 	}
 }
 
-//nolint:gocognit
+//nolint:gocognit,tparallel,paralleltest
 func Test_sendRequest(t *testing.T) {
 	t.Parallel()
 
@@ -161,8 +161,6 @@ func Test_sendRequest(t *testing.T) {
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 

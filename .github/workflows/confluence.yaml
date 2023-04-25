@@ -23,4 +23,6 @@ jobs:
       - name: install publishing tool
         run: go install github.com/kovetskiy/mark@latest
       - name: publish docs
-        run: mark -u ${{ secrets.CONFLUENCE_USER }} -p ${{ secrets.CONFLUENCE_TOKEN }} -b ${{ secrets.CONFLUENCE_URL }} -f README.md
+        run: |
+          touch ~/.config/mark || true
+          mark -u ${{ secrets.CONFLUENCE_USER }} -p ${{ secrets.CONFLUENCE_TOKEN }} -b ${{ secrets.CONFLUENCE_URL }} -f README.md
