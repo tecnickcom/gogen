@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   publish:
+    if: github.repository == 'Vonage/gosrvlib'
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
