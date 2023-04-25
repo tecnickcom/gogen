@@ -79,7 +79,7 @@ type status struct {
 	Services map[int]string `json:"services,omitempty"`
 }
 
-// HealthCheck performs a status check on the Slack service.
+// HealthCheck performs a status check on this service.
 func (c *Client) HealthCheck(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
@@ -171,7 +171,12 @@ func (c *Client) sendData(ctx context.Context, reqData *message) error {
 }
 
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
-	return httpretrier.New(c.httpClient, httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests), httpretrier.WithAttempts(c.retryAttempts)) //nolint:wrapcheck
+	//nolint:wrapcheck
+	return httpretrier.New(
+		c.httpClient,
+		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
+		httpretrier.WithAttempts(c.retryAttempts),
+	)
 }
 
 func stringValueOrDefault(v, def string) string {

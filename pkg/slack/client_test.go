@@ -274,6 +274,7 @@ func TestClient_Send(t *testing.T) {
 				":default-iconEmoji:",
 				"https://default.iconURL.invalid",
 				"#default-channel",
+				WithRetryAttempts(1),
 				WithTimeout(timeout),
 				WithPingTimeout(timeout),
 			)
