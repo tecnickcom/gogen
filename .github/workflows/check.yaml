@@ -58,6 +58,7 @@ jobs:
           key: go_cover_profile_${{ steps.go_hash.outputs.value }}
 
   sonar:
+    if: github.repository == 'Vonage/gosrvlib'
     runs-on: ubuntu-latest
     needs: test
     continue-on-error: true
