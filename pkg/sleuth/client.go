@@ -105,7 +105,16 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
 
-	req, err := httpRequest(ctx, c.pingURL, c.apiKey, nil)
+	req, err := httpRequest(
+		ctx,
+		c.pingURL,
+		c.apiKey,
+		&DeployRegistrationRequest{
+			Sha:               "0",
+			Environment:       "TEST",
+			IgnoreIfDuplicate: true,
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -155,7 +164,7 @@ func httpRequest(ctx context.Context, urlStr, apiKey string, request any) (*http
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	r.Header.Set(headerAuthorization, apiKey)
+	r.Header.Set(headerAuthorization, "apikey "+apiKey)
 	r.Header.Set(headerContentType, contentType)
 
 	return r, nil
