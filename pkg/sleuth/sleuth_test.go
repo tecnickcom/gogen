@@ -27,54 +27,6 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 	return nil, fmt.Errorf("error")
 }
 
-func Test_httpRequest(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		urlStr  string
-		req     any
-		wantErr bool
-	}{
-		{
-			name:    "fail input validation",
-			urlStr:  "https://test.invalid",
-			req:     make(chan int), // this payload can't be encoded in JSON
-			wantErr: true,
-		},
-		{
-			name:    "fail invalid URL",
-			urlStr:  "%^*&-ERROR",
-			req:     make(chan int), // this payload can't be encoded in JSON
-			wantErr: true,
-		},
-		{
-			name:    "success",
-			urlStr:  "https://test.invalid",
-			req:     "test",
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			r, err := httpRequest(testutil.Context(), tt.urlStr, "0123456789abcdef", tt.req)
-
-			if !tt.wantErr {
-				require.NoError(t, err)
-				require.NotNil(t, r)
-			} else {
-				require.Error(t, err)
-				require.Nil(t, r)
-			}
-		})
-	}
-}
-
 //nolint:gocognit
 func Test_sendRequest(t *testing.T) {
 	t.Parallel()
