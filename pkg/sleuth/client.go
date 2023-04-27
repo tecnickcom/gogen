@@ -1,7 +1,9 @@
 package sleuth
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -103,9 +105,9 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.pingURL, nil)
+	req, err := httpRequest(ctx, c.pingURL, c.apiKey, nil)
 	if err != nil {
-		return fmt.Errorf("build request: %w", err)
+		return err
 	}
 
 	resp, err := c.httpClient.Do(req) //nolint:bodyclose
@@ -138,4 +140,23 @@ func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
 		httpretrier.WithAttempts(c.retryAttempts),
 	)
+}
+
+// httpRequest prepare an HTTP request encoding the payload as JSON.
+func httpRequest(ctx context.Context, urlStr, apiKey string, request any) (*http.Request, error) {
+	buffer := &bytes.Buffer{}
+
+	if err := json.NewEncoder(buffer).Encode(request); err != nil {
+		return nil, fmt.Errorf("json encoding: %w", err)
+	}
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, buffer)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	r.Header.Set(headerAuthorization, apiKey)
+	r.Header.Set(headerContentType, contentType)
+
+	return r, nil
 }
