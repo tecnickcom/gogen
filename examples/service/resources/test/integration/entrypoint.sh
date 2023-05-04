@@ -17,3 +17,6 @@ curl -s -XPOST \
 
 # run tests
 DEPLOY_ENV=int make openapitest apitest
+
+# reset the report folder ownership to the host user/group.
+chown -R ${HOST_OWNER} /workspace/target/report/

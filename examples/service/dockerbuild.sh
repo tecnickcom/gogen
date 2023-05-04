@@ -20,6 +20,7 @@ set -e -u +x
 : ${PROJECT:=project}
 : ${SSH_PRIVATE_KEY:=$(cat ~/.ssh/id_rsa || cat ~/.ssh/id_ed25519)}
 : ${SSH_PUBLIC_KEY:=$(cat ~/.ssh/id_rsa.pub || cat ~/.ssh/id_ed25519.pub)}
+: ${DOCKER:=$(which docker)}
 
 # make target to execute
 : ${MAKETARGET:=format clean mod deps gendoc generate qa build}
@@ -59,15 +60,15 @@ EOM
 DOCKER_IMAGE_NAME=${VENDOR}/build_${PROJECT}
 
 # Build the Docker image
-docker build --build-arg SSH_PRIVATE_KEY="${SSH_PRIVATE_KEY}" --build-arg SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY}" --no-cache --tag ${DOCKER_IMAGE_NAME} --file Dockerfile.test .
+BUILDKIT_PROGRESS=plain ${DOCKER} build --no-cache --build-arg SSH_PRIVATE_KEY="${SSH_PRIVATE_KEY}" --build-arg SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY}" --tag ${DOCKER_IMAGE_NAME} --file Dockerfile.test .
 
 # Start a container using the newly created Docker image
 CONTAINER_ID=$(docker run -d ${DOCKER_IMAGE_NAME})
 
 # Copy all build/test artifacts back to the host
-docker cp ${CONTAINER_ID}:"${PRJPATH}/target" ./
+${DOCKER} cp ${CONTAINER_ID}:"${PRJPATH}/target" ./
 
 # Remove the temporary container and image
 rm -f Dockerfile.test
-docker rm -f ${CONTAINER_ID} || true
-docker rmi -f ${DOCKER_IMAGE_NAME} || true
+${DOCKER} rm -f ${CONTAINER_ID} || true
+${DOCKER} rmi -f ${DOCKER_IMAGE_NAME} || true

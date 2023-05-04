@@ -48,14 +48,16 @@ export PATH := $(GOPATH)/bin:$(PATH)
 
 # Docker command
 ifeq ($(DOCKER),)
-	DOCKER=docker
+	DOCKER=$(shell which docker)
 endif
 
 # Common commands
-GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) go
-GOFMT=gofmt
-GOTEST=GOPATH=$(GOPATH) gotest
-GODOC=GOPATH=$(GOPATH) godoc
+GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
+GOFMT=$(shell which gofmt)
+GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
+GODOC=GOPATH=$(GOPATH) $(shell which godoc)
+GOLANGCILINT=$(BINUTIL)/golangci-lint
+GOLANGCILINTVERSION=v1.52.2
 
 # Directory containing the source code
 SRCDIR=./pkg
@@ -104,12 +106,20 @@ help:
 	@echo "    make test      : Run unit tests"
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
+	@echo ""
 	@echo "To test and build everything from scratch:"
-	@echo "DEVMODE=LOCAL make format clean mod deps generate qa example"
+	@echo "    DEVMODE=LOCAL make format clean mod deps generate qa example"
+	@echo "or use the shortcut:"
+	@echo "    make x"
 	@echo ""
 
 # Alias for help target
 all: help
+
+# Alias to test and build everything from scratch
+.PHONY: x
+x:
+	DEVMODE=LOCAL $(MAKE) format clean mod deps generate qa example
 
 # Remove any build artifact
 .PHONY: clean
@@ -133,7 +143,7 @@ dbuild: dockerdev
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl --silent --show-error --fail --location https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.52.2
+	curl --silent --show-error --fail --location https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
 	$(GO) install github.com/rakyll/gotest
 	$(GO) install github.com/jstemmer/go-junit-report
 	$(GO) install github.com/golang/mock/mockgen
@@ -172,7 +182,7 @@ generate:
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
-	$(BINUTIL)/golangci-lint run --exclude-use-default=false $(SRCDIR)/...
+	$(GOLANGCILINT) run --exclude-use-default=false $(SRCDIR)/...
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
 # Download dependencies

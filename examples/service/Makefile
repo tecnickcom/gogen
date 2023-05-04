@@ -129,7 +129,7 @@ endif
 
 # Docker command
 ifeq ($(DOCKER),)
-	DOCKER=docker
+	DOCKER=$(shell which docker)
 endif
 
 # Docker compose command
@@ -142,11 +142,16 @@ ifeq ($(DOCKERCOMPOSE),)
 	endif
 endif
 
+DOCKERCOMPOSECMD=COMPOSE_PROJECT_NAME=$(VENDOR) $(DOCKERCOMPOSE)
+DOCKERBUILDARG=--build-arg HOST_USER="$(shell id -u ${USER})" --build-arg HOST_GROUP="$(shell id -u ${GROUP})"
+
 # Common commands
-GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) go
-GOFMT=gofmt
-GOTEST=GOPATH=$(GOPATH) gotest
-GODOC=GOPATH=$(GOPATH) godoc
+GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
+GOFMT=$(shell which gofmt)
+GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
+GODOC=GOPATH=$(GOPATH) $(shell which godoc)
+GOLANGCILINT=$(BINUTIL)/golangci-lint
+GOLANGCILINTVERSION=v1.52.2
 
 # Current operating system and architecture as one string.
 GOOSARCH=$(shell go env GOOS GOARCH | tr -d \\n)
@@ -258,7 +263,7 @@ endif
 .PHONY: help
 help:
 	@echo ""
-	@echo "$(PROJECT) Makefile."
+	@echo "$(PROJECT) Makefile. $(DOCKERBUILDARG)"
 	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
@@ -288,12 +293,20 @@ help:
 	@echo "    make test          : Run unit tests"
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
+	@echo ""
 	@echo "To test and build everything from scratch:"
-	@echo "DEVMODE=LOCAL make format clean mod deps gendoc generate qa build docker dockertest"
+	@echo "    DEVMODE=LOCAL make format clean mod deps gendoc generate qa build docker dockertest"
+	@echo "or use the shortcut:"
+	@echo "    make x"
 	@echo ""
 
 # Alias for help target
 all: help
+
+# Alias to test and build everything from scratch
+.PHONY: x
+x:
+	DEVMODE=LOCAL make format clean mod deps gendoc generate qa build docker dockertest
 
 # Run venom tests (https://github.com/ovh/venom)
 .PHONY: apitest
@@ -380,7 +393,7 @@ endif
 # Get the test dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl --silent --show-error --fail --location https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) v1.52.2
+	curl --silent --show-error --fail --location https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
 	$(GO) install github.com/mikefarah/yq/v4@latest
 	$(GO) install github.com/hairyhenderson/gomplate/v3/cmd/gomplate@latest
 	$(GO) install github.com/rakyll/gotest
@@ -437,12 +450,13 @@ dockerpush:
 
 .PHONY: dockertest
 dockertest: dockertestenv dockerdev
+	rm -rf $(TARGETDIR)/report/
 	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
 	@echo 0 > $(TARGETDIR)/make.exit
-	$(DOCKERCOMPOSE) down --volumes || true
-	$(DOCKERCOMPOSE) up --build --exit-code-from ${PROJECT}_integration || echo $${?} > $(TARGETDIR)/make.exit
-	$(DOCKER) cp ${PROJECT}_integration:"/workspace/target/report/" $(TARGETDIR)/ ;
-	$(DOCKERCOMPOSE) down --rmi local --volumes --remove-orphans || true
+	$(DOCKERCOMPOSECMD) down --volumes || true
+	$(DOCKERCOMPOSECMD) build $(DOCKERBUILDARG)
+	$(DOCKERCOMPOSECMD) run ${PROJECT}_integration || echo $${?} > $(TARGETDIR)/make.exit
+	$(DOCKERCOMPOSECMD) down --rmi local --volumes --remove-orphans || true
 	@exit `cat $(TARGETDIR)/make.exit`
 
 # Run the integration tests; locally we need to execute 'build' and 'docker' targets first
@@ -539,7 +553,7 @@ endif
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
-	$(BINUTIL)/golangci-lint run --exclude-use-default=false $(CMDDIR)/... $(SRCDIR)/...
+	$(GOLANGCILINT) run --exclude-use-default=false $(CMDDIR)/... $(SRCDIR)/...
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
 # Download dependencies

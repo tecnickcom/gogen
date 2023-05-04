@@ -13,6 +13,7 @@ services:
       - gosrvlibexample_smocker_ipify
     volumes:
       - ./target/binutil/dockerize:/usr/bin/dockerize
+      - ./target/report/:/workspace/target/report/
 
   gosrvlibexample:
     image: gosrvlibexampleowner/gosrvlibexample:latest
