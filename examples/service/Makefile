@@ -263,7 +263,7 @@ endif
 .PHONY: help
 help:
 	@echo ""
-	@echo "$(PROJECT) Makefile. $(DOCKERBUILDARG)"
+	@echo "$(PROJECT) Makefile."
 	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
