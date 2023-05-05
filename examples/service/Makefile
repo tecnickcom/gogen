@@ -450,7 +450,6 @@ dockerpush:
 
 .PHONY: dockertest
 dockertest: dockertestenv dockerdev
-	rm -rf $(TARGETDIR)/report/
 	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
 	@echo 0 > $(TARGETDIR)/make.exit
 	$(DOCKERCOMPOSECMD) down --volumes || true
