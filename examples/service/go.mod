@@ -5,7 +5,7 @@ go 1.20
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.72.0
+	github.com/Vonage/gosrvlib v1.72.1
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v1.0.0
 	github.com/prometheus/client_golang v1.15.1
@@ -17,7 +17,7 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.110.1 // indirect
+	cloud.google.com/go v0.110.2 // indirect
 	cloud.google.com/go/compute v1.19.2 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/firestore v1.9.0 // indirect
@@ -90,7 +90,7 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
-	google.golang.org/api v0.121.0 // indirect
+	google.golang.org/api v0.122.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.55.0 // indirect
