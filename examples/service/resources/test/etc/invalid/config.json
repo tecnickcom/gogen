@@ -25,5 +25,6 @@
       "address": ":8071",
       "timeout": 60
     }
-  }
+  },
+  "shutdown_timeout": 30
 }

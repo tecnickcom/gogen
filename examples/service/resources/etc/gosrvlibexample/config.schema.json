@@ -219,6 +219,12 @@
       ],
       "title": "Servers",
       "type": "object"
+    },
+    "shutdown_timeout": {
+      "default": 30,
+      "description": "Time in seconds to wait on exit for a graceful shutdown.",
+      "title": "ShutDown Timeout",
+      "type": "integer"
     }
   },
   "required": [

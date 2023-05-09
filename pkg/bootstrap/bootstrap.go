@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/logging"
+	"go.uber.org/zap"
 )
 
 // Bootstrap is the function in charge of configuring the core components
@@ -63,23 +65,38 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 		defer close(done)
 
 		select {
-		case <-quit: // quit on user signal
-		case <-ctx.Done(): // context canceled
+		case <-quit:
+			l.Info("shutdown signal received")
+		case <-ctx.Done():
+			l.Info("context canceled")
 		}
-
-		// cancel the application context
-		l.Debug("shutdown signal received")
-		cancel()
 	}()
 
 	<-done
-
-	l.Info("application stopping ...")
+	l.Info("application stopping")
+	cancel()
 
 	// wait for graceful shutdown
-	time.Sleep(cfg.shutdownTimeout)
+	syncWaitGroupTimeout(cfg.shutdownWaitGroup, cfg.shutdownTimeout, l)
 
 	l.Info("application stopped")
 
 	return nil
+}
+
+// syncWaitGroupTimeout adds a timeout to the sync.WaitGroup.Wait().
+func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *zap.Logger) {
+	wait := make(chan struct{})
+
+	go func() {
+		defer close(wait)
+		wg.Wait()
+	}()
+
+	select {
+	case <-wait:
+		l.Info("dependands shutdown complete")
+	case <-time.After(timeout):
+		l.Info("dependands shutdown timeout")
+	}
 }

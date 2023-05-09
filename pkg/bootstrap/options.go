@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -45,5 +46,13 @@ func WithCreateMetricsClientFunc(fn CreateMetricsClientFunc) Option {
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(cfg *config) {
 		cfg.shutdownTimeout = timeout
+	}
+}
+
+// WithShutdownWaitGroup sets the shared waiting group to communicate externally when the server is shutdown.
+// On shutdown Bootstrap will wait for the wg to be zero or the shutdownTimeout to be reached before returning.
+func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
+	return func(cfg *config) {
+		cfg.shutdownWaitGroup = wg
 	}
 }

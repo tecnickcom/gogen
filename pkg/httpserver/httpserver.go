@@ -137,29 +137,41 @@ func startServer(ctx context.Context, cfg *config) error {
 		return fmt.Errorf("failed creting the address listener: %w", err)
 	}
 
-	l.Info("listening for HTTP requests", zap.String("addr", cfg.serverAddr))
+	logAddr := zap.String("addr", cfg.serverAddr)
+	l.Info("listening for HTTP requests", logAddr)
 
 	go func() {
-		if err := s.Serve(ls); err != nil {
-			l.Error("unexpected HTTP server failure", zap.Error(err))
-		}
+		serve(s, ls, l, logAddr)
 	}()
 
 	go func() {
 		<-ctx.Done()
 
-		l.Debug("shutting down HTTP http server")
+		l.Debug("shutting down HTTP http server", logAddr)
 
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.shutdownTimeout)
-
 		defer cancel()
 
 		_ = s.Shutdown(shutdownCtx)
 
-		l.Debug("HTTP server shutdown")
+		cfg.shutdownWaitGroup.Add(-1)
+
+		l.Debug("HTTP server shutdown", logAddr)
 	}()
 
+	cfg.shutdownWaitGroup.Add(1)
+
 	return nil
+}
+
+func serve(s *http.Server, ls net.Listener, l *zap.Logger, logAddr zap.Field) {
+	err := s.Serve(ls)
+	if err == http.ErrServerClosed {
+		l.Debug("closed HTTP http server", logAddr)
+		return
+	}
+
+	l.Error("unexpected HTTP server failure", logAddr, zap.Error(err))
 }
 
 func defaultIndexHandler(routes []Route) http.HandlerFunc {

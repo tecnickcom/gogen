@@ -4,6 +4,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/bootstrap"
@@ -63,12 +64,16 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 		// Confifure metrics
 		mtr := metrics.New()
 
+		// Wait group used for graceful shutdown of all dependants (e.g.: servers).
+		wg := &sync.WaitGroup{}
+
 		// Boostrap application
 		return bootstrapFn(
-			bind(cfg, appInfo, mtr),
+			bind(cfg, appInfo, mtr, wg),
 			bootstrap.WithLogger(l),
 			bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
 			bootstrap.WithShutdownTimeout(time.Duration(cfg.ShutdownTimeout)*time.Second),
+			bootstrap.WithShutdownWaitGroup(wg),
 		)
 	}
 

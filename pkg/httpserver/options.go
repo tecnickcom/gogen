@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -37,7 +38,7 @@ func WithRequestTimeout(timeout time.Duration) Option {
 	}
 }
 
-// WithServerReadHeaderTimeout sets the shutdown timeout.
+// WithServerReadHeaderTimeout sets the read header timeout.
 func WithServerReadHeaderTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		cfg.serverReadHeaderTimeout = timeout
@@ -45,7 +46,7 @@ func WithServerReadHeaderTimeout(timeout time.Duration) Option {
 	}
 }
 
-// WithServerReadTimeout sets the shutdown timeout.
+// WithServerReadTimeout sets the read timeout.
 func WithServerReadTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		cfg.serverReadTimeout = timeout
@@ -53,7 +54,7 @@ func WithServerReadTimeout(timeout time.Duration) Option {
 	}
 }
 
-// WithServerWriteTimeout sets the shutdown timeout.
+// WithServerWriteTimeout sets the write timeout.
 func WithServerWriteTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		cfg.serverWriteTimeout = timeout
@@ -65,6 +66,14 @@ func WithServerWriteTimeout(timeout time.Duration) Option {
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		cfg.shutdownTimeout = timeout
+		return nil
+	}
+}
+
+// WithShutdownWaitGroup sets the shared waiting group to communicate externally when the server is shutdown.
+func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
+	return func(cfg *config) error {
+		cfg.shutdownWaitGroup = wg
 		return nil
 	}
 }

@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -145,4 +146,20 @@ func TestBootstrap(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_syncWaitGroupTimeout(t *testing.T) {
+	t.Parallel()
+
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+
+	// timeout
+	syncWaitGroupTimeout(wg, 1*time.Millisecond, logging.NopLogger())
+
+	wg.Add(-1)
+
+	// wait complete
+	syncWaitGroupTimeout(wg, 1*time.Second, logging.NopLogger())
 }

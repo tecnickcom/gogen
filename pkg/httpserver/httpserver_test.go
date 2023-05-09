@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -400,4 +401,35 @@ YlAqGKDZ+A+l
 			}
 		})
 	}
+}
+
+type mockListenerErr struct{}
+
+func (ls mockListenerErr) Accept() (net.Conn, error) {
+	return nil, fmt.Errorf("ERROR")
+}
+
+func (ls mockListenerErr) Close() error {
+	return fmt.Errorf("ERROR")
+}
+
+func (ls mockListenerErr) Addr() net.Addr {
+	return nil
+}
+
+func Test_serve_error(t *testing.T) {
+	t.Parallel()
+
+	addr := ":54321"
+	serve(
+		&http.Server{
+			Addr:              addr,
+			ReadHeaderTimeout: 1 * time.Millisecond,
+			ReadTimeout:       1 * time.Millisecond,
+			WriteTimeout:      1 * time.Millisecond,
+		},
+		mockListenerErr{},
+		logging.NopLogger(),
+		zap.String("addr", addr),
+	)
 }

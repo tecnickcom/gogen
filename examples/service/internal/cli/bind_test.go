@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -99,8 +100,8 @@ func Test_bind(t *testing.T) {
 			}
 
 			cfg := tt.fcfg(getValidTestConfig())
-
 			mtr := metrics.New()
+			wg := &sync.WaitGroup{}
 
 			testBindFn := bind(
 				&cfg,
@@ -110,6 +111,7 @@ func Test_bind(t *testing.T) {
 					ProgramRelease: "0",
 				},
 				mtr,
+				wg,
 			)
 
 			testCtx, cancel := context.WithTimeout(testutil.Context(), 1*time.Second)
@@ -120,6 +122,7 @@ func Test_bind(t *testing.T) {
 				bootstrap.WithLogger(logging.FromContext(testCtx)),
 				bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
 				bootstrap.WithShutdownTimeout(1 * time.Millisecond),
+				bootstrap.WithShutdownWaitGroup(wg),
 			}
 			err := bootstrap.Bootstrap(testBindFn, testBootstrapOpts...)
 			if tt.wantErr {

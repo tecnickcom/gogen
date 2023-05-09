@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -62,4 +63,13 @@ func TestWithShutdownTimeout(t *testing.T) {
 	cfg := defaultConfig()
 	WithShutdownTimeout(v)(cfg)
 	require.Equal(t, v, cfg.shutdownTimeout)
+}
+
+func TestWithShutdownWaitGroup(t *testing.T) {
+	t.Parallel()
+
+	v := &sync.WaitGroup{}
+	cfg := defaultConfig()
+	WithShutdownWaitGroup(v)(cfg)
+	require.Equal(t, v, cfg.shutdownWaitGroup)
 }

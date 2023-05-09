@@ -3,6 +3,7 @@ package httpserver
 import (
 	"net/http"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -78,6 +79,16 @@ func TestWithShutdownTimeout(t *testing.T) {
 	err := WithShutdownTimeout(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.shutdownTimeout)
+}
+
+func TestWithShutdownWaitGroup(t *testing.T) {
+	t.Parallel()
+
+	v := &sync.WaitGroup{}
+	cfg := defaultConfig()
+	err := WithShutdownWaitGroup(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, v, cfg.shutdownWaitGroup)
 }
 
 func TestWithTLSCertData(t *testing.T) {

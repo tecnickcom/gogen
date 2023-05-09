@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/ipify"
@@ -61,6 +62,7 @@ type config struct {
 	middleware                  []MiddlewareFn
 	disableDefaultRouteLogger   map[DefaultRoute]bool
 	disableRouteLogger          bool
+	shutdownWaitGroup           *sync.WaitGroup
 }
 
 func defaultConfig() *config {
@@ -85,6 +87,7 @@ func defaultConfig() *config {
 		redactFn:                    redact.HTTPData,
 		middleware:                  []MiddlewareFn{},
 		disableDefaultRouteLogger:   make(map[DefaultRoute]bool, len(allDefaultRoutes())),
+		shutdownWaitGroup:           &sync.WaitGroup{},
 	}
 }
 
@@ -99,6 +102,8 @@ func (c *config) isIndexRouteEnabled() bool {
 }
 
 // validate the configuration.
+//
+//nolint:gocyclo
 func (c *config) validate() error {
 	if err := validateAddr(c.serverAddr); err != nil {
 		return err
@@ -134,6 +139,10 @@ func (c *config) validate() error {
 
 	if c.router == nil {
 		return fmt.Errorf("router is required")
+	}
+
+	if c.shutdownWaitGroup == nil {
+		return fmt.Errorf("shutdownWaitGroup is required")
 	}
 
 	return nil

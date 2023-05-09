@@ -97,6 +97,13 @@ func Test_config_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "fail with missing shutdownWaitGroup",
+			setupConfig: func(cfg *config) {
+				cfg.shutdownWaitGroup = nil
+			},
+			wantErr: true,
+		},
+		{
 			name: "succeed with valid configuration",
 			setupConfig: func(cfg *config) {
 				cfg.setRouter(testutil.Context())

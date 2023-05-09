@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/logging"
@@ -24,6 +25,7 @@ type config struct {
 	createLoggerFunc        CreateLoggerFunc
 	createMetricsClientFunc CreateMetricsClientFunc
 	shutdownTimeout         time.Duration
+	shutdownWaitGroup       *sync.WaitGroup
 }
 
 func defaultConfig() *config {
@@ -32,6 +34,7 @@ func defaultConfig() *config {
 		createLoggerFunc:        defaultCreateLogger,
 		createMetricsClientFunc: defaultCreateMetricsClientFunc,
 		shutdownTimeout:         30 * time.Second,
+		shutdownWaitGroup:       &sync.WaitGroup{},
 	}
 }
 
@@ -59,6 +62,10 @@ func (c *config) validate() error {
 
 	if c.shutdownTimeout <= 0 {
 		return fmt.Errorf("invalid shutdownTimeout")
+	}
+
+	if c.shutdownWaitGroup == nil {
+		return fmt.Errorf("shutdownWaitGroup is required")
 	}
 
 	return nil
