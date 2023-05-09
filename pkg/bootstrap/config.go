@@ -2,6 +2,8 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/Vonage/gosrvlib/pkg/metrics"
@@ -21,6 +23,7 @@ type config struct {
 	context                 context.Context
 	createLoggerFunc        CreateLoggerFunc
 	createMetricsClientFunc CreateMetricsClientFunc
+	shutdownTimeout         time.Duration
 }
 
 func defaultConfig() *config {
@@ -28,6 +31,7 @@ func defaultConfig() *config {
 		context:                 context.Background(),
 		createLoggerFunc:        defaultCreateLogger,
 		createMetricsClientFunc: defaultCreateMetricsClientFunc,
+		shutdownTimeout:         30 * time.Second,
 	}
 }
 
@@ -37,4 +41,25 @@ func defaultCreateLogger() (*zap.Logger, error) {
 
 func defaultCreateMetricsClientFunc() (metrics.Client, error) {
 	return &metrics.Default{}, nil
+}
+
+// validate the configuration.
+func (c *config) validate() error {
+	if c.context == nil {
+		return fmt.Errorf("context is required")
+	}
+
+	if c.createLoggerFunc == nil {
+		return fmt.Errorf("createLoggerFunc is required")
+	}
+
+	if c.createMetricsClientFunc == nil {
+		return fmt.Errorf("createMetricsClientFunc is required")
+	}
+
+	if c.shutdownTimeout <= 0 {
+		return fmt.Errorf("invalid shutdownTimeout")
+	}
+
+	return nil
 }

@@ -29,7 +29,17 @@ func TestBootstrap(t *testing.T) {
 		wantErr                 bool
 	}{
 		{
+			name: "fail with invalid config",
+			opts: []Option{
+				WithShutdownTimeout(0),
+			},
+			wantErr: true,
+		},
+		{
 			name: "should fail due to create logger function",
+			opts: []Option{
+				WithShutdownTimeout(1 * time.Millisecond),
+			},
 			createLoggerFunc: func() (*zap.Logger, error) {
 				return nil, fmt.Errorf("log error")
 			},
@@ -37,6 +47,9 @@ func TestBootstrap(t *testing.T) {
 		},
 		{
 			name: "should fail due to create metrics function",
+			opts: []Option{
+				WithShutdownTimeout(1 * time.Millisecond),
+			},
 			createMetricsClientFunc: func() (metrics.Client, error) {
 				return nil, fmt.Errorf("metrics error")
 			},
@@ -44,6 +57,9 @@ func TestBootstrap(t *testing.T) {
 		},
 		{
 			name: "should fail due to bind function",
+			opts: []Option{
+				WithShutdownTimeout(1 * time.Millisecond),
+			},
 			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
 				return fmt.Errorf("bind error")
 			},
@@ -51,6 +67,9 @@ func TestBootstrap(t *testing.T) {
 		},
 		{
 			name: "should succeed and exit with context cancel",
+			opts: []Option{
+				WithShutdownTimeout(1 * time.Millisecond),
+			},
 			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
 				return nil
 			},
@@ -59,6 +78,9 @@ func TestBootstrap(t *testing.T) {
 		},
 		{
 			name: "should succeed and exit with SIGTERM",
+			opts: []Option{
+				WithShutdownTimeout(1 * time.Millisecond),
+			},
 			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
 				return nil
 			},

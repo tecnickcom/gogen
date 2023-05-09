@@ -40,6 +40,13 @@ func Test_sendRequest(t *testing.T) {
 		wantErr           bool
 	}{
 		{
+			name: "failed to execute request - transport error",
+			setupMocks: func(m *MockHTTPClient) {
+				m.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("transport error")).Times(1)
+			},
+			wantErr: true,
+		},
+		{
 			name: "failed to execute request - NewRequest error",
 			setupPatches: func() (*mpatch.Patch, error) {
 				patch, err := mpatch.PatchMethod(http.NewRequestWithContext, newRequestWithContextPatch)
@@ -60,13 +67,6 @@ func Test_sendRequest(t *testing.T) {
 				}
 				_ = patch.Patch()
 				return patch, nil
-			},
-			wantErr: true,
-		},
-		{
-			name: "failed to execute request - transport error",
-			setupMocks: func(m *MockHTTPClient) {
-				m.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("transport error")).Times(1)
 			},
 			wantErr: true,
 		},

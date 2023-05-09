@@ -102,17 +102,24 @@ func Test_configureConfigSearchPath(t *testing.T) {
 
 func mockViper(ctrl *gomock.Controller) *MockViper {
 	mock := NewMockViper(ctrl)
+
+	mock.EXPECT().SetConfigName(defaultConfigName)
+	mock.EXPECT().SetConfigType(defaultConfigType)
+
 	mock.EXPECT().SetDefault(keyRemoteConfigProvider, defaultRemoteConfigProvider)
 	mock.EXPECT().SetDefault(keyRemoteConfigEndpoint, defaultRemoteConfigEndpoint)
 	mock.EXPECT().SetDefault(keyRemoteConfigPath, defaultRemoteConfigPath)
 	mock.EXPECT().SetDefault(keyRemoteConfigSecretKeyring, defaultRemoteConfigSecretKeyring)
+
 	mock.EXPECT().SetDefault(keyLogFormat, defaultLogFormat)
 	mock.EXPECT().SetDefault(keyLogLevel, defaultLogLevel)
 	mock.EXPECT().SetDefault(keyLogAddress, defaultLogAddress)
 	mock.EXPECT().SetDefault(keyLogNetwork, defaultLogNetwork)
+
+	mock.EXPECT().SetDefault("shutdown_timeout", defaultShutdownTimeout)
+
 	mock.EXPECT().SetDefault("alpha", "beta")
-	mock.EXPECT().SetConfigName(defaultConfigName)
-	mock.EXPECT().SetConfigType(defaultConfigType)
+
 	mock.EXPECT().AddConfigPath(gomock.Any()).AnyTimes()
 	mock.EXPECT().AutomaticEnv()
 	mock.EXPECT().SetEnvPrefix("test")
@@ -681,6 +688,7 @@ func Test_loadConfig(t *testing.T) {
 						Network: "log_network",
 						Address: "log_address",
 					},
+					ShutdownTimeout: defaultShutdownTimeout,
 				},
 				Boolean: false,
 				String:  "string_value",
@@ -790,6 +798,7 @@ func Test_loadConfig(t *testing.T) {
 						Network: "log_network",
 						Address: "log_address",
 					},
+					ShutdownTimeout: defaultShutdownTimeout,
 				},
 				Boolean: true,
 				String:  "string_value",
@@ -925,6 +934,7 @@ func Test_loadConfig(t *testing.T) {
 						Network: "log_network",
 						Address: "log_address",
 					},
+					ShutdownTimeout: defaultShutdownTimeout,
 				},
 				Data: testData{
 					Str: "data_string",
@@ -981,6 +991,7 @@ func Test_loadConfig(t *testing.T) {
 						Network: "log_network",
 						Address: "log_address",
 					},
+					ShutdownTimeout: defaultShutdownTimeout,
 				},
 				Data: testData{
 					Str: "data_string",

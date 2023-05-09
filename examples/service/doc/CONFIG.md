@@ -55,6 +55,8 @@ The configuration format is a single JSON structure with the following fields:
     * **network**: (OPTIONAL) Network type used by the Syslog (i.e. udp or tcp)
     * **address**: (OPTIONAL) Network address of the Syslog daemon (ip:port) or just (:port)
 
+* **shutdown_timeout**: Time to wait on exit for a graceful shutdown [seconds]
+
 * **servers**: Configuration for exposed servers
     * **monitoring**: Monitoring HTTP server
         * **address**: HTTP address (ip:port) or just (:port)

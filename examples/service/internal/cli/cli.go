@@ -4,6 +4,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/bootstrap"
 	"github.com/Vonage/gosrvlib/pkg/config"
@@ -67,6 +68,7 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 			bind(cfg, appInfo, mtr),
 			bootstrap.WithLogger(l),
 			bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
+			bootstrap.WithShutdownTimeout(time.Duration(cfg.ShutdownTimeout)*time.Second),
 		)
 	}
 

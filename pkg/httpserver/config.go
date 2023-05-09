@@ -104,7 +104,7 @@ func (c *config) validate() error {
 		return err
 	}
 
-	if c.shutdownTimeout == 0 {
+	if c.shutdownTimeout <= 0 {
 		return fmt.Errorf("invalid shutdownTimeout")
 	}
 

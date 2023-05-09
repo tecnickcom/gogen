@@ -43,29 +43,54 @@ import (
 	_ "github.com/spf13/viper/remote" //nolint:revive,nolintlint
 )
 
+// General constants.
 const (
-	defaultConfigName                = "config" // Base name of the file containing the configuration data.
-	defaultConfigType                = "json"   // Type of configuration data.
-	defaultLogFormat                 = "JSON"
-	defaultLogLevel                  = "DEBUG"
-	defaultLogAddress                = ""
-	defaultLogNetwork                = ""
-	defaultRemoteConfigProvider      = ""
-	defaultRemoteConfigEndpoint      = ""
-	defaultRemoteConfigPath          = ""
-	defaultRemoteConfigSecretKeyring = ""
+	defaultConfigName = "config" // Base name of the file containing the configuration data.
+	defaultConfigType = "json"   // Type of configuration data.)
+	providerEnvVar    = "envvar"
+)
 
+// Remote configuration key names.
+const (
 	keyRemoteConfigProvider      = "remoteConfigProvider"
 	keyRemoteConfigEndpoint      = "remoteConfigEndpoint"
 	keyRemoteConfigPath          = "remoteConfigPath"
 	keyRemoteConfigSecretKeyring = "remoteConfigSecretKeyring" //nolint:gosec
 	keyRemoteConfigData          = "remoteConfigData"
-	keyLogAddress                = "log.address"
-	keyLogFormat                 = "log.format"
-	keyLogLevel                  = "log.level"
-	keyLogNetwork                = "log.network"
+)
 
-	providerEnvVar = "envvar"
+// Remote configuration default values.
+const (
+	defaultRemoteConfigProvider      = ""
+	defaultRemoteConfigEndpoint      = ""
+	defaultRemoteConfigPath          = ""
+	defaultRemoteConfigSecretKeyring = ""
+)
+
+// Logger configuration key names.
+const (
+	keyLogAddress = "log.address"
+	keyLogFormat  = "log.format"
+	keyLogLevel   = "log.level"
+	keyLogNetwork = "log.network"
+)
+
+// Logger configuration default values.
+const (
+	defaultLogFormat  = "JSON"
+	defaultLogLevel   = "DEBUG"
+	defaultLogAddress = ""
+	defaultLogNetwork = ""
+)
+
+// Extra parameters key names.
+const (
+	keyShutdownTimeout = "shutdown_timeout"
+)
+
+// Extra parameters default values.
+const (
+	defaultShutdownTimeout = 30 // time in seconds to wait on exit for a graceful shutdown.
 )
 
 // Configuration is the interface we need the application config struct to implement.
@@ -100,6 +125,9 @@ type Viper interface {
 type BaseConfig struct {
 	// Log configuration.
 	Log LogConfig `mapstructure:"log" validate:"required"`
+
+	// ShutdownTimeout is the time in seconds to wait for graceful shutdown.
+	ShutdownTimeout int64 `mapstructure:"shutdown_timeout" validate:"omitempty,min=1,max=3600"`
 }
 
 // LogConfig contains the configuration for the application logger.
@@ -183,7 +211,10 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 	// add default search paths
 	configureSearchPath(v, cmdName, configDir)
 
-	// add defaults from application configuration
+	// set application defaults
+	v.SetDefault(keyShutdownTimeout, defaultShutdownTimeout)
+
+	// set defaults from application configuration
 	cfg.SetDefaults(v)
 
 	// support environment variables for the remote configuration

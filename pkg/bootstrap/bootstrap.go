@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/logging"
 )
@@ -19,6 +20,10 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 
 	for _, applyOpt := range opts {
 		applyOpt(cfg)
+	}
+
+	if err := cfg.validate(); err != nil {
+		return err
 	}
 
 	// create application context
@@ -68,6 +73,12 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	}()
 
 	<-done
+
+	l.Info("application stopping ...")
+
+	// wait for graceful shutdown
+	time.Sleep(cfg.shutdownTimeout)
+
 	l.Info("application stopped")
 
 	return nil

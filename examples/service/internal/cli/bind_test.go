@@ -119,6 +119,7 @@ func Test_bind(t *testing.T) {
 				bootstrap.WithContext(testCtx),
 				bootstrap.WithLogger(logging.FromContext(testCtx)),
 				bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
+				bootstrap.WithShutdownTimeout(1 * time.Millisecond),
 			}
 			err := bootstrap.Bootstrap(testBindFn, testBootstrapOpts...)
 			if tt.wantErr {

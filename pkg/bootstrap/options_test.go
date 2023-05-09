@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/metrics"
 	"github.com/stretchr/testify/require"
@@ -52,4 +53,13 @@ func TestWithCreateMetricsClientFunc(t *testing.T) {
 	cfg := &config{}
 	WithCreateMetricsClientFunc(v)(cfg)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createMetricsClientFunc).Pointer())
+}
+
+func TestWithShutdownTimeout(t *testing.T) {
+	t.Parallel()
+
+	v := 17 * time.Second
+	cfg := defaultConfig()
+	WithShutdownTimeout(v)(cfg)
+	require.Equal(t, v, cfg.shutdownTimeout)
 }
