@@ -69,6 +69,13 @@ func Test_config_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "fail with missing shutdownSignalChan",
+			setupConfig: func(cfg *config) {
+				cfg.shutdownSignalChan = nil
+			},
+			wantErr: true,
+		},
+		{
 			name: "fail with invalid shutdown timeout",
 			setupConfig: func(cfg *config) {
 				cfg.shutdownTimeout = 0

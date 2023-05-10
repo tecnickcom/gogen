@@ -30,6 +30,8 @@ type SQLConn struct {
 
 // Connect attempts to connect to a SQL database.
 func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) {
+	l := logging.FromContext(ctx)
+
 	driver, dsn, err := parseConnectionURL(url)
 	if err != nil {
 		return nil, err
@@ -61,11 +63,19 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 		db:  db,
 	}
 
-	// disconnect client when the context is canceled
+	// wait for shutdown signal or context cancelation
 	go func() {
-		<-ctx.Done()
+		select {
+		case <-cfg.shutdownSignalChan:
+			l.Debug("sqlconn shutdown signal received")
+		case <-ctx.Done():
+			l.Debug("sqlconn context canceled")
+		}
+
 		c.disconnect()
 	}()
+
+	cfg.shutdownWaitGroup.Add(1)
 
 	return &c, nil
 }
@@ -100,6 +110,8 @@ func (c *SQLConn) disconnect() {
 	logging.Close(c.ctx, c.db, "failed closing database connection")
 
 	c.db = nil
+
+	c.cfg.shutdownWaitGroup.Add(-1)
 }
 
 func checkConnection(ctx context.Context, db *sql.DB) error {

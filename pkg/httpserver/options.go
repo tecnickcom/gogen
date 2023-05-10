@@ -16,7 +16,12 @@ type Option func(*config) error
 // WithRouter replaces the default router used by the httpServer (mostly used for test purposes with a mock router).
 func WithRouter(r *httprouter.Router) Option {
 	return func(cfg *config) error {
+		if r == nil {
+			return fmt.Errorf("router is required")
+		}
+
 		cfg.router = r
+
 		return nil
 	}
 }
@@ -24,7 +29,12 @@ func WithRouter(r *httprouter.Router) Option {
 // WithServerAddr sets the address the httpServer will bind to.
 func WithServerAddr(addr string) Option {
 	return func(cfg *config) error {
+		if err := validateAddr(addr); err != nil {
+			return err
+		}
+
 		cfg.serverAddr = addr
+
 		return nil
 	}
 }
@@ -33,7 +43,12 @@ func WithServerAddr(addr string) Option {
 // Alternatively a custom timeout handler like http.TimeoutHandler can be added via WithMiddlewareFn().
 func WithRequestTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
+		if timeout <= 0 {
+			return fmt.Errorf("invalid requestTimeout")
+		}
+
 		cfg.requestTimeout = timeout
+
 		return nil
 	}
 }
@@ -41,7 +56,12 @@ func WithRequestTimeout(timeout time.Duration) Option {
 // WithServerReadHeaderTimeout sets the read header timeout.
 func WithServerReadHeaderTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
+		if timeout <= 0 {
+			return fmt.Errorf("invalid serverReadHeaderTimeout")
+		}
+
 		cfg.serverReadHeaderTimeout = timeout
+
 		return nil
 	}
 }
@@ -49,7 +69,12 @@ func WithServerReadHeaderTimeout(timeout time.Duration) Option {
 // WithServerReadTimeout sets the read timeout.
 func WithServerReadTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
+		if timeout <= 0 {
+			return fmt.Errorf("invalid serverReadTimeout")
+		}
+
 		cfg.serverReadTimeout = timeout
+
 		return nil
 	}
 }
@@ -57,7 +82,12 @@ func WithServerReadTimeout(timeout time.Duration) Option {
 // WithServerWriteTimeout sets the write timeout.
 func WithServerWriteTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
+		if timeout <= 0 {
+			return fmt.Errorf("invalid serverWriteTimeout")
+		}
+
 		cfg.serverWriteTimeout = timeout
+
 		return nil
 	}
 }
@@ -65,7 +95,12 @@ func WithServerWriteTimeout(timeout time.Duration) Option {
 // WithShutdownTimeout sets the shutdown timeout.
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
+		if timeout <= 0 {
+			return fmt.Errorf("invalid shutdownTimeout")
+		}
+
 		cfg.shutdownTimeout = timeout
+
 		return nil
 	}
 }
@@ -73,7 +108,26 @@ func WithShutdownTimeout(timeout time.Duration) Option {
 // WithShutdownWaitGroup sets the shared waiting group to communicate externally when the server is shutdown.
 func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 	return func(cfg *config) error {
+		if wg == nil {
+			return fmt.Errorf("shutdownWaitGroup is required")
+		}
+
 		cfg.shutdownWaitGroup = wg
+
+		return nil
+	}
+}
+
+// WithShutdownSignalChan sets the shared channel uset to signal a shutdown.
+// When the channel signal is received the server will initiate the shutdown process.
+func WithShutdownSignalChan(ch chan struct{}) Option {
+	return func(cfg *config) error {
+		if ch == nil {
+			return fmt.Errorf("shutdownSignalChan is required")
+		}
+
+		cfg.shutdownSignalChan = ch
+
 		return nil
 	}
 }
@@ -114,7 +168,12 @@ func WithEnableAllDefaultRoutes() Option {
 // WithIndexHandlerFunc replaces the index handler.
 func WithIndexHandlerFunc(handler IndexHandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("indexHandlerFunc is required")
+		}
+
 		cfg.indexHandlerFunc = handler
+
 		return nil
 	}
 }
@@ -122,7 +181,12 @@ func WithIndexHandlerFunc(handler IndexHandlerFunc) Option {
 // WithIPHandlerFunc replaces the default ip handler function.
 func WithIPHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("ipHandlerFunc is required")
+		}
+
 		cfg.ipHandlerFunc = handler
+
 		return nil
 	}
 }
@@ -130,7 +194,12 @@ func WithIPHandlerFunc(handler http.HandlerFunc) Option {
 // WithMetricsHandlerFunc replaces the default metrics handler function.
 func WithMetricsHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("metricsHandlerFunc is required")
+		}
+
 		cfg.metricsHandlerFunc = handler
+
 		return nil
 	}
 }
@@ -138,7 +207,12 @@ func WithMetricsHandlerFunc(handler http.HandlerFunc) Option {
 // WithPingHandlerFunc replaces the default ping handler function.
 func WithPingHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("pingHandlerFunc is required")
+		}
+
 		cfg.pingHandlerFunc = handler
+
 		return nil
 	}
 }
@@ -146,7 +220,12 @@ func WithPingHandlerFunc(handler http.HandlerFunc) Option {
 // WithPProfHandlerFunc replaces the default pprof handler function.
 func WithPProfHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("pprofHandlerFunc is required")
+		}
+
 		cfg.pprofHandlerFunc = handler
+
 		return nil
 	}
 }
@@ -154,7 +233,12 @@ func WithPProfHandlerFunc(handler http.HandlerFunc) Option {
 // WithStatusHandlerFunc replaces the default status handler function.
 func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("statusHandlerFunc is required")
+		}
+
 		cfg.statusHandlerFunc = handler
+
 		return nil
 	}
 }
@@ -162,7 +246,12 @@ func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
 // WithTraceIDHeaderName overrides the default trace id header name.
 func WithTraceIDHeaderName(name string) Option {
 	return func(cfg *config) error {
+		if name == "" {
+			return fmt.Errorf("traceIDHeaderName is required")
+		}
+
 		cfg.traceIDHeaderName = name
+
 		return nil
 	}
 }
@@ -187,7 +276,12 @@ func WithMiddlewareFn(fn ...MiddlewareFn) Option {
 // WithNotFoundHandlerFunc http handler called when no matching route is found.
 func WithNotFoundHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("notFoundHandlerFunc is required")
+		}
+
 		cfg.notFoundHandlerFunc = handler
+
 		return nil
 	}
 }
@@ -195,7 +289,12 @@ func WithNotFoundHandlerFunc(handler http.HandlerFunc) Option {
 // WithMethodNotAllowedHandlerFunc http handler called when a request cannot be routed.
 func WithMethodNotAllowedHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("methodNotAllowedHandlerFunc is required")
+		}
+
 		cfg.methodNotAllowedHandlerFunc = handler
+
 		return nil
 	}
 }
@@ -203,7 +302,12 @@ func WithMethodNotAllowedHandlerFunc(handler http.HandlerFunc) Option {
 // WithPanicHandlerFunc http handler to handle panics recovered from http handlers.
 func WithPanicHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
+		if handler == nil {
+			return fmt.Errorf("panicHandlerFunc is required")
+		}
+
 		cfg.panicHandlerFunc = handler
+
 		return nil
 	}
 }

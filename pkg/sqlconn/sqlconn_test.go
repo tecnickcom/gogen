@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,12 +23,16 @@ func newMockConnectFunc(db *sql.DB, err error) ConnectFunc {
 func TestConnect(t *testing.T) {
 	t.Parallel()
 
+	shutdownWG := &sync.WaitGroup{}
+	shutdownSG := make(chan struct{})
+
 	tests := []struct {
 		name           string
 		connectDSN     string
 		connectErr     error
 		configMockFunc func(sqlmock.Sqlmock)
 		wantConn       bool
+		shutdownSig    bool
 		wantErr        bool
 	}{
 		{
@@ -62,6 +67,15 @@ func TestConnect(t *testing.T) {
 			},
 			wantConn: true,
 		},
+		{
+			name:       "success with shutdown signal",
+			connectDSN: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
+			configMockFunc: func(mock sqlmock.Sqlmock) {
+				mock.ExpectClose()
+			},
+			shutdownSig: true,
+			wantConn:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -93,11 +107,23 @@ func TestConnect(t *testing.T) {
 				mockConnectFunc = newMockConnectFunc(nil, tt.connectErr)
 			}
 
-			conn, err := Connect(ctx, tt.connectDSN, WithConnectFunc(mockConnectFunc))
+			conn, err := Connect(
+				ctx,
+				tt.connectDSN,
+				WithConnectFunc(mockConnectFunc),
+				WithShutdownWaitGroup(shutdownWG),
+				WithShutdownSignalChan(shutdownSG),
+			)
+
+			if tt.shutdownSig {
+				close(shutdownSG)
+			}
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if (conn != nil) != tt.wantConn {
 				t.Errorf("Connect() gotConn = %v, wantConn %v", conn != nil, tt.wantConn)
 			}

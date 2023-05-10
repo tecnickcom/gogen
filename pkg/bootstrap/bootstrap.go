@@ -74,10 +74,15 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 
 	<-done
 	l.Info("application stopping")
-	cancel()
 
-	// wait for graceful shutdown
+	// send shutdown signal to all dependants (e.g. HTTP servers)
+	close(cfg.shutdownSignalChan)
+
+	// wait for graceful shutdown of dependants
 	syncWaitGroupTimeout(cfg.shutdownWaitGroup, cfg.shutdownTimeout, l)
+
+	// cancel application context
+	cancel()
 
 	l.Info("application stopped")
 

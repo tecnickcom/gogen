@@ -51,8 +51,18 @@ func WithShutdownTimeout(timeout time.Duration) Option {
 
 // WithShutdownWaitGroup sets the shared waiting group to communicate externally when the server is shutdown.
 // On shutdown Bootstrap will wait for the wg to be zero or the shutdownTimeout to be reached before returning.
+// Dependants (e.g. HTTP servers) should increment this group when they start, and reset it when their shutdown process is completed.
 func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 	return func(cfg *config) {
 		cfg.shutdownWaitGroup = wg
+	}
+}
+
+// WithShutdownSignalChan sets the shared channel uset to signal a shutdown.
+// The channel is set when the shutdown process starts.
+// Dependants (e.g. HTTP servers) should read this channel and start their shutdown process.
+func WithShutdownSignalChan(ch chan struct{}) Option {
+	return func(cfg *config) {
+		cfg.shutdownSignalChan = ch
 	}
 }

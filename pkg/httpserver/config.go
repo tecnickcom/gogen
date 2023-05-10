@@ -63,6 +63,7 @@ type config struct {
 	disableDefaultRouteLogger   map[DefaultRoute]bool
 	disableRouteLogger          bool
 	shutdownWaitGroup           *sync.WaitGroup
+	shutdownSignalChan          chan struct{}
 }
 
 func defaultConfig() *config {
@@ -88,6 +89,7 @@ func defaultConfig() *config {
 		middleware:                  []MiddlewareFn{},
 		disableDefaultRouteLogger:   make(map[DefaultRoute]bool, len(allDefaultRoutes())),
 		shutdownWaitGroup:           &sync.WaitGroup{},
+		shutdownSignalChan:          make(chan struct{}),
 	}
 }
 
@@ -99,53 +101,6 @@ func (c *config) isIndexRouteEnabled() bool {
 	}
 
 	return false
-}
-
-// validate the configuration.
-//
-//nolint:gocyclo
-func (c *config) validate() error {
-	if err := validateAddr(c.serverAddr); err != nil {
-		return err
-	}
-
-	if c.shutdownTimeout <= 0 {
-		return fmt.Errorf("invalid shutdownTimeout")
-	}
-
-	if c.ipHandlerFunc == nil {
-		return fmt.Errorf("ipHandlerFunc is required")
-	}
-
-	if c.metricsHandlerFunc == nil {
-		return fmt.Errorf("metricsHandlerFunc is required")
-	}
-
-	if c.pingHandlerFunc == nil {
-		return fmt.Errorf("pingHandlerFunc is required")
-	}
-
-	if c.pprofHandlerFunc == nil {
-		return fmt.Errorf("pprofHandlerFunc is required")
-	}
-
-	if c.statusHandlerFunc == nil {
-		return fmt.Errorf("statusHandlerFunc is required")
-	}
-
-	if c.traceIDHeaderName == "" {
-		return fmt.Errorf("traceIDHeaderName is required")
-	}
-
-	if c.router == nil {
-		return fmt.Errorf("router is required")
-	}
-
-	if c.shutdownWaitGroup == nil {
-		return fmt.Errorf("shutdownWaitGroup is required")
-	}
-
-	return nil
 }
 
 // validateAddr checks if a http server bind address is valid.

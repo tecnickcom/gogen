@@ -14,9 +14,13 @@ import (
 func TestWithRouter(t *testing.T) {
 	t.Parallel()
 
-	v := httprouter.New()
 	cfg := defaultConfig()
-	err := WithRouter(v)(cfg)
+
+	err := WithRouter(nil)(cfg)
+	require.Error(t, err)
+
+	v := httprouter.New()
+	err = WithRouter(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.router).Pointer())
 }
@@ -24,9 +28,13 @@ func TestWithRouter(t *testing.T) {
 func TestWithServerAddr(t *testing.T) {
 	t.Parallel()
 
-	v := ":1234"
 	cfg := defaultConfig()
-	err := WithServerAddr(v)(cfg)
+
+	err := WithServerAddr("::")(cfg)
+	require.Error(t, err)
+
+	v := ":1234"
+	err = WithServerAddr(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.serverAddr)
 }
@@ -34,9 +42,13 @@ func TestWithServerAddr(t *testing.T) {
 func TestWithRequestTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 3 * time.Minute
 	cfg := defaultConfig()
-	err := WithRequestTimeout(v)(cfg)
+
+	err := WithRequestTimeout(-1)(cfg)
+	require.Error(t, err)
+
+	v := 3 * time.Minute
+	err = WithRequestTimeout(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.requestTimeout)
 }
@@ -44,9 +56,13 @@ func TestWithRequestTimeout(t *testing.T) {
 func TestWithServerReadHeaderTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 7 * time.Second
 	cfg := defaultConfig()
-	err := WithServerReadHeaderTimeout(v)(cfg)
+
+	err := WithServerReadHeaderTimeout(-1)(cfg)
+	require.Error(t, err)
+
+	v := 7 * time.Second
+	err = WithServerReadHeaderTimeout(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.serverReadHeaderTimeout)
 }
@@ -54,9 +70,13 @@ func TestWithServerReadHeaderTimeout(t *testing.T) {
 func TestWithServerReadTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 13 * time.Second
 	cfg := defaultConfig()
-	err := WithServerReadTimeout(v)(cfg)
+
+	err := WithServerReadTimeout(-1)(cfg)
+	require.Error(t, err)
+
+	v := 13 * time.Second
+	err = WithServerReadTimeout(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.serverReadTimeout)
 }
@@ -64,9 +84,13 @@ func TestWithServerReadTimeout(t *testing.T) {
 func TestWithServerWriteTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 17 * time.Second
 	cfg := defaultConfig()
-	err := WithServerWriteTimeout(v)(cfg)
+
+	err := WithServerWriteTimeout(-1)(cfg)
+	require.Error(t, err)
+
+	v := 17 * time.Second
+	err = WithServerWriteTimeout(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.serverWriteTimeout)
 }
@@ -74,9 +98,13 @@ func TestWithServerWriteTimeout(t *testing.T) {
 func TestWithShutdownTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 19 * time.Second
 	cfg := defaultConfig()
-	err := WithShutdownTimeout(v)(cfg)
+
+	err := WithShutdownTimeout(-1)(cfg)
+	require.Error(t, err)
+
+	v := 19 * time.Second
+	err = WithShutdownTimeout(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.shutdownTimeout)
 }
@@ -84,11 +112,29 @@ func TestWithShutdownTimeout(t *testing.T) {
 func TestWithShutdownWaitGroup(t *testing.T) {
 	t.Parallel()
 
-	v := &sync.WaitGroup{}
 	cfg := defaultConfig()
-	err := WithShutdownWaitGroup(v)(cfg)
+
+	err := WithShutdownWaitGroup(nil)(cfg)
+	require.Error(t, err)
+
+	v := &sync.WaitGroup{}
+	err = WithShutdownWaitGroup(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.shutdownWaitGroup)
+}
+
+func TestWithShutdownSignalChan(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultConfig()
+
+	err := WithShutdownSignalChan(nil)(cfg)
+	require.Error(t, err)
+
+	v := make(chan struct{})
+	err = WithShutdownSignalChan(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, v, cfg.shutdownSignalChan)
 }
 
 func TestWithTLSCertData(t *testing.T) {
@@ -180,13 +226,17 @@ func TestWithEnableAllDefaultRoutes(t *testing.T) {
 func TestWithIndexHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithIndexHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(routes []Route) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			// mock function
 		}
 	}
-	cfg := defaultConfig()
-	err := WithIndexHandlerFunc(v)(cfg)
+	err = WithIndexHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.indexHandlerFunc).Pointer())
 }
@@ -194,11 +244,15 @@ func TestWithIndexHandlerFunc(t *testing.T) {
 func TestWithIPHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithIPHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(_ http.ResponseWriter, _ *http.Request) {
 		// mock function
 	}
-	cfg := defaultConfig()
-	err := WithIPHandlerFunc(v)(cfg)
+	err = WithIPHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.ipHandlerFunc).Pointer())
 }
@@ -206,11 +260,15 @@ func TestWithIPHandlerFunc(t *testing.T) {
 func TestWithMetricsHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithMetricsHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(_ http.ResponseWriter, _ *http.Request) {
 		// mock function
 	}
-	cfg := defaultConfig()
-	err := WithMetricsHandlerFunc(v)(cfg)
+	err = WithMetricsHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.metricsHandlerFunc).Pointer())
 }
@@ -218,11 +276,15 @@ func TestWithMetricsHandlerFunc(t *testing.T) {
 func TestWithPingHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithPingHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(_ http.ResponseWriter, _ *http.Request) {
 		// mock function
 	}
-	cfg := defaultConfig()
-	err := WithPingHandlerFunc(v)(cfg)
+	err = WithPingHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.pingHandlerFunc).Pointer())
 }
@@ -230,11 +292,15 @@ func TestWithPingHandlerFunc(t *testing.T) {
 func TestWithPProfHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithPProfHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(_ http.ResponseWriter, _ *http.Request) {
 		// mock function
 	}
-	cfg := defaultConfig()
-	err := WithPProfHandlerFunc(v)(cfg)
+	err = WithPProfHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.pprofHandlerFunc).Pointer())
 }
@@ -242,11 +308,15 @@ func TestWithPProfHandlerFunc(t *testing.T) {
 func TestWithStatusHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithStatusHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(_ http.ResponseWriter, _ *http.Request) {
 		// mock function
 	}
-	cfg := defaultConfig()
-	err := WithStatusHandlerFunc(v)(cfg)
+	err = WithStatusHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.statusHandlerFunc).Pointer())
 }
@@ -254,9 +324,13 @@ func TestWithStatusHandlerFunc(t *testing.T) {
 func TestWithTraceIDHeaderName(t *testing.T) {
 	t.Parallel()
 
-	v := "X-Test-Header"
 	cfg := defaultConfig()
-	err := WithTraceIDHeaderName(v)(cfg)
+
+	err := WithTraceIDHeaderName("")(cfg)
+	require.Error(t, err)
+
+	v := "X-Test-Header"
+	err = WithTraceIDHeaderName(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.traceIDHeaderName)
 }
@@ -265,6 +339,7 @@ func TestWithRedactFn(t *testing.T) {
 	t.Parallel()
 
 	cfg := defaultConfig()
+
 	v := func(s string) string { return s + "test" }
 	err := WithRedactFn(v)(cfg)
 	require.NoError(t, err)
@@ -274,9 +349,10 @@ func TestWithRedactFn(t *testing.T) {
 func TestWithMiddlewareFn(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
 	v := func(_ MiddlewareArgs, handler http.Handler) http.Handler { return handler }
 	w := []MiddlewareFn{v, v}
-	cfg := defaultConfig()
 	err := WithMiddlewareFn(w...)(cfg)
 	require.NoError(t, err)
 	require.Len(t, cfg.middleware, 2)
@@ -285,11 +361,15 @@ func TestWithMiddlewareFn(t *testing.T) {
 func TestWithNotFoundHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithNotFoundHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(_ http.ResponseWriter, _ *http.Request) {
 		// mock function
 	}
-	cfg := defaultConfig()
-	err := WithNotFoundHandlerFunc(v)(cfg)
+	err = WithNotFoundHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.notFoundHandlerFunc).Pointer())
 }
@@ -297,11 +377,15 @@ func TestWithNotFoundHandlerFunc(t *testing.T) {
 func TestWithMethodNotAllowedHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithMethodNotAllowedHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(_ http.ResponseWriter, _ *http.Request) {
 		// mock function
 	}
-	cfg := defaultConfig()
-	err := WithMethodNotAllowedHandlerFunc(v)(cfg)
+	err = WithMethodNotAllowedHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.methodNotAllowedHandlerFunc).Pointer())
 }
@@ -309,11 +393,15 @@ func TestWithMethodNotAllowedHandlerFunc(t *testing.T) {
 func TestWithPanicHandlerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := defaultConfig()
+
+	err := WithPanicHandlerFunc(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(_ http.ResponseWriter, _ *http.Request) {
 		// mock function
 	}
-	cfg := defaultConfig()
-	err := WithPanicHandlerFunc(v)(cfg)
+	err = WithPanicHandlerFunc(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.panicHandlerFunc).Pointer())
 }
@@ -322,6 +410,7 @@ func TestWithoutRouteLogger(t *testing.T) {
 	t.Parallel()
 
 	cfg := defaultConfig()
+
 	err := WithoutRouteLogger()(cfg)
 	require.NoError(t, err)
 	require.True(t, cfg.disableRouteLogger)
@@ -331,6 +420,7 @@ func TestWithoutDefaultRouteLogger(t *testing.T) {
 	t.Parallel()
 
 	cfg := defaultConfig()
+
 	err := WithoutDefaultRouteLogger(PingRoute, PprofRoute)(cfg)
 	require.NoError(t, err)
 

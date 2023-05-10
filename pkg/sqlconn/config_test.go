@@ -97,6 +97,24 @@ func Test_config_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "fail with missing shutdownWaitGroup",
+			cfg: func() *config {
+				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
+				cfg.shutdownWaitGroup = nil
+				return cfg
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "fail with missing shutdownSignalChan",
+			cfg: func() *config {
+				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
+				cfg.shutdownSignalChan = nil
+				return cfg
+			}(),
+			wantErr: true,
+		},
+		{
 			name: "succeed with no errors",
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")

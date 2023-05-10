@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -14,6 +15,21 @@ const (
 	defaultConnMaxOpenCount = 5               // Maximum number of open connections (0 = unlimited connections)
 	defaultPingTimeout      = 5 * time.Second // Healthcheck ping timeout
 )
+
+type config struct {
+	checkConnectionFunc CheckConnectionFunc
+	sqlOpenFunc         SQLOpenFunc
+	connectFunc         ConnectFunc
+	connMaxIdleTime     time.Duration
+	connMaxLifetime     time.Duration
+	connMaxIdleCount    int
+	connMaxOpenCount    int
+	driver              string
+	dsn                 string
+	pingTimeout         time.Duration
+	shutdownWaitGroup   *sync.WaitGroup
+	shutdownSignalChan  chan struct{}
+}
 
 func defaultConfig(driver, dsn string) *config {
 	return &config{
@@ -27,23 +43,12 @@ func defaultConfig(driver, dsn string) *config {
 		driver:              driver,
 		dsn:                 dsn,
 		pingTimeout:         defaultPingTimeout,
+		shutdownWaitGroup:   &sync.WaitGroup{},
+		shutdownSignalChan:  make(chan struct{}),
 	}
 }
 
-type config struct {
-	checkConnectionFunc CheckConnectionFunc
-	sqlOpenFunc         SQLOpenFunc
-	connectFunc         ConnectFunc
-	connMaxIdleTime     time.Duration
-	connMaxLifetime     time.Duration
-	connMaxIdleCount    int
-	connMaxOpenCount    int
-	driver              string
-	dsn                 string
-	pingTimeout         time.Duration
-}
-
-//nolint:gocyclo
+//nolint:gocyclo,gocognit
 func (c *config) validate() error {
 	if strings.TrimSpace(c.driver) == "" {
 		return fmt.Errorf("database driver must be set")
@@ -83,6 +88,14 @@ func (c *config) validate() error {
 
 	if c.pingTimeout < 1*time.Second {
 		return fmt.Errorf("database ping timeout must be at least 1 second")
+	}
+
+	if c.shutdownWaitGroup == nil {
+		return fmt.Errorf("shutdownWaitGroup is required")
+	}
+
+	if c.shutdownSignalChan == nil {
+		return fmt.Errorf("shutdownSignalChan is required")
 	}
 
 	return nil

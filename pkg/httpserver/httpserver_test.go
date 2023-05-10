@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -277,14 +278,19 @@ func Test_customMiddlewares(t *testing.T) {
 	require.NoError(t, ctx.Err(), "context should not be canceled")
 }
 
+//nolint:gocognit
 func TestStart(t *testing.T) {
 	t.Parallel()
+
+	shutdownWG := &sync.WaitGroup{}
+	shutdownSG := make(chan struct{})
 
 	tests := []struct {
 		name           string
 		opts           []Option
 		failListenPort int
 		setupBinder    func(*MockBinder)
+		shutdownSig    bool
 		wantErr        bool
 	}{
 		{
@@ -321,11 +327,28 @@ func TestStart(t *testing.T) {
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithEnableAllDefaultRoutes(),
 				WithInstrumentHandler(func(path string, handler http.HandlerFunc) http.Handler { return handler }),
+				WithShutdownTimeout(10 * time.Millisecond),
+				WithShutdownWaitGroup(shutdownWG),
+				WithShutdownSignalChan(shutdownSG),
 			},
 			setupBinder: func(b *MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
 			},
 			wantErr: false,
+		},
+		{
+			name: "succeed and shutdown with signal",
+			opts: []Option{
+				WithServerAddr(":11112"),
+				WithShutdownTimeout(1 * time.Second),
+				WithShutdownWaitGroup(shutdownWG),
+				WithShutdownSignalChan(shutdownSG),
+			},
+			setupBinder: func(b *MockBinder) {
+				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
+			},
+			shutdownSig: true,
+			wantErr:     false,
 		},
 		{
 			name: "succeed w/ TLS",
@@ -385,7 +408,6 @@ YlAqGKDZ+A+l
 			ctx, cancelCtx := context.WithCancel(testutil.Context())
 			defer func() {
 				cancelCtx()
-				time.Sleep(100 * time.Millisecond)
 			}()
 			opts := tt.opts
 
@@ -394,10 +416,15 @@ YlAqGKDZ+A+l
 				require.NoError(t, err, "failed starting pre-listener")
 				defer func() { _ = l.Close() }()
 			}
+
 			err := Start(ctx, mockBinder, opts...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewLogger() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+
+			if tt.shutdownSig {
+				close(shutdownSG)
 			}
 		})
 	}
@@ -430,6 +457,5 @@ func Test_serve_error(t *testing.T) {
 		},
 		mockListenerErr{},
 		logging.NopLogger(),
-		zap.String("addr", addr),
 	)
 }

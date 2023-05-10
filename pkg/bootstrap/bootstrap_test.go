@@ -18,6 +18,9 @@ import (
 
 //nolint:gocognit,paralleltest
 func TestBootstrap(t *testing.T) {
+	shutdownWG := &sync.WaitGroup{}
+	shutdownSG := make(chan struct{})
+
 	tests := []struct {
 		opts                    []Option
 		name                    string
@@ -69,7 +72,7 @@ func TestBootstrap(t *testing.T) {
 		{
 			name: "should succeed and exit with context cancel",
 			opts: []Option{
-				WithShutdownTimeout(1 * time.Millisecond),
+				WithShutdownTimeout(100 * time.Millisecond),
 			},
 			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
 				return nil
@@ -81,6 +84,8 @@ func TestBootstrap(t *testing.T) {
 			name: "should succeed and exit with SIGTERM",
 			opts: []Option{
 				WithShutdownTimeout(1 * time.Millisecond),
+				WithShutdownWaitGroup(shutdownWG),
+				WithShutdownSignalChan(shutdownSG),
 			},
 			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
 				return nil

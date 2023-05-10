@@ -1,6 +1,7 @@
 package sqlconn
 
 import (
+	"sync"
 	"time"
 )
 
@@ -69,5 +70,20 @@ func WithDefaultDriver(driver string) Option {
 func WithPingTimeout(t time.Duration) Option {
 	return func(cfg *config) {
 		cfg.pingTimeout = t
+	}
+}
+
+// WithShutdownWaitGroup sets the shared waiting group to communicate externally when the databse connection is closed.
+func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
+	return func(cfg *config) {
+		cfg.shutdownWaitGroup = wg
+	}
+}
+
+// WithShutdownSignalChan sets the shared channel uset to signal a shutdown.
+// When the channel signal is received the database connection will be closed.
+func WithShutdownSignalChan(ch chan struct{}) Option {
+	return func(cfg *config) {
+		cfg.shutdownSignalChan = ch
 	}
 }

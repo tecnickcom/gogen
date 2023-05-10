@@ -15,8 +15,9 @@ import (
 func TestWithContext(t *testing.T) {
 	t.Parallel()
 
-	v := context.WithValue(context.Background(), struct{}{}, "")
 	cfg := &config{}
+
+	v := context.WithValue(context.Background(), struct{}{}, "")
 	WithContext(v)(cfg)
 	require.Equal(t, v, cfg.context)
 }
@@ -24,8 +25,9 @@ func TestWithContext(t *testing.T) {
 func TestWithLogger(t *testing.T) {
 	t.Parallel()
 
-	l := zap.NewNop()
 	cfg := &config{}
+
+	l := zap.NewNop()
 	WithLogger(l)(cfg)
 	require.NotNil(t, cfg.createLoggerFunc)
 
@@ -37,10 +39,11 @@ func TestWithLogger(t *testing.T) {
 func TestWithCreateLoggerFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := &config{}
+
 	v := func() (*zap.Logger, error) {
 		return nil, nil
 	}
-	cfg := &config{}
 	WithCreateLoggerFunc(v)(cfg)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createLoggerFunc).Pointer())
 }
@@ -48,10 +51,11 @@ func TestWithCreateLoggerFunc(t *testing.T) {
 func TestWithCreateMetricsClientFunc(t *testing.T) {
 	t.Parallel()
 
+	cfg := &config{}
+
 	v := func() (metrics.Client, error) {
 		return nil, nil
 	}
-	cfg := &config{}
 	WithCreateMetricsClientFunc(v)(cfg)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createMetricsClientFunc).Pointer())
 }
@@ -59,8 +63,9 @@ func TestWithCreateMetricsClientFunc(t *testing.T) {
 func TestWithShutdownTimeout(t *testing.T) {
 	t.Parallel()
 
-	v := 17 * time.Second
 	cfg := defaultConfig()
+
+	v := 17 * time.Second
 	WithShutdownTimeout(v)(cfg)
 	require.Equal(t, v, cfg.shutdownTimeout)
 }
@@ -68,8 +73,19 @@ func TestWithShutdownTimeout(t *testing.T) {
 func TestWithShutdownWaitGroup(t *testing.T) {
 	t.Parallel()
 
-	v := &sync.WaitGroup{}
 	cfg := defaultConfig()
+
+	v := &sync.WaitGroup{}
 	WithShutdownWaitGroup(v)(cfg)
 	require.Equal(t, v, cfg.shutdownWaitGroup)
+}
+
+func TestWithShutdownSignalChan(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultConfig()
+
+	v := make(chan struct{})
+	WithShutdownSignalChan(v)(cfg)
+	require.Equal(t, v, cfg.shutdownSignalChan)
 }

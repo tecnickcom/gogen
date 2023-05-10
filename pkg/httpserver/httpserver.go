@@ -97,11 +97,6 @@ func Start(ctx context.Context, binder Binder, opts ...Option) error {
 	}
 
 	cfg.setRouter(ctx)
-
-	if err := cfg.validate(); err != nil {
-		return err
-	}
-
 	loadRoutes(ctx, l, binder, cfg)
 
 	// wrap router with default middlewares
@@ -137,17 +132,26 @@ func startServer(ctx context.Context, cfg *config) error {
 		return fmt.Errorf("failed creting the address listener: %w", err)
 	}
 
-	logAddr := zap.String("addr", cfg.serverAddr)
-	l.Info("listening for HTTP requests", logAddr)
+	sLog := l.With(
+		zap.String("addr", cfg.serverAddr),
+	)
+
+	sLog.Info("listening for HTTP requests")
 
 	go func() {
-		serve(s, ls, l, logAddr)
+		serve(s, ls, sLog)
 	}()
 
 	go func() {
-		<-ctx.Done()
+		// wait for shutdown signal or context cancelation
+		select {
+		case <-cfg.shutdownSignalChan:
+			sLog.Debug("shutdown signal received")
+		case <-ctx.Done():
+			sLog.Debug("context canceled")
+		}
 
-		l.Debug("shutting down HTTP http server", logAddr)
+		sLog.Debug("shutting down HTTP http server")
 
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.shutdownTimeout)
 		defer cancel()
@@ -156,7 +160,7 @@ func startServer(ctx context.Context, cfg *config) error {
 
 		cfg.shutdownWaitGroup.Add(-1)
 
-		l.Debug("HTTP server shutdown", logAddr)
+		sLog.Debug("HTTP server shutdown")
 	}()
 
 	cfg.shutdownWaitGroup.Add(1)
@@ -164,14 +168,14 @@ func startServer(ctx context.Context, cfg *config) error {
 	return nil
 }
 
-func serve(s *http.Server, ls net.Listener, l *zap.Logger, logAddr zap.Field) {
+func serve(s *http.Server, ls net.Listener, l *zap.Logger) {
 	err := s.Serve(ls)
 	if err == http.ErrServerClosed {
-		l.Debug("closed HTTP http server", logAddr)
+		l.Debug("closed HTTP http server")
 		return
 	}
 
-	l.Error("unexpected HTTP server failure", logAddr, zap.Error(err))
+	l.Error("unexpected HTTP server failure", zap.Error(err))
 }
 
 func defaultIndexHandler(routes []Route) http.HandlerFunc {

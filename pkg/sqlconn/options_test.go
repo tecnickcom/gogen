@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -107,4 +108,24 @@ func TestWithPingTimeout(t *testing.T) {
 	cfg := &config{}
 	WithPingTimeout(v)(cfg)
 	require.Equal(t, v, cfg.pingTimeout)
+}
+
+func TestWithShutdownWaitGroup(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+
+	v := &sync.WaitGroup{}
+	WithShutdownWaitGroup(v)(cfg)
+	require.Equal(t, v, cfg.shutdownWaitGroup)
+}
+
+func TestWithShutdownSignalChan(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+
+	v := make(chan struct{})
+	WithShutdownSignalChan(v)(cfg)
+	require.Equal(t, v, cfg.shutdownSignalChan)
 }

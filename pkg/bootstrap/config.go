@@ -26,6 +26,7 @@ type config struct {
 	createMetricsClientFunc CreateMetricsClientFunc
 	shutdownTimeout         time.Duration
 	shutdownWaitGroup       *sync.WaitGroup
+	shutdownSignalChan      chan struct{}
 }
 
 func defaultConfig() *config {
@@ -35,6 +36,7 @@ func defaultConfig() *config {
 		createMetricsClientFunc: defaultCreateMetricsClientFunc,
 		shutdownTimeout:         30 * time.Second,
 		shutdownWaitGroup:       &sync.WaitGroup{},
+		shutdownSignalChan:      make(chan struct{}),
 	}
 }
 
@@ -66,6 +68,10 @@ func (c *config) validate() error {
 
 	if c.shutdownWaitGroup == nil {
 		return fmt.Errorf("shutdownWaitGroup is required")
+	}
+
+	if c.shutdownSignalChan == nil {
+		return fmt.Errorf("shutdownSignalChan is required")
 	}
 
 	return nil

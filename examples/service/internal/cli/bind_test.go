@@ -102,6 +102,7 @@ func Test_bind(t *testing.T) {
 			cfg := tt.fcfg(getValidTestConfig())
 			mtr := metrics.New()
 			wg := &sync.WaitGroup{}
+			sc := make(chan struct{})
 
 			testBindFn := bind(
 				&cfg,
@@ -112,6 +113,7 @@ func Test_bind(t *testing.T) {
 				},
 				mtr,
 				wg,
+				sc,
 			)
 
 			testCtx, cancel := context.WithTimeout(testutil.Context(), 1*time.Second)
@@ -123,6 +125,7 @@ func Test_bind(t *testing.T) {
 				bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
 				bootstrap.WithShutdownTimeout(1 * time.Millisecond),
 				bootstrap.WithShutdownWaitGroup(wg),
+				bootstrap.WithShutdownSignalChan(sc),
 			}
 			err := bootstrap.Bootstrap(testBindFn, testBootstrapOpts...)
 			if tt.wantErr {

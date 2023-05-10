@@ -21,7 +21,7 @@ import (
 )
 
 // bind is the entry point of the service, this is where the wiring of all components happens.
-func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.WaitGroup) bootstrap.BindFunc {
+func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.WaitGroup, sc chan struct{}) bootstrap.BindFunc {
 	return func(ctx context.Context, l *zap.Logger, m metrics.Client) error {
 		// We assume the service is disabled and override the service binder if required
 		serviceBinder := httpserver.NopBinder()
@@ -83,6 +83,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 			httpserver.WithPingHandlerFunc(jsendx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
 			httpserver.WithShutdownWaitGroup(wg),
+			httpserver.WithShutdownSignalChan(sc),
 		}
 
 		if err := httpserver.Start(ctx, httpserver.NopBinder(), httpMonitoringOpts...); err != nil {
@@ -100,6 +101,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
 			httpserver.WithShutdownWaitGroup(wg),
+			httpserver.WithShutdownSignalChan(sc),
 		}
 
 		if err := httpserver.Start(ctx, serviceBinder, httpPublicOpts...); err != nil {
