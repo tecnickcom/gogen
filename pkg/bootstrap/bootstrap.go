@@ -47,7 +47,7 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 
 	defer logging.Sync(l)
 
-	l.Info("binding application components")
+	l.Debug("binding application components")
 
 	if err := bindFn(ctx, l, m); err != nil {
 		return fmt.Errorf("application bootstrap error: %w", err)
@@ -66,9 +66,9 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 
 		select {
 		case <-quit:
-			l.Info("shutdown signal received")
+			l.Debug("shutdown signal received")
 		case <-ctx.Done():
-			l.Info("context canceled")
+			l.Warn("context canceled")
 		}
 	}()
 
@@ -100,8 +100,8 @@ func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *zap.Logg
 
 	select {
 	case <-wait:
-		l.Info("dependands shutdown complete")
+		l.Debug("dependands shutdown complete")
 	case <-time.After(timeout):
-		l.Info("dependands shutdown timeout")
+		l.Warn("dependands shutdown timeout")
 	}
 }

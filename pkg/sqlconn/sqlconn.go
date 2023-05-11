@@ -69,7 +69,7 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 		case <-cfg.shutdownSignalChan:
 			l.Debug("sqlconn shutdown signal received")
 		case <-ctx.Done():
-			l.Debug("sqlconn context canceled")
+			l.Warn("sqlconn context canceled")
 		}
 
 		c.disconnect()

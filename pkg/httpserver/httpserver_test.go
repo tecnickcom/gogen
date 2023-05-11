@@ -282,9 +282,6 @@ func Test_customMiddlewares(t *testing.T) {
 func TestStart(t *testing.T) {
 	t.Parallel()
 
-	shutdownWG := &sync.WaitGroup{}
-	shutdownSG := make(chan struct{})
-
 	tests := []struct {
 		name           string
 		opts           []Option
@@ -327,9 +324,7 @@ func TestStart(t *testing.T) {
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithEnableAllDefaultRoutes(),
 				WithInstrumentHandler(func(path string, handler http.HandlerFunc) http.Handler { return handler }),
-				WithShutdownTimeout(10 * time.Millisecond),
-				WithShutdownWaitGroup(shutdownWG),
-				WithShutdownSignalChan(shutdownSG),
+				WithShutdownTimeout(1 * time.Second),
 			},
 			setupBinder: func(b *MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
@@ -341,8 +336,6 @@ func TestStart(t *testing.T) {
 			opts: []Option{
 				WithServerAddr(":11112"),
 				WithShutdownTimeout(1 * time.Second),
-				WithShutdownWaitGroup(shutdownWG),
-				WithShutdownSignalChan(shutdownSG),
 			},
 			setupBinder: func(b *MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
@@ -405,11 +398,23 @@ YlAqGKDZ+A+l
 				tt.setupBinder(mockBinder)
 			}
 
+			opts := tt.opts
+
+			shutdownWG := &sync.WaitGroup{}
+			shutdownSG := make(chan struct{})
+
+			opts = append(opts, WithShutdownWaitGroup(shutdownWG))
+			opts = append(opts, WithShutdownSignalChan(shutdownSG))
+
 			ctx, cancelCtx := context.WithCancel(testutil.Context())
 			defer func() {
+				if tt.shutdownSig {
+					close(shutdownSG)
+				}
+
+				time.Sleep(100 * time.Millisecond)
 				cancelCtx()
 			}()
-			opts := tt.opts
 
 			if tt.failListenPort != 0 {
 				l, err := net.Listen("tcp", fmt.Sprintf(":%d", tt.failListenPort))
@@ -421,10 +426,6 @@ YlAqGKDZ+A+l
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewLogger() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-
-			if tt.shutdownSig {
-				close(shutdownSG)
 			}
 		})
 	}

@@ -23,9 +23,6 @@ func newMockConnectFunc(db *sql.DB, err error) ConnectFunc {
 func TestConnect(t *testing.T) {
 	t.Parallel()
 
-	shutdownWG := &sync.WaitGroup{}
-	shutdownSG := make(chan struct{})
-
 	tests := []struct {
 		name           string
 		connectDSN     string
@@ -90,9 +87,16 @@ func TestConnect(t *testing.T) {
 				tt.configMockFunc(mock)
 			}
 
+			shutdownWG := &sync.WaitGroup{}
+			shutdownSG := make(chan struct{})
+
 			ctx, cancel := context.WithCancel(testutil.Context())
 			defer func() {
-				cancel()
+				if tt.shutdownSig {
+					close(shutdownSG)
+				} else {
+					cancel()
+				}
 
 				// wait to allow the disconnect goroutine to execute
 				time.Sleep(100 * time.Millisecond)
@@ -114,10 +118,6 @@ func TestConnect(t *testing.T) {
 				WithShutdownWaitGroup(shutdownWG),
 				WithShutdownSignalChan(shutdownSG),
 			)
-
-			if tt.shutdownSig {
-				close(shutdownSG)
-			}
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
