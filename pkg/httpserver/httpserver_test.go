@@ -445,18 +445,21 @@ func (ls mockListenerErr) Addr() net.Addr {
 	return nil
 }
 
-func Test_serve_error(t *testing.T) {
+func Test_Serve_error(t *testing.T) {
 	t.Parallel()
 
-	addr := ":54321"
-	serve(
-		&http.Server{
-			Addr:              addr,
+	h := &HTTPServer{
+		cfg: defaultConfig(),
+		ctx: context.TODO(),
+		httpServer: &http.Server{
+			Addr:              ":54321",
 			ReadHeaderTimeout: 1 * time.Millisecond,
 			ReadTimeout:       1 * time.Millisecond,
 			WriteTimeout:      1 * time.Millisecond,
 		},
-		mockListenerErr{},
-		logging.NopLogger(),
-	)
+		listener: mockListenerErr{},
+		logger:   logging.NopLogger(),
+	}
+
+	h.serve()
 }

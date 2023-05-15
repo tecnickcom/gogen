@@ -28,6 +28,137 @@ type nopBinder struct{}
 
 func (b *nopBinder) BindHTTP(_ context.Context) []Route { return nil }
 
+// HTTPServer defines the HTTP Server object.
+type HTTPServer struct {
+	cfg        *config
+	ctx        context.Context
+	httpServer *http.Server
+	listener   net.Listener
+	logger     *zap.Logger
+}
+
+// Start configures and start a new HTTP server.
+//
+// Deprecated: Use New() and StartServer() instead.
+func Start(ctx context.Context, binder Binder, opts ...Option) error {
+	h, err := New(ctx, binder, opts...)
+	if err != nil {
+		return err
+	}
+
+	h.StartServer()
+
+	return nil
+}
+
+// New configures new HTTP server.
+func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error) {
+	cfg := defaultConfig()
+
+	for _, applyOpt := range opts {
+		if err := applyOpt(cfg); err != nil {
+			return nil, err
+		}
+	}
+
+	logger := logging.WithComponent(ctx, "httpserver").With(
+		zap.String("addr", cfg.serverAddr),
+	)
+
+	cfg.setRouter(ctx)
+	loadRoutes(ctx, logger, binder, cfg)
+
+	listener, err := netListener(cfg.serverAddr, cfg.tlsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &HTTPServer{
+			cfg: cfg,
+			ctx: ctx,
+			httpServer: &http.Server{
+				Addr:              cfg.serverAddr,
+				Handler:           cfg.router,
+				ReadHeaderTimeout: cfg.serverReadHeaderTimeout,
+				ReadTimeout:       cfg.serverReadTimeout,
+				TLSConfig:         cfg.tlsConfig,
+				WriteTimeout:      cfg.serverWriteTimeout,
+			},
+			listener: listener,
+			logger:   logger,
+		},
+		nil
+}
+
+// StartServer starts the current server and return without blocking.
+func (h *HTTPServer) StartServer() {
+	// wait for shutdown signal or context cancelation
+	go func() {
+		select {
+		case <-h.cfg.shutdownSignalChan:
+			h.logger.Debug("shutdown notification received")
+		case <-h.ctx.Done():
+			h.logger.Warn("context canceled")
+		}
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), h.cfg.shutdownTimeout)
+		defer cancel()
+
+		_ = h.Shutdown(shutdownCtx)
+	}()
+
+	// start server
+	go func() {
+		h.serve()
+	}()
+
+	h.cfg.shutdownWaitGroup.Add(1)
+
+	h.logger.Info("listening for http requests")
+}
+
+// Shutdown gracefully shuts down the server without interrupting any active connections.
+// Wraps the standard net/http/Server_Shutdown method.
+func (h *HTTPServer) Shutdown(ctx context.Context) error {
+	h.logger.Debug("shutting down http server")
+
+	err := h.httpServer.Shutdown(ctx)
+	h.cfg.shutdownWaitGroup.Add(-1)
+
+	h.logger.Debug("http server shutdown complete", zap.Error(err))
+
+	return err //nolint:wrapcheck
+}
+
+func (h *HTTPServer) serve() {
+	err := h.httpServer.Serve(h.listener)
+	if err == http.ErrServerClosed {
+		h.logger.Debug("closed http server")
+		return
+	}
+
+	h.logger.Error("unexpected http server failure", zap.Error(err))
+}
+
+func netListener(serverAddr string, tlsConfig *tls.Config) (net.Listener, error) {
+	var (
+		ls  net.Listener
+		err error
+	)
+
+	if tlsConfig == nil {
+		ls, err = net.Listen("tcp", serverAddr)
+	} else {
+		ls, err = tls.Listen("tcp", serverAddr, tlsConfig)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed creating the http server address listener: %w", err)
+	}
+
+	return ls, nil
+}
+
 func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) {
 	l.Debug("loading default routes")
 
@@ -82,100 +213,6 @@ func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) 
 
 		cfg.router.Handler(args.Method, args.Path, handler)
 	}
-}
-
-// Start configures and start a new HTTP http server.
-func Start(ctx context.Context, binder Binder, opts ...Option) error {
-	l := logging.WithComponent(ctx, "httpserver")
-
-	cfg := defaultConfig()
-
-	for _, applyOpt := range opts {
-		if err := applyOpt(cfg); err != nil {
-			return err
-		}
-	}
-
-	cfg.setRouter(ctx)
-	loadRoutes(ctx, l, binder, cfg)
-
-	// wrap router with default middlewares
-	return startServer(ctx, cfg)
-}
-
-func startServer(ctx context.Context, cfg *config) error {
-	l := logging.FromContext(ctx)
-
-	// create and start the http server
-	s := &http.Server{
-		Addr:              cfg.serverAddr,
-		Handler:           cfg.router,
-		ReadHeaderTimeout: cfg.serverReadHeaderTimeout,
-		ReadTimeout:       cfg.serverReadTimeout,
-		TLSConfig:         cfg.tlsConfig,
-		WriteTimeout:      cfg.serverWriteTimeout,
-	}
-
-	// start HTTP listener
-	var (
-		ls  net.Listener
-		err error
-	)
-
-	if cfg.tlsConfig == nil {
-		ls, err = net.Listen("tcp", cfg.serverAddr)
-	} else {
-		ls, err = tls.Listen("tcp", cfg.serverAddr, cfg.tlsConfig)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed creating the http server address listener: %w", err)
-	}
-
-	sLog := l.With(
-		zap.String("addr", cfg.serverAddr),
-	)
-
-	sLog.Info("listening for http requests")
-
-	go func() {
-		serve(s, ls, sLog)
-	}()
-
-	go func() {
-		// wait for shutdown signal or context cancelation
-		select {
-		case <-cfg.shutdownSignalChan:
-			sLog.Debug("shutdown notification received")
-		case <-ctx.Done():
-			sLog.Warn("context canceled")
-		}
-
-		sLog.Debug("shutting down http server")
-
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.shutdownTimeout)
-		defer cancel()
-
-		serr := s.Shutdown(shutdownCtx)
-
-		cfg.shutdownWaitGroup.Add(-1)
-
-		sLog.Debug("http server shutdown complete", zap.Error(serr))
-	}()
-
-	cfg.shutdownWaitGroup.Add(1)
-
-	return nil
-}
-
-func serve(s *http.Server, ls net.Listener, l *zap.Logger) {
-	err := s.Serve(ls)
-	if err == http.ErrServerClosed {
-		l.Debug("closed http server")
-		return
-	}
-
-	l.Error("unexpected http server failure", zap.Error(err))
 }
 
 func defaultIndexHandler(routes []Route) http.HandlerFunc {
