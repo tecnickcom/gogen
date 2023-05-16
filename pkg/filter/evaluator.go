@@ -3,29 +3,22 @@ package filter
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/Vonage/gosrvlib/pkg/typeutil"
 )
 
 // Evaluator is the interface to provide functions for a filter type.
 type Evaluator interface {
 	// Evaluate determines if two given values match.
-	Evaluate(value interface{}) bool
+	Evaluate(value any) bool
 }
 
-func isNil(v interface{}) bool {
-	if v == nil {
-		return true
-	}
-
-	value := reflect.ValueOf(v)
-	if (value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr) && value.IsNil() {
-		return true
-	}
-
-	return false
+func isNil(v any) bool {
+	return typeutil.IsNil(v)
 }
 
 //nolint:gocyclo
-func convertValue(v interface{}) interface{} {
+func convertValue(v any) any {
 	switch v := v.(type) {
 	case int:
 		return float64(v)
@@ -58,7 +51,7 @@ func convertValue(v interface{}) interface{} {
 	return v
 }
 
-func convertStringValue(v interface{}) (string, bool) {
+func convertStringValue(v any) (string, bool) {
 	if v == nil {
 		return "", false
 	}
@@ -78,7 +71,7 @@ func convertStringValue(v interface{}) (string, bool) {
 	return vv.Convert(st).String(), true
 }
 
-func convertFloatValue(v interface{}) (float64, error) {
+func convertFloatValue(v any) (float64, error) {
 	v = convertValue(v)
 
 	if reflect.ValueOf(v).Kind() != reflect.Float64 {

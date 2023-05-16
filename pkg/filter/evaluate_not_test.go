@@ -12,8 +12,8 @@ func TestNot_Evaluate(t *testing.T) {
 	tests := []struct {
 		name     string
 		internal Evaluator
-		ref      interface{}
-		value    interface{}
+		ref      any
+		value    any
 		want     bool
 	}{
 		{

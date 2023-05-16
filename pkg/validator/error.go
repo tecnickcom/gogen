@@ -27,7 +27,7 @@ type Error struct {
 	Kind string
 
 	// Value is the actual field's value.
-	Value interface{}
+	Value any
 
 	// Err is the translated error message.
 	Err string

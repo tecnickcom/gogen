@@ -20,6 +20,8 @@ import (
 )
 
 const (
+	// maxBit is the maximum supported number of bits.
+	// It is also the maximum number of items that can be represented with a single integer.
 	maxBit = 32
 )
 

@@ -30,7 +30,7 @@ func TestNewHandler(t *testing.T) {
 	require.Equal(t, reflect.ValueOf(httputil.SendJSON).Pointer(), reflect.ValueOf(h1.writeResult).Pointer())
 
 	// With options
-	rw := func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {}
+	rw := func(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {}
 	h2 := NewHandler(testChecks, WithResultWriter(rw))
 	require.Equal(t, 2, len(h2.checks))
 	require.Equal(t, 2, h2.checksCount)
@@ -65,9 +65,9 @@ func TestHandler_ServeHTTP(t *testing.T) {
 				New("test_12", &testHealthChecker{delay: 100 * time.Millisecond, err: nil}),
 			},
 			opts: []HandlerOption{
-				WithResultWriter(func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
+				WithResultWriter(func(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {
 					type wrapper struct {
-						Data interface{} `json:"data"`
+						Data any `json:"data"`
 					}
 					httputil.SendJSON(ctx, w, statusCode, &wrapper{
 						Data: data,

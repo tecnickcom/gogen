@@ -38,12 +38,12 @@ func New(opts ...Option) (*Validator, error) {
 }
 
 // ValidateStruct validates the structure fields tagged with "validate" and returns a multierror.
-func (v *Validator) ValidateStruct(obj interface{}) error {
+func (v *Validator) ValidateStruct(obj any) error {
 	return v.ValidateStructCtx(context.Background(), obj)
 }
 
 // ValidateStructCtx validates the structure fields tagged with "validate" and returns a multierror.
-func (v *Validator) ValidateStructCtx(ctx context.Context, obj interface{}) error {
+func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 	vErr := v.v.StructCtx(ctx, obj)
 
 	var (

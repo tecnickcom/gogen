@@ -10,7 +10,7 @@ type evalContains struct {
 	ref string
 }
 
-func newContains(r interface{}) (Evaluator, error) {
+func newContains(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {
 		return nil, fmt.Errorf("rule of type %s should have string value (got %v (%v))", TypeContains, r, reflect.TypeOf(r))
@@ -21,7 +21,7 @@ func newContains(r interface{}) (Evaluator, error) {
 
 // Evaluate returns whether the input value contains the reference string.
 // It returns false if the input value is not a string.
-func (e *evalContains) Evaluate(v interface{}) bool {
+func (e *evalContains) Evaluate(v any) bool {
 	s, ok := v.(string)
 	if !ok {
 		return false

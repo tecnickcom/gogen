@@ -10,7 +10,7 @@ type evalHasSuffix struct {
 	ref string
 }
 
-func newHasSuffix(r interface{}) (Evaluator, error) {
+func newHasSuffix(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {
 		return nil, fmt.Errorf("rule of type %s should have string value (got %v (%v))", TypeHasSuffix, r, reflect.TypeOf(r))
@@ -21,7 +21,7 @@ func newHasSuffix(r interface{}) (Evaluator, error) {
 
 // Evaluate returns whether the input value ends with the reference string.
 // It returns false if the input value is not a string.
-func (e *evalHasSuffix) Evaluate(v interface{}) bool {
+func (e *evalHasSuffix) Evaluate(v any) bool {
 	s, ok := convertStringValue(v)
 	if !ok {
 		return false

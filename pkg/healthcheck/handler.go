@@ -14,7 +14,7 @@ const (
 )
 
 // ResultWriter is a type alias for a function in charge of writing the result of the health checks.
-type ResultWriter func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{})
+type ResultWriter func(ctx context.Context, w http.ResponseWriter, statusCode int, data any)
 
 // NewHandler creates a new instance of the healthcheck handler.
 func NewHandler(checks []HealthCheck, opts ...HandlerOption) *Handler {

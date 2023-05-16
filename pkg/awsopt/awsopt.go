@@ -15,6 +15,7 @@ const (
 	// protocol://service-code.region-code.amazonaws.com
 	awsRegionFromURLRegexp = `^https://[^\.]+\.([^\.]+)\.amazonaws\.com`
 
+	// awsDefaultRegion is the region that will be used if any other way to detect the region fails.
 	awsDefaultRegion = "us-east-2"
 )
 
@@ -51,6 +52,7 @@ func (c *Options) WithRegionFromURL(url, defaultRegion string) {
 	c.WithRegion(awsRegionFromURL(url, defaultRegion))
 }
 
+// awsRegionFromURL extracts a region from a URL string or return the default value.
 func awsRegionFromURL(url, defaultRegion string) string {
 	re := regexp.MustCompile(awsRegionFromURLRegexp)
 	match := re.FindStringSubmatch(url)
@@ -93,7 +95,8 @@ type endpointResolver struct {
 	isImmutable bool
 }
 
-func (r endpointResolver) ResolveEndpoint(_, region string, _ ...interface{}) (aws.Endpoint, error) {
+// ResolveEndpoint returns an aws.Endpoint.
+func (r endpointResolver) ResolveEndpoint(_, region string, _ ...any) (aws.Endpoint, error) {
 	return aws.Endpoint{
 		SigningRegion:     region,
 		URL:               r.url,

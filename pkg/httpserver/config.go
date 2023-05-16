@@ -189,7 +189,7 @@ func (c *config) setRouter(ctx context.Context) {
 	}
 
 	if c.router.PanicHandler == nil {
-		c.router.PanicHandler = func(w http.ResponseWriter, r *http.Request, p interface{}) {
+		c.router.PanicHandler = func(w http.ResponseWriter, r *http.Request, p any) {
 			logging.FromContext(r.Context()).Error(
 				"panic",
 				zap.Any("err", p),

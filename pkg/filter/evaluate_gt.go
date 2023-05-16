@@ -8,7 +8,7 @@ type gt struct {
 	ref float64
 }
 
-func newGT(r interface{}) (Evaluator, error) {
+func newGT(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func newGT(r interface{}) (Evaluator, error) {
 // It converts numerical values implicitly before comparison.
 // Returns the lengths comparison for Array, Map, Slice or String.
 // Returns false if the value is nil.
-func (e *gt) Evaluate(v interface{}) bool {
+func (e *gt) Evaluate(v any) bool {
 	v = convertValue(v)
 
 	if isNil(v) {

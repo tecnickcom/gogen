@@ -58,7 +58,7 @@ type Rule struct {
 
 	// Value is the reference value to evaluate against.
 	// Its type should be accepted by the chosen Type.
-	Value interface{} `json:"value"`
+	Value any `json:"value"`
 
 	// eval is initialized at the first call to Evaluate() and stores the structure that evaluates the rule.
 	eval Evaluator
@@ -67,7 +67,7 @@ type Rule struct {
 // Evaluate returns whether the value matches the rule or not.
 //
 // Returns an error if the Type is invalid, a misconfiguration (e.g. invalid regexp) or the value is invalid (e.g. evaluating an int with a regexp).
-func (r *Rule) Evaluate(value interface{}) (bool, error) {
+func (r *Rule) Evaluate(value any) (bool, error) {
 	if r.eval == nil {
 		var err error
 

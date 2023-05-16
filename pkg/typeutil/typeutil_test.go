@@ -20,6 +20,13 @@ func TestIsNil(t *testing.T) {
 		require.False(t, got)
 	})
 
+	t.Run("nil value", func(t *testing.T) {
+		t.Parallel()
+
+		got := IsNil(nil)
+		require.True(t, got)
+	})
+
 	t.Run("nil chan", func(t *testing.T) {
 		t.Parallel()
 		var nilChan chan int
@@ -38,7 +45,7 @@ func TestIsNil(t *testing.T) {
 
 	t.Run("nil interface", func(t *testing.T) {
 		t.Parallel()
-		var nilInterface *interface{}
+		var nilInterface *any
 
 		got := IsNil(nilInterface)
 		require.True(t, got)
@@ -106,7 +113,7 @@ func TestIsZero(t *testing.T) {
 
 	t.Run("nil interface", func(t *testing.T) {
 		t.Parallel()
-		var nilInterface *interface{}
+		var nilInterface *any
 
 		got := IsZero(nilInterface)
 		require.True(t, got)
@@ -135,6 +142,107 @@ func TestIsZero(t *testing.T) {
 		got := IsZero(nilPointer)
 		require.True(t, got)
 	})
+}
+
+func TestZero(t *testing.T) {
+	t.Parallel()
+
+	t.Run("string", func(t *testing.T) {
+		t.Parallel()
+
+		v := "test"
+
+		got := Zero(v)
+		require.Equal(t, "", got)
+	})
+
+	t.Run("slice", func(t *testing.T) {
+		t.Parallel()
+
+		var nilSlice []int
+
+		v := []int{1, 2, 3}
+
+		got := Zero(v)
+		require.Equal(t, nilSlice, got)
+	})
+}
+
+func TestPointer(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{
+			name:  "int",
+			value: 1,
+		},
+		{
+			name:  "string",
+			value: "test",
+		},
+		{
+			name:  "slice",
+			value: []int{1, 2},
+		},
+		{
+			name:  "map",
+			value: map[string]string{"one": "alpha", "two": "beta"},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := Pointer(tt.value)
+			require.Equal(t, tt.value, *got)
+		})
+	}
+}
+
+func TestValue(t *testing.T) {
+	t.Parallel()
+
+	var nilPtr *int
+
+	got := Value(nilPtr)
+	require.Equal(t, got, 0)
+
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{
+			name:  "int",
+			value: 1,
+		},
+		{
+			name:  "string",
+			value: "test",
+		},
+		{
+			name:  "slice",
+			value: []int{1, 2},
+		},
+		{
+			name:  "map",
+			value: map[string]string{"one": "alpha", "two": "beta"},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := Value(&tt.value)
+			require.Equal(t, tt.value, got)
+		})
+	}
 }
 
 type mockWriter struct{}

@@ -96,7 +96,7 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 		OutputPaths:      cfg.outputPaths,
 		ErrorOutputPaths: cfg.errorOutputPaths,
 		DisableCaller:    disableCaller,
-		InitialFields: map[string]interface{}{
+		InitialFields: map[string]any{
 			"hostname": hostname,
 		},
 	}

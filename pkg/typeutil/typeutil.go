@@ -13,7 +13,11 @@ import (
 )
 
 // IsNil returns true if the input value is nil.
-func IsNil[T any](v T) bool {
+func IsNil(v any) bool {
+	if v == nil {
+		return true
+	}
+
 	value := reflect.ValueOf(v)
 
 	//nolint:exhaustive
@@ -28,6 +32,27 @@ func IsNil[T any](v T) bool {
 // IsZero returns true if the input value is equal to the zero instance (e.g. empty string, 0 int, nil pointer).
 func IsZero[T any](v T) bool {
 	return reflect.ValueOf(&v).Elem().IsZero()
+}
+
+// Zero returns the zero instance (e.g. empty string, 0 int, nil pointer).
+func Zero[T any](_ T) T {
+	var zero T
+	return zero
+}
+
+// Pointer returns the address of v.
+func Pointer[T any](v T) *T {
+	return &v
+}
+
+// Value returns the value of the provided pointer or the type default (zero value) if nil.
+func Value[T any](p *T) T {
+	if IsNil(p) {
+		var zero T
+		return zero
+	}
+
+	return *p
 }
 
 func base64Encoder(w io.Writer) io.WriteCloser {

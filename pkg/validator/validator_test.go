@@ -113,7 +113,7 @@ func TestValidator_ValidateStruct(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		obj          interface{}
+		obj          any
 		opts         []Option
 		wantErr      bool
 		wantErrCount int

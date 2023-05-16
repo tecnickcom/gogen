@@ -19,18 +19,16 @@ import (
 
 //go:noinline
 func newRequestWithContextPatch(_ context.Context, _, _ string, _ io.Reader) (*http.Request, error) {
-	return nil, fmt.Errorf("error")
+	return nil, fmt.Errorf("ERROR: newRequestWithContextPatch")
 }
 
 //go:noinline
 func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpretrier.HTTPRetrier, error) {
-	return nil, fmt.Errorf("error")
+	return nil, fmt.Errorf("ERROR: newHTTPRetrierPatch")
 }
 
-//nolint:gocognit
+//nolint:gocognit,paralleltest
 func Test_sendRequest(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name              string
 		req               *DeployRegistrationRequest
@@ -113,8 +111,6 @@ func Test_sendRequest(t *testing.T) {
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 

@@ -27,6 +27,35 @@ func ExampleIsZero() {
 	// true
 }
 
+func ExampleZero() {
+	num := 5
+
+	v := typeutil.Zero(num)
+	fmt.Println(v)
+
+	// Output:
+	// 0
+}
+
+//nolint:testableexamples
+func ExamplePointer() {
+	v := 5
+
+	p := typeutil.Pointer(v)
+	fmt.Println(p)
+}
+
+func ExampleValue() {
+	num := 5
+	p := &num
+
+	v := typeutil.Value(p)
+	fmt.Println(v)
+
+	// Output:
+	// 5
+}
+
 //nolint:testableexamples
 func ExampleEncode() {
 	type TestData struct {

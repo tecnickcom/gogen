@@ -385,11 +385,11 @@ func testUserHash(username string) ([]byte, error) {
 
 type testSigningMethodError struct{}
 
-func (c *testSigningMethodError) Verify(_, _ string, _ interface{}) error {
+func (c *testSigningMethodError) Verify(_, _ string, _ any) error {
 	return fmt.Errorf("VERIFY ERROR")
 }
 
-func (c *testSigningMethodError) Sign(_ string, _ interface{}) (string, error) {
+func (c *testSigningMethodError) Sign(_ string, _ any) (string, error) {
 	return "", fmt.Errorf("SIGN ERROR")
 }
 

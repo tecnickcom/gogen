@@ -27,7 +27,7 @@ func NewRouter(info *AppInfo, instrumentHandler httpserver.InstrumentHandler) *h
 		Send(r.Context(), w, http.StatusMethodNotAllowed, info, "the request cannot be routed")
 	})
 
-	r.PanicHandler = func(w http.ResponseWriter, r *http.Request, p interface{}) {
+	r.PanicHandler = func(w http.ResponseWriter, r *http.Request, p any) {
 		logging.FromContext(r.Context()).Error("panic",
 			zap.Any("err", p),
 			zap.String("stacktrace", string(debug.Stack())),

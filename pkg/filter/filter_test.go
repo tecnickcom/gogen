@@ -15,7 +15,7 @@ func strPtr(v string) *string {
 	return &v
 }
 
-func getSliceLen(slice interface{}) uint {
+func getSliceLen(slice any) uint {
 	rSlice := reflect.ValueOf(slice)
 	rSlice = reflect.Indirect(rSlice)
 
@@ -236,8 +236,8 @@ func TestFilter_Apply(t *testing.T) {
 		name             string
 		rules            [][]Rule
 		opts             []Option
-		elements         interface{}
-		want             interface{}
+		elements         any
+		want             any
 		wantTotalMatches uint
 		wantErr          bool
 	}{
@@ -637,7 +637,7 @@ func TestFilter_Apply(t *testing.T) {
 		},
 		{
 			name: "success - mismatched array",
-			elements: &[]interface{}{
+			elements: &[]any{
 				complexStructWithPtr{
 					Internal: &simpleStruct{
 						StringField: "value 1",
@@ -654,7 +654,7 @@ func TestFilter_Apply(t *testing.T) {
 				Type:  TypeEqual,
 				Value: "value 1",
 			}}},
-			want: &[]interface{}{
+			want: &[]any{
 				complexStructWithPtr{
 					Internal: &simpleStruct{
 						StringField: "value 1",
@@ -778,7 +778,7 @@ func TestFilter_Apply(t *testing.T) {
 		},
 		{
 			name: "success - nested path not found",
-			elements: &[]interface{}{
+			elements: &[]any{
 				complexStruct{
 					Internal: simpleStruct{
 						StringField: "value 1",
@@ -790,12 +790,12 @@ func TestFilter_Apply(t *testing.T) {
 				Type:  TypeEqual,
 				Value: "value 1",
 			}}},
-			want:             &[]interface{}{},
+			want:             &[]any{},
 			wantTotalMatches: 0,
 		},
 		{
 			name: "success - with field tag not found",
-			elements: &[]interface{}{
+			elements: &[]any{
 				complexStruct{
 					Internal: simpleStruct{
 						StringField: "value 1",
@@ -808,7 +808,7 @@ func TestFilter_Apply(t *testing.T) {
 				Type:  TypeEqual,
 				Value: "value 1",
 			}}},
-			want:             &[]interface{}{},
+			want:             &[]any{},
 			wantTotalMatches: 0,
 		},
 		{
@@ -908,7 +908,7 @@ func TestFilter_Apply(t *testing.T) {
 		},
 		{
 			name: "error - unexported field",
-			elements: &[]interface{}{
+			elements: &[]any{
 				complexStruct{
 					Internal: simpleStruct{
 						unexported: "value 1",
@@ -924,7 +924,7 @@ func TestFilter_Apply(t *testing.T) {
 		},
 		{
 			name: "error - with nil item",
-			elements: &[]interface{}{
+			elements: &[]any{
 				nil,
 			},
 			rules: [][]Rule{{{
@@ -936,7 +936,7 @@ func TestFilter_Apply(t *testing.T) {
 		},
 		{
 			name: "error - nested path inside a basic type",
-			elements: &[]interface{}{
+			elements: &[]any{
 				simpleStruct{
 					StringField: "value 1",
 				},
@@ -1046,11 +1046,11 @@ func TestFilter_ApplySubset(t *testing.T) {
 		name             string
 		rules            [][]Rule
 		opts             []Option
-		elements         interface{}
+		elements         any
 		offset           uint
 		length           uint
 		wantTotalMatches uint
-		want             interface{}
+		want             any
 		wantErr          bool
 	}{
 		{
@@ -1145,9 +1145,9 @@ func benchmarkFilterApply(b *testing.B, n int, json string, opts ...Option) {
 	type simpleStruct struct {
 		IntField     int
 		Float64Field float64
-		SomeField1   interface{}
-		SomeField2   interface{}
-		SomeField3   interface{}
+		SomeField1   any
+		SomeField2   any
+		SomeField3   any
 		StringField  string `json:"string_field"`
 	}
 

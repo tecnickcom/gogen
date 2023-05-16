@@ -7,6 +7,7 @@ const (
 	// precision of the float-to-integer conversion (max 6 decimal digits).
 	precision float64 = 1e+06
 
+	// stringFormat is the verb used to print a 6-decimal digit float.
 	stringFormat = "%.6f"
 
 	// MaxInt is the maximum integer number that can be safely represented (2^53).

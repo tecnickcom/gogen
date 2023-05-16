@@ -74,7 +74,7 @@ func SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data s
 }
 
 // SendJSON sends a JSON object to the response.
-func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
+func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {
 	defer logResponse(ctx, statusCode, logKeyResponseDataObject, data)
 
 	writeHeaders(w, statusCode, MimeApplicationJSON)
@@ -85,7 +85,7 @@ func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data i
 }
 
 // SendXML sends an XML object to the response.
-func SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, xmlHeader string, data interface{}) {
+func SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, xmlHeader string, data any) {
 	defer logResponse(ctx, statusCode, logKeyResponseDataObject, data)
 
 	writeHeaders(w, statusCode, MimeApplicationXML)
@@ -109,7 +109,7 @@ func writeHeaders(w http.ResponseWriter, statusCode int, contentType string) {
 }
 
 // logResponse logs the response.
-func logResponse(ctx context.Context, statusCode int, dataKey string, data interface{}) {
+func logResponse(ctx context.Context, statusCode int, dataKey string, data any) {
 	resTime := time.Now().UTC()
 
 	reqTime, ok := GetRequestTimeFromContext(ctx)

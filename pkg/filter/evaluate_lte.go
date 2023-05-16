@@ -8,7 +8,7 @@ type lte struct {
 	ref float64
 }
 
-func newLTE(r interface{}) (Evaluator, error) {
+func newLTE(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func newLTE(r interface{}) (Evaluator, error) {
 // It converts numerical values implicitly before comparison.
 // Returns the lengths comparison for Array, Map, Slice or String.
 // Returns false if the value is nil.
-func (e *lte) Evaluate(v interface{}) bool {
+func (e *lte) Evaluate(v any) bool {
 	v = convertValue(v)
 
 	if isNil(v) {

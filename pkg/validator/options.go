@@ -45,7 +45,7 @@ func WithCustomValidationTags(t map[string]vt.FuncCtx) Option {
 }
 
 // WithCustomTypeFunc registers a CustomTypeFunc against a number of types.
-func WithCustomTypeFunc(fn vt.CustomTypeFunc, types ...interface{}) Option {
+func WithCustomTypeFunc(fn vt.CustomTypeFunc, types ...any) Option {
 	return func(v *Validator) error {
 		v.v.RegisterCustomTypeFunc(fn, types...)
 		return nil

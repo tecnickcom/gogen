@@ -16,7 +16,7 @@ func TestLink(t *testing.T) {
 		domain   string
 		basePath string
 		template string
-		segments []interface{}
+		segments []any
 		want     string
 	}{
 		{
@@ -45,7 +45,7 @@ func TestLink(t *testing.T) {
 			domain:   "http://host.invalid",
 			basePath: "path",
 			template: "brands/%s",
-			segments: []interface{}{"123"},
+			segments: []any{"123"},
 			want:     "http://host.invalid/path/brands/123",
 		},
 	}

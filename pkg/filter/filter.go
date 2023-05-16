@@ -131,7 +131,7 @@ func (p *Processor) ParseURLQuery(q url.Values) ([][]Rule, error) {
 // This is a shortcut to ApplySubset with 0 offset and maxResults length.
 //
 // Returns the length of the filtered slice, the total number of elements that matched the filter, and the eventual error.
-func (p *Processor) Apply(rules [][]Rule, slicePtr interface{}) (uint, uint, error) {
+func (p *Processor) Apply(rules [][]Rule, slicePtr any) (uint, uint, error) {
 	return p.ApplySubset(rules, slicePtr, 0, p.maxResults)
 }
 
@@ -142,7 +142,7 @@ func (p *Processor) Apply(rules [][]Rule, slicePtr interface{}) (uint, uint, err
 // Depending on length, the filtered slice will only contain a set number of elements.
 //
 // Returns the length of the filtered slice, the total number of elements that matched the filter, and the eventual error.
-func (p *Processor) ApplySubset(rules [][]Rule, slicePtr interface{}, offset, length uint) (uint, uint, error) {
+func (p *Processor) ApplySubset(rules [][]Rule, slicePtr any, offset, length uint) (uint, uint, error) {
 	if length < 1 {
 		return 0, 0, errors.New("length must be at least 1")
 	}
@@ -166,7 +166,7 @@ func (p *Processor) ApplySubset(rules [][]Rule, slicePtr interface{}, offset, le
 		return 0, 0, fmt.Errorf("slicePtr should be a slice pointer but is %s", vSlicePtr.Type())
 	}
 
-	matcher := func(obj interface{}) (bool, error) {
+	matcher := func(obj any) (bool, error) {
 		return p.evaluateRules(rules, obj)
 	}
 
@@ -194,7 +194,7 @@ func (p *Processor) checkRulesCount(rules [][]Rule) error {
 //
 // n is number of matched elements in the slice.
 // m is number of total matched elements.
-func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length int, matcher func(interface{}) (bool, error)) (int, uint, error) {
+func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length int, matcher func(any) (bool, error)) (int, uint, error) {
 	skip := offset
 
 	var (
@@ -236,7 +236,7 @@ func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length in
 }
 
 //nolint:gocognit
-func (p *Processor) evaluateRules(rules [][]Rule, obj interface{}) (bool, error) {
+func (p *Processor) evaluateRules(rules [][]Rule, obj any) (bool, error) {
 	for i := range rules {
 		orResult := false
 
@@ -263,7 +263,7 @@ func (p *Processor) evaluateRules(rules [][]Rule, obj interface{}) (bool, error)
 // evaluateRule evaluates a specific rule over an object.
 //
 // It needs a pointer to let the Rule reuse its state (e.g. precompiled regexp).
-func (p *Processor) evaluateRule(rule *Rule, obj interface{}) (bool, error) {
+func (p *Processor) evaluateRule(rule *Rule, obj any) (bool, error) {
 	value, err := p.fields.GetFieldValue(obj, rule.Field)
 	if errors.Is(err, errFieldNotFound) {
 		return false, nil // filter out missing field without error

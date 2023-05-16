@@ -11,8 +11,8 @@ func TestLT_Evaluate(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		ref     interface{}
-		value   interface{}
+		ref     any
+		value   any
 		want    bool
 		wantErr bool
 	}{

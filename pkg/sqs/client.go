@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	fifoSuffix = ".fifo"
-
+	fifoSuffix          = ".fifo"
 	regexMessageGroupID = `^[[:graph:]]{1,128}$`
 )
 
@@ -86,7 +85,7 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 
 // Message represents a message in the queue.
 type Message struct {
-	// can contain: JSON, XML, plain text.
+	// Body is the message content and can contain: JSON, XML or plain text.
 	Body string
 
 	// ReceiptHandle is the identifier used to delete the message.
@@ -155,18 +154,18 @@ func (c *Client) Delete(ctx context.Context, receiptHandle string) error {
 }
 
 // MessageEncode encodes and serialize the input data to a string compatible with SQS.
-func MessageEncode(data interface{}) (string, error) {
+func MessageEncode(data any) (string, error) {
 	return typeutil.Encode(data) //nolint:wrapcheck
 }
 
 // MessageDecode decodes a message encoded with MessageEncode to the provided data object.
 // The value underlying data must be a pointer to the correct type for the next data item received.
-func MessageDecode(msg string, data interface{}) error {
+func MessageDecode(msg string, data any) error {
 	return typeutil.Decode(msg, data) //nolint:wrapcheck
 }
 
 // SendData delivers the specified data as message to the queue.
-func (c *Client) SendData(ctx context.Context, data interface{}) error {
+func (c *Client) SendData(ctx context.Context, data any) error {
 	message, err := MessageEncode(data)
 	if err != nil {
 		return err
@@ -181,7 +180,7 @@ func (c *Client) SendData(ctx context.Context, data interface{}) error {
 // Once retrieved, a message will not be visible for up to VisibilityTimeout seconds.
 // Once processed the message should be removed from the queue by calling the Delete method.
 // In case of decoding error the returned receipt handle will be not empty, so it can be used to delete the message.
-func (c *Client) ReceiveData(ctx context.Context, data interface{}) (string, error) {
+func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 	message, err := c.Receive(ctx)
 	if err != nil {
 		return "", err

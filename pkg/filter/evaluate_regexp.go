@@ -10,7 +10,7 @@ type evalRegexp struct {
 	rxp *regexp.Regexp
 }
 
-func newRegexp(r interface{}) (Evaluator, error) {
+func newRegexp(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {
 		return nil, fmt.Errorf("rule of type %s should have string value (got %v (%v))", TypeRegexp, r, reflect.TypeOf(r))
@@ -26,7 +26,7 @@ func newRegexp(r interface{}) (Evaluator, error) {
 
 // Evaluate returns whether the input value matches the reference regular expression.
 // It returns false if the input value is not a string.
-func (e *evalRegexp) Evaluate(v interface{}) bool {
+func (e *evalRegexp) Evaluate(v any) bool {
 	s, ok := convertStringValue(v)
 	if !ok {
 		return false

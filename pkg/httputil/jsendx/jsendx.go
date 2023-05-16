@@ -42,7 +42,7 @@ type Response struct {
 	Message string `json:"message"`
 
 	// Data is the content payload.
-	Data interface{} `json:"data"`
+	Data any `json:"data"`
 }
 
 // AppInfo is a struct containing data to enrich the JSendX response.
@@ -62,7 +62,7 @@ type RouterArgs struct {
 }
 
 // Wrap sends an Response object.
-func Wrap(statusCode int, info *AppInfo, data interface{}) *Response {
+func Wrap(statusCode int, info *AppInfo, data any) *Response {
 	now := time.Now().UTC()
 
 	return &Response{
@@ -79,7 +79,7 @@ func Wrap(statusCode int, info *AppInfo, data interface{}) *Response {
 }
 
 // Send sends a JSON respoonse wrapped in a JSendX container.
-func Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppInfo, data interface{}) {
+func Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppInfo, data any) {
 	httputil.SendJSON(ctx, w, statusCode, Wrap(statusCode, info, data))
 }
 
@@ -150,7 +150,7 @@ func DefaultStatusHandler(info *AppInfo) http.HandlerFunc {
 
 // HealthCheckResultWriter returns a new healthcheck result writer.
 func HealthCheckResultWriter(info *AppInfo) healthcheck.ResultWriter {
-	return func(ctx context.Context, w http.ResponseWriter, statusCode int, data interface{}) {
+	return func(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {
 		Send(ctx, w, statusCode, info, data)
 	}
 }

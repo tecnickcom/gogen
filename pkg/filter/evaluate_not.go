@@ -9,6 +9,6 @@ func newNot(e Evaluator) Evaluator {
 }
 
 // Evaluate returns the opposite (boolean NOT) of the internal evaluator.
-func (n *not) Evaluate(v interface{}) bool {
+func (n *not) Evaluate(v any) bool {
 	return !n.Not.Evaluate(v)
 }

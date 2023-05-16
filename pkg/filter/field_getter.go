@@ -23,7 +23,7 @@ type fieldGetter struct {
 }
 
 // GetFieldValue returns the value of obj's field, specified by its dot separated path.
-func (r *fieldGetter) GetFieldValue(obj interface{}, path string) (interface{}, error) {
+func (r *fieldGetter) GetFieldValue(obj any, path string) (any, error) {
 	// empty path means the root object
 	if path == "" {
 		return obj, nil

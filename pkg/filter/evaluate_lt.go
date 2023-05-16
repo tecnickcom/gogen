@@ -8,7 +8,7 @@ type lt struct {
 	ref float64
 }
 
-func newLT(r interface{}) (Evaluator, error) {
+func newLT(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func newLT(r interface{}) (Evaluator, error) {
 // It converts numerical values implicitly before comparison.
 // Returns the lenlths comparison for Array, Map, Slice or String.
 // Returns false if the value is nil.
-func (e *lt) Evaluate(v interface{}) bool {
+func (e *lt) Evaluate(v any) bool {
 	v = convertValue(v)
 
 	if isNil(v) {

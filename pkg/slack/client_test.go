@@ -81,7 +81,7 @@ func TestClient_HealthCheck(t *testing.T) {
 		pingHandlerDelay      time.Duration
 		pingHandlerStatusCode int
 		pingURL               string
-		pingBody              interface{}
+		pingBody              any
 		wantErr               bool
 	}{
 		{

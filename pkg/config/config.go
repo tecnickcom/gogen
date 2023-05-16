@@ -110,15 +110,15 @@ type Viper interface {
 	AutomaticEnv()
 	BindEnv(input ...string) error
 	BindPFlag(key string, flag *pflag.Flag) error
-	Get(key string) interface{}
+	Get(key string) any
 	ReadConfig(in io.Reader) error
 	ReadInConfig() error
 	ReadRemoteConfig() error
 	SetConfigName(in string)
 	SetConfigType(in string)
-	SetDefault(key string, value interface{})
+	SetDefault(key string, value any)
 	SetEnvPrefix(in string)
-	Unmarshal(rawVal interface{}, opts ...viper.DecoderConfigOption) error
+	Unmarshal(rawVal any, opts ...viper.DecoderConfigOption) error
 }
 
 // BaseConfig contains the default configuration options to be used in the application config struct.
@@ -277,6 +277,8 @@ func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix stri
 	return nil
 }
 
+// loadFromEnvVarSource loads the configuration data from an environment variable.
+// The data must be base64-encoded.
 func loadFromEnvVarSource(v Viper, rc *remoteSourceConfig, envPrefix string) error {
 	if rc.Data == "" {
 		return validationError(rc.Provider, envPrefix, keyRemoteConfigData)
@@ -290,6 +292,7 @@ func loadFromEnvVarSource(v Viper, rc *remoteSourceConfig, envPrefix string) err
 	return v.ReadConfig(bytes.NewReader(data)) //nolint:wrapcheck
 }
 
+// loadFromRemoteSource loads the configuration data from a remote source or service.
 func loadFromRemoteSource(v Viper, rc *remoteSourceConfig, envPrefix string) error {
 	if rc.Endpoint == "" {
 		return validationError(rc.Provider, envPrefix, keyRemoteConfigEndpoint)
@@ -314,6 +317,7 @@ func loadFromRemoteSource(v Viper, rc *remoteSourceConfig, envPrefix string) err
 	return v.ReadRemoteConfig() //nolint:wrapcheck
 }
 
+// configureSearchPath sets the directory paths to search in order for a local configuration file.
 func configureSearchPath(v Viper, cmdName, configDir string) {
 	var configSearchPath []string
 
@@ -334,6 +338,7 @@ func configureSearchPath(v Viper, cmdName, configDir string) {
 	}
 }
 
+// validationError returns a validation error.
 func validationError(provider, envPrefix, varName string) error {
 	return fmt.Errorf("%s config provider requires %s_%s to be set", provider, strings.ToUpper(envPrefix), strings.ToUpper(varName))
 }
