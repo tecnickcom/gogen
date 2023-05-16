@@ -27,41 +27,37 @@ test_key=SECRET
 KEY=SECRET
 TEST_KEY=SECRET
 password=SECRET&key=SECRET
-alpha=beta&password=SECRET&key=SECRET&gamma=delta
+ApiKey=SECRET&alpha=beta&password=SECRET&key=SECRET&gamma=delta
 
 {
 	"password":"SECRET",
-	"password": "SECRET",
-	"password" : "SECRET",
-	"password" :"SECRET",
+	"Password": "SECRET",
+	"password" : "SECRET","password" :"SECRET",
 	"test_password":"SECRET",
-	"test_password": "SECRET",
-	"test_password" : "SECRET",
-	"test_password" :"SECRET",
+	"test_password_test": "SECRET",
+	"test_password" : "SECRET","test_password" :"SECRET",
 	"PASSWORD":"SECRET",
 	"PASSWORD": "SECRET",
-	"PASSWORD" : "SECRET",
-	"PASSWORD" :"SECRET",
+	"PASSWORD" : "SECRET","PASSWORD" :"SECRET",
 	"TEST_PASSWORD":"SECRET",
 	"TEST_PASSWORD": "SECRET",
-	"TEST_PASSWORD" : "SECRET",
-	"TEST_PASSWORD" :"SECRET",
+	"TEST_PASSWORD" : "SECRET","TEST_PASSWORD" :"SECRET",
 	"key":"SECRET",
-	"key": "SECRET",
-	"key" : "SECRET",
-	"key" :"SECRET",
+	"Key": "SECRET",
+	"key" : "SECRET","key" :"SECRET",
 	"test_key":"SECRET",
 	"test_key": "SECRET",
-	"test_key" : "SECRET",
-	"test_key" :"SECRET",
+	"test_key" : "SECRET","test_key" :"SECRET",
 	"KEY":"SECRET",
 	"KEY": "SECRET",
-	"KEY" : "SECRET",
-	"KEY" :"SECRET",
+	"KEY" : "SECRET","KEY" :"SECRET",
 	"TEST_KEY":"SECRET",
 	"TEST_KEY": "SECRET",
-	"TEST_KEY" : "SECRET",
-	"TEST_KEY" :"SECRET"
+	"TEST_KEY" : "SECRET","TEST_KEY" :"SECRET",
+	"ApiKey":"SECRET",
+	"ApiKey": "SECRET",
+	"ApiKey" : "SECRET","ApiKey" :"SECRET",
+	"OtherField" : "OtherValue"
 }
 `
 	expected := `
@@ -82,41 +78,37 @@ test_key=@~REDACTED~@
 KEY=@~REDACTED~@
 TEST_KEY=@~REDACTED~@
 password=@~REDACTED~@&key=@~REDACTED~@
-alpha=beta&password=@~REDACTED~@&key=@~REDACTED~@&gamma=delta
+ApiKey=@~REDACTED~@&alpha=beta&password=@~REDACTED~@&key=@~REDACTED~@&gamma=delta
 
 {
 	"password":"@~REDACTED~@",
-	"password": "@~REDACTED~@",
-	"password" : "@~REDACTED~@",
-	"password" :"@~REDACTED~@",
+	"Password": "@~REDACTED~@",
+	"password" : "@~REDACTED~@","password" :"@~REDACTED~@",
 	"test_password":"@~REDACTED~@",
-	"test_password": "@~REDACTED~@",
-	"test_password" : "@~REDACTED~@",
-	"test_password" :"@~REDACTED~@",
+	"test_password_test": "@~REDACTED~@",
+	"test_password" : "@~REDACTED~@","test_password" :"@~REDACTED~@",
 	"PASSWORD":"@~REDACTED~@",
 	"PASSWORD": "@~REDACTED~@",
-	"PASSWORD" : "@~REDACTED~@",
-	"PASSWORD" :"@~REDACTED~@",
+	"PASSWORD" : "@~REDACTED~@","PASSWORD" :"@~REDACTED~@",
 	"TEST_PASSWORD":"@~REDACTED~@",
 	"TEST_PASSWORD": "@~REDACTED~@",
-	"TEST_PASSWORD" : "@~REDACTED~@",
-	"TEST_PASSWORD" :"@~REDACTED~@",
+	"TEST_PASSWORD" : "@~REDACTED~@","TEST_PASSWORD" :"@~REDACTED~@",
 	"key":"@~REDACTED~@",
-	"key": "@~REDACTED~@",
-	"key" : "@~REDACTED~@",
-	"key" :"@~REDACTED~@",
+	"Key": "@~REDACTED~@",
+	"key" : "@~REDACTED~@","key" :"@~REDACTED~@",
 	"test_key":"@~REDACTED~@",
 	"test_key": "@~REDACTED~@",
-	"test_key" : "@~REDACTED~@",
-	"test_key" :"@~REDACTED~@",
+	"test_key" : "@~REDACTED~@","test_key" :"@~REDACTED~@",
 	"KEY":"@~REDACTED~@",
 	"KEY": "@~REDACTED~@",
-	"KEY" : "@~REDACTED~@",
-	"KEY" :"@~REDACTED~@",
+	"KEY" : "@~REDACTED~@","KEY" :"@~REDACTED~@",
 	"TEST_KEY":"@~REDACTED~@",
 	"TEST_KEY": "@~REDACTED~@",
-	"TEST_KEY" : "@~REDACTED~@",
-	"TEST_KEY" :"@~REDACTED~@"
+	"TEST_KEY" : "@~REDACTED~@","TEST_KEY" :"@~REDACTED~@",
+	"ApiKey":"@~REDACTED~@",
+	"ApiKey": "@~REDACTED~@",
+	"ApiKey" : "@~REDACTED~@","ApiKey" :"@~REDACTED~@",
+	"OtherField" : "OtherValue"
 }
 `
 	got := HTTPData(data)

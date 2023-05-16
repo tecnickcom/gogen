@@ -8,14 +8,14 @@ import (
 const (
 	redacted = `@~REDACTED~@`
 
-	regexPatternAuthorizationHeader = `(?i)(Authorization[\s]*:[\s]*).*`
+	regexPatternAuthorizationHeader = `(?i)(authorization[\s]*:[\s]*).*`
 	redactAuthorizationHeader       = `$1` + redacted
 
-	regexPatternJSONKey = `(?i)"(.*)(password|key)"([\s]*:[\s]*)".*"`
-	redactJSONKey       = `"$1$2"$3"` + redacted + `"`
+	regexPatternJSONKey = `(?i)"([^"]*)(key|password|secret)([^"]*)"([\s]*:[\s]*)"[^"]*"`
+	redactJSONKey       = `"$1$2$3"$4"` + redacted + `"`
 
-	regexPatternURLEncodedKey = `(?i)([^=&\n]*)(password|key)=[^=&\n]*`
-	redactURLEncodedKey       = `$1$2=` + redacted
+	regexPatternURLEncodedKey = `(?i)([^=&\n]*)(key|password|secret)([^=]*)=[^=&\n]*`
+	redactURLEncodedKey       = `$1$2$3=` + redacted
 )
 
 var (
