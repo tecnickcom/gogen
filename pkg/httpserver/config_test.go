@@ -190,7 +190,7 @@ func Test_setRouter(t *testing.T) {
 			rr := httptest.NewRecorder()
 			cfg.router.ServeHTTP(rr, httptest.NewRequest(tt.method, tt.path, nil))
 
-			resp := rr.Result() //nolint:bodyclose
+			resp := rr.Result()
 			require.NotNil(t, resp)
 
 			defer func() {

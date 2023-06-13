@@ -26,6 +26,21 @@ linters-settings:
   whitespace:
     multi-if: false   # Enforces newlines (or comments) after every multi-line if statement
     multi-func: false # Enforces newlines (or comments) after every multi-line function signature
+  depguard:
+    rules:
+      main:
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+          - github.com/Vonage
+      test:
+        files:
+          - "$test"
+        allow:
+          - $gostd
+          - github.com/stretchr
 
 linters:
   enable:
@@ -48,7 +63,7 @@ linters:
     # - contextcheck      # check the function whether use a non-inherited context [fast: false, auto-fix: false]
     # - cyclop            # checks function and package cyclomatic complexity [fast: false, auto-fix: false]
     - decorder          # check declaration order and count of types, constants, variables and functions [fast # true, auto-fix # false]
-    - depguard          # Go linter that checks if package imports are in a list of acceptable packages [fast: false, auto-fix: false]
+    #- depguard          # Go linter that checks if package imports are in a list of acceptable packages [fast: false, auto-fix: false]
     - dogsled           # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f()) [fast: true, auto-fix: false]
     # - dupl              # Tool for code clone detection [fast: true, auto-fix: false]
     - dupword           # checks for duplicate words in the source code [fast # true, auto-fix # true]

@@ -52,7 +52,7 @@ func Test_defaultIndexHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	defaultIndexHandler(routes).ServeHTTP(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -103,7 +103,7 @@ func Test_defaultIPHandler(t *testing.T) {
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 			defaultIPHandler(tt.ipFunc).ServeHTTP(rr, req)
 
-			resp := rr.Result() //nolint:bodyclose
+			resp := rr.Result()
 			require.NotNil(t, resp)
 
 			defer func() {
@@ -134,7 +134,7 @@ func Test_defaultPingHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	defaultPingHandler(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -156,7 +156,7 @@ func Test_defaultStatusHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	defaultStatusHandler(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -178,7 +178,7 @@ func Test_notImplementedHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	notImplementedHandler(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {

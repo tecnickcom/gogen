@@ -72,7 +72,7 @@ func TestNewRouter(t *testing.T) {
 			rr := httptest.NewRecorder()
 			r.ServeHTTP(rr, httptest.NewRequest(tt.method, tt.path, nil))
 
-			resp := rr.Result() //nolint:bodyclose
+			resp := rr.Result()
 			require.NotNil(t, resp)
 
 			defer func() {

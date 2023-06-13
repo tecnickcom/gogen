@@ -27,7 +27,7 @@ func TestSend(t *testing.T) {
 	rr := httptest.NewRecorder()
 	Send(testutil.Context(), rr, http.StatusOK, params, "hello test")
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -71,7 +71,7 @@ func TestDefaultNotFoundHandlerFunc(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultNotFoundHandlerFunc(appInfo)(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -104,7 +104,7 @@ func TestDefaultMethodNotAllowedHandlerFunc(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultMethodNotAllowedHandlerFunc(appInfo)(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -137,7 +137,7 @@ func TestDefaultPanicHandlerFunc(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultPanicHandlerFunc(appInfo)(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -183,7 +183,7 @@ func TestDefaultIndexHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -239,7 +239,7 @@ func TestDefaultIPHandler(t *testing.T) {
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 			DefaultIPHandler(appInfo, tt.ipFunc).ServeHTTP(rr, req)
 
-			resp := rr.Result() //nolint:bodyclose
+			resp := rr.Result()
 			require.NotNil(t, resp)
 
 			defer func() {
@@ -279,7 +279,7 @@ func TestDefaultPingHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultPingHandler(appInfo)(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -312,7 +312,7 @@ func TestDefaultStatusHandler(t *testing.T) {
 	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
 	DefaultStatusHandler(appInfo)(rr, req)
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {
@@ -343,7 +343,7 @@ func TestHealthCheckResultWriter(t *testing.T) {
 	rr := httptest.NewRecorder()
 	HealthCheckResultWriter(appInfo)(testutil.Context(), rr, http.StatusOK, "test body")
 
-	resp := rr.Result() //nolint:bodyclose
+	resp := rr.Result()
 	require.NotNil(t, resp)
 
 	defer func() {

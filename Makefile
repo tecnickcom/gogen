@@ -57,7 +57,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v1.52.2
+GOLANGCILINTVERSION=v1.53.2
 
 # Directory containing the source code
 SRCDIR=./pkg
