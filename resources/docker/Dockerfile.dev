@@ -10,9 +10,8 @@ alien \
 rpm \
 dh-make \
 dh-golang \
-upx-ucl \
 python3 \
 python3-pip \
-&& pip3 install --upgrade check-jsonschema schemathesis httpx \
+&& pip3 install --upgrade --break-system-packages check-jsonschema schemathesis httpx \
 && curl --location https://github.com/ovh/venom/releases/download/v1.1.0/venom.linux-amd64 > /usr/bin/venom \
 && chmod ug+x /usr/bin/venom
