@@ -151,7 +151,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v1.53.2
+GOLANGCILINTVERSION=v1.53.3
 
 # Current operating system and architecture as one string.
 GOOSARCH=$(shell go env GOOS GOARCH | tr -d \\n)
@@ -159,7 +159,15 @@ GOOSARCH=$(shell go env GOOS GOARCH | tr -d \\n)
 # OS and Architecture used to build the Go binary for Docker.
 LINUXGOBUILDENV=GOOS=linux GOARCH=amd64
 
-# Environment variables for the go build command
+# Environment variables for the go build command (uncomment the one that is appropriate):
+#
+# 32bit Raspbian:
+#GOBUILDENV=env GOOS=linux GOARCH=arm GOARM=5
+#
+# 64bit Raspbian:
+#GOBUILDENV=env GOOS=linux GOARCH=arm64
+#
+# Current environment
 GOBUILDENV=
 
 # Directory containing the source code
@@ -423,7 +431,10 @@ dockerdev:
 .PHONY: dockerdir
 dockerdir:
 ifneq ($(GOOSARCH),linuxamd64)
-	GOBUILDENV=$(LINUXGOBUILDENV) $(MAKE) build
+	$(MAKE) build GOBUILDENV=$(LINUXGOBUILDENV)
+endif
+ifneq ($(GOBUILDENV),)
+	$(MAKE) build GOBUILDENV=$(LINUXGOBUILDENV)
 endif
 	rm -rf $(PATHDOCKERPKG)
 	$(MAKE) install DESTDIR=$(PATHDOCKERPKG)

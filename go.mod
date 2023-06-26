@@ -24,7 +24,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/tecnickcom/farmhash64 v0.0.0-20200201102909-d78936b5a645
 	github.com/tecnickcom/statsd/v2 v2.0.8
-	github.com/undefinedlabs/go-mpatch v1.0.6
+	github.com/undefinedlabs/go-mpatch v1.0.7
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.10.0
@@ -32,7 +32,7 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.110.2 // indirect
+	cloud.google.com/go v0.110.3 // indirect
 	cloud.google.com/go/compute v1.20.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/firestore v1.10.0 // indirect
