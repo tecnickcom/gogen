@@ -5,7 +5,7 @@ go 1.20
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.75.9
+	github.com/Vonage/gosrvlib v1.76.0
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v1.0.0
 	github.com/prometheus/client_golang v1.16.0
@@ -86,7 +86,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
-	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691 // indirect
+	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
