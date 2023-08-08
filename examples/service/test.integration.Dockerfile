@@ -8,11 +8,11 @@ ENV HOST_OWNER=${HOST_USER}:${HOST_GROUP}
 RUN mkdir /workspace
 
 # Add only the required project resources
-ADD resources /workspace/resources
-ADD openapi*.yaml /workspace/
-ADD Makefile /workspace
-ADD RELEASE /workspace
-ADD VERSION /workspace
+COPY resources /workspace/resources
+COPY openapi*.yaml /workspace/
+COPY Makefile /workspace
+COPY RELEASE /workspace
+COPY VERSION /workspace
 
 WORKDIR /workspace
 ENTRYPOINT ["/workspace/resources/test/integration/entrypoint.sh"]
