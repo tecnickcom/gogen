@@ -53,7 +53,7 @@ mkdir -p /root/.ssh \\
 && echo "[url \"ssh://git@${CVSPATH}\"]" >> /root/.gitconfig \\
 && echo "	insteadOf = https://${CVSPATH}" >> /root/.gitconfig \\
 && mkdir -p ${PRJPATH}
-ADD ./ ${PRJPATH}
+COPY ./ ${PRJPATH}
 WORKDIR ${PRJPATH}
 RUN make ${MAKETARGET} || (echo \$? > target/make.exit)
 EOM
