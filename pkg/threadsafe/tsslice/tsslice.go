@@ -5,34 +5,35 @@ import (
 	"github.com/Vonage/gosrvlib/pkg/threadsafe"
 )
 
-// Append is a thread-safe version of the Go built-in append function.
-func Append[T any](mux threadsafe.Locker, slice *[]T, item ...T) {
+// Set is a thread-safe function to assign a value v to a key k in a slice s.
+func Set[S ~[]E, E any](mux threadsafe.Locker, s S, k int, v E) {
 	mux.Lock()
 	defer mux.Unlock()
 
-	*slice = append(*slice, item...)
+	s[k] = v
 }
 
-// Set is a thread-safe function to assign a value to a key in a slice.
-func Set[T any](mux threadsafe.Locker, slice []T, key int, value T) {
-	mux.Lock()
-	defer mux.Unlock()
-
-	slice[key] = value
-}
-
-// Get is a thread-safe function to get a value by key in a slice.
-func Get[T any](mux threadsafe.RLocker, slice []T, key int) T {
+// Get is a thread-safe function to get a value by key k in a slice.
+func Get[S ~[]E, E any](mux threadsafe.RLocker, s S, k int) E {
 	mux.RLock()
 	defer mux.RUnlock()
 
-	return slice[key]
+	return s[k]
 }
 
 // Len is a thread-safe function to get the length of a slice.
-func Len[T any](mux threadsafe.RLocker, slice []T) int {
+func Len[S ~[]E, E any](mux threadsafe.RLocker, s S) int {
 	mux.RLock()
 	defer mux.RUnlock()
 
-	return len(slice)
+	return len(s)
+}
+
+// Append is a thread-safe version of the Go built-in append function.
+// Appends the value v to the slice s.
+func Append[S ~[]E, E any](mux threadsafe.Locker, s *S, v ...E) {
+	mux.Lock()
+	defer mux.Unlock()
+
+	*s = append(*s, v...)
 }

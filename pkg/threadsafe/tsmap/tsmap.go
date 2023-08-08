@@ -5,24 +5,24 @@ import (
 	"github.com/Vonage/gosrvlib/pkg/threadsafe"
 )
 
-// Set is a thread-safe function to assign a value to a key in a map.
-func Set[K comparable, V any](mux threadsafe.Locker, m map[K]V, key K, value V) {
+// Set is a thread-safe function to assign a value v to a key k in a map m.
+func Set[M ~map[K]V, K comparable, V any](mux threadsafe.Locker, m M, k K, v V) {
 	mux.Lock()
 	defer mux.Unlock()
 
-	m[key] = value
+	m[k] = v
 }
 
-// Get is a thread-safe function to get a value by key in a map.
-func Get[K comparable, V any](mux threadsafe.RLocker, m map[K]V, key K) V {
+// Get is a thread-safe function to get a value by key k in a map m.
+func Get[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, k K) V {
 	mux.RLock()
 	defer mux.RUnlock()
 
-	return m[key]
+	return m[k]
 }
 
-// Len is a thread-safe function to get the length of a map.
-func Len[K comparable, V any](mux threadsafe.RLocker, m map[K]V) int {
+// Len is a thread-safe function to get the length of a map m.
+func Len[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M) int {
 	mux.RLock()
 	defer mux.RUnlock()
 

@@ -7,6 +7,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSet(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.Mutex{}
+
+	slice := make([]string, 2)
+	Set(mux, slice, 0, "Hello")
+	Set(mux, slice, 1, "World")
+
+	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
+}
+
+func TestGet(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.RWMutex{}
+
+	slice := []string{"Hello", "World"}
+
+	require.Equal(t, "Hello", Get(mux, slice, 0))
+	require.Equal(t, "World", Get(mux, slice, 1))
+}
+
+func TestLen(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.RWMutex{}
+
+	slice := []string{"Hello", "World"}
+
+	require.Equal(t, 2, Len(mux, slice))
+}
+
 func TestAppend_simple(t *testing.T) {
 	t.Parallel()
 
@@ -63,37 +96,4 @@ func TestAppend_concurrent(t *testing.T) {
 	wg.Wait()
 
 	require.ElementsMatch(t, []int{0, 1, 2, 3, 4}, slice)
-}
-
-func TestSet(t *testing.T) {
-	t.Parallel()
-
-	mux := &sync.Mutex{}
-
-	slice := make([]string, 2)
-	Set(mux, slice, 0, "Hello")
-	Set(mux, slice, 1, "World")
-
-	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
-}
-
-func TestGet(t *testing.T) {
-	t.Parallel()
-
-	mux := &sync.RWMutex{}
-
-	slice := []string{"Hello", "World"}
-
-	require.Equal(t, "Hello", Get(mux, slice, 0))
-	require.Equal(t, "World", Get(mux, slice, 1))
-}
-
-func TestLen(t *testing.T) {
-	t.Parallel()
-
-	mux := &sync.RWMutex{}
-
-	slice := []string{"Hello", "World"}
-
-	require.Equal(t, 2, Len(mux, slice))
 }

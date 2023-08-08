@@ -8,6 +8,41 @@ import (
 	"github.com/Vonage/gosrvlib/pkg/threadsafe/tsslice"
 )
 
+func ExampleSet() {
+	mux := &sync.Mutex{}
+
+	slice := make([]string, 2)
+	tsslice.Set(mux, slice, 0, "Hello")
+	tsslice.Set(mux, slice, 1, "World")
+
+	fmt.Println(slice)
+
+	// Output:
+	// [Hello World]
+}
+
+func ExampleGet() {
+	mux := &sync.RWMutex{}
+
+	slice := []string{"Hello", "World"}
+	fmt.Println(tsslice.Get(mux, slice, 0))
+	fmt.Println(tsslice.Get(mux, slice, 1))
+
+	// Output:
+	// Hello
+	// World
+}
+
+func ExampleLen() {
+	mux := &sync.RWMutex{}
+
+	slice := []string{"Hello", "World"}
+	fmt.Println(tsslice.Len(mux, slice))
+
+	// Output:
+	// 2
+}
+
 func ExampleAppend_simple() {
 	mux := &sync.Mutex{}
 
@@ -69,39 +104,4 @@ func ExampleAppend_concurrent() {
 
 	// Output:
 	// [0 1 2 3 4]
-}
-
-func ExampleSet() {
-	mux := &sync.Mutex{}
-
-	slice := make([]string, 2)
-	tsslice.Set(mux, slice, 0, "Hello")
-	tsslice.Set(mux, slice, 1, "World")
-
-	fmt.Println(slice)
-
-	// Output:
-	// [Hello World]
-}
-
-func ExampleGet() {
-	mux := &sync.RWMutex{}
-
-	slice := []string{"Hello", "World"}
-	fmt.Println(tsslice.Get(mux, slice, 0))
-	fmt.Println(tsslice.Get(mux, slice, 1))
-
-	// Output:
-	// Hello
-	// World
-}
-
-func ExampleLen() {
-	mux := &sync.RWMutex{}
-
-	slice := []string{"Hello", "World"}
-	fmt.Println(tsslice.Len(mux, slice))
-
-	// Output:
-	// 2
 }
