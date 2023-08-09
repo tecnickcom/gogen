@@ -1,13 +1,13 @@
 module github.com/gosrvlibexampleowner/gosrvlibexample
 
-go 1.20
+go 1.21
 
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.76.2
+	github.com/Vonage/gosrvlib v1.77.0
 	github.com/golang/mock v1.6.0
-	github.com/jstemmer/go-junit-report v1.0.0
+	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/prometheus/client_golang v1.16.0
 	github.com/rakyll/gotest v0.0.6
 	github.com/spf13/cobra v1.7.0
@@ -85,7 +85,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
-	golang.org/x/exp v0.0.0-20230807204917-050eac23e9de // indirect
+	golang.org/x/exp v0.0.0-20230809094429-853ea248256d // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
@@ -95,7 +95,7 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
-	google.golang.org/api v0.135.0 // indirect
+	google.golang.org/api v0.136.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230807174057-1744710a1577 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230807174057-1744710a1577 // indirect

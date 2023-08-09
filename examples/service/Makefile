@@ -122,10 +122,7 @@ else
 endif
 
 # Docker tag
-DOCKERTAG="$(VERSION)-$(RELEASE)"
-ifeq ($(RELEASE),0)
-	DOCKERTAG="latest"
-endif
+DOCKERTAG=$(VERSION)-$(RELEASE)
 
 # Docker command
 ifeq ($(DOCKER),)
@@ -147,6 +144,7 @@ DOCKERBUILDARG=--build-arg HOST_USER="$(shell id -u ${USER})" --build-arg HOST_G
 
 # Common commands
 GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
+GOVERSION=${shell go version | grep -Po '(go[0-9]+.[0-9]+)'}
 GOFMT=$(shell which gofmt)
 GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
@@ -355,11 +353,9 @@ coverage: ensuretarget
 
 # Build everything inside a Docker container
 .PHONY: dbuild
-dbuild: dockerdev
-	@mkdir -p $(TARGETDIR)
-	@rm -rf $(TARGETDIR)/*
+dbuild: clean ensuretarget dockerdev
 	@echo 0 > $(TARGETDIR)/make.exit
-	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' $(CURRENTDIR)dockerbuild.sh
+	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' DOCKERTAG='$(DOCKERTAG)' $(CURRENTDIR)dockerbuild.sh
 	@exit `cat $(TARGETDIR)/make.exit`
 
 # Build the DEB package for Debian-like Linux distributions
@@ -420,12 +416,12 @@ dockerbuild:
 # Delete the Docker image
 .PHONY: dockerdelete
 dockerdelete:
-	$(DOCKER) rmi -f `docker images "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" -q`
+	$(DOCKER) rmi -f `docker images "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX)" -q`
 
 # Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
-	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT}:dev --file ./resources/docker/Dockerfile.dev ./resources/docker/
 
 # Create the directory with docker files to be packaged
 .PHONY: dockerdir
@@ -445,17 +441,17 @@ endif
 .PHONY: dockerpromote
 dockerpromote:
 	$(shell eval ${DOCKER_LOGIN_PULL})
-	$(DOCKER) pull "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	$(DOCKER) tag "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) pull "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)"
+	$(DOCKER) tag "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)"
 	$(shell eval ${DOCKER_LOGIN_PUSH})
-	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)"
 
 # Push docker container to the remote repository
 .PHONY: dockerpush
 dockerpush:
 	$(shell eval ${DOCKER_LOGIN_PUSH})
-	$(DOCKER) tag "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
-	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(VERSION)-$(RELEASE)"
+	$(DOCKER) tag "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)"
+	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)"
 	$(DOCKER) tag "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 
@@ -499,7 +495,8 @@ generate:
 gendoc:
 	yq --input-format yaml --output-format json < doc/src/config.yaml . > doc/src/config.json
 	check-jsonschema --schemafile doc/src/config.schema.json doc/src/config.json
-	ASSUME_NO_MOVING_GC_UNSAFE_RISK_IT_WITH=go1.20 gomplate \
+	ASSUME_NO_MOVING_GC_UNSAFE_RISK_IT_WITH=$(GOVERSION) \
+	gomplate \
 	--datasource config=./doc/src/config.json \
 	--template description=./doc/src/description.tmpl \
 	--template development=./doc/src/development.tmpl \

@@ -16,7 +16,7 @@ services:
       - ./target/report/:/workspace/target/report/
 
   gosrvlibexample:
-    image: gosrvlibexampleowner/gosrvlibexample:latest
+    image: gosrvlibexampleowner/gosrvlibexample
     container_name: gosrvlibexample
     restart: always
     env_file:

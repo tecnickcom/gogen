@@ -1,4 +1,4 @@
-FROM gosrvlibexampleowner/dev_gosrvlibexample
+FROM gosrvlibexampleowner/dev_gosrvlibexample:dev
 
 ARG HOST_USER="root"
 ARG HOST_GROUP="root"
@@ -16,3 +16,4 @@ COPY VERSION /workspace
 
 WORKDIR /workspace
 ENTRYPOINT ["/workspace/resources/test/integration/entrypoint.sh"]
+HEALTHCHECK CMD go version || exit 1
