@@ -62,7 +62,7 @@ HEALTHCHECK CMD go version || exit 1
 EOM
 
 # Define the temporary Docker image name.
-DOCKER_IMAGE_NAME=${VENDOR}/build_${PROJECT}
+DOCKER_IMAGE_NAME=${VENDOR}/build_${PROJECT}:${DOCKERTAG}
 
 # Build the Docker image.
 BUILDKIT_PROGRESS=plain \
