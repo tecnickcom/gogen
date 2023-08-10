@@ -12,11 +12,11 @@ func TestSet(t *testing.T) {
 
 	mux := &sync.Mutex{}
 
-	slice := make([]string, 2)
-	Set(mux, slice, 0, "Hello")
-	Set(mux, slice, 1, "World")
+	s := make([]string, 2)
+	Set(mux, s, 0, "Hello")
+	Set(mux, s, 1, "World")
 
-	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
+	require.ElementsMatch(t, []string{"Hello", "World"}, s)
 }
 
 func TestGet(t *testing.T) {
@@ -24,10 +24,10 @@ func TestGet(t *testing.T) {
 
 	mux := &sync.RWMutex{}
 
-	slice := []string{"Hello", "World"}
+	s := []string{"Hello", "World"}
 
-	require.Equal(t, "Hello", Get(mux, slice, 0))
-	require.Equal(t, "World", Get(mux, slice, 1))
+	require.Equal(t, "Hello", Get(mux, s, 0))
+	require.Equal(t, "World", Get(mux, s, 1))
 }
 
 func TestLen(t *testing.T) {
@@ -35,9 +35,9 @@ func TestLen(t *testing.T) {
 
 	mux := &sync.RWMutex{}
 
-	slice := []string{"Hello", "World"}
+	s := []string{"Hello", "World"}
 
-	require.Equal(t, 2, Len(mux, slice))
+	require.Equal(t, 2, Len(mux, s))
 }
 
 func TestAppend_simple(t *testing.T) {
@@ -45,11 +45,11 @@ func TestAppend_simple(t *testing.T) {
 
 	mux := &sync.Mutex{}
 
-	slice := make([]string, 0, 2)
-	Append(mux, &slice, "Hello")
-	Append(mux, &slice, "World")
+	s := make([]string, 0, 2)
+	Append(mux, &s, "Hello")
+	Append(mux, &s, "World")
 
-	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
+	require.ElementsMatch(t, []string{"Hello", "World"}, s)
 }
 
 func TestAppend_multiple(t *testing.T) {
@@ -57,10 +57,10 @@ func TestAppend_multiple(t *testing.T) {
 
 	mux := &sync.Mutex{}
 
-	slice := make([]string, 0, 2)
-	Append(mux, &slice, "Hello", "World")
+	s := make([]string, 0, 2)
+	Append(mux, &s, "Hello", "World")
 
-	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
+	require.ElementsMatch(t, []string{"Hello", "World"}, s)
 }
 
 func TestAppend_slice(t *testing.T) {
@@ -68,10 +68,10 @@ func TestAppend_slice(t *testing.T) {
 
 	mux := &sync.Mutex{}
 
-	slice := make([]string, 0, 2)
-	Append(mux, &slice, []string{"Hello", "World"}...)
+	s := make([]string, 0, 2)
+	Append(mux, &s, []string{"Hello", "World"}...)
 
-	require.ElementsMatch(t, []string{"Hello", "World"}, slice)
+	require.ElementsMatch(t, []string{"Hello", "World"}, s)
 }
 
 func TestAppend_concurrent(t *testing.T) {
@@ -81,7 +81,7 @@ func TestAppend_concurrent(t *testing.T) {
 	mux := &sync.RWMutex{}
 
 	max := 5
-	slice := make([]int, 0, max)
+	s := make([]int, 0, max)
 
 	for i := 0; i < max; i++ {
 		wg.Add(1)
@@ -89,11 +89,51 @@ func TestAppend_concurrent(t *testing.T) {
 		go func(item int) {
 			defer wg.Done()
 
-			Append(mux, &slice, item)
+			Append(mux, &s, item)
 		}(i)
 	}
 
 	wg.Wait()
 
-	require.ElementsMatch(t, []int{0, 1, 2, 3, 4}, slice)
+	require.ElementsMatch(t, []int{0, 1, 2, 3, 4}, s)
+}
+
+func TestFilter(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.RWMutex{}
+
+	s := []string{"Hello", "World", "Extra"}
+	filterFn := func(_ int, v string) bool { return v == "World" }
+
+	got := Filter(mux, s, filterFn)
+
+	require.ElementsMatch(t, []string{"World"}, got)
+}
+
+func TestMap(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.RWMutex{}
+
+	s := []string{"Hello", "World", "Extra"}
+	mapFn := func(k int, v string) int { return k + len(v) }
+
+	got := Map(mux, s, mapFn)
+
+	require.ElementsMatch(t, []int{5, 6, 7}, got)
+}
+
+func TestReduce(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.RWMutex{}
+
+	s := []int{2, 3, 5, 7, 11}
+	init := 97
+	reduceFn := func(k, v, r int) int { return k + v + r }
+
+	got := Reduce(mux, s, init, reduceFn)
+
+	require.Equal(t, 135, got)
 }

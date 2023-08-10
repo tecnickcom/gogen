@@ -28,3 +28,53 @@ func Len[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M) int {
 
 	return len(m)
 }
+
+// Filter is a thread-safe function that returns a new map containing
+// only the elements in the input map m for which the specified function f is true.
+func Filter[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, f func(K, V) bool) M {
+	mux.RLock()
+	defer mux.RUnlock()
+
+	r := make(M, len(m))
+
+	for k, v := range m {
+		if f(k, v) {
+			r[k] = v
+		}
+	}
+
+	return r
+}
+
+// Map is a thread-safe function that returns a new map that contains
+// each of the elements of the input map m mutated by the specified function.
+// This function can be used to invert a map.
+func Map[M ~map[K]V, K, J comparable, V, U any](mux threadsafe.RLocker, m M, f func(K, V) (J, U)) map[J]U {
+	mux.RLock()
+	defer mux.RUnlock()
+
+	r := make(map[J]U, len(m))
+
+	for k, v := range m {
+		j, u := f(k, v)
+		r[j] = u
+	}
+
+	return r
+}
+
+// Reduce is a thread-safe function that applies the reducing function f
+// to each element of the input map m, and returns the value of the last call to f.
+// The first parameter of the reducing function f is initialized with init.
+func Reduce[M ~map[K]V, K comparable, V, U any](mux threadsafe.RLocker, m M, init U, f func(K, V, U) U) U {
+	mux.RLock()
+	defer mux.RUnlock()
+
+	r := init
+
+	for k, v := range m {
+		r = f(k, v, r)
+	}
+
+	return r
+}
