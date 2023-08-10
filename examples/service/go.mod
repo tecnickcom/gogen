@@ -5,7 +5,7 @@ go 1.21
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.77.1
+	github.com/Vonage/gosrvlib v1.77.2
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/prometheus/client_golang v1.16.0
@@ -85,7 +85,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
-	golang.org/x/exp v0.0.0-20230809094429-853ea248256d // indirect
+	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
