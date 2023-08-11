@@ -5,7 +5,7 @@ go 1.21
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.78.0
+	github.com/Vonage/gosrvlib v1.78.1
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/prometheus/client_golang v1.16.0
@@ -39,7 +39,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/google/s2a-go v0.1.4 // indirect
+	github.com/google/s2a-go v0.1.5 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.5 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/hashicorp/consul/api v1.24.0 // indirect
