@@ -5,9 +5,13 @@ on:
     branches:
       - 'autopr/**'
 
+permissions: read-all  
+
 jobs:
   create-pull-request:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - name: Create PR
         uses: actions/github-script@v6
