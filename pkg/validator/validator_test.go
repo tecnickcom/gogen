@@ -142,7 +142,7 @@ func TestValidator_ValidateStruct(t *testing.T) {
 			obj:          rootStruct{},
 			opts:         []Option{},
 			wantErr:      true,
-			wantErrCount: 4,
+			wantErrCount: 5,
 		},
 		{
 			name: "fail with empty data error templates",
@@ -152,7 +152,7 @@ func TestValidator_ValidateStruct(t *testing.T) {
 				WithErrorTemplates(ErrorTemplates()),
 			},
 			wantErr:      true,
-			wantErrCount: 4,
+			wantErrCount: 5,
 		},
 	}
 
