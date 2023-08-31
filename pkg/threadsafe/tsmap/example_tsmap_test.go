@@ -86,3 +86,16 @@ func ExampleReduce() {
 	// Output:
 	// 135
 }
+
+func ExampleInvert() {
+	mux := &sync.RWMutex{}
+
+	m := map[int]int{1: 10, 2: 20}
+
+	s2 := tsmap.Invert(mux, m)
+
+	fmt.Println(s2)
+
+	// Output:
+	// map[10:1 20:2]
+}

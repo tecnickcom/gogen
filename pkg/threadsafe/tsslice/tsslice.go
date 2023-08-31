@@ -2,6 +2,7 @@
 package tsslice
 
 import (
+	"github.com/Vonage/gosrvlib/pkg/sliceutil"
 	"github.com/Vonage/gosrvlib/pkg/threadsafe"
 )
 
@@ -44,15 +45,7 @@ func Filter[S ~[]E, E any](mux threadsafe.RLocker, s S, f func(int, E) bool) S {
 	mux.RLock()
 	defer mux.RUnlock()
 
-	r := make(S, 0)
-
-	for k, v := range s {
-		if f(k, v) {
-			r = append(r, v)
-		}
-	}
-
-	return r
+	return sliceutil.Filter(s, f)
 }
 
 // Map is a thread-safe function that returns a new slice that contains
@@ -61,13 +54,7 @@ func Map[S ~[]E, E any, U any](mux threadsafe.RLocker, s S, f func(int, E) U) []
 	mux.RLock()
 	defer mux.RUnlock()
 
-	r := make([]U, len(s))
-
-	for k, v := range s {
-		r[k] = f(k, v)
-	}
-
-	return r
+	return sliceutil.Map(s, f)
 }
 
 // Reduce is a thread-safe function that applies the reducing function f
@@ -77,11 +64,5 @@ func Reduce[S ~[]E, E any, U any](mux threadsafe.RLocker, s S, init U, f func(in
 	mux.RLock()
 	defer mux.RUnlock()
 
-	r := init
-
-	for k, v := range s {
-		r = f(k, v, r)
-	}
-
-	return r
+	return sliceutil.Reduce(s, init, f)
 }

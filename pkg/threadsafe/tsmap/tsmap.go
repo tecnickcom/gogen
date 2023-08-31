@@ -2,6 +2,7 @@
 package tsmap
 
 import (
+	"github.com/Vonage/gosrvlib/pkg/maputil"
 	"github.com/Vonage/gosrvlib/pkg/threadsafe"
 )
 
@@ -35,15 +36,7 @@ func Filter[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, f func
 	mux.RLock()
 	defer mux.RUnlock()
 
-	r := make(M, len(m))
-
-	for k, v := range m {
-		if f(k, v) {
-			r[k] = v
-		}
-	}
-
-	return r
+	return maputil.Filter(m, f)
 }
 
 // Map is a thread-safe function that returns a new map that contains
@@ -53,14 +46,7 @@ func Map[M ~map[K]V, K, J comparable, V, U any](mux threadsafe.RLocker, m M, f f
 	mux.RLock()
 	defer mux.RUnlock()
 
-	r := make(map[J]U, len(m))
-
-	for k, v := range m {
-		j, u := f(k, v)
-		r[j] = u
-	}
-
-	return r
+	return maputil.Map(m, f)
 }
 
 // Reduce is a thread-safe function that applies the reducing function f
@@ -70,11 +56,13 @@ func Reduce[M ~map[K]V, K comparable, V, U any](mux threadsafe.RLocker, m M, ini
 	mux.RLock()
 	defer mux.RUnlock()
 
-	r := init
+	return maputil.Reduce(m, init, f)
+}
 
-	for k, v := range m {
-		r = f(k, v, r)
-	}
+// Invert is a thread-safe function that returns a new map were keys and values are swapped.
+func Invert[M ~map[K]V, K, V comparable](mux threadsafe.RLocker, m M) map[V]K {
+	mux.RLock()
+	defer mux.RUnlock()
 
-	return r
+	return maputil.Invert(m)
 }
