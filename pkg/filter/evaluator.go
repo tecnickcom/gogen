@@ -17,7 +17,7 @@ func isNil(v any) bool {
 	return typeutil.IsNil(v)
 }
 
-//nolint:gocyclo
+//nolint:gocyclo,cyclop
 func convertValue(v any) any {
 	switch v := v.(type) {
 	case int:

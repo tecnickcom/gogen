@@ -29,7 +29,9 @@ func TestWithPingTimeout(t *testing.T) {
 
 type testHTTPClient struct{}
 
-func (thc *testHTTPClient) Do(*http.Request) (*http.Response, error) { return nil, nil }
+func (thc *testHTTPClient) Do(*http.Request) (*http.Response, error) {
+	return nil, nil //nolint:nilnil
+}
 
 func TestWithHTTPClient(t *testing.T) {
 	t.Parallel()

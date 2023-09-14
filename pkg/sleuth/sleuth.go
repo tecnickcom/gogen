@@ -135,7 +135,7 @@ type requestData interface {
 
 // sendRequest sends a request to the Sleuth API.
 func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) error {
-	if err := c.valid.ValidateStruct(request); err != nil {
+	if err := c.valid.ValidateStructCtx(ctx, request); err != nil {
 		return fmt.Errorf("invalid request: %w", err)
 	}
 

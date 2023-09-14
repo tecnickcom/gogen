@@ -112,7 +112,9 @@ func Test_Start_Stop(t *testing.T) {
 	require.NotNil(t, p)
 	require.NoError(t, err)
 
-	p.Start(context.TODO())
+	ctx := context.TODO()
+
+	p.Start(ctx)
 
 	wait := 3 * interval
 	time.Sleep(wait)
@@ -120,11 +122,9 @@ func Test_Start_Stop(t *testing.T) {
 	d := <-p.resetTimer
 	require.GreaterOrEqual(t, wait, d)
 
-	require.Nil(t, p.ctx.Err())
+	require.Nil(t, ctx.Err())
 
 	p.Stop()
-
-	require.NotNil(t, p.ctx.Err())
 
 	require.LessOrEqual(t, 2, <-count)
 }

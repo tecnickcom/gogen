@@ -21,7 +21,7 @@ type CreateMetricsClientFunc func() (metrics.Client, error)
 type BindFunc func(context.Context, *zap.Logger, metrics.Client) error
 
 type config struct {
-	context                 context.Context
+	context                 context.Context //nolint:containedctx
 	createLoggerFunc        CreateLoggerFunc
 	createMetricsClientFunc CreateMetricsClientFunc
 	shutdownTimeout         time.Duration

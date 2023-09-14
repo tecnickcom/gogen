@@ -15,16 +15,16 @@ const (
 // SubStruct is an example structure type used to test nested structures.
 type SubStruct struct {
 	URLField string `json:"sub_string" validate:"required,url"`
-	IntField int    `json:"sub_int" validate:"required,min=2"`
+	IntField int    `json:"sub_int"    validate:"required,min=2"`
 }
 
 // RootStruct is an example structure type.
 type RootStruct struct {
 	BoolField   bool       `json:"bool_field"`
-	SubStr      SubStruct  `json:"sub_struct" validate:"required"`
+	SubStr      SubStruct  `json:"sub_struct"     validate:"required"`
 	SubStrPtr   *SubStruct `json:"sub_struct_ptr" validate:"required"`
-	StringField string     `json:"string_field" validate:"required"`
-	NoNameField string     `json:"-" validate:"required"`
+	StringField string     `json:"string_field"   validate:"required"`
+	NoNameField string     `json:"-"              validate:"required"`
 }
 
 func ExampleValidator_ValidateStruct() {

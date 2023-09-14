@@ -560,7 +560,7 @@ endif
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
-	$(GOLANGCILINT) run --exclude-use-default=false $(CMDDIR)/... $(SRCDIR)/...
+	$(GOLANGCILINT) run --exclude-use-default=false --max-issues-per-linter 0 --max-same-issues 0 $(CMDDIR)/... $(SRCDIR)/...
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
 # Download dependencies

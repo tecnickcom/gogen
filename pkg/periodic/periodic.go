@@ -19,7 +19,6 @@ type Periodic struct {
 	task       TaskFn        // Function to be periodically executed. It should return within the context's timeout.
 	timer      *time.Timer
 	resetTimer chan time.Duration
-	ctx        context.Context
 	cancel     context.CancelFunc
 }
 
@@ -56,9 +55,10 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 
 // Start the periodic execution.
 func (p *Periodic) Start(ctx context.Context) {
-	p.ctx, p.cancel = context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx)
+	p.cancel = cancel
 
-	go p.loop()
+	go p.loop(ctx)
 }
 
 // Stop the periodic execution.
@@ -69,19 +69,19 @@ func (p *Periodic) Stop() {
 	}
 }
 
-func (p *Periodic) loop() {
+func (p *Periodic) loop(ctx context.Context) {
 	defer p.cancel()
 
 	p.timer = time.NewTimer(1 * time.Nanosecond)
 
 	for {
 		select {
-		case <-p.ctx.Done():
+		case <-ctx.Done():
 			return
 		case d := <-p.resetTimer:
 			p.setTimer(d)
 		case <-p.timer.C:
-			p.run()
+			p.run(ctx)
 		}
 	}
 }
@@ -98,9 +98,9 @@ func (p *Periodic) setTimer(d time.Duration) {
 	p.timer.Reset(d)
 }
 
-func (p *Periodic) run() {
-	ctx, cancel := context.WithTimeout(p.ctx, p.timeout)
-	p.task(ctx)
+func (p *Periodic) run(ctx context.Context) {
+	tctx, cancel := context.WithTimeout(ctx, p.timeout)
+	p.task(tctx)
 	cancel()
 
 	p.resetTimer <- time.Duration(p.interval + rand.Int63n(p.jitter)) //nolint:gosec

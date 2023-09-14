@@ -71,7 +71,7 @@ type DescStats[V typeutil.Number] struct {
 
 // Stats returns descriptive statistics parameters to summarize the input data set.
 //
-//nolint:gocognit,gocyclo
+//nolint:gocognit,gocyclo,cyclop,funlen
 func Stats[S ~[]V, V typeutil.Number](s S) (*DescStats[V], error) {
 	n := len(s)
 

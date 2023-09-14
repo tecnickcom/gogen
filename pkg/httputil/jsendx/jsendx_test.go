@@ -57,7 +57,6 @@ func TestSend(t *testing.T) {
 	Send(testutil.Context(), mockWriter, http.StatusOK, params, "message")
 }
 
-//nolint:dupl
 func TestDefaultNotFoundHandlerFunc(t *testing.T) {
 	t.Parallel()
 
@@ -90,7 +89,6 @@ func TestDefaultNotFoundHandlerFunc(t *testing.T) {
 	require.Equal(t, "{\"program\":\"Test\",\"version\":\"1.1.1\",\"release\":\"1\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":404,\"message\":\"Not Found\",\"data\":\"invalid endpoint\"}\n", body)
 }
 
-//nolint:dupl
 func TestDefaultMethodNotAllowedHandlerFunc(t *testing.T) {
 	t.Parallel()
 
@@ -123,7 +121,6 @@ func TestDefaultMethodNotAllowedHandlerFunc(t *testing.T) {
 	require.Equal(t, "{\"program\":\"Test\",\"version\":\"2.2.2\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":405,\"message\":\"Method Not Allowed\",\"data\":\"the request cannot be routed\"}\n", body)
 }
 
-//nolint:dupl
 func TestDefaultPanicHandlerFunc(t *testing.T) {
 	t.Parallel()
 
@@ -265,7 +262,6 @@ func TestDefaultIPHandler(t *testing.T) {
 	}
 }
 
-//nolint:dupl
 func TestDefaultPingHandler(t *testing.T) {
 	t.Parallel()
 
@@ -298,7 +294,6 @@ func TestDefaultPingHandler(t *testing.T) {
 	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.6.6\",\"release\":\"6\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
-//nolint:dupl
 func TestDefaultStatusHandler(t *testing.T) {
 	t.Parallel()
 

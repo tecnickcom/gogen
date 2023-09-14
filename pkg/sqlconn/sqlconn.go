@@ -24,7 +24,6 @@ type SQLOpenFunc func(driverName, dataSourceName string) (*sql.DB, error)
 // SQLConn is the structure that helps to manage a SQL DB connection.
 type SQLConn struct {
 	cfg    *config
-	ctx    context.Context
 	db     *sql.DB
 	dbLock sync.RWMutex
 	logger *zap.Logger
@@ -61,7 +60,6 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 
 	c := SQLConn{
 		cfg:    cfg,
-		ctx:    ctx,
 		db:     db,
 		logger: l,
 	}
@@ -75,7 +73,7 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 			l.Warn("sqlconn context canceled")
 		}
 
-		_ = c.Shutdown(c.ctx)
+		_ = c.Shutdown(ctx)
 	}()
 
 	cfg.shutdownWaitGroup.Add(1)

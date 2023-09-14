@@ -11,7 +11,7 @@ import (
 
 func ExampleDuration_MarshalJSON() {
 	type testData struct {
-		Time timeutil.Duration
+		Time timeutil.Duration `json:"Time"`
 	}
 
 	data := testData{
@@ -31,7 +31,7 @@ func ExampleDuration_MarshalJSON() {
 
 func ExampleDuration_UnmarshalJSON() {
 	type testData struct {
-		Time timeutil.Duration
+		Time timeutil.Duration `json:"Time"`
 	}
 
 	enc := []byte(`{"Time":"7h11m13s"}`)

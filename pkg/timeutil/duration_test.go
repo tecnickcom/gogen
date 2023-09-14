@@ -49,7 +49,7 @@ func Test_json_Marshal(t *testing.T) {
 	t.Parallel()
 
 	type testData struct {
-		Time Duration
+		Time Duration `json:"Time"`
 	}
 
 	tests := []struct {
@@ -165,7 +165,7 @@ func Test_json_Unmarshal(t *testing.T) {
 	t.Parallel()
 
 	type testData struct {
-		Time Duration
+		Time Duration `json:"Time"`
 	}
 
 	tests := []struct {

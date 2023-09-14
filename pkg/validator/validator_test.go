@@ -86,15 +86,15 @@ func TestValidator_ValidateStruct(t *testing.T) {
 
 	type subStruct struct {
 		URLField string `json:"sub_string" validate:"required,url"`
-		IntField int    `json:"sub_int" validate:"required,min=2"`
+		IntField int    `json:"sub_int"    validate:"required,min=2"`
 	}
 
 	type rootStruct struct {
 		BoolField    bool       `json:"bool_field"`
-		SubStruct    subStruct  `json:"sub_struct" validate:"required"`
+		SubStruct    subStruct  `json:"sub_struct"     validate:"required"`
 		SubStructPtr *subStruct `json:"sub_struct_ptr" validate:"required"`
-		StringField  string     `json:"string_field" validate:"required"`
-		NoNameField  string     `json:"-" validate:"required"`
+		StringField  string     `json:"string_field"   validate:"required"`
+		NoNameField  string     `json:"-"              validate:"required"`
 	}
 
 	validObj := rootStruct{

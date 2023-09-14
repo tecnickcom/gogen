@@ -43,8 +43,6 @@ type Retrier struct {
 	retryIfFn         RetryIfFn
 	timer             *time.Timer
 	resetTimer        chan time.Duration
-	ctx               context.Context
-	cancel            context.CancelFunc
 	taskError         error
 }
 
@@ -83,19 +81,19 @@ func (r *Retrier) Run(ctx context.Context, task TaskFn) error {
 	r.nextDelay = float64(r.delay)
 	r.remainingAttempts = r.attempts
 
-	r.ctx, r.cancel = context.WithCancel(ctx)
-	defer r.cancel()
+	rctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	r.timer = time.NewTimer(1 * time.Nanosecond)
 
 	for {
 		select {
-		case <-r.ctx.Done():
-			return fmt.Errorf("main context has been canceled: %w", r.ctx.Err())
+		case <-rctx.Done():
+			return fmt.Errorf("main context has been canceled: %w", rctx.Err())
 		case d := <-r.resetTimer:
 			r.setTimer(d)
 		case <-r.timer.C:
-			if r.exec(task) {
+			if r.exec(rctx, task) {
 				return r.taskError
 			}
 		}
@@ -114,9 +112,9 @@ func (r *Retrier) setTimer(d time.Duration) {
 	r.timer.Reset(d)
 }
 
-func (r *Retrier) exec(task TaskFn) bool {
-	ctx, cancel := context.WithTimeout(r.ctx, r.timeout)
-	r.taskError = task(ctx)
+func (r *Retrier) exec(ctx context.Context, task TaskFn) bool {
+	tctx, cancel := context.WithTimeout(ctx, r.timeout)
+	r.taskError = task(tctx)
 
 	cancel()
 

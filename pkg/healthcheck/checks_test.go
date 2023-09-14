@@ -1,7 +1,6 @@
 package healthcheck
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -21,7 +20,6 @@ func TestCheckHttpStatus(t *testing.T) {
 		handlerMethod     string
 		handlerDelay      time.Duration
 		handlerStatusCode int
-		checkContext      context.Context
 		checkMethod       string
 		checkExtraPath    string
 		checkTimeout      time.Duration
@@ -31,7 +29,6 @@ func TestCheckHttpStatus(t *testing.T) {
 	}{
 		{
 			name:              "fails with invalid context",
-			checkContext:      testutil.Context(),
 			checkMethod:       http.MethodGet,
 			checkExtraPath:    "/!@£$%^",
 			handlerMethod:     http.MethodGet,
@@ -40,7 +37,6 @@ func TestCheckHttpStatus(t *testing.T) {
 		},
 		{
 			name:              "fails with wrong status code response",
-			checkContext:      testutil.Context(),
 			checkMethod:       http.MethodGet,
 			checkTimeout:      1 * time.Second,
 			checkWantStatus:   http.StatusOK,
@@ -50,7 +46,6 @@ func TestCheckHttpStatus(t *testing.T) {
 		},
 		{
 			name:              "fails with wrong check method",
-			checkContext:      testutil.Context(),
 			checkMethod:       http.MethodHead,
 			handlerMethod:     http.MethodGet,
 			handlerStatusCode: http.StatusOK,
@@ -58,7 +53,6 @@ func TestCheckHttpStatus(t *testing.T) {
 		},
 		{
 			name:              "fails with handler timeout",
-			checkContext:      testutil.Context(),
 			checkMethod:       http.MethodGet,
 			checkTimeout:      1 * time.Second,
 			handlerMethod:     http.MethodGet,
@@ -68,7 +62,6 @@ func TestCheckHttpStatus(t *testing.T) {
 		},
 		{
 			name:              "succeed HEAD with 200 response",
-			checkContext:      testutil.Context(),
 			checkMethod:       http.MethodHead,
 			checkTimeout:      1 * time.Second,
 			checkWantStatus:   http.StatusOK,
@@ -78,7 +71,6 @@ func TestCheckHttpStatus(t *testing.T) {
 		},
 		{
 			name:              "succeed GET with 200 response",
-			checkContext:      testutil.Context(),
 			checkMethod:       http.MethodGet,
 			checkTimeout:      1 * time.Second,
 			checkWantStatus:   http.StatusOK,
@@ -88,7 +80,6 @@ func TestCheckHttpStatus(t *testing.T) {
 		},
 		{
 			name:            "succeed GET with 200 response with opts",
-			checkContext:    testutil.Context(),
 			checkMethod:     http.MethodGet,
 			checkTimeout:    1 * time.Second,
 			checkWantStatus: http.StatusOK,
@@ -126,7 +117,7 @@ func TestCheckHttpStatus(t *testing.T) {
 
 			testHTTPClient := &http.Client{Timeout: 2 * time.Second}
 
-			err := CheckHTTPStatus(tt.checkContext, testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
+			err := CheckHTTPStatus(testutil.Context(), testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
 			t.Logf("check error: %v", err)
 			if tt.wantErr {
 				require.Error(t, err, "CheckHTTPStatus() error = %v, wantErr %v", err, tt.wantErr)

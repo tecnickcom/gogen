@@ -42,7 +42,7 @@ func TestWithCreateLoggerFunc(t *testing.T) {
 	cfg := &config{}
 
 	v := func() (*zap.Logger, error) {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 	WithCreateLoggerFunc(v)(cfg)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createLoggerFunc).Pointer())

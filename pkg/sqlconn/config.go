@@ -48,7 +48,7 @@ func defaultConfig(driver, dsn string) *config {
 	}
 }
 
-//nolint:gocyclo,gocognit
+//nolint:gocyclo,cyclop,gocognit
 func (c *config) validate() error {
 	if strings.TrimSpace(c.driver) == "" {
 		return fmt.Errorf("database driver must be set")

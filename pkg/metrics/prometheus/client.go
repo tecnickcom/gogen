@@ -98,6 +98,7 @@ func initClient() *Client {
 	}
 }
 
+//nolint:funlen
 func (c *Client) defaultCollectors() error {
 	c.collectorInFlightRequests = prometheus.NewGauge(
 		prometheus.GaugeOpts{

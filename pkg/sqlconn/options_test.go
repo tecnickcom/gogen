@@ -16,7 +16,7 @@ func TestWithConnectFunc(t *testing.T) {
 
 	v := func(ctx context.Context, cfg *config) (*sql.DB, error) {
 		// mock function
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 	cfg := &config{}
 	WithConnectFunc(v)(cfg)
@@ -40,7 +40,7 @@ func TestWithSQLOpenFunc(t *testing.T) {
 
 	v := func(a, b string) (*sql.DB, error) {
 		// mock function
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 	cfg := &config{}
 	WithSQLOpenFunc(v)(cfg)

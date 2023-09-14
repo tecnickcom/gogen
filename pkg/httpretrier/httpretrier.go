@@ -46,7 +46,6 @@ type HTTPRetrier struct {
 	httpClient        HTTPClient
 	timer             *time.Timer
 	resetTimer        chan time.Duration
-	ctx               context.Context
 	cancel            context.CancelFunc
 	doResponse        *http.Response
 	doError           error
@@ -82,12 +81,13 @@ func New(httpClient HTTPClient, opts ...Option) (*HTTPRetrier, error) {
 func (c *HTTPRetrier) Do(r *http.Request) (*http.Response, error) {
 	c.nextDelay = float64(c.delay)
 	c.remainingAttempts = c.attempts
-	c.ctx, c.cancel = context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	c.cancel = cancel
 
 	go c.retry(r)
 
 	// wait for completion
-	<-c.ctx.Done()
+	<-ctx.Done()
 
 	return c.doResponse, c.doError
 }

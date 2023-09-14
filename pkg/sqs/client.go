@@ -125,7 +125,7 @@ func (c *Client) Receive(ctx context.Context) (*Message, error) {
 	}
 
 	if len(resp.Messages) < 1 {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
 	return &Message{

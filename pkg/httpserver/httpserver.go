@@ -31,7 +31,7 @@ func (b *nopBinder) BindHTTP(_ context.Context) []Route { return nil }
 // HTTPServer defines the HTTP Server object.
 type HTTPServer struct {
 	cfg        *config
-	ctx        context.Context
+	ctx        context.Context //nolint:containedctx
 	httpServer *http.Server
 	listener   net.Listener
 	logger     *zap.Logger
@@ -39,7 +39,7 @@ type HTTPServer struct {
 
 // Start configures and start a new HTTP server.
 //
-// Deprecated: Use New() and StartServer() instead.
+// Deprecated: Use New() and StartServerCtx() instead.
 func Start(ctx context.Context, binder Binder, opts ...Option) error {
 	h, err := New(ctx, binder, opts...)
 	if err != nil {
@@ -90,21 +90,23 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 		nil
 }
 
-// StartServer starts the current server and return without blocking.
-func (h *HTTPServer) StartServer() {
+// StartServerCtx starts the current server and return without blocking.
+// This ignore the context passed to the New() method.
+func (h *HTTPServer) StartServerCtx(ctx context.Context) {
 	// wait for shutdown signal or context cancelation
 	go func() {
 		select {
 		case <-h.cfg.shutdownSignalChan:
 			h.logger.Debug("shutdown notification received")
-		case <-h.ctx.Done():
+		case <-ctx.Done():
 			h.logger.Warn("context canceled")
 		}
 
+		// The shutdown context is independent from the parent context.
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), h.cfg.shutdownTimeout)
 		defer cancel()
 
-		_ = h.Shutdown(shutdownCtx)
+		_ = h.Shutdown(shutdownCtx) //nolint:contextcheck
 	}()
 
 	// start server
@@ -115,6 +117,11 @@ func (h *HTTPServer) StartServer() {
 	h.cfg.shutdownWaitGroup.Add(1)
 
 	h.logger.Info("listening for http requests")
+}
+
+// StartServer starts the current server and return without blocking.
+func (h *HTTPServer) StartServer() {
+	h.StartServerCtx(h.ctx)
 }
 
 // Shutdown gracefully shuts down the server without interrupting any active connections.

@@ -70,6 +70,7 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 		return nil, ErrFailed
 	}
 
+	// The release context is independent from the parent context.
 	releaseCtx, cancelReleaseCtx := context.WithCancel(context.Background())
 	releaseCtx = logging.WithLogger(releaseCtx, logging.FromContext(ctx))
 
@@ -84,7 +85,7 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 		return nil
 	}
 
-	go keepConnectionAlive(releaseCtx, conn, keepAliveInterval)
+	go keepConnectionAlive(releaseCtx, conn, keepAliveInterval) //nolint:contextcheck
 
 	return releaseFunc, nil
 }

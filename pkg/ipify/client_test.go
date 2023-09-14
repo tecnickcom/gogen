@@ -68,6 +68,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
+//nolint:contextcheck
 func TestClient_GetPublicIP(t *testing.T) {
 	t.Parallel()
 

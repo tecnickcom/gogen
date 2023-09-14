@@ -185,6 +185,7 @@ func TestClient_HealthCheck(t *testing.T) {
 	}
 }
 
+//nolint:contextcheck
 func TestClient_Send(t *testing.T) {
 	t.Parallel()
 

@@ -95,7 +95,7 @@ func (r *Rule) getEvaluator() (Evaluator, error) {
 	return r.getBaseTypeEvaluator(t)
 }
 
-//nolint:gocyclo
+//nolint:gocyclo,cyclop
 func (r *Rule) getBaseTypeEvaluator(t string) (Evaluator, error) {
 	switch t {
 	case TypeRegexp:
