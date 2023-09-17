@@ -35,7 +35,7 @@ func ExampleStats() {
 
 	// Output:
 	// Count:      12
-	// Entropy:    -2277.134
+	// Entropy:    2.302
 	// ExKurtosis: -1.910
 	// Max:        83
 	// MaxID:      1
