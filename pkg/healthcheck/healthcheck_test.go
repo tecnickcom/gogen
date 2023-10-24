@@ -27,6 +27,6 @@ func TestNew(t *testing.T) {
 	hc := &testHealthChecker{}
 	h := New("hc-id_1", hc)
 	require.NotNil(t, h)
-	require.Equal(t, h.ID, "hc-id_1")
+	require.Equal(t, "hc-id_1", h.ID)
 	require.Equal(t, h.Checker, hc)
 }

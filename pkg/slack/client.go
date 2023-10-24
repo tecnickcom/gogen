@@ -26,7 +26,7 @@ const (
 
 // HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
-	Do(*http.Request) (*http.Response, error)
+	Do(req *http.Request) (*http.Response, error)
 }
 
 // Client is the implementation of the service client.

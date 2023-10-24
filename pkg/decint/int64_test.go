@@ -73,7 +73,7 @@ func TestIntToFloat(t *testing.T) {
 			t.Parallel()
 
 			got := IntToFloat(tt.v)
-			require.Equal(t, tt.want, got)
+			require.InDelta(t, tt.want, got, 0.001)
 		})
 	}
 }

@@ -122,7 +122,7 @@ func TestCheckHttpStatus(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err, "CheckHTTPStatus() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				require.Nil(t, err, "CheckHTTPStatus() unexpected error = %v", err)
+				require.NoError(t, err, "CheckHTTPStatus() unexpected error = %v", err)
 			}
 		})
 	}

@@ -251,7 +251,7 @@ func TestLogDifferences(t *testing.T) {
 	require.NotEmpty(t, out, "captured log output")
 
 	logs := strings.SplitN(out, "\n", 2)
-	require.Equal(t, len(logs), 2, "there should be 2 logs")
+	require.Len(t, logs, 2, "there should be 2 logs")
 
 	type LogData struct {
 		Level     string `json:"level"`

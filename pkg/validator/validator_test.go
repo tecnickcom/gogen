@@ -168,7 +168,7 @@ func TestValidator_ValidateStruct(t *testing.T) {
 			require.Equal(t, tt.wantErr, err != nil, "ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
 
 			errs := multierr.Errors(err)
-			require.Equal(t, tt.wantErrCount, len(errs), "errors: %+v", errs)
+			require.Len(t, errs, tt.wantErrCount, "errors: %+v", errs)
 		})
 	}
 }

@@ -65,7 +65,7 @@ func TestWithDelayFactor(t *testing.T) {
 	v = 1.5
 	err := WithDelayFactor(v)(r)
 	require.NoError(t, err)
-	require.Equal(t, v, r.delayFactor)
+	require.InDelta(t, v, r.delayFactor, 0.001)
 
 	v = 0
 	err = WithDelayFactor(v)(r)

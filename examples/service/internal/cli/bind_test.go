@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"net"
 	"sync"
 	"testing"
@@ -132,10 +131,10 @@ func Test_bind(t *testing.T) {
 				require.Error(t, err, "bind() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantTimeoutErr {
-				require.True(t, errors.Is(err, context.DeadlineExceeded),
+				require.ErrorIs(t, err, context.DeadlineExceeded,
 					"bind() error = %v, wantErr %v", err, context.DeadlineExceeded)
 			} else {
-				require.False(t, errors.Is(err, context.DeadlineExceeded), "bind() unexpected timeout error")
+				require.NotErrorIs(t, err, context.DeadlineExceeded, "bind() unexpected timeout error")
 			}
 		})
 	}

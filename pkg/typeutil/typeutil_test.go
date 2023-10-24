@@ -206,7 +206,7 @@ func TestValue(t *testing.T) {
 	var nilPtr *int
 
 	got := Value(nilPtr)
-	require.Equal(t, got, 0)
+	require.Equal(t, 0, got)
 
 	tests := []struct {
 		name  string

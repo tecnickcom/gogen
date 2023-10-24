@@ -60,11 +60,11 @@ func Test_NewProducer(t *testing.T) {
 				require.NotNil(t, producer)
 
 				timeout, err := producer.cfg.configMap.Get("session.timeout.ms", 0)
-				require.Nil(t, err)
+				require.NoError(t, err)
 				require.Equal(t, int(tt.expTimeout.Milliseconds()), timeout)
 
 				offset, err := producer.cfg.configMap.Get("go.produce.channel.size", 0)
-				require.Nil(t, err)
+				require.NoError(t, err)
 				require.Equal(t, tt.expProduceChannelSize, offset)
 
 				producer.Close()

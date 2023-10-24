@@ -16,7 +16,7 @@ func TestNewContext(t *testing.T) {
 
 	// load the value from context and ignore default
 	el1 := FromContext(ctx, "default-104173")
-	require.Equal(t, el1, "test-1-218549")
+	require.Equal(t, "test-1-218549", el1)
 
 	// do not override the value in context
 	ctx1 := NewContext(ctx, "test-2-563011")
@@ -48,8 +48,8 @@ func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 	require.NoError(t, err)
 
 	id1 := SetHTTPRequestHeaderFromContext(context.Background(), r1, DefaultHeader, DefaultValue)
-	require.Equal(t, id1, DefaultValue)
-	require.Equal(t, r1.Header.Get(DefaultHeader), DefaultValue)
+	require.Equal(t, DefaultValue, id1)
+	require.Equal(t, DefaultValue, r1.Header.Get(DefaultHeader))
 
 	// header set
 	r2, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
@@ -59,7 +59,7 @@ func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 	r2 = r2.WithContext(ctx)
 
 	id2 := SetHTTPRequestHeaderFromContext(ctx, r2, DefaultHeader, DefaultValue)
-	require.NotEqual(t, id2, DefaultValue)
+	require.NotEqual(t, DefaultValue, id2)
 	require.Equal(t, "test-904117", r2.Header.Get(DefaultHeader))
 }
 

@@ -41,7 +41,7 @@ func TestParseFormat(t *testing.T) {
 
 			got, err := ParseFormat(tt.value)
 			if tt.wantErr {
-				require.NotNil(t, err, "ParseFormat() error = %v, wantErr %v", err, tt.wantErr)
+				require.Error(t, err, "ParseFormat() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			require.Equal(t, tt.want, got, "ParseFormat() got = %v, want %v", got, tt.want)
 		})

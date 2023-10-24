@@ -148,7 +148,7 @@ func TestNew(t *testing.T) {
 
 			got := New(tt.args.currentPage, tt.args.pageSize, tt.args.totalItems)
 
-			require.Equal(t, got, tt.want, "New() = %v, want %v", got, tt.want)
+			require.Equal(t, tt.want, got, "New() = %v, want %v", got, tt.want)
 		})
 	}
 }

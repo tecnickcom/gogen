@@ -23,7 +23,7 @@ func TestAddBasicAuth(t *testing.T) {
 
 	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
 	wanted.Header.Set("Authorization", "Basic a2V5OnNlY3JldA==")
-	require.Equal(t, r, wanted)
+	require.Equal(t, wanted, r)
 }
 
 func TestPathParam(t *testing.T) {

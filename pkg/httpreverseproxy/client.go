@@ -16,7 +16,7 @@ import (
 
 // HTTPClient contains the function to perform the HTTP request to the proxied service.
 type HTTPClient interface {
-	Do(*http.Request) (*http.Response, error)
+	Do(req *http.Request) (*http.Response, error)
 }
 
 // Client implements the Reverse Proxy.

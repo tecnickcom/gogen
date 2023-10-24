@@ -309,7 +309,7 @@ func TestEncodeDecode(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.value.Alpha, data.Alpha)
 			require.Equal(t, tt.value.Beta, data.Beta)
-			require.Equal(t, tt.value.Gamma, data.Gamma)
+			require.InDelta(t, tt.value.Gamma, data.Gamma, 0.001)
 		})
 	}
 }
@@ -474,7 +474,7 @@ func TestSerializeDeserialize(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.value.Alpha, data.Alpha)
 			require.Equal(t, tt.value.Beta, data.Beta)
-			require.Equal(t, tt.value.Gamma, data.Gamma)
+			require.InDelta(t, tt.value.Gamma, data.Gamma, 0.001)
 		})
 	}
 }

@@ -70,14 +70,14 @@ func Test_NewConsumer(t *testing.T) {
 				require.NotNil(t, consumer)
 
 				timeout, err := consumer.cfg.configMap.Get("session.timeout.ms", 0)
-				require.Nil(t, err)
+				require.NoError(t, err)
 				require.Equal(t, int(tt.expTimeout.Milliseconds()), timeout)
 
 				offset, err := consumer.cfg.configMap.Get("auto.offset.reset", string(OffsetNone))
-				require.Nil(t, err)
+				require.NoError(t, err)
 				require.Equal(t, string(tt.expAutoOffsetResetPolicy), offset)
 
-				require.Nil(t, consumer.Close())
+				require.NoError(t, consumer.Close())
 			}
 		})
 	}

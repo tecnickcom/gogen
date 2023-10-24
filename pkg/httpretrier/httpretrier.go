@@ -31,7 +31,7 @@ type RetryIfFn func(r *http.Response, err error) bool
 
 // HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
-	Do(*http.Request) (*http.Response, error)
+	Do(req *http.Request) (*http.Response, error)
 }
 
 // HTTPRetrier represents an instance of the HTTP retrier.

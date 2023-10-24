@@ -11,7 +11,7 @@ import (
 
 // HTTPClient contains the function that performs the actual HTTP request.
 type HTTPClient interface {
-	Do(*http.Request) (*http.Response, error)
+	Do(req *http.Request) (*http.Response, error)
 }
 
 // CheckHTTPStatus checks if the given HTTP request responds with the expected status code.

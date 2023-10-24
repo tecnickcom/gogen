@@ -16,7 +16,7 @@ func CaptureOutput(t *testing.T, fn func()) string {
 	t.Helper()
 
 	reader, writer, err := os.Pipe()
-	require.Nil(t, err, "Unexpected error (os.Pipe)")
+	require.NoError(t, err, "Unexpected error (os.Pipe)")
 
 	stdout := os.Stdout
 	stderr := os.Stderr
@@ -41,7 +41,7 @@ func CaptureOutput(t *testing.T, fn func()) string {
 		wg.Done()
 
 		_, err := io.Copy(&buf, reader)
-		require.Nil(t, err, "Unexpected error (io.Copy)")
+		require.NoError(t, err, "Unexpected error (io.Copy)")
 		out <- buf.String()
 	}()
 
@@ -50,7 +50,7 @@ func CaptureOutput(t *testing.T, fn func()) string {
 	fn() // call the given function
 
 	err = writer.Close()
-	require.Nil(t, err, "Unexpected error (writer.Close)")
+	require.NoError(t, err, "Unexpected error (writer.Close)")
 
 	return <-out
 }

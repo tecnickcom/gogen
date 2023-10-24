@@ -24,7 +24,7 @@ type ResponseWriterWrapper interface {
 	Status() int
 
 	// Tee sets a writer that will contain a copy of the bytes written to the response writer.
-	Tee(io.Writer)
+	Tee(w io.Writer)
 }
 
 type responseWriterWrapper struct {

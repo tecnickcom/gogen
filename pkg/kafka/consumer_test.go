@@ -55,7 +55,7 @@ func Test_NewConsumer(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, consumer)
-				require.Nil(t, consumer.Close())
+				require.NoError(t, consumer.Close())
 			}
 		})
 	}

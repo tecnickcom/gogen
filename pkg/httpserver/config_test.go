@@ -82,7 +82,7 @@ func Test_validateAddr(t *testing.T) {
 
 			err := validateAddr(tt.addr)
 			if tt.wantErr {
-				require.NotNil(t, err, "validateAddr() addr = %q, error = %v, wantErr %v", tt.addr, err, tt.wantErr)
+				require.Error(t, err, "validateAddr() addr = %q, error = %v, wantErr %v", tt.addr, err, tt.wantErr)
 			} else {
 				require.NoError(t, err, "validateAddr() addr = %q, error = %v, wantErr %v", tt.addr, err, tt.wantErr)
 			}

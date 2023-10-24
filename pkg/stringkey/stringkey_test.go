@@ -63,10 +63,10 @@ func TestNew(t *testing.T) {
 
 			sk := New(tt.args...)
 
-			require.Equal(t, sk, tt.want)
-			require.Equal(t, sk.Key(), tt.key)
-			require.Equal(t, sk.String(), tt.str)
-			require.Equal(t, sk.Hex(), tt.hex)
+			require.Equal(t, tt.want, sk)
+			require.Equal(t, tt.key, sk.Key())
+			require.Equal(t, tt.str, sk.String())
+			require.Equal(t, tt.hex, sk.Hex())
 		})
 	}
 }

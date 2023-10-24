@@ -22,7 +22,7 @@ func TestHTTPHandler_BindHTTP(t *testing.T) {
 
 	h := &HTTPHandler{}
 	got := h.BindHTTP(testutil.Context())
-	require.Equal(t, 1, len(got))
+	require.Len(t, got, 1)
 }
 
 func TestHTTPHandler_handleGenUID(t *testing.T) {

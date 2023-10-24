@@ -122,7 +122,7 @@ func Test_Start_Stop(t *testing.T) {
 	d := <-p.resetTimer
 	require.GreaterOrEqual(t, wait, d)
 
-	require.Nil(t, ctx.Err())
+	require.NoError(t, ctx.Err())
 
 	p.Stop()
 

@@ -71,7 +71,7 @@ func TestWithCustomValidationTags(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				require.Nil(t, err, "unexpected error = %v", err)
+				require.NoError(t, err, "unexpected error = %v", err)
 			}
 		})
 	}
@@ -102,7 +102,7 @@ func TestWithCustomTypeFunc(t *testing.T) {
 	x := DBBackedUser{Name: sql.NullString{String: "", Valid: true}, Age: sql.NullInt64{Int64: 0, Valid: false}}
 
 	err = validator.ValidateStructCtx(context.Background(), x)
-	require.NotNil(t, err)
+	require.Error(t, err)
 }
 
 func TestWithErrorTemplates(t *testing.T) {
@@ -143,7 +143,7 @@ func TestWithErrorTemplates(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				require.Nil(t, err, "unexpected error = %v", err)
+				require.NoError(t, err, "unexpected error = %v", err)
 				require.Equal(t, len(tt.arg), len(v.tpl), "Not all templates were imported")
 			}
 		})

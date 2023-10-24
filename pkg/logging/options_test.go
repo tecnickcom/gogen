@@ -14,7 +14,7 @@ func TestWithFormat(t *testing.T) {
 	v := JSONFormat
 	cfg := &config{}
 	err := WithFormat(v)(cfg)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, v, cfg.format)
 }
 
@@ -24,7 +24,7 @@ func TestWithLevel(t *testing.T) {
 	v := zap.DebugLevel
 	cfg := &config{}
 	err := WithLevel(v)(cfg)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, v, cfg.level)
 }
 
@@ -34,7 +34,7 @@ func TestWithFields(t *testing.T) {
 	v := []zap.Field{zap.String("a", "a"), zap.String("b", "b")}
 	cfg := &config{}
 	err := WithFields(v...)(cfg)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Len(t, v, len(cfg.fields))
 	require.EqualValues(t, v, cfg.fields)
 }
@@ -119,7 +119,7 @@ func TestWithOutputPaths(t *testing.T) {
 	v := []string{"stdout", "stderr"}
 	cfg := &config{}
 	err := WithOutputPaths(v)(cfg)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, v, cfg.outputPaths)
 }
 
@@ -129,6 +129,6 @@ func TestWithErrorOutputPaths(t *testing.T) {
 	v := []string{"stdout", "stderr"}
 	cfg := &config{}
 	err := WithErrorOutputPaths(v)(cfg)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, v, cfg.errorOutputPaths)
 }

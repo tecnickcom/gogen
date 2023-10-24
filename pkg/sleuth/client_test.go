@@ -187,7 +187,7 @@ func TestClient_HealthCheck(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err, "Client.HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				require.Nil(t, err, "Client.HealthCheck() unexpected error = %v", err)
+				require.NoError(t, err, "Client.HealthCheck() unexpected error = %v", err)
 			}
 		})
 	}

@@ -169,7 +169,7 @@ func TestCustomTags(t *testing.T) {
 			err := v.ValidateStruct(s)
 			require.Equal(t, tt.wantErr, err != nil, "error = %v, wantErr %v", err, tt.wantErr)
 			errs := multierr.Errors(err)
-			require.Equal(t, tt.wantErrCount, len(errs), "errors: %+v", errs)
+			require.Len(t, errs, tt.wantErrCount, "errors: %+v", errs)
 		})
 	}
 }

@@ -101,7 +101,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, r.Host, proxyTestURL.Host)
-		require.Equal(t, r.Header.Get("X-Forwarded-For"), "127.0.0.1")
+		require.Equal(t, "127.0.0.1", r.Header.Get("X-Forwarded-For"))
 	})
 
 	targetMux.HandleFunc("/badrequest", func(w http.ResponseWriter, r *http.Request) {

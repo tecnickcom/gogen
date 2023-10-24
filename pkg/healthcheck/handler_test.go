@@ -25,14 +25,14 @@ func TestNewHandler(t *testing.T) {
 
 	// No options
 	h1 := NewHandler(testChecks)
-	require.Equal(t, 2, len(h1.checks))
+	require.Len(t, h1.checks, 2)
 	require.Equal(t, 2, h1.checksCount)
 	require.Equal(t, reflect.ValueOf(httputil.SendJSON).Pointer(), reflect.ValueOf(h1.writeResult).Pointer())
 
 	// With options
 	rw := func(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {}
 	h2 := NewHandler(testChecks, WithResultWriter(rw))
-	require.Equal(t, 2, len(h2.checks))
+	require.Len(t, h2.checks, 2)
 	require.Equal(t, 2, h2.checksCount)
 	require.Equal(t, reflect.ValueOf(rw).Pointer(), reflect.ValueOf(h2.writeResult).Pointer())
 }
@@ -120,7 +120,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			require.Equal(t, tt.wantBody+"\n", payload)
 
 			// ensure we are running concurrently
-			require.True(t, el < tt.wantMaxElapsed, "check time = %s, want < %s", el, tt.wantMaxElapsed)
+			require.Less(t, el, tt.wantMaxElapsed, "check time = %s, want < %s", el, tt.wantMaxElapsed)
 		})
 	}
 }

@@ -131,7 +131,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err, "Client.GetPublicIP() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
-				require.Nil(t, err, "Client.GetPublicIP() unexpected error = %v", err)
+				require.NoError(t, err, "Client.GetPublicIP() unexpected error = %v", err)
 				require.Equal(t, "0.0.0.0", ip)
 			}
 		})
