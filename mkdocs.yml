@@ -1,9 +1,12 @@
 site_name: "gosrvlib"
-site_description: "Documentation on the gosrvlib library"
+site_description: "gosrvlib Go Library documentation"
 repo_url: https://github.com/Vonage/gosrvlib
 edit_uri: edit/main/
 repo_name: "GitHub"
 docs_dir: .
+markdown_extensions:
+  - pymdownx.snippets:
+      base_path: [".", ".."]
 plugins:
   - techdocs-core
   - same-dir
