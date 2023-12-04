@@ -120,3 +120,5 @@ The following command generates a new project from the example using the data se
 ```bash
 make project CONFIG=project.cfg
 ```
+
+-----------------------------------------------------------------
