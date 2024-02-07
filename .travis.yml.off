@@ -10,7 +10,7 @@ branches:
     - develop
 
 go:
-  - '1.21'
+  - '1.22'
 
 services:
   - docker
