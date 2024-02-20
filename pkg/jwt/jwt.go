@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -84,11 +83,11 @@ func defaultSigningMethod() SigningMethod {
 // New creates a new instance.
 func New(key []byte, userHashFn UserHashFn, opts ...Option) (*JWT, error) {
 	if len(key) == 0 {
-		return nil, fmt.Errorf("empty JWT key")
+		return nil, errors.New("empty JWT key")
 	}
 
 	if userHashFn == nil {
-		return nil, fmt.Errorf("empty user hash function")
+		return nil, errors.New("empty user hash function")
 	}
 
 	c := defaultJWT()
@@ -225,7 +224,7 @@ func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
 	_, err := jwt.ParseWithClaims(
 		signedToken,
 		claims,
-		func(token *jwt.Token) (any, error) {
+		func(_ *jwt.Token) (any, error) {
 			return c.key, nil
 		},
 	)

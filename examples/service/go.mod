@@ -5,7 +5,7 @@ go 1.22
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.81.1
+	github.com/Vonage/gosrvlib v1.81.2
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/prometheus/client_golang v1.18.0

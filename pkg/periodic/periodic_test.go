@@ -81,12 +81,16 @@ func TestNew(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			p, err := New(tt.interval, tt.jitter, tt.timeout, tt.task)
+
 			if tt.wantErr {
 				require.Nil(t, p)
 				require.Error(t, err)
+
 				return
 			}
+
 			require.NotNil(t, p)
 			require.NoError(t, err)
 		})

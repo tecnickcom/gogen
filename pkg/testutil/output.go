@@ -41,8 +41,9 @@ func CaptureOutput(t *testing.T, fn func()) string {
 		wg.Done()
 
 		_, err := io.Copy(&buf, reader)
-		require.NoError(t, err, "Unexpected error (io.Copy)")
-		out <- buf.String()
+		if err == nil {
+			out <- buf.String()
+		}
 	}()
 
 	wg.Wait()

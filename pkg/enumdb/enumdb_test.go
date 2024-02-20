@@ -1,7 +1,7 @@
 package enumdb
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -27,7 +27,7 @@ func TestNew(t *testing.T) {
 			name: "fails prepare statement",
 			setupMock: func(m sqlmock.Sqlmock) {
 				m.ExpectPrepare(query).
-					WillReturnError(fmt.Errorf("load error"))
+					WillReturnError(errors.New("load error"))
 			},
 			wantErr: true,
 		},
@@ -36,7 +36,7 @@ func TestNew(t *testing.T) {
 			setupMock: func(m sqlmock.Sqlmock) {
 				m.ExpectPrepare(query).
 					ExpectQuery().
-					WillReturnError(fmt.Errorf("query error"))
+					WillReturnError(errors.New("query error"))
 			},
 			wantErr: true,
 		},
@@ -60,7 +60,7 @@ func TestNew(t *testing.T) {
 				rows := sqlmock.
 					NewRows([]string{"id", "name"}).
 					AddRow(7, "test_value").
-					RowError(0, fmt.Errorf("row error"))
+					RowError(0, errors.New("row error"))
 
 				m.ExpectPrepare(query).
 					ExpectQuery().
@@ -94,9 +94,11 @@ func TestNew(t *testing.T) {
 
 			mockDB, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			require.NoError(t, err, "Unexpected error while creating sqlmock", err)
+
 			defer func() { _ = mockDB.Close() }()
 
 			mock.MatchExpectationsInOrder(false)
+
 			if tt.setupMock != nil {
 				tt.setupMock(mock)
 			}

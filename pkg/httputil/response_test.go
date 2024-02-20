@@ -1,7 +1,7 @@
 package httputil
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -49,6 +49,7 @@ func TestStatus_MarshalJSON(t *testing.T) {
 				t.Errorf("MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("MarshalJSON() got = %v, want %v", string(got), string(tt.want))
 			}
@@ -102,7 +103,7 @@ func TestSendText(t *testing.T) {
 	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
-	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
+	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
 	SendText(testutil.Context(), mockWriter, http.StatusOK, data)
 }
 
@@ -132,7 +133,7 @@ func TestSendJSON(t *testing.T) {
 	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
-	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
+	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
 	SendJSON(testutil.Context(), mockWriter, http.StatusOK, data)
 }
 
@@ -162,7 +163,7 @@ func TestSendXML(t *testing.T) {
 	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
-	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
-	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
+	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
+	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
 	SendXML(testutil.Context(), mockWriter, http.StatusOK, XMLHeader, data)
 }

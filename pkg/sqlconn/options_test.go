@@ -14,7 +14,7 @@ import (
 func TestWithConnectFunc(t *testing.T) {
 	t.Parallel()
 
-	v := func(ctx context.Context, cfg *config) (*sql.DB, error) {
+	v := func(_ context.Context, _ *config) (*sql.DB, error) {
 		// mock function
 		return nil, nil //nolint:nilnil
 	}
@@ -26,7 +26,7 @@ func TestWithConnectFunc(t *testing.T) {
 func TestWithCheckConnectionFunc(t *testing.T) {
 	t.Parallel()
 
-	v := func(ctx context.Context, db *sql.DB) error {
+	v := func(_ context.Context, _ *sql.DB) error {
 		// mock function
 		return nil
 	}
@@ -38,7 +38,7 @@ func TestWithCheckConnectionFunc(t *testing.T) {
 func TestWithSQLOpenFunc(t *testing.T) {
 	t.Parallel()
 
-	v := func(a, b string) (*sql.DB, error) {
+	v := func(_, _ string) (*sql.DB, error) {
 		// mock function
 		return nil, nil //nolint:nilnil
 	}

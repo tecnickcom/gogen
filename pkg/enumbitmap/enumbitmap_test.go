@@ -94,7 +94,9 @@ func Test_BitMapToStrings(t *testing.T) {
 			if tt.enumFunc != nil {
 				eis = tt.enumFunc(eis)
 			}
+
 			got, err := BitMapToStrings(eis, tt.v)
+
 			require.Equal(t, tt.wantErr, err != nil, "error = %v, wantErr %v", err, tt.wantErr)
 			require.Equal(t, tt.want, got, "got = %v, want %v", got, tt.want)
 		})

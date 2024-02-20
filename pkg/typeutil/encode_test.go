@@ -2,7 +2,7 @@ package typeutil
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"testing"
 
@@ -12,7 +12,7 @@ import (
 type mockWriter struct{}
 
 func (w *mockWriter) Write(_ []byte) (int, error) {
-	return 0, fmt.Errorf("write error")
+	return 0, errors.New("write error")
 }
 
 func Test_base64Encoder(t *testing.T) {
@@ -51,7 +51,7 @@ func (w *mockWriteCloserCloseError) Write(_ []byte) (int, error) {
 }
 
 func (w *mockWriteCloserCloseError) Close() error {
-	return fmt.Errorf("close error")
+	return errors.New("close error")
 }
 
 func Test_gobEncode(t *testing.T) {

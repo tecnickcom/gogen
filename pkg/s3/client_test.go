@@ -2,7 +2,7 @@ package s3
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest
 func TestNew(t *testing.T) {
 	o := awsopt.Options{}
 	o.WithEndpoint("https://test.endpoint.invalid", true)
@@ -74,7 +73,7 @@ func TestS3Client_DeleteObject(t *testing.T) {
 			name:   "success",
 			key:    "k1",
 			bucket: "bucket",
-			mock: s3mock{delFn: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+			mock: s3mock{delFn: func(_ context.Context, _ *s3.DeleteObjectInput, _ ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
 				return &s3.DeleteObjectOutput{}, nil
 			}},
 			wantErr: false,
@@ -83,8 +82,8 @@ func TestS3Client_DeleteObject(t *testing.T) {
 			name:   "error",
 			key:    "k1",
 			bucket: "bucket",
-			mock: s3mock{delFn: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
-				return nil, fmt.Errorf("some err")
+			mock: s3mock{delFn: func(_ context.Context, _ *s3.DeleteObjectInput, _ ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+				return nil, errors.New("some err")
 			}},
 			wantErr: true,
 		},
@@ -128,7 +127,7 @@ func TestS3Client_GetObject(t *testing.T) {
 			name:   "success",
 			key:    "k1",
 			bucket: "bucket",
-			mock: s3mock{getFn: func(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+			mock: s3mock{getFn: func(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
 				return &s3.GetObjectOutput{
 					Body: io.NopCloser(strings.NewReader("test str")),
 				}, nil
@@ -145,8 +144,8 @@ func TestS3Client_GetObject(t *testing.T) {
 			name:   "error",
 			key:    "k1",
 			bucket: "bucket",
-			mock: s3mock{getFn: func(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
-				return nil, fmt.Errorf("some err")
+			mock: s3mock{getFn: func(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+				return nil, errors.New("some err")
 			}},
 			want:    nil,
 			wantErr: true,
@@ -200,7 +199,7 @@ func TestS3Client_ListObject(t *testing.T) {
 			name:   "success - all",
 			prefix: "",
 			bucket: "bucket",
-			mock: s3mock{listFn: func(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+			mock: s3mock{listFn: func(_ context.Context, _ *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
 				return &s3.ListObjectsV2Output{
 					Contents: []types.Object{
 						{Key: aws.String("key1")},
@@ -215,7 +214,7 @@ func TestS3Client_ListObject(t *testing.T) {
 			name:   "success - prefix",
 			prefix: "ke",
 			bucket: "bucket",
-			mock: s3mock{listFn: func(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+			mock: s3mock{listFn: func(_ context.Context, _ *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
 				return &s3.ListObjectsV2Output{
 					Contents: []types.Object{
 						{Key: aws.String("key1")},
@@ -229,8 +228,8 @@ func TestS3Client_ListObject(t *testing.T) {
 			name:   "error",
 			prefix: "k1",
 			bucket: "bucket",
-			mock: s3mock{listFn: func(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
-				return nil, fmt.Errorf("some err")
+			mock: s3mock{listFn: func(_ context.Context, _ *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+				return nil, errors.New("some err")
 			}},
 			want:    nil,
 			wantErr: true,
@@ -276,7 +275,7 @@ func TestS3Client_PutObject(t *testing.T) {
 			name:   "success",
 			key:    "k1",
 			bucket: "bucket",
-			mock: s3mock{putFn: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+			mock: s3mock{putFn: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 				return &s3.PutObjectOutput{}, nil
 			}},
 			wantErr: false,
@@ -285,8 +284,8 @@ func TestS3Client_PutObject(t *testing.T) {
 			name:   "error",
 			key:    "k1",
 			bucket: "bucket",
-			mock: s3mock{putFn: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-				return nil, fmt.Errorf("some err")
+			mock: s3mock{putFn: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+				return nil, errors.New("some err")
 			}},
 			wantErr: true,
 		},

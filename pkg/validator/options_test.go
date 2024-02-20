@@ -31,8 +31,10 @@ func TestWithFieldNameTag(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			v := &Validator{v: vt.New()}
 			err := WithFieldNameTag(tt.tag)(v)
+
 			require.NoError(t, err)
 		})
 	}
@@ -66,8 +68,10 @@ func TestWithCustomValidationTags(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			v := &Validator{v: vt.New()}
 			err := WithCustomValidationTags(tt.arg)(v)
+
 			if tt.wantErr {
 				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
 			} else {
@@ -138,8 +142,10 @@ func TestWithErrorTemplates(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			v := &Validator{v: vt.New()}
 			err := WithErrorTemplates(tt.arg)(v)
+
 			if tt.wantErr {
 				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
 			} else {

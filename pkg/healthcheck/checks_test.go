@@ -85,7 +85,7 @@ func TestCheckHttpStatus(t *testing.T) {
 			checkWantStatus: http.StatusOK,
 			checkOpts: []CheckOption{
 				WithConfigureRequest(
-					func(r *http.Request) {},
+					func(_ *http.Request) {},
 				),
 			},
 			handlerMethod:     http.MethodGet,
@@ -104,10 +104,12 @@ func TestCheckHttpStatus(t *testing.T) {
 					httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
 					return
 				}
+
 				if tt.handlerMethod == r.Method {
 					if tt.handlerDelay != 0 {
 						time.Sleep(tt.handlerDelay)
 					}
+
 					httputil.SendStatus(r.Context(), w, tt.handlerStatusCode)
 				}
 			})
@@ -118,7 +120,9 @@ func TestCheckHttpStatus(t *testing.T) {
 			testHTTPClient := &http.Client{Timeout: 2 * time.Second}
 
 			err := CheckHTTPStatus(testutil.Context(), testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
+
 			t.Logf("check error: %v", err)
+
 			if tt.wantErr {
 				require.Error(t, err, "CheckHTTPStatus() error = %v, wantErr %v", err, tt.wantErr)
 			} else {

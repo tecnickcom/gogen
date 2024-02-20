@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Vonage/gosrvlib/pkg/awsopt"
@@ -35,11 +36,11 @@ func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 	}
 
 	if c.waitTimeSeconds < 0 || c.waitTimeSeconds > 20 {
-		return nil, fmt.Errorf("waitTimeSeconds must be between 0 and 20 seconds")
+		return nil, errors.New("waitTimeSeconds must be between 0 and 20 seconds")
 	}
 
 	if c.visibilityTimeout < 0 || c.visibilityTimeout > 43200 {
-		return nil, fmt.Errorf("visibilityTimeout must be between 0 and 43200 seconds")
+		return nil, errors.New("visibilityTimeout must be between 0 and 43200 seconds")
 	}
 
 	awsConfig, err := c.awsOpts.LoadDefaultConfig(ctx)

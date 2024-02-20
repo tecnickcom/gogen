@@ -85,7 +85,7 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 	versionCmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print this program version",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			fmt.Println(version) //nolint:forbidigo
 		},
 	}

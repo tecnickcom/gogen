@@ -49,7 +49,7 @@ func TestClient_Do(t *testing.T) {
 		body = append(body, []byte(bodyStr+`\n`)...)
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(body)
 	}))
 
@@ -147,6 +147,7 @@ func TestClient_Do(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, out, `"`+client.logPrefix+`error"`)
+
 				return
 			}
 

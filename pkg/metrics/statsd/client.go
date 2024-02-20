@@ -134,7 +134,7 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 // MetricsHandlerFunc returns an http handler function to serve the metrics endpoint.
 // This is not used for the StatsD implementation as the metrics are directly sent to the StatsD server.
 func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		status := http.StatusNotImplemented
 		http.Error(w, http.StatusText(status), status)
 	}

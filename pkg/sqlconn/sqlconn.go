@@ -4,6 +4,7 @@ package sqlconn
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -95,7 +96,7 @@ func (c *SQLConn) HealthCheck(ctx context.Context) error {
 	defer c.dbLock.RUnlock()
 
 	if c.db == nil {
-		return fmt.Errorf("database not unavailable")
+		return errors.New("database not unavailable")
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.pingTimeout)

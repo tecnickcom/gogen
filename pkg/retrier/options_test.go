@@ -12,7 +12,7 @@ func TestWithRetryIfFn(t *testing.T) {
 
 	r := &Retrier{}
 
-	v := func(err error) bool { return true }
+	v := func(_ error) bool { return true }
 	err := WithRetryIfFn(v)(r)
 	require.NoError(t, err)
 

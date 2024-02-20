@@ -1,6 +1,7 @@
 package errtrace_test
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Vonage/gosrvlib/pkg/errtrace"
@@ -8,7 +9,7 @@ import (
 
 //nolint:testableexamples
 func ExampleTrace() {
-	err := fmt.Errorf("example error")
+	err := errors.New("example error")
 	testErr := errtrace.Trace(err)
 
 	fmt.Println(testErr)

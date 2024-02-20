@@ -136,6 +136,8 @@ linters:
     - reassign    # Checks that package variables are not reassigned [fast: false, auto-fix: false]
     - revive    # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint. [fast: false, auto-fix: false]
     - rowserrcheck    # checks whether Err of rows is checked successfully [fast: false, auto-fix: false]
+    - sloglint    # Detects the wrong usage of `slog` that a user forgets to dispatch with `Send` or `Msg`. [fast: false, auto-fix: false]
+    - spancheck    # spancheck is a linter that detects the usage of context.Context.Value method [fast: false, auto-fix: false]
     - sqlclosecheck    # Checks that sql.Rows and sql.Stmt are closed. [fast: false, auto-fix: false]
     - staticcheck    # (megacheck): It's a set of rules from staticcheck. It's not the same thing as the staticcheck binary. The author of staticcheck doesn't support or approve the use of staticcheck as a library inside golangci-lint. [fast: false, auto-fix: false]
     - stylecheck    # Stylecheck is a replacement for golint [fast: false, auto-fix: false]

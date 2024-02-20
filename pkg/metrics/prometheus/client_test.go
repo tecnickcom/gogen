@@ -2,7 +2,7 @@ package prometheus
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,7 +42,7 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name:    "fails with invalid option",
-			opts:    []Option{func(c *Client) error { return fmt.Errorf("Error") }},
+			opts:    []Option{func(_ *Client) error { return errors.New("Error") }},
 			wantErr: true,
 		},
 		{
@@ -64,11 +64,14 @@ func TestNew(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			_, err := New(tt.opts...)
+
 			if tt.wantErr {
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			require.NoError(t, err, "New() unexpected error = %v", err)
 		})
 	}
@@ -108,7 +111,7 @@ func TestInstrumentRoundTripper(t *testing.T) {
 
 	server := httptest.NewServer(
 		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
+			func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`OK`))
 			},

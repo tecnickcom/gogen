@@ -25,6 +25,7 @@ func TestIsNil(t *testing.T) {
 
 	t.Run("nil chan", func(t *testing.T) {
 		t.Parallel()
+
 		var nilChan chan int
 
 		got := IsNil(nilChan)
@@ -33,6 +34,7 @@ func TestIsNil(t *testing.T) {
 
 	t.Run("nil func", func(t *testing.T) {
 		t.Parallel()
+
 		var nilFunc func()
 
 		got := IsNil(nilFunc)
@@ -41,6 +43,7 @@ func TestIsNil(t *testing.T) {
 
 	t.Run("nil interface", func(t *testing.T) {
 		t.Parallel()
+
 		var nilInterface *any
 
 		got := IsNil(nilInterface)
@@ -49,6 +52,7 @@ func TestIsNil(t *testing.T) {
 
 	t.Run("nil map", func(t *testing.T) {
 		t.Parallel()
+
 		var nilMap map[int]int
 
 		got := IsNil(nilMap)
@@ -57,6 +61,7 @@ func TestIsNil(t *testing.T) {
 
 	t.Run("nil slice", func(t *testing.T) {
 		t.Parallel()
+
 		var nilSlice []int
 
 		got := IsNil(nilSlice)
@@ -65,6 +70,7 @@ func TestIsNil(t *testing.T) {
 
 	t.Run("nil pointer", func(t *testing.T) {
 		t.Parallel()
+
 		var nilPointer *int
 
 		got := IsNil(nilPointer)
@@ -93,6 +99,7 @@ func TestIsZero(t *testing.T) {
 
 	t.Run("nil chan", func(t *testing.T) {
 		t.Parallel()
+
 		var nilChan chan int
 
 		got := IsZero(nilChan)
@@ -101,6 +108,7 @@ func TestIsZero(t *testing.T) {
 
 	t.Run("nil func", func(t *testing.T) {
 		t.Parallel()
+
 		var nilFunc func()
 
 		got := IsZero(nilFunc)
@@ -109,6 +117,7 @@ func TestIsZero(t *testing.T) {
 
 	t.Run("nil interface", func(t *testing.T) {
 		t.Parallel()
+
 		var nilInterface *any
 
 		got := IsZero(nilInterface)
@@ -117,6 +126,7 @@ func TestIsZero(t *testing.T) {
 
 	t.Run("nil map", func(t *testing.T) {
 		t.Parallel()
+
 		var nilMap map[int]int
 
 		got := IsZero(nilMap)
@@ -125,6 +135,7 @@ func TestIsZero(t *testing.T) {
 
 	t.Run("nil slice", func(t *testing.T) {
 		t.Parallel()
+
 		var nilSlice []int
 
 		got := IsZero(nilSlice)
@@ -133,6 +144,7 @@ func TestIsZero(t *testing.T) {
 
 	t.Run("nil pointer", func(t *testing.T) {
 		t.Parallel()
+
 		var nilPointer *int
 
 		got := IsZero(nilPointer)

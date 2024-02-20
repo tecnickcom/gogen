@@ -29,7 +29,7 @@ func TestNewRouter(t *testing.T) {
 			name:   "should handle 405",
 			method: http.MethodPost,
 			setupRouter: func(r *httprouter.Router) {
-				fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fn := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
 				})
 				r.Handler(http.MethodGet, "/not/allowed", fn)
@@ -41,7 +41,7 @@ func TestNewRouter(t *testing.T) {
 			name:   "should handle panic in handler",
 			method: http.MethodGet,
 			setupRouter: func(r *httprouter.Router) {
-				fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fn := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 					panic("panicking!")
 				})
 				r.Handler(http.MethodGet, "/panic", fn)
@@ -56,7 +56,7 @@ func TestNewRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			defaultInstrumentHandler := func(path string, handler http.HandlerFunc) http.Handler { return handler }
+			defaultInstrumentHandler := func(_ string, handler http.HandlerFunc) http.Handler { return handler }
 
 			params := &AppInfo{
 				ProgramName:    "test",

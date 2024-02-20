@@ -98,6 +98,7 @@ func TestParseLevel(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err, "ParseLevel() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			require.Equal(t, tt.want, got, "ParseLevel() got = %v, want %v", got, tt.want)
 		})
 	}

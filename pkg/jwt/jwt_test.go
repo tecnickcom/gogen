@@ -2,7 +2,7 @@ package jwt
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -28,23 +28,23 @@ func TestNew(t *testing.T) {
 		{
 			name:       "success with default options",
 			key:        []byte("test-key-01"),
-			userHashFn: func(username string) ([]byte, error) { return []byte("hash-01"), nil },
+			userHashFn: func(_ string) ([]byte, error) { return []byte("hash-01"), nil },
 			wantErr:    false,
 		},
 		{
 			name:       "success with custom options",
 			key:        []byte("test-key-02"),
-			userHashFn: func(username string) ([]byte, error) { return []byte("hash-02"), nil },
+			userHashFn: func(_ string) ([]byte, error) { return []byte("hash-02"), nil },
 			opts: []Option{
 				WithExpirationTime(1 * time.Minute),
 				WithRenewTime(10 * time.Second),
-				WithSendResponseFn(func(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {}),
+				WithSendResponseFn(func(_ context.Context, _ http.ResponseWriter, _ int, _ string) {}),
 			},
 			wantErr: false,
 		},
 		{
 			name:       "failure with empty key",
-			userHashFn: func(username string) ([]byte, error) { return []byte("hash-01"), nil },
+			userHashFn: func(_ string) ([]byte, error) { return []byte("hash-01"), nil },
 			wantErr:    true,
 		},
 		{
@@ -63,8 +63,10 @@ func TestNew(t *testing.T) {
 			if tt.wantErr {
 				require.Nil(t, c, "New() returned value should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			require.NotNil(t, c, "New() returned value should not be nil")
 			require.NoError(t, err, "New() unexpected error = %v", err)
 		})
@@ -163,6 +165,7 @@ func TestLoginHandler(t *testing.T) {
 			body, _ := io.ReadAll(resp.Body)
 
 			require.Equal(t, tt.status, resp.StatusCode)
+
 			if tt.status != http.StatusOK {
 				require.Equal(t, tt.want, string(body))
 			} else {
@@ -377,7 +380,7 @@ func TestIsAuthorized(t *testing.T) {
 // testUserHash assumes password = username.
 func testUserHash(username string) ([]byte, error) {
 	if username == "" {
-		return nil, fmt.Errorf("invalid username")
+		return nil, errors.New("invalid username")
 	}
 
 	return bcrypt.GenerateFromPassword([]byte(username), bcrypt.MinCost) //nolint:wrapcheck
@@ -386,11 +389,11 @@ func testUserHash(username string) ([]byte, error) {
 type testSigningMethodError struct{}
 
 func (c *testSigningMethodError) Verify(_, _ string, _ any) error {
-	return fmt.Errorf("VERIFY ERROR")
+	return errors.New("VERIFY ERROR")
 }
 
 func (c *testSigningMethodError) Sign(_ string, _ any) (string, error) {
-	return "", fmt.Errorf("SIGN ERROR")
+	return "", errors.New("SIGN ERROR")
 }
 
 func (c *testSigningMethodError) Alg() string {

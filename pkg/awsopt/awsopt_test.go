@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest
 func Test_LoadDefaultConfig(t *testing.T) {
 	region := "us-west-2"
 
@@ -62,7 +61,6 @@ func Test_WithRegion(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest
 func Test_WithRegionFromURL(t *testing.T) {
 	tests := []struct {
 		name                string

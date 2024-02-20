@@ -56,11 +56,14 @@ func TestNew(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			_, err := New(tt.opts...)
+
 			if tt.wantErr {
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			require.NoError(t, err, "New() unexpected error = %v", err)
 		})
 	}
@@ -78,10 +81,12 @@ TEST.inbound.test.POST.501.time:[0-9]+\|ms
 TEST.inbound.test.POST.out:1\|c`
 		re := regexp.MustCompile(exp)
 		got := string(p)
+
 		if !re.MatchString(got) {
 			t.Errorf("expected: %v , got: %v", exp, got)
 		}
 	})
+
 	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
 
 	defer srv.Close()
@@ -119,10 +124,12 @@ TEST.outbound.GET.200.time:[0-9]+\|ms
 TEST.outbound.GET.out:1\|c`
 		re := regexp.MustCompile(exp)
 		got := string(p)
+
 		if !re.MatchString(got) {
 			t.Errorf("expected: %v\n\ngot: %v", exp, got)
 		}
 	})
+
 	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
 
 	defer srv.Close()
@@ -138,7 +145,7 @@ TEST.outbound.GET.out:1\|c`
 
 	server := httptest.NewServer(
 		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
+			func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`OK`))
 			},

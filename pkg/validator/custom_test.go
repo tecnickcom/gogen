@@ -165,10 +165,14 @@ func TestCustomTags(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			s := tt.fobj(getTestCustomTagData())
 			err := v.ValidateStruct(s)
+
 			require.Equal(t, tt.wantErr, err != nil, "error = %v, wantErr %v", err, tt.wantErr)
+
 			errs := multierr.Errors(err)
+
 			require.Len(t, errs, tt.wantErrCount, "errors: %+v", errs)
 		})
 	}

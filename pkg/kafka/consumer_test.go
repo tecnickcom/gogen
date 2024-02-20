@@ -2,7 +2,7 @@ package kafka
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -78,7 +78,7 @@ func (m mockConsumerClient) Close() error {
 type mockConsumerClientError struct{}
 
 func (m mockConsumerClientError) ReadMessage(_ context.Context) (kafka.Message, error) {
-	return kafka.Message{}, fmt.Errorf("error Receive")
+	return kafka.Message{}, errors.New("error Receive")
 }
 
 func (m mockConsumerClientError) Config() kafka.ReaderConfig {
@@ -86,7 +86,7 @@ func (m mockConsumerClientError) Config() kafka.ReaderConfig {
 }
 
 func (m mockConsumerClientError) Close() error {
-	return fmt.Errorf("error Close")
+	return errors.New("error Close")
 }
 
 func Test_Consumer_Receive(t *testing.T) {
@@ -137,7 +137,7 @@ func Test_Consumer_HealthCheck(t *testing.T) {
 	err = consumer.HealthCheck(ctx)
 	require.Error(t, err)
 
-	consumer.checkFn = func(ctx context.Context, address string) error {
+	consumer.checkFn = func(_ context.Context, _ string) error {
 		return nil
 	}
 

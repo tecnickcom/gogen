@@ -57,8 +57,10 @@ func TestNew(t *testing.T) {
 			if tt.wantErr {
 				require.Nil(t, c, "New() returned client should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			require.NotNil(t, c, "New() returned client should not be nil")
 			require.NoError(t, err, "New() unexpected error = %v", err)
 			require.Equal(t, tt.wantTimeout, c.timeout, "New() unexpected timeout = %d got %d", tt.wantTimeout, c.timeout)
@@ -80,7 +82,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 	}{
 		{
 			name: "fails because status not OK",
-			getIPHandler: func(w http.ResponseWriter, r *http.Request) {
+			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
 				httputil.SendStatus(testutil.Context(), w, http.StatusInternalServerError)
 			},
 			wantIP:  "",
@@ -88,7 +90,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 		},
 		{
 			name: "fails because of timeout",
-			getIPHandler: func(w http.ResponseWriter, r *http.Request) {
+			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
 				time.Sleep(5 * time.Second)
 				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
 			},
@@ -96,14 +98,14 @@ func TestClient_GetPublicIP(t *testing.T) {
 		},
 		{
 			name: "fails because of bad content",
-			getIPHandler: func(w http.ResponseWriter, r *http.Request) {
+			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Length", "1")
 			},
 			wantErr: true,
 		},
 		{
 			name: "succeed with valid response",
-			getIPHandler: func(w http.ResponseWriter, r *http.Request) {
+			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 				w.WriteHeader(http.StatusOK)
 				_, err := w.Write([]byte("0.0.0.0"))
@@ -120,10 +122,12 @@ func TestClient_GetPublicIP(t *testing.T) {
 
 			mux := testutil.RouterWithHandler(http.MethodGet, "/", tt.getIPHandler)
 			ts := httptest.NewServer(mux)
+
 			defer ts.Close()
 
 			opts := []Option{WithURL(ts.URL)}
 			c, err := New(opts...)
+
 			require.NoError(t, err, "Client.GetPublicIP() create client unexpected error = %v", err)
 
 			ip, err := c.GetPublicIP(testutil.Context())

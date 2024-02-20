@@ -62,6 +62,7 @@ func TestNew(t *testing.T) {
 			if tt.wantErr {
 				require.Nil(t, c, "New() returned client should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 
@@ -108,7 +109,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 		libhttputil.SendStatus(r.Context(), w, http.StatusBadRequest)
 	})
 
-	targetMux.HandleFunc("/error", func(w http.ResponseWriter, r *http.Request) {
+	targetMux.HandleFunc("/error", func(_ http.ResponseWriter, _ *http.Request) {
 		time.Sleep(1 + timeout)
 	})
 

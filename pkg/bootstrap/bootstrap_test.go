@@ -2,7 +2,7 @@ package bootstrap
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"syscall"
 	"testing"
@@ -45,7 +45,7 @@ func TestBootstrap(t *testing.T) {
 				WithShutdownTimeout(1 * time.Millisecond),
 			},
 			createLoggerFunc: func() (*zap.Logger, error) {
-				return nil, fmt.Errorf("log error")
+				return nil, errors.New("log error")
 			},
 			wantErr: true,
 		},
@@ -55,7 +55,7 @@ func TestBootstrap(t *testing.T) {
 				WithShutdownTimeout(1 * time.Millisecond),
 			},
 			createMetricsClientFunc: func() (metrics.Client, error) {
-				return nil, fmt.Errorf("metrics error")
+				return nil, errors.New("metrics error")
 			},
 			wantErr: true,
 		},
@@ -65,7 +65,7 @@ func TestBootstrap(t *testing.T) {
 				WithShutdownTimeout(1 * time.Millisecond),
 			},
 			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
-				return fmt.Errorf("bind error")
+				return errors.New("bind error")
 			},
 			wantErr: true,
 		},
@@ -100,7 +100,6 @@ func TestBootstrap(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			// cannot run in parallel because signals are received by all parallel tests
-
 			var ctx context.Context
 			ctx, logs := testutil.ContextWithLogObserver(zap.DebugLevel)
 

@@ -3,7 +3,7 @@ package sleuth
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,12 +19,12 @@ import (
 
 //go:noinline
 func newRequestWithContextPatch(_ context.Context, _, _ string, _ io.Reader) (*http.Request, error) {
-	return nil, fmt.Errorf("ERROR: newRequestWithContextPatch")
+	return nil, errors.New("ERROR: newRequestWithContextPatch")
 }
 
 //go:noinline
 func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpretrier.HTTPRetrier, error) {
-	return nil, fmt.Errorf("ERROR: newHTTPRetrierPatch")
+	return nil, errors.New("ERROR: newHTTPRetrierPatch")
 }
 
 //nolint:gocognit,paralleltest
@@ -40,7 +40,7 @@ func Test_sendRequest(t *testing.T) {
 		{
 			name: "failed to execute request - transport error",
 			setupMocks: func(m *MockHTTPClient) {
-				m.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("transport error")).Times(1)
+				m.EXPECT().Do(gomock.Any()).Return(nil, errors.New("transport error")).Times(1)
 			},
 			wantErr: true,
 		},
@@ -52,6 +52,7 @@ func Test_sendRequest(t *testing.T) {
 					return nil, err //nolint:wrapcheck
 				}
 				_ = patch.Patch()
+
 				return patch, nil
 			},
 			wantErr: true,
@@ -64,6 +65,7 @@ func Test_sendRequest(t *testing.T) {
 					return nil, err //nolint:wrapcheck
 				}
 				_ = patch.Patch()
+
 				return patch, nil
 			},
 			wantErr: true,
@@ -72,6 +74,7 @@ func Test_sendRequest(t *testing.T) {
 			name: "unexpected http error status code",
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
 				t.Helper()
+
 				return func(w http.ResponseWriter, r *http.Request) {
 					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
@@ -82,6 +85,7 @@ func Test_sendRequest(t *testing.T) {
 			name: "invalid response status < 200",
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
 				t.Helper()
+
 				return func(w http.ResponseWriter, r *http.Request) {
 					httputil.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
 				}
@@ -99,6 +103,7 @@ func Test_sendRequest(t *testing.T) {
 			name: "success valid response",
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
 				t.Helper()
+
 				return func(w http.ResponseWriter, r *http.Request) {
 					httputil.SendText(r.Context(), w, http.StatusOK, "Success")
 				}
@@ -125,6 +130,7 @@ func Test_sendRequest(t *testing.T) {
 			defer ts.Close()
 
 			clientOpts := []Option{}
+
 			if tt.setupMocks != nil {
 				mc := NewMockHTTPClient(ctrl)
 				tt.setupMocks(mc)
@@ -142,6 +148,7 @@ func Test_sendRequest(t *testing.T) {
 			if tt.setupPatches != nil {
 				patch, err := tt.setupPatches()
 				require.NoError(t, err)
+
 				defer func() {
 					_ = patch.Unpatch()
 				}()

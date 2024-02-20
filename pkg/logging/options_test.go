@@ -42,7 +42,7 @@ func TestWithFields(t *testing.T) {
 func TestWithIncrementLogMetricsFunc(t *testing.T) {
 	t.Parallel()
 
-	v := func(s string) {
+	v := func(_ string) {
 		// mock function
 	}
 	cfg := &config{}
@@ -74,7 +74,9 @@ func TestWithFormatStr(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			cfg := &config{}
+
 			if err := WithFormatStr(tt.testValue)(cfg); (err != nil) != tt.wantErr {
 				t.Errorf("WithFormatStr() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -105,7 +107,9 @@ func TestWithLevelStr(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			cfg := &config{}
+
 			if err := WithLevelStr(tt.testValue)(cfg); (err != nil) != tt.wantErr {
 				t.Errorf("WithLevelStr() error = %v, wantErr %v", err, tt.wantErr)
 			}

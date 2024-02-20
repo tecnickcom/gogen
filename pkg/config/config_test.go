@@ -5,11 +5,11 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -88,6 +88,7 @@ func Test_configureConfigSearchPath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+
 			defer ctrl.Finish()
 
 			tmv := NewMockViper(ctrl)
@@ -143,7 +144,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			name: "fails with read config error",
 			setupViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
-				mock.EXPECT().ReadInConfig().Return(fmt.Errorf("read config error"))
+				mock.EXPECT().ReadInConfig().Return(errors.New("read config error"))
 				return mock
 			},
 			wantErr: true,
@@ -153,7 +154,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			setupViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
 				mock.EXPECT().ReadInConfig()
-				mock.EXPECT().Unmarshal(gomock.Any()).Return(fmt.Errorf("unmarshal error"))
+				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))
 				return mock
 			},
 			wantErr: true,
@@ -172,7 +173,7 @@ func Test_loadLocalConfig(t *testing.T) {
 		{
 			name:          "succeed from empty file",
 			configContent: []byte(`{}`),
-			setupViper: func(ctrl *gomock.Controller) Viper {
+			setupViper: func(_ *gomock.Controller) Viper {
 				return viper.New()
 			},
 			want: &remoteSourceConfig{
@@ -193,7 +194,7 @@ func Test_loadLocalConfig(t *testing.T) {
   "remoteConfigPath": "/config/path",
   "remoteConfigSecretKeyring": "super_secret"
 }`),
-			setupViper: func(ctrl *gomock.Controller) Viper {
+			setupViper: func(_ *gomock.Controller) Viper {
 				return viper.New()
 			},
 			want: &remoteSourceConfig{
@@ -223,6 +224,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			if tt.configContent != nil {
 				configDir, err = os.MkdirTemp("", "test-loadLocalConfig-*")
 				require.NoError(t, err, "failed creating temp config dir: %v", err)
+
 				defer func() { _ = os.RemoveAll(configDir) }()
 
 				tmpFilePath := filepath.Join(configDir, "config.json")
@@ -304,7 +306,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 				mock := NewMockViper(ctrl)
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
-				mock.EXPECT().Unmarshal(gomock.Any()).Return(fmt.Errorf("unmarshal error"))
+				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))
 				return mock
 			},
 			wantErr: true,
@@ -368,7 +370,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 				mock.EXPECT().Get(keyLogLevel).Return("DEBUG")
 				return mock
 			},
-			setupRemoteViper: func(ctrl *gomock.Controller) Viper {
+			setupRemoteViper: func(_ *gomock.Controller) Viper {
 				return viper.New()
 			},
 			want: &testConfig{
@@ -444,7 +446,7 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 				}
 			},
 			setupMocks: func(mv *MockViper) {
-				mv.EXPECT().ReadConfig(gomock.Any()).Return(fmt.Errorf("read config error"))
+				mv.EXPECT().ReadConfig(gomock.Any()).Return(errors.New("read config error"))
 			},
 			wantErr: true,
 		},
@@ -475,6 +477,7 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 			if tt.setupMocks != nil {
 				tt.setupMocks(v)
 			}
+
 			if err := loadFromEnvVarSource(v, tt.setupConfigSource(), "test"); (err != nil) != tt.wantErr {
 				t.Errorf("loadFromEnvVarSource() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -527,7 +530,7 @@ func Test_loadFromRemoteSource(t *testing.T) {
 			},
 			setupMocks: func(mv *MockViper) {
 				mv.EXPECT().AddRemoteProvider("remote", "remote:1234", "/config").
-					Return(fmt.Errorf("provider error"))
+					Return(errors.New("provider error"))
 			},
 			wantErr: true,
 		},
@@ -543,7 +546,7 @@ func Test_loadFromRemoteSource(t *testing.T) {
 			},
 			setupMocks: func(mv *MockViper) {
 				mv.EXPECT().AddSecureRemoteProvider("remote", "remote:1234", "/config", "keyring").
-					Return(fmt.Errorf("provider error"))
+					Return(errors.New("provider error"))
 			},
 			wantErr: true,
 		},
@@ -558,7 +561,7 @@ func Test_loadFromRemoteSource(t *testing.T) {
 			},
 			setupMocks: func(mv *MockViper) {
 				mv.EXPECT().AddRemoteProvider("remote", "remote:1234", "/config")
-				mv.EXPECT().ReadRemoteConfig().Return(fmt.Errorf("read remote error"))
+				mv.EXPECT().ReadRemoteConfig().Return(errors.New("read remote error"))
 			},
 			wantErr: true,
 		},
@@ -594,12 +597,14 @@ func Test_loadFromRemoteSource(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+
 			defer ctrl.Finish()
 
 			v := NewMockViper(ctrl)
 			if tt.setupMocks != nil {
 				tt.setupMocks(v)
 			}
+
 			if err := loadFromRemoteSource(v, tt.setupConfigSource(), "test"); (err != nil) != tt.wantErr {
 				t.Errorf("loadFromRemoteSource() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -607,7 +612,7 @@ func Test_loadFromRemoteSource(t *testing.T) {
 	}
 }
 
-//nolint:gocognit,paralleltest,maintidx
+//nolint:gocognit,maintidx
 func Test_loadConfig(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -843,7 +848,7 @@ func Test_loadConfig(t *testing.T) {
 			name: "fails loading local config",
 			setupLocalViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
-				mock.EXPECT().ReadInConfig().Return(fmt.Errorf("read config error"))
+				mock.EXPECT().ReadInConfig().Return(errors.New("read config error"))
 				return mock
 			},
 			targetConfig: &testConfig{},
@@ -855,7 +860,7 @@ func Test_loadConfig(t *testing.T) {
 				mock := NewMockViper(ctrl)
 				mock.EXPECT().SetDefault(gomock.Any(), gomock.Any()).AnyTimes()
 				mock.EXPECT().SetConfigType(defaultConfigType)
-				mock.EXPECT().Unmarshal(gomock.Any()).Return(fmt.Errorf("unmarshal error"))
+				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))
 				return mock
 			},
 			configContent: []byte(`
@@ -901,7 +906,7 @@ func Test_loadConfig(t *testing.T) {
   }
 }
 `),
-			targetConfig: &testConfig{validateErr: fmt.Errorf("validate error")},
+			targetConfig: &testConfig{validateErr: errors.New("validate error")},
 			wantErr:      true,
 		},
 		{
@@ -1002,7 +1007,6 @@ func Test_loadConfig(t *testing.T) {
 		},
 	}
 
-	//nolint:paralleltest
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -1010,10 +1014,13 @@ func Test_loadConfig(t *testing.T) {
 			defer ctrl.Finish()
 
 			var tmpConfigDir string
+
 			var err error
+
 			if tt.configContent != nil {
 				tmpConfigDir, err = os.MkdirTemp("", "test-loadConfig-*")
 				require.NoError(t, err, "failed creating temp config dir: %v", err)
+
 				defer func() { _ = os.RemoveAll(tmpConfigDir) }()
 
 				tmpFilePath := filepath.Join(tmpConfigDir, "config.json")
@@ -1035,7 +1042,7 @@ func Test_loadConfig(t *testing.T) {
 			}
 
 			if tt.envDataContent != nil {
-				envKey := strings.ToUpper(fmt.Sprintf("%s_REMOTECONFIGDATA", "test"))
+				envKey := "TEST_REMOTECONFIGDATA"
 				t.Setenv(envKey, base64.StdEncoding.EncodeToString(tt.envDataContent))
 			}
 
@@ -1048,10 +1055,12 @@ func Test_loadConfig(t *testing.T) {
 					data, _ := json.Marshal(tt.targetConfig)
 					return string(data)
 				}()
+
 				wantCfgStr := func() string {
 					data, _ := json.Marshal(tt.wantConfig)
 					return string(data)
 				}()
+
 				if cfgStr != wantCfgStr {
 					t.Errorf("loadRemoteSourceConfig() got = %s, want = %s", cfgStr, wantCfgStr)
 				}

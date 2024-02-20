@@ -2,7 +2,7 @@ package httputil
 
 import (
 	"bufio"
-	"fmt"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -52,7 +52,7 @@ func (b *responseWriterWrapper) Flush() {
 func (b *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	hj, ok := b.ResponseWriter.(http.Hijacker)
 	if !ok {
-		return nil, nil, fmt.Errorf("the Hijacker is not supported by the ResponseWriter")
+		return nil, nil, errors.New("the Hijacker is not supported by the ResponseWriter")
 	}
 
 	return hj.Hijack()
@@ -62,7 +62,7 @@ func (b *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 func (b *responseWriterWrapper) Push(target string, opts *http.PushOptions) error {
 	pusher, ok := b.ResponseWriter.(http.Pusher)
 	if !ok {
-		return fmt.Errorf("the Pusher is not supported by the ResponseWriter")
+		return errors.New("the Pusher is not supported by the ResponseWriter")
 	}
 
 	return pusher.Push(target, opts)
@@ -79,7 +79,7 @@ func (b *responseWriterWrapper) ReadFrom(r io.Reader) (int64, error) {
 
 	rf, ok := b.ResponseWriter.(io.ReaderFrom)
 	if !ok {
-		return 0, fmt.Errorf("the ReaderFrom is not supported by the ResponseWriter")
+		return 0, errors.New("the ReaderFrom is not supported by the ResponseWriter")
 	}
 
 	b.maybeWriteHeader()

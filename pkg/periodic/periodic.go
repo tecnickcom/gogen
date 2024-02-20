@@ -3,7 +3,7 @@ package periodic
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"math/rand"
 	"time"
 )
@@ -28,20 +28,20 @@ type Periodic struct {
 func New(interval time.Duration, jitter time.Duration, timeout time.Duration, task TaskFn) (*Periodic, error) {
 	intervalNs := int64(interval)
 	if intervalNs < 1 {
-		return nil, fmt.Errorf("interval must be positive")
+		return nil, errors.New("interval must be positive")
 	}
 
 	jitterNs := int64(jitter)
 	if jitterNs < 0 {
-		return nil, fmt.Errorf("jitter must be positive")
+		return nil, errors.New("jitter must be positive")
 	}
 
 	if int64(timeout) < 1 {
-		return nil, fmt.Errorf("timeout must be positive")
+		return nil, errors.New("timeout must be positive")
 	}
 
 	if task == nil {
-		return nil, fmt.Errorf("nil task")
+		return nil, errors.New("nil task")
 	}
 
 	return &Periodic{

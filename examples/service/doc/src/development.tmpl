@@ -33,43 +33,26 @@ sudo pip install --upgrade check-jsonschema
 
 
 <a name="quickstart"></a>
-## Quick Start
+## Developers' Quick Start
 
-This project includes a Makefile that allows you to test and build the project in a Linux-compatible system with simple commands.  
-All the artifacts and reports produced using this Makefile are stored in the *target* folder.  
+To quickly get started with this project, follow these steps:
 
-All the packages listed in the *resources/docker/Dockerfile.dev* file are required in order to build and test all the library options in the current environment.
-Alternatively, everything can be built inside a [Docker](https://www.docker.com) container using the command "make dbuild".
+1. Ensure you ahev installed the latest Go version and Python3 for some extra tests.
+1. Clone the repository: `git clone https://github.com/gosrvlibexampleowner/gosrvlibexample.git`.
+2. Change into the project directory: `cd gosrvlibexample`.
+3. Install the required dependencies and test everything: `DEVMODE=LOCAL make x`.
+
+Now you are ready to start developing with /gosrvlibexample!
+
+
+This project includes a *Makefile* that allows you to test and build the project in a Linux-compatible system with simple commands.  
+All the artifacts and reports produced using this *Makefile* are stored in the *target* folder.  
+
+Alternatively, everything can be built inside a [Docker](https://www.docker.com) container using the command `make dbuild` that uses the environment defined at `resources/docker/Dockerfile.dev`.
 
 To see all available options:
 ```bash
 make help
-```
-
-
-To download all dependencies:
-```bash
-make deps
-```
-
-To update the mod file:
-```bash
-make mod
-```
-
-To format the code (please use this command before submitting any pull request):
-```bash
-make format
-```
-
-To execute all the default test builds and generate reports in the current environment:
-```bash
-make qa
-```
-
-To build the executable file:
-```bash
-make build
 ```
 
 

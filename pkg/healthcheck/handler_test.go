@@ -2,7 +2,7 @@ package healthcheck
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +30,7 @@ func TestNewHandler(t *testing.T) {
 	require.Equal(t, reflect.ValueOf(httputil.SendJSON).Pointer(), reflect.ValueOf(h1.writeResult).Pointer())
 
 	// With options
-	rw := func(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {}
+	rw := func(_ context.Context, _ http.ResponseWriter, _ int, _ any) {}
 	h2 := NewHandler(testChecks, WithResultWriter(rw))
 	require.Len(t, h2.checks, 2)
 	require.Equal(t, 2, h2.checksCount)
@@ -82,7 +82,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			name: "success mixed results",
 			checks: []HealthCheck{
 				New("test_31", &testHealthChecker{delay: 100 * time.Millisecond, err: nil}),
-				New("test_32", &testHealthChecker{delay: 200 * time.Millisecond, err: fmt.Errorf("check error")}),
+				New("test_32", &testHealthChecker{delay: 200 * time.Millisecond, err: errors.New("check error")}),
 			},
 			wantStatus:     http.StatusServiceUnavailable,
 			wantBody:       `{"test_31":"OK","test_32":"check error"}`,
@@ -101,7 +101,9 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			h := NewHandler(tt.checks, tt.opts...)
 
 			st := time.Now()
+
 			h.ServeHTTP(rr, req)
+
 			el := time.Since(st)
 
 			resp := rr.Result()

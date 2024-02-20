@@ -2,7 +2,6 @@ package filter
 
 import (
 	"errors"
-	"fmt"
 )
 
 // Option is the function that allows to set configuration options.
@@ -43,7 +42,7 @@ func WithQueryFilterKey(key string) Option {
 func WithMaxRules(max uint) Option {
 	return func(p *Processor) error {
 		if max < 1 {
-			return fmt.Errorf("maxRules must be at least 1")
+			return errors.New("maxRules must be at least 1")
 		}
 
 		p.maxRules = max
@@ -56,11 +55,11 @@ func WithMaxRules(max uint) Option {
 func WithMaxResults(max uint) Option {
 	return func(p *Processor) error {
 		if max < 1 {
-			return fmt.Errorf("maxResults must be at least 1")
+			return errors.New("maxResults must be at least 1")
 		}
 
 		if max > MaxResults {
-			return fmt.Errorf("maxResults must be less than MaxResults")
+			return errors.New("maxResults must be less than MaxResults")
 		}
 
 		p.maxResults = max

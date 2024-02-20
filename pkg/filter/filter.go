@@ -225,6 +225,7 @@ func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length in
 		if n < length {
 			// replace unselected elements by the ones that match
 			slice.Index(n).Set(value)
+
 			n++
 		}
 	}

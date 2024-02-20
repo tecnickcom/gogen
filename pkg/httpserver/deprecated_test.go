@@ -10,7 +10,7 @@ import (
 func TestWithInstrumentHandler(t *testing.T) {
 	t.Parallel()
 
-	v := func(path string, handler http.HandlerFunc) http.Handler { return handler }
+	v := func(_ string, handler http.HandlerFunc) http.Handler { return handler }
 	cfg := defaultConfig()
 	err := WithInstrumentHandler(v)(cfg)
 	require.NoError(t, err)

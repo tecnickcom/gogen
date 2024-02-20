@@ -14,11 +14,11 @@ func Test_newDefaultRoutes(t *testing.T) {
 	cfg := defaultConfig()
 
 	cfg.defaultEnabledRoutes = allDefaultRoutes()
-	cfg.metricsHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
-	cfg.pingHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
-	cfg.pprofHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
-	cfg.statusHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
-	cfg.ipHandlerFunc = func(w http.ResponseWriter, r *http.Request) {}
+	cfg.metricsHandlerFunc = func(_ http.ResponseWriter, _ *http.Request) {}
+	cfg.pingHandlerFunc = func(_ http.ResponseWriter, _ *http.Request) {}
+	cfg.pprofHandlerFunc = func(_ http.ResponseWriter, _ *http.Request) {}
+	cfg.statusHandlerFunc = func(_ http.ResponseWriter, _ *http.Request) {}
+	cfg.ipHandlerFunc = func(_ http.ResponseWriter, _ *http.Request) {}
 
 	cfg.disableDefaultRouteLogger[IndexRoute] = true
 	cfg.disableDefaultRouteLogger[IPRoute] = true

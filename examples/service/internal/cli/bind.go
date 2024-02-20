@@ -22,7 +22,7 @@ import (
 
 // bind is the entry point of the service, this is where the wiring of all components happens.
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.WaitGroup, sc chan struct{}) bootstrap.BindFunc {
-	return func(ctx context.Context, l *zap.Logger, m metrics.Client) error {
+	return func(ctx context.Context, _ *zap.Logger, m metrics.Client) error {
 		// We assume the service is disabled and override the service binder if required
 		serviceBinder := httpserver.NopBinder()
 		statusHandler := jsendx.DefaultStatusHandler(appInfo)

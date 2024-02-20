@@ -3,7 +3,7 @@ package jsendx
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -53,7 +53,7 @@ func TestSend(t *testing.T) {
 	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
-	mockWriter.EXPECT().Write(gomock.Any()).Return(0, fmt.Errorf("io error"))
+	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
 	Send(testutil.Context(), mockWriter, http.StatusOK, params, "message")
 }
 
@@ -215,13 +215,13 @@ func TestDefaultIPHandler(t *testing.T) {
 	}{
 		{
 			name:    "success response",
-			ipFunc:  func(ctx context.Context) (string, error) { return "0.0.0.0", nil },
+			ipFunc:  func(_ context.Context) (string, error) { return "0.0.0.0", nil },
 			wantIP:  "0.0.0.0",
 			wantErr: false,
 		},
 		{
 			name:    "error response",
-			ipFunc:  func(ctx context.Context) (string, error) { return "ERROR", fmt.Errorf("ERROR") },
+			ipFunc:  func(_ context.Context) (string, error) { return "ERROR", errors.New("ERROR") },
 			wantIP:  "",
 			wantErr: true,
 		},

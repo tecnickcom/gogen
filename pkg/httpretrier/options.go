@@ -1,7 +1,7 @@
 package httpretrier
 
 import (
-	"fmt"
+	"errors"
 	"time"
 )
 
@@ -12,7 +12,7 @@ type Option func(c *HTTPRetrier) error
 func WithRetryIfFn(retryIfFn RetryIfFn) Option {
 	return func(r *HTTPRetrier) error {
 		if retryIfFn == nil {
-			return fmt.Errorf("the retry function is required")
+			return errors.New("the retry function is required")
 		}
 
 		r.retryIfFn = retryIfFn
@@ -25,7 +25,7 @@ func WithRetryIfFn(retryIfFn RetryIfFn) Option {
 func WithAttempts(attempts uint) Option {
 	return func(r *HTTPRetrier) error {
 		if attempts < 1 {
-			return fmt.Errorf("the number of attempts must be at least 1")
+			return errors.New("the number of attempts must be at least 1")
 		}
 
 		r.attempts = attempts
@@ -38,7 +38,7 @@ func WithAttempts(attempts uint) Option {
 func WithDelay(delay time.Duration) Option {
 	return func(r *HTTPRetrier) error {
 		if int64(delay) < 1 {
-			return fmt.Errorf("delay must be greater than zero")
+			return errors.New("delay must be greater than zero")
 		}
 
 		r.delay = delay
@@ -53,7 +53,7 @@ func WithDelay(delay time.Duration) Option {
 func WithDelayFactor(delayFactor float64) Option {
 	return func(r *HTTPRetrier) error {
 		if delayFactor < 1 {
-			return fmt.Errorf("delay factor must be at least 1")
+			return errors.New("delay factor must be at least 1")
 		}
 
 		r.delayFactor = delayFactor
@@ -67,7 +67,7 @@ func WithDelayFactor(delayFactor float64) Option {
 func WithJitter(jitter time.Duration) Option {
 	return func(r *HTTPRetrier) error {
 		if int64(jitter) < 1 {
-			return fmt.Errorf("jitter must be greater than zero")
+			return errors.New("jitter must be greater than zero")
 		}
 
 		r.jitter = jitter

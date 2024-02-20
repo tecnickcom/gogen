@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest
 func Test_loadConfig(t *testing.T) {
 	region := "eu-central-1"
 

@@ -5,6 +5,7 @@ package httpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -82,13 +83,13 @@ func Test_defaultIPHandler(t *testing.T) {
 	}{
 		{
 			name:    "success response",
-			ipFunc:  func(ctx context.Context) (string, error) { return "0.0.0.0", nil },
+			ipFunc:  func(_ context.Context) (string, error) { return "0.0.0.0", nil },
 			wantIP:  "0.0.0.0",
 			wantErr: false,
 		},
 		{
 			name:    "error response",
-			ipFunc:  func(ctx context.Context) (string, error) { return "ERROR", fmt.Errorf("ERROR") },
+			ipFunc:  func(_ context.Context) (string, error) { return "ERROR", errors.New("ERROR") },
 			wantIP:  "",
 			wantErr: true,
 		},
@@ -207,6 +208,7 @@ func (c *customMiddlewareBinder) middleware(ch chan struct{}) MiddlewareFn {
 	return func(_ MiddlewareArgs, next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ch <- struct{}{}
+
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -323,7 +325,7 @@ func TestStart(t *testing.T) {
 				WithRequestTimeout(1 * time.Minute),
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithEnableAllDefaultRoutes(),
-				WithInstrumentHandler(func(path string, handler http.HandlerFunc) http.Handler { return handler }),
+				WithInstrumentHandler(func(_ string, handler http.HandlerFunc) http.Handler { return handler }),
 				WithShutdownTimeout(1 * time.Second),
 			},
 			setupBinder: func(b *MockBinder) {
@@ -419,6 +421,7 @@ YlAqGKDZ+A+l
 			if tt.failListenPort != 0 {
 				l, err := net.Listen("tcp", fmt.Sprintf(":%d", tt.failListenPort))
 				require.NoError(t, err, "failed starting pre-listener")
+
 				defer func() { _ = l.Close() }()
 			}
 
@@ -434,11 +437,11 @@ YlAqGKDZ+A+l
 type mockListenerErr struct{}
 
 func (ls mockListenerErr) Accept() (net.Conn, error) {
-	return nil, fmt.Errorf("ERROR")
+	return nil, errors.New("ERROR")
 }
 
 func (ls mockListenerErr) Close() error {
-	return fmt.Errorf("ERROR")
+	return errors.New("ERROR")
 }
 
 func (ls mockListenerErr) Addr() net.Addr {

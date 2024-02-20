@@ -2,7 +2,7 @@ package bootstrap
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
@@ -51,27 +51,27 @@ func defaultCreateMetricsClientFunc() (metrics.Client, error) {
 // validate the configuration.
 func (c *config) validate() error {
 	if c.context == nil {
-		return fmt.Errorf("context is required")
+		return errors.New("context is required")
 	}
 
 	if c.createLoggerFunc == nil {
-		return fmt.Errorf("createLoggerFunc is required")
+		return errors.New("createLoggerFunc is required")
 	}
 
 	if c.createMetricsClientFunc == nil {
-		return fmt.Errorf("createMetricsClientFunc is required")
+		return errors.New("createMetricsClientFunc is required")
 	}
 
 	if c.shutdownTimeout <= 0 {
-		return fmt.Errorf("invalid shutdownTimeout")
+		return errors.New("invalid shutdownTimeout")
 	}
 
 	if c.shutdownWaitGroup == nil {
-		return fmt.Errorf("shutdownWaitGroup is required")
+		return errors.New("shutdownWaitGroup is required")
 	}
 
 	if c.shutdownSignalChan == nil {
-		return fmt.Errorf("shutdownSignalChan is required")
+		return errors.New("shutdownSignalChan is required")
 	}
 
 	return nil

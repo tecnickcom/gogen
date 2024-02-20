@@ -2,7 +2,7 @@ package kafka
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -68,11 +68,11 @@ func (m mockProducerClient) Close() error {
 type mockProducerClientError struct{}
 
 func (m mockProducerClientError) WriteMessages(_ context.Context, _ ...kafka.Message) error {
-	return fmt.Errorf("error WriteMessages")
+	return errors.New("error WriteMessages")
 }
 
 func (m mockProducerClientError) Close() error {
-	return fmt.Errorf("error Close")
+	return errors.New("error Close")
 }
 
 func TestSendError(t *testing.T) {

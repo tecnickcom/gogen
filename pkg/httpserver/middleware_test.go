@@ -17,7 +17,7 @@ import (
 func TestRequestInjectHandler(t *testing.T) {
 	t.Parallel()
 
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	nextHandler := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		l := logging.FromContext(r.Context())
 		require.NotNil(t, l, "logger not found")
 

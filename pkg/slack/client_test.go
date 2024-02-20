@@ -61,6 +61,7 @@ func TestNew(t *testing.T) {
 			if tt.wantErr {
 				require.Nil(t, c, "New() returned client should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 
@@ -204,7 +205,7 @@ func TestClient_Send(t *testing.T) {
 	}{
 		{
 			name: "fails because status not OK",
-			webhookHandler: func(w http.ResponseWriter, r *http.Request) {
+			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
 				httputil.SendStatus(testutil.Context(), w, http.StatusInternalServerError)
 			},
 			text:      "text 1",
@@ -216,7 +217,7 @@ func TestClient_Send(t *testing.T) {
 		},
 		{
 			name: "fails because of timeout",
-			webhookHandler: func(w http.ResponseWriter, r *http.Request) {
+			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
 				time.Sleep(timeout + 1)
 				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
 			},
@@ -229,7 +230,7 @@ func TestClient_Send(t *testing.T) {
 		},
 		{
 			name: "fails because bad address",
-			webhookHandler: func(w http.ResponseWriter, r *http.Request) {
+			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
 				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
 			},
 			text:       "text address",
@@ -238,7 +239,7 @@ func TestClient_Send(t *testing.T) {
 		},
 		{
 			name: "fails because WriteHTTPRetrier error",
-			webhookHandler: func(w http.ResponseWriter, r *http.Request) {
+			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
 				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
 			},
 			text:       "text retrier",
@@ -247,7 +248,7 @@ func TestClient_Send(t *testing.T) {
 		},
 		{
 			name: "succeed with valid response",
-			webhookHandler: func(w http.ResponseWriter, r *http.Request) {
+			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
 				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
 			},
 			text:      "text OK",

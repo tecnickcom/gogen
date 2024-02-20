@@ -4,7 +4,7 @@ package httpretrier
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"testing"
@@ -30,7 +30,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "succeeds with custom values",
 			opts: []Option{
-				WithRetryIfFn(func(r *http.Response, err error) bool { return true }),
+				WithRetryIfFn(func(_ *http.Response, _ error) bool { return true }),
 				WithAttempts(5),
 				WithDelay(601 * time.Millisecond),
 				WithDelayFactor(1.3),
@@ -62,12 +62,16 @@ func TestNew(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			c, err := New(http.DefaultClient, tt.opts...)
+
 			if tt.wantErr {
 				require.Nil(t, c, "New() returned value should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			require.NotNil(t, c, "New() returned value should not be nil")
 			require.NoError(t, err, "New() unexpected error = %v", err)
 		})
@@ -84,7 +88,7 @@ func Test_defaultRetryIf(t *testing.T) {
 	}{
 		{
 			name: "true with error",
-			err:  fmt.Errorf("ERROR"),
+			err:  errors.New("ERROR"),
 			want: true,
 		},
 		{
@@ -98,7 +102,9 @@ func Test_defaultRetryIf(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			got := defaultRetryIf(nil, tt.err)
+
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -116,7 +122,7 @@ func TestRetryIfForWriteRequests(t *testing.T) {
 		{
 			name:   "true with error",
 			status: http.StatusOK,
-			err:    fmt.Errorf("ERROR"),
+			err:    errors.New("ERROR"),
 			want:   true,
 		},
 		{
@@ -173,7 +179,7 @@ func TestRetryIfForReadRequests(t *testing.T) {
 		{
 			name:   "true with error",
 			status: http.StatusOK,
-			err:    fmt.Errorf("ERROR"),
+			err:    errors.New("ERROR"),
 			want:   true,
 		},
 		{
@@ -317,7 +323,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 					StatusCode: http.StatusOK,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
-				mock.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("network error"))
+				mock.EXPECT().Do(gomock.Any()).Return(nil, errors.New("network error"))
 				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil)
 				mock.EXPECT().Do(gomock.Any()).Return(rOK, nil)
 			},
@@ -331,7 +337,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
-				mock.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("network error"))
+				mock.EXPECT().Do(gomock.Any()).Return(nil, errors.New("network error"))
 				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil).Times(3)
 			},
 			wantRemainingAttempts: 0,
@@ -344,7 +350,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
-				mock.EXPECT().Do(gomock.Any()).DoAndReturn(func(r *http.Request) (*http.Response, error) {
+				mock.EXPECT().Do(gomock.Any()).DoAndReturn(func(_ *http.Request) (*http.Response, error) {
 					time.Sleep(500 * time.Millisecond)
 					return rErr, nil
 				})
@@ -376,8 +382,10 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			}
 
 			ctx := testutil.Context()
+
 			if tt.ctxTimeout > 0 {
 				timeoutCtx, cancel := context.WithTimeout(testutil.Context(), tt.ctxTimeout)
+
 				defer cancel()
 
 				ctx = timeoutCtx
@@ -387,7 +395,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.requestBodyError {
-				r.GetBody = func() (io.ReadCloser, error) { return nil, fmt.Errorf("ERROR") }
+				r.GetBody = func() (io.ReadCloser, error) { return nil, errors.New("ERROR") }
 			}
 
 			opts := []Option{
@@ -405,6 +413,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			if resp != nil {
 				_ = resp.Body.Close()
 			}
+
 			require.Equal(t, tt.wantErr, err != nil, "Do() error = %v, wantErr %v", err, tt.wantErr)
 			require.Equal(t, tt.wantRemainingAttempts, retrier.remainingAttempts, "Do() remainingAttempts = %v, wantRemainingAttempts %v", err, tt.wantErr)
 		})
@@ -420,5 +429,6 @@ func TestHTTPRetrier_setTimer(t *testing.T) {
 
 	time.Sleep(2 * time.Millisecond)
 	c.setTimer(2 * time.Millisecond)
+
 	<-c.timer.C
 }

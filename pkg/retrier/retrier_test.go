@@ -2,7 +2,7 @@ package retrier
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "succeeds with custom values",
 			opts: []Option{
-				WithRetryIfFn(func(err error) bool { return true }),
+				WithRetryIfFn(func(_ error) bool { return true }),
 				WithAttempts(5),
 				WithDelay(601 * time.Millisecond),
 				WithDelayFactor(1.3),
@@ -44,12 +44,16 @@ func TestNew(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			r, err := New(tt.opts...)
+
 			if tt.wantErr {
 				require.Nil(t, r)
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			require.NotNil(t, r, "New() returned value should not be nil")
 			require.NoError(t, err)
 		})
@@ -81,21 +85,21 @@ func TestRetrier_Run(t *testing.T) {
 					return nil
 				}
 				count++
-				return fmt.Errorf("ERROR")
+				return errors.New("ERROR")
 			},
 			timeout:               1 * time.Second,
 			wantRemainingAttempts: 1,
 		},
 		{
 			name:                  "fail all attempts",
-			task:                  func(_ context.Context) error { return fmt.Errorf("ERROR") },
+			task:                  func(_ context.Context) error { return errors.New("ERROR") },
 			timeout:               1 * time.Second,
 			wantRemainingAttempts: 0,
 			wantErr:               true,
 		},
 		{
 			name:                  "fail with main timeout",
-			task:                  func(ctx context.Context) error { <-ctx.Done(); return fmt.Errorf("ERROR") },
+			task:                  func(ctx context.Context) error { <-ctx.Done(); return errors.New("ERROR") },
 			timeout:               1 * time.Millisecond,
 			wantRemainingAttempts: 3,
 			wantErr:               true,
@@ -140,7 +144,7 @@ func TestDefaultRetryIf(t *testing.T) {
 	}{
 		{
 			name: "true with error",
-			err:  fmt.Errorf("ERROR"),
+			err:  errors.New("ERROR"),
 			want: true,
 		},
 		{
@@ -154,7 +158,9 @@ func TestDefaultRetryIf(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			got := DefaultRetryIf(tt.err)
+
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -169,5 +175,6 @@ func TestRetrier_setTimer(t *testing.T) {
 
 	time.Sleep(2 * time.Millisecond)
 	r.setTimer(2 * time.Millisecond)
+
 	<-r.timer.C
 }

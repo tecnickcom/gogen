@@ -11,7 +11,7 @@ import (
 func TestWithConfigureRequest(t *testing.T) {
 	t.Parallel()
 
-	v := func(r *http.Request) {}
+	v := func(_ *http.Request) {}
 	cfg := &checkConfig{}
 	WithConfigureRequest(v)(cfg)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.configureRequest).Pointer())

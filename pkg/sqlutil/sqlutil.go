@@ -2,7 +2,7 @@
 package sqlutil
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 )
 
@@ -39,11 +39,11 @@ func defaultSQLUtil() *SQLUtil {
 
 func (c *SQLUtil) validate() error {
 	if c.quoteIDFunc == nil {
-		return fmt.Errorf("the QuoteID function must be set")
+		return errors.New("the QuoteID function must be set")
 	}
 
 	if c.quoteValueFunc == nil {
-		return fmt.Errorf("the QuoteValue function must be set")
+		return errors.New("the QuoteValue function must be set")
 	}
 
 	return nil

@@ -72,6 +72,7 @@ func TestNew(t *testing.T) {
 			if tt.wantErr {
 				require.Nil(t, got, "New() returned Validator should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 

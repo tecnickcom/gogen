@@ -39,7 +39,7 @@ func TestWithSendResponseFn(t *testing.T) {
 
 	c := &JWT{}
 
-	v := func(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {}
+	v := func(_ context.Context, _ http.ResponseWriter, _ int, _ string) {}
 	WithSendResponseFn(v)(c)
 
 	require.NotNil(t, v, c.sendResponseFn)

@@ -2,6 +2,7 @@ package retrier_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -20,7 +21,7 @@ func ExampleRetrier_Run() {
 
 		count++
 
-		return fmt.Errorf("ERROR")
+		return errors.New("ERROR")
 	}
 
 	opts := []retrier.Option{

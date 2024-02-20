@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -17,7 +18,7 @@ type Option func(*config) error
 func WithRouter(r *httprouter.Router) Option {
 	return func(cfg *config) error {
 		if r == nil {
-			return fmt.Errorf("router is required")
+			return errors.New("router is required")
 		}
 
 		cfg.router = r
@@ -44,7 +45,7 @@ func WithServerAddr(addr string) Option {
 func WithRequestTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		if timeout <= 0 {
-			return fmt.Errorf("invalid requestTimeout")
+			return errors.New("invalid requestTimeout")
 		}
 
 		cfg.requestTimeout = timeout
@@ -57,7 +58,7 @@ func WithRequestTimeout(timeout time.Duration) Option {
 func WithServerReadHeaderTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		if timeout <= 0 {
-			return fmt.Errorf("invalid serverReadHeaderTimeout")
+			return errors.New("invalid serverReadHeaderTimeout")
 		}
 
 		cfg.serverReadHeaderTimeout = timeout
@@ -70,7 +71,7 @@ func WithServerReadHeaderTimeout(timeout time.Duration) Option {
 func WithServerReadTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		if timeout <= 0 {
-			return fmt.Errorf("invalid serverReadTimeout")
+			return errors.New("invalid serverReadTimeout")
 		}
 
 		cfg.serverReadTimeout = timeout
@@ -83,7 +84,7 @@ func WithServerReadTimeout(timeout time.Duration) Option {
 func WithServerWriteTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		if timeout <= 0 {
-			return fmt.Errorf("invalid serverWriteTimeout")
+			return errors.New("invalid serverWriteTimeout")
 		}
 
 		cfg.serverWriteTimeout = timeout
@@ -96,7 +97,7 @@ func WithServerWriteTimeout(timeout time.Duration) Option {
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		if timeout <= 0 {
-			return fmt.Errorf("invalid shutdownTimeout")
+			return errors.New("invalid shutdownTimeout")
 		}
 
 		cfg.shutdownTimeout = timeout
@@ -109,7 +110,7 @@ func WithShutdownTimeout(timeout time.Duration) Option {
 func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 	return func(cfg *config) error {
 		if wg == nil {
-			return fmt.Errorf("shutdownWaitGroup is required")
+			return errors.New("shutdownWaitGroup is required")
 		}
 
 		cfg.shutdownWaitGroup = wg
@@ -123,7 +124,7 @@ func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 func WithShutdownSignalChan(ch chan struct{}) Option {
 	return func(cfg *config) error {
 		if ch == nil {
-			return fmt.Errorf("shutdownSignalChan is required")
+			return errors.New("shutdownSignalChan is required")
 		}
 
 		cfg.shutdownSignalChan = ch
@@ -169,7 +170,7 @@ func WithEnableAllDefaultRoutes() Option {
 func WithIndexHandlerFunc(handler IndexHandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("indexHandlerFunc is required")
+			return errors.New("indexHandlerFunc is required")
 		}
 
 		cfg.indexHandlerFunc = handler
@@ -182,7 +183,7 @@ func WithIndexHandlerFunc(handler IndexHandlerFunc) Option {
 func WithIPHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("ipHandlerFunc is required")
+			return errors.New("ipHandlerFunc is required")
 		}
 
 		cfg.ipHandlerFunc = handler
@@ -195,7 +196,7 @@ func WithIPHandlerFunc(handler http.HandlerFunc) Option {
 func WithMetricsHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("metricsHandlerFunc is required")
+			return errors.New("metricsHandlerFunc is required")
 		}
 
 		cfg.metricsHandlerFunc = handler
@@ -208,7 +209,7 @@ func WithMetricsHandlerFunc(handler http.HandlerFunc) Option {
 func WithPingHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("pingHandlerFunc is required")
+			return errors.New("pingHandlerFunc is required")
 		}
 
 		cfg.pingHandlerFunc = handler
@@ -221,7 +222,7 @@ func WithPingHandlerFunc(handler http.HandlerFunc) Option {
 func WithPProfHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("pprofHandlerFunc is required")
+			return errors.New("pprofHandlerFunc is required")
 		}
 
 		cfg.pprofHandlerFunc = handler
@@ -234,7 +235,7 @@ func WithPProfHandlerFunc(handler http.HandlerFunc) Option {
 func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("statusHandlerFunc is required")
+			return errors.New("statusHandlerFunc is required")
 		}
 
 		cfg.statusHandlerFunc = handler
@@ -247,7 +248,7 @@ func WithStatusHandlerFunc(handler http.HandlerFunc) Option {
 func WithTraceIDHeaderName(name string) Option {
 	return func(cfg *config) error {
 		if name == "" {
-			return fmt.Errorf("traceIDHeaderName is required")
+			return errors.New("traceIDHeaderName is required")
 		}
 
 		cfg.traceIDHeaderName = name
@@ -277,7 +278,7 @@ func WithMiddlewareFn(fn ...MiddlewareFn) Option {
 func WithNotFoundHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("notFoundHandlerFunc is required")
+			return errors.New("notFoundHandlerFunc is required")
 		}
 
 		cfg.notFoundHandlerFunc = handler
@@ -290,7 +291,7 @@ func WithNotFoundHandlerFunc(handler http.HandlerFunc) Option {
 func WithMethodNotAllowedHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("methodNotAllowedHandlerFunc is required")
+			return errors.New("methodNotAllowedHandlerFunc is required")
 		}
 
 		cfg.methodNotAllowedHandlerFunc = handler
@@ -303,7 +304,7 @@ func WithMethodNotAllowedHandlerFunc(handler http.HandlerFunc) Option {
 func WithPanicHandlerFunc(handler http.HandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
-			return fmt.Errorf("panicHandlerFunc is required")
+			return errors.New("panicHandlerFunc is required")
 		}
 
 		cfg.panicHandlerFunc = handler

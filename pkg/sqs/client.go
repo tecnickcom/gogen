@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -64,7 +65,7 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 	if strings.HasSuffix(queueURL, fifoSuffix) {
 		re := regexp.MustCompile(regexMessageGroupID)
 		if !re.MatchString(msgGroupID) {
-			return nil, fmt.Errorf("a valid msgGroupID is required for FIFO queue")
+			return nil, errors.New("a valid msgGroupID is required for FIFO queue")
 		}
 
 		awsMsgGroupID = aws.String(msgGroupID)

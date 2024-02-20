@@ -1,7 +1,7 @@
 package kafkacgo
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -96,11 +96,11 @@ func (m mockConsumerClient) Close() error {
 type mockConsumerClientError struct{}
 
 func (m mockConsumerClientError) ReadMessage(_ time.Duration) (*kafka.Message, error) {
-	return nil, fmt.Errorf("error ReadMessage")
+	return nil, errors.New("error ReadMessage")
 }
 
 func (m mockConsumerClientError) Close() error {
-	return fmt.Errorf("error Close")
+	return errors.New("error Close")
 }
 
 func Test_Receive(t *testing.T) {

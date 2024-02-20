@@ -4,6 +4,7 @@ package logging
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -73,7 +74,7 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 		levelEncoder = zapcore.LowercaseLevelEncoder
 		timeEncoder = zapcore.EpochNanosTimeEncoder
 	default:
-		return nil, fmt.Errorf("invalid log format")
+		return nil, errors.New("invalid log format")
 	}
 
 	hostname, err := os.Hostname()

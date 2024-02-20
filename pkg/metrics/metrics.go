@@ -51,7 +51,7 @@ func (c *Default) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripp
 // MetricsHandlerFunc returns an http handler function.
 func (c *Default) MetricsHandlerFunc() http.HandlerFunc {
 	// Returns "OK" by default.
-	return func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`OK`)) }
+	return func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`OK`)) }
 }
 
 // IncLogLevelCounter is an empty function.

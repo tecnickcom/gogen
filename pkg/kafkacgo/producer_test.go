@@ -1,7 +1,7 @@
 package kafkacgo
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -84,7 +84,7 @@ func (m mockProducerClient) Close() {}
 type mockProducerClientError struct{}
 
 func (m mockProducerClientError) Produce(_ *kafka.Message, _ chan kafka.Event) error {
-	return fmt.Errorf("error Produce")
+	return errors.New("error Produce")
 }
 
 func (m mockProducerClientError) Close() {}

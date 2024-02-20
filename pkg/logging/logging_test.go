@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/url"
 	"strings"
 	"testing"
@@ -66,6 +66,7 @@ func TestNewLogger(t *testing.T) {
 			opts := tt.opts
 
 			var loggedMetricLevel string
+
 			opts = append(opts, WithIncrementLogMetricsFunc(func(ll string) {
 				loggedMetricLevel = ll
 			}))
@@ -295,7 +296,7 @@ func TestLogDifferences(t *testing.T) {
 type testCloseError struct{}
 
 func (c *testCloseError) Close() error {
-	return fmt.Errorf("close error")
+	return errors.New("close error")
 }
 
 type testCloseOK struct{}

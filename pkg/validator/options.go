@@ -24,6 +24,7 @@ func WithFieldNameTag(tag string) Option {
 			if name == "-" {
 				return ""
 			}
+
 			return name
 		})
 

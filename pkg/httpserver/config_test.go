@@ -152,7 +152,7 @@ func Test_setRouter(t *testing.T) {
 			name:   "should handle 405",
 			method: http.MethodPost,
 			setupRouter: func(r testRouter) {
-				fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fn := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 					http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
 				})
 				r.Handler(http.MethodGet, "/not/allowed", fn)
@@ -164,7 +164,7 @@ func Test_setRouter(t *testing.T) {
 			name:   "should handle panic in handler",
 			method: http.MethodGet,
 			setupRouter: func(r testRouter) {
-				fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fn := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 					panic("panicking!")
 				})
 				r.Handler(http.MethodGet, "/panic", fn)

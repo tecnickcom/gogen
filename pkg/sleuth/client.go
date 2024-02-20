@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -57,11 +58,11 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 	}
 
 	if org == "" {
-		return nil, fmt.Errorf("org is empty")
+		return nil, errors.New("org is empty")
 	}
 
 	if apiKey == "" {
-		return nil, fmt.Errorf("apiKey is empty")
+		return nil, errors.New("apiKey is empty")
 	}
 
 	valid, _ := validator.New(

@@ -231,8 +231,8 @@ func TestWithIndexHandlerFunc(t *testing.T) {
 	err := WithIndexHandlerFunc(nil)(cfg)
 	require.Error(t, err)
 
-	v := func(routes []Route) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+	v := func(_ []Route) http.HandlerFunc {
+		return func(_ http.ResponseWriter, _ *http.Request) {
 			// mock function
 		}
 	}

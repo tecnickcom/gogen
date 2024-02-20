@@ -1,7 +1,7 @@
 package sliceutil
 
 import (
-	"fmt"
+	"errors"
 	"math"
 	"slices"
 
@@ -73,7 +73,7 @@ type DescStats[V typeutil.Number] struct {
 func Stats[S ~[]V, V typeutil.Number](s S) (*DescStats[V], error) {
 	n := len(s)
 	if n < 1 {
-		return nil, fmt.Errorf("input slice is empty")
+		return nil, errors.New("input slice is empty")
 	}
 
 	ds := &DescStats[V]{
@@ -127,6 +127,7 @@ func statsCenter[S ~[]V, V typeutil.Number](ds *DescStats[V], s, ord S, n int, n
 				ds.Mode = ord[i]
 				ds.ModeFreq = freq
 			}
+
 			freq = 1
 		}
 	}

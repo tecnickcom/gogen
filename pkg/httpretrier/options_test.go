@@ -15,7 +15,7 @@ func TestWithRetryIfFn(t *testing.T) {
 
 	c := &HTTPRetrier{}
 
-	v := func(r *http.Response, err error) bool { return true }
+	v := func(_ *http.Response, _ error) bool { return true }
 	err := WithRetryIfFn(v)(c)
 	require.NoError(t, err)
 
