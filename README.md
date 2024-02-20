@@ -63,7 +63,7 @@ Now you are ready to start developing with gosrvlib!
 This project includes a *Makefile* that allows you to test and build the project in a Linux-compatible system with simple commands.  
 All the artifacts and reports produced using this *Makefile* are stored in the *target* folder.  
 
-Alternatively, everything can be built inside a [Docker](https://www.docker.com) container using the command `make dbuild` that uses the environment defined at `*`resources/docker/Dockerfile.dev`.
+Alternatively, everything can be built inside a [Docker](https://www.docker.com) container using the command `make dbuild` that uses the environment defined at `resources/docker/Dockerfile.dev`.
 
 To see all available options:
 ```bash
