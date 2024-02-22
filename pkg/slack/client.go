@@ -1,4 +1,3 @@
-// Package slack is a basic Slack API client to send messages via a Webhook.
 package slack
 
 import (
@@ -44,7 +43,8 @@ type Client struct {
 }
 
 // New creates a new instance of the Slack service client.
-// The arguments other than "addr" are optional. They can be set in the Webhook configuration or in each individual message.
+// The arguments other than "addr" (Slack Webhook URL) are optional,
+// they can be set in the Webhook configuration or in each individual message.
 func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*Client, error) {
 	address, err := url.Parse(addr)
 	if err != nil {

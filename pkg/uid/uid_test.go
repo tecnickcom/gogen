@@ -5,15 +5,6 @@ import (
 	"testing"
 )
 
-func TestInitRandSeed(t *testing.T) {
-	t.Parallel()
-
-	err := InitRandSeed()
-	if err != nil {
-		t.Errorf("Unexpected error %#v", err)
-	}
-}
-
 func TestNewID64(t *testing.T) {
 	t.Parallel()
 

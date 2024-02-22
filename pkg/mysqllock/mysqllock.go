@@ -1,4 +1,34 @@
-// Package mysqllock provides a distributed locking mechanism leveraging MySQL internal functions.
+/*
+Package mysqllock provides a distributed locking mechanism leveraging MySQL internal functions.
+
+This package allows acquiring and releasing locks using MySQL's GET_LOCK and RELEASE_LOCK functions.
+It provides a MySQLLock struct that represents a locker and has methods for acquiring and releasing locks.
+
+Example usage:
+
+	// Create a new MySQLLock instance
+	db, err := sql.Open("mysql", "user:password@tcp(localhost:3306)/database")
+	if err != nil {
+	    log.Fatal(err)
+	}
+	defer db.Close()
+	lock := mysqllock.New(db)
+
+	// Acquire a lock
+	releaseFunc, err := lock.Acquire(context.Background(), "my_lock_key", 10*time.Second)
+	if err != nil {
+	    log.Fatal(err)
+	}
+	defer releaseFunc()
+
+	// Perform locked operations
+
+	// Release the lock
+	err = releaseFunc()
+	if err != nil {
+	    log.Fatal(err)
+	}
+*/
 package mysqllock
 
 import (

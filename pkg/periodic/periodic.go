@@ -1,4 +1,7 @@
-// Package periodic allow to execute a specified function periodically.
+/*
+Package periodic provides a way to execute a given function periodically at a specified interval.
+It allows for the configuration of a maximum random jitter time between each function call and a timeout applied to each function call via Context.
+*/
 package periodic
 
 import (

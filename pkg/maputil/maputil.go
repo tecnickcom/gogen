@@ -1,4 +1,6 @@
-// Package maputil provides a collection of map functions.
+/*
+Package maputil provides a collection of map utility functions.
+*/
 package maputil
 
 // Filter returns a new map containing

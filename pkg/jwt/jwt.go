@@ -1,4 +1,6 @@
-// Package jwt provides JWT Auth handlers.
+/*
+Package jwt provides simple wrapper functions to manage basic JWT Auth with username/password credentials.
+*/
 package jwt
 
 import (

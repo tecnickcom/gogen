@@ -1,34 +1,64 @@
-// Package config handles the configuration of the program.
-// The configuration contains the set of initial parameter settings that are read at run-time by the program.
-// This package allows to load the configuration from a local file, an environment variable or a remote config provider (e.g. Consul, ETCD, Firestore).
-//
-// Configuration Loading Strategy:
-//
-// Different entry points can be used during the development, debugging, testing or deployment.
-//
-// To get the maximum flexibility, the different configuration entry points can be coordinated in the following sequence (1 has the lowest priority and 5 the maximum):
-//
-// 1. In the “myprog” program the configuration parameters are defined as a data structure that can be easily mapped to and from a JSON (or YAML) object, and they are initialized with constant default values;
-//
-//  2. The program attempts to load the local “config.json” configuration file (or what is specified by defaultConfigName and defaultConfigType) and, as soon one is found, overwrites the values previously set. The configuration file is searched in the following ordered directories:
-//     ./
-//     ~/.myprog/
-//     /etc/myprog/
-//
-//  3. The program attempts to load the environmental variables that define the remote configuration system and, if found, overwrites the correspondent configuration parameters:
-//     MYPROG_REMOTECONFIGPROVIDER → remoteConfigProvider
-//     MYPROG_REMOTECONFIGENDPOINT → remoteConfigEndpoint
-//     MYPROG_REMOTECONFIGPATH → remoteConfigPath
-//     MYPROG_REMOTECONFIGSECRETKEYRING → remoteConfigSecretKeyring
-//     MYPROG_REMOTECONFIGDATA → remoteConfigData
-//
-// 4. If the remoteConfigProvider parameter is not empty, the program attempts to load the configuration data from the specified source. This can be any remote source supported by the Viper library (e.g. Consul, ETCD) or alternatively from the MYPROG_REMOTECONFIGDATA environment variable as base64 encoded JSON if MYPROG_REMOTECONFIGPROVIDER is set to "envar".
-//
-// 5. Any specified command line property overwrites the correspondent configuration parameter.
-//
-// 6. The configuration parameters are validated via the Validate() function.
-//
-// An example can be found in examples/service/internal/cli/config.go
+/*
+Package config handles the configuration of a program.
+The configuration contains the set of initial parameter settings that are read at runtime by the program.
+
+This package allows plugging a fully-fledged configuration system into an application, taking care of the boilerplate code, common settings, configuration loading, and validation.
+
+Different configuration sources can be used during development, debugging, testing, or deployment.
+The configuration can be loaded from a local file, environment variables, or a remote configuration provider (e.g., Consul, etcd, etcd3, Firestore, NATS).
+
+This is a Viper-based implementation of the configuration model described in the following article:
+  - Nicola Asuni, 2014-09-13, "Software Configuration", https://technick.net/guides/software/software_configuration/
+
+# Configuration Loading Strategy:
+
+To achieve maximum flexibility, the different configuration entry points are coordinated in the following sequence (1 has the lowest priority and 5 has the highest):
+
+ 1. In the "myprog" program, the configuration parameters are defined as a data structure that can be easily mapped to and from a JSON object (or any other format supported by Viper like TOML, YAML, and HCL).
+    Each structure parameter is annotated with the "mapstructure" and "validate" tags to define the name mapping and the validation rules.
+    The parameters are initialized with constant default values.
+
+ 2. The program attempts to load the local "config.json" configuration file, and as soon as one is found, it overwrites the default values previously set.
+
+    The configuration file is searched in the following ordered directories based on the Linux Filesystem Hierarchy Standard (FHS):
+
+    - ./
+
+    - ~/.myprog/
+
+    - /etc/myprog/
+
+ 3. The program attempts to load the environmental variables that define the remote configuration system. If found, it overwrites the corresponding configuration parameters:
+
+    - [ENVIRONMENT VARIABLE NAME] → [CONFIGURATION PARAMETER NAME]
+
+    - MYPROG_REMOTECONFIGPROVIDER → remoteConfigProvider
+
+    - MYPROG_REMOTECONFIGENDPOINT → remoteConfigEndpoint
+
+    - MYPROG_REMOTECONFIGPATH → remoteConfigPath
+
+    - MYPROG_REMOTECONFIGSECRETKEYRING → remoteConfigSecretKeyring
+
+    - MYPROG_REMOTECONFIGDATA → remoteConfigData
+
+ 4. If the "remoteConfigProvider" parameter is not empty, the program attempts to load the configuration data from the specified source.
+    This can be any remote source supported by the Viper library (e.g., Consul, etcd, etcd3, Firestore, NATS).
+    The configuration source can also be the "MYPROG_REMOTECONFIGDATA" environment variable as base64-encoded JSON when "MYPROG_REMOTECONFIGPROVIDER" is set to "envvar".
+
+ 5. Any specified command-line argument overwrites the corresponding configuration parameter.
+
+ 6. The configuration parameters are validated via the Validate() function.
+
+# Example:
+
+  - An implementation example of this configuration package can be found in examples/service/internal/cli/config.go
+    Note that the "log", "shutdown_timeout", and "remoteConfig" parameters are defined in this package as they are common to all programs.
+
+  - The configuration file format of the example service is defined by examples/service/resources/etc/gosrvlibexample/config.schema.json
+
+  - The default configuration file of the example service is defined by examples/service/resources/etc/gosrvlibexample/config.json
+*/
 package config
 
 import (
@@ -45,9 +75,9 @@ import (
 
 // General constants.
 const (
-	defaultConfigName = "config" // Base name of the file containing the configuration data.
-	defaultConfigType = "json"   // Type of configuration data.)
-	providerEnvVar    = "envvar"
+	defaultConfigName = "config" // Base name of the file containing the local configuration data.
+	defaultConfigType = "json"   // Type and file extension of the file containing the local configuration data.
+	providerEnvVar    = "envvar" // Provider name for the environment variable configuration source.
 )
 
 // Remote configuration key names.
@@ -147,9 +177,9 @@ type LogConfig struct {
 
 // remoteSourceConfig contains the default remote source options to be used in the application config struct.
 type remoteSourceConfig struct {
-	// Provider is the optional external configuration source: consul, etcd, firestore, envvar.
-	// When envvar is set the data shoul dbe set in the Data field.
-	Provider string `mapstructure:"remoteConfigProvider" validate:"omitempty,oneof=consul etcd firestore envvar"`
+	// Provider is the optional external configuration source: consul, envvar, etcd, etcd3, firestore, nats.
+	// When envvar is set the data should be set in the Data field.
+	Provider string `mapstructure:"remoteConfigProvider" validate:"omitempty,oneof=consul envvar etcd etcd3 firestore nats"`
 
 	// Endpoint is the remote configuration URL (ip:port).
 	Endpoint string `mapstructure:"remoteConfigEndpoint" validate:"omitempty,url|hostname_port"`

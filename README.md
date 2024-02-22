@@ -52,7 +52,7 @@ The packages documentation is available at: [https://pkg.go.dev/github.com/Vonag
 
 To quickly get started with this project, follow these steps:
 
-1. Ensure you ahev installed the latest Go version and Python3 for some extra tests.
+1. Ensure you have installed the latest Go version and Python3 for some extra tests.
 1. Clone the repository: `git clone https://github.com/Vonage/gosrvlib.git`.
 2. Change into the project directory: `cd gosrvlib`.
 3. Install the required dependencies and test everything: `DEVMODE=LOCAL make x`.
@@ -77,7 +77,7 @@ make help
 
 Before committing the code, please format it and check if it passes all tests using
 ```bash
-DEVMODE=LOCAL make format clean mod deps generate qa example
+DEVMODE=LOCAL make x
 ```
 
 -----------------------------------------------------------------
@@ -85,9 +85,9 @@ DEVMODE=LOCAL make format clean mod deps generate qa example
 <a name="examples"></a>
 ## Examples
 
-Please check the `examples` folder for an example of a service based on this library.
+Please check the `examples/service` folder for an example of a service based on this library.
 
-The following command generates a new project from the example using the data set in the project.cfg file:
+The following command generates a new project from the example using the data set in the `project.cfg` file:
 
 ```bash
 make project CONFIG=project.cfg

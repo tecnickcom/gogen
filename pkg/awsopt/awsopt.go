@@ -1,4 +1,8 @@
-// Package awsopt provides functions to configure common AWS options.
+/*
+Package awsopt provides functions to configure common AWS options for the official aws-sdk-go-v2 library.
+
+These common options can be easily used with other AWS-based packages in this library, such as s3 and sqs.
+*/
 package awsopt
 
 import (

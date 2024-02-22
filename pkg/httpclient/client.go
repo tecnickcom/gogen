@@ -46,7 +46,7 @@ func New(opts ...Option) *Client {
 	return c
 }
 
-// Do performs the HTTP request with added trace ID, logging and metrics.
+// Do performs the HTTP request with added trace ID and logging.
 //
 //nolint:gocognit
 func (c *Client) Do(r *http.Request) (*http.Response, error) {

@@ -1,5 +1,8 @@
-// Package sleuth contains the implementation of a basic Sleuth.io API client.
-// Ref.: https://help.sleuth.io/sleuth-api
+/*
+Package sleuth is a basic client for the official Sleuth.io API to register deployments, manual changes, custom incident impact, and custom metric impact.
+
+Ref.: https://help.sleuth.io/sleuth-api
+*/
 package sleuth
 
 import (

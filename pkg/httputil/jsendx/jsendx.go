@@ -1,4 +1,11 @@
-// Package jsendx implements a custom JSEND model to wrap HTTP responses in a JSON object with default fields.
+/*
+Package jsendx implements a custom JSend model to wrap all HTTP responses in a consistent JSON object with default fields.
+
+JSend is a specification that defines rules for formatting JSON responses from web servers.
+This implementation extends the JSend model by adding additional fields to enrich the response with application metadata.
+
+This model is particularly suitable for REST-style applications and APIs, as it provides a standardized format for all responses, simplifying the development of API clients.
+*/
 package jsendx
 
 import (

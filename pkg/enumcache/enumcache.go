@@ -1,4 +1,7 @@
-// Package enumcache provides simple methods to store and retrieve enumerations with a numerical ID and string name.
+/*
+Package enumcache provides simple thread-safe methods to store and retrieve enumeration sets with an integer ID and string name.
+It includes support for binary maps (enumbitmap), where each bit represents a different name in the enumeration set.
+*/
 package enumcache
 
 import (

@@ -1,5 +1,11 @@
-// Package logging provides an interface to configure and use the logging framework
-// in a consistent way across multiple applications.
+/*
+Package logging implements a structured-log model with common functionalities and utility functions.
+The log messages are augmented with additional fields to enrich the response with application metadata.
+The standard syslog levels are automatically mapped to the corresponding zap log levels.
+
+This is a Zap-based custom implementation of the configuration model described in the following article:
+  - Nicola Asuni, 2014-08-11, "Software Logging Format", https://technick.net/guides/software/software_logging_format/
+*/
 package logging
 
 import (

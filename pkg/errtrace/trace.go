@@ -1,4 +1,6 @@
-// Package errtrace provides utilities to annotate errors.
+/*
+Package errtrace provides a function to automatically trace errors.
+*/
 package errtrace
 
 import (

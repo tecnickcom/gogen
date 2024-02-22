@@ -1,4 +1,6 @@
-// Package randkey creates a random uint64 key.
+/*
+Package randkey provides utility functions to generate random uint64 keys in different formats.
+*/
 package randkey
 
 import (

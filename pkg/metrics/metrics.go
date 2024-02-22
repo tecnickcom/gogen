@@ -1,4 +1,6 @@
-// Package metrics defines a general interface for metrics instrumentation.
+/*
+Package metrics defines a common interface for instrumenting applications and components to collect metrics.
+*/
 package metrics
 
 import (

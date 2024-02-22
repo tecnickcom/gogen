@@ -1,4 +1,9 @@
-// Package sqlxtransaction helps executing a function inside an SQLX transaction.
+/*
+Package sqlxtransaction provides a simple way to execute a function inside an SQLX transaction.
+The function to be executed is passed as an argument to the Exec function.
+
+See also the sqltransaction package for the same functionality but using the standard library sql package.
+*/
 package sqlxtransaction
 
 import (

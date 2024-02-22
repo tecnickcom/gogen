@@ -93,7 +93,7 @@ sudo pip install --upgrade check-jsonschema
 
 To quickly get started with this project, follow these steps:
 
-1. Ensure you ahev installed the latest Go version and Python3 for some extra tests.
+1. Ensure you have installed the latest Go version and Python3 for some extra tests.
 1. Clone the repository: `git clone https://github.com/gosrvlibexampleowner/gosrvlibexample.git`.
 2. Change into the project directory: `cd gosrvlibexample`.
 3. Install the required dependencies and test everything: `DEVMODE=LOCAL make x`.

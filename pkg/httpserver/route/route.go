@@ -1,5 +1,8 @@
-// Package route is deprecated.
-// Deprecated: Use httpserver package instead.
+/*
+Package route is deprecated.
+
+Deprecated: Use the httpserver package instead.
+*/
 package route
 
 import (

@@ -1,4 +1,8 @@
-// Package paging contains utilities to handle pagination.
+/*
+Package paging contains utilities to handle pagination.
+
+The Paging struct represents the paging information and it is automatically populated by the New function.
+*/
 package paging
 
 // Paging contains the paging information.

@@ -1,5 +1,8 @@
-// Package threadsafe provides a collection of thread-safe functions that can be safely used between multiple goroutines.
-// Check the sub-packages for specific implementations.
+/*
+Package threadsafe provides an interface for thread-safe functions that can be safely used between multiple goroutines.
+
+See the tsmap and tsslice packages for examples of how to use this interface.
+*/
 package threadsafe
 
 import (

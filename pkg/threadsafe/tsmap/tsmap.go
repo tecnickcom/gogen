@@ -1,4 +1,8 @@
-// Package tsmap provides a collection of thread-safe map functions that can be safely used between multiple goroutines.
+/*
+Package tsmap provides a collection of generic thread-safe map utility functions that can be safely used between multiple goroutines.
+
+The provided functions are intended to simplify the process of working with maps in a thread-safe manner.
+*/
 package tsmap
 
 import (

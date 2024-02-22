@@ -1,4 +1,8 @@
-// Package tsslice provides a collection of thread-safe slice functions that can be safely used between multiple goroutines.
+/*
+Package tsslice provides a collection of generic thread-safe slice utility functions that can be safely used between multiple goroutines.
+
+The provided functions are intended to simplify the process of working with slices in a thread-safe manner.
+*/
 package tsslice
 
 import (

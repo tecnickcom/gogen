@@ -1,16 +1,19 @@
-// Package enumdb provides simple methods to store and retrieve enumerations from database tables.
-// Each enumeration has a numerical ID ("id" on the database table as primary key) and a string name ("name" database table as unique string).
-// Example of table:
 /*
-   CREATE TABLE IF NOT EXISTS `example` (
-     `id` SMALLINT UNSIGNED NOT NULL,
-     `name` VARCHAR(50) NOT NULL,
-     `disabled` TINYINT NOT NULL DEFAULT 0,
-     PRIMARY KEY (`id`),
-     UNIQUE INDEX `id_UNIQUE` (`id` ASC),
-     UNIQUE INDEX `name_UNIQUE` (`name` ASC))
-   ENGINE = InnoDB
-   COMMENT = 'Example enumeration table';
+Package enumdb allows to load enumeration sets (enumcache) from multiple database tables.
+
+Each enumeration has a numerical ID ("id" on the database table as primary key) and a string name ("name" on the database table as unique string).
+
+Example of MySQL database table that can be used with this package:
+
+	CREATE TABLE IF NOT EXISTS `example` (
+	  `id` SMALLINT UNSIGNED NOT NULL,
+	  `name` VARCHAR(50) NOT NULL,
+	  `disabled` TINYINT NOT NULL DEFAULT 0,
+	  PRIMARY KEY (`id`),
+	  UNIQUE INDEX `id_UNIQUE` (`id` ASC),
+	  UNIQUE INDEX `name_UNIQUE` (`name` ASC))
+	ENGINE = InnoDB
+	COMMENT = 'Example enumeration table';
 */
 package enumdb
 

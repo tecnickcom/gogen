@@ -1,5 +1,12 @@
-// Package bootstrap provides a simple way to bootstrap an application with a managed
-// logging framework, metrics and application context.
+/*
+Package bootstrap provides a simple way to bootstrap an application with
+managed configuration, logging, metrics, application context, and shutdown signals.
+
+For an implementation example see in order:
+  - examples/service/cmd/main.go
+  - examples/service/internal/cli/cli.go
+  - examples/service/internal/cli/bind.go
+*/
 package bootstrap
 
 import (

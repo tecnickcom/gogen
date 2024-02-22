@@ -1,5 +1,10 @@
-// Package healthcheck provides a simple way to define health checks for external services or components.
-// These checks are aggregated by the /status endpoint.
+/*
+Package healthcheck provides a simple way to define health checks for external services or components.
+
+It provides an HTTP handler to collect the results of the health checks concurrently.
+
+For an implementation example see the examples/service/internal/cli/bind.go file.
+*/
 package healthcheck
 
 import (

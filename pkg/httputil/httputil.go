@@ -1,2 +1,4 @@
-// Package httputil contains a collection of HTTP request and response  utility functions.
+/*
+Package httputil contains a collection of common HTTP Request and Response utility functions.
+*/
 package httputil
