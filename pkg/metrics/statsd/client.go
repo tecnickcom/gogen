@@ -9,7 +9,7 @@ import (
 	"time"
 
 	libhttputil "github.com/Vonage/gosrvlib/pkg/httputil"
-	"github.com/tecnickcom/statsd/v2"
+	"github.com/tecnickcom/statsd"
 )
 
 const (

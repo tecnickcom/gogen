@@ -289,14 +289,3 @@ Add here information on how to deploy in production.
 ----------
 
 
-
-
-
-
-
-
-
-
-
-
-
