@@ -1,12 +1,17 @@
 package httpclient
 
 import (
+	"context"
+	"net"
 	"net/http"
 	"time"
 )
 
 // InstrumentRoundTripper is an alias for a RoundTripper function.
 type InstrumentRoundTripper func(next http.RoundTripper) http.RoundTripper
+
+// DialContextFunc is an alias for a net.Dialer.DialContext function.
+type DialContextFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
 // RedactFn is an alias for a redact function.
 type RedactFn func(s string) string
@@ -53,5 +58,17 @@ func WithRedactFn(fn RedactFn) Option {
 func WithLogPrefix(prefix string) Option {
 	return func(c *Client) {
 		c.logPrefix = prefix
+	}
+}
+
+// WithDialContext sets the DialContext function for the HTTP client.
+// The DialContext function is used to establish network connections.
+// It allows customizing the behavior of the client's underlying transport.
+func WithDialContext(fn DialContextFunc) Option {
+	return func(c *Client) {
+		t, ok := c.client.Transport.(*http.Transport)
+		if ok {
+			t.DialContext = fn
+		}
 	}
 }

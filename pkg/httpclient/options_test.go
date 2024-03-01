@@ -1,6 +1,9 @@
 package httpclient
 
 import (
+	"context"
+	"errors"
+	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -60,4 +63,16 @@ func TestWithLogPrefix(t *testing.T) {
 	v := "prefixtest_"
 	WithLogPrefix(v)(c)
 	require.Equal(t, v, c.logPrefix)
+}
+
+func TestWithDialContext(t *testing.T) {
+	t.Parallel()
+
+	c := defaultClient()
+	v := func(_ context.Context, _, _ string) (net.Conn, error) { return nil, errors.New("TEST") }
+	WithDialContext(v)(c)
+
+	out, err := c.client.Transport.(*http.Transport).DialContext(context.TODO(), "", "")
+	require.Error(t, err)
+	require.Nil(t, out)
 }

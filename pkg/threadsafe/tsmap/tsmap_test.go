@@ -20,6 +20,24 @@ func TestSet(t *testing.T) {
 	require.Equal(t, "World", m[1])
 }
 
+func TestDelete(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.Mutex{}
+
+	m := map[int]string{3: "Hello", 5: "World"}
+
+	v, ok := m[5]
+	require.True(t, ok)
+	require.Equal(t, "World", v)
+
+	Delete(mux, m, 5)
+
+	v, ok = m[5]
+	require.False(t, ok)
+	require.Equal(t, "", v)
+}
+
 func TestGet(t *testing.T) {
 	t.Parallel()
 
@@ -29,6 +47,23 @@ func TestGet(t *testing.T) {
 
 	require.Equal(t, "Hello", Get(mux, m, 0))
 	require.Equal(t, "World", Get(mux, m, 1))
+	require.Equal(t, "", Get(mux, m, 3))
+}
+
+func TestGetOK(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.RWMutex{}
+
+	m := map[int]string{5: "Hello", 7: "World"}
+
+	v, ok := GetOK(mux, m, 7)
+	require.True(t, ok)
+	require.Equal(t, "World", v)
+
+	v, ok = GetOK(mux, m, 6)
+	require.False(t, ok)
+	require.Equal(t, "", v)
 }
 
 func TestLen(t *testing.T) {

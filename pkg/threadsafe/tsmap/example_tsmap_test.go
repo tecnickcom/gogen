@@ -20,6 +20,19 @@ func ExampleSet() {
 	// map[0:Hello 1:World]
 }
 
+func ExampleDelete() {
+	mux := &sync.Mutex{}
+
+	m := map[int]string{0: "Hello", 1: "World"}
+
+	tsmap.Delete(mux, m, 0)
+
+	fmt.Println(m)
+
+	// Output:
+	// map[1:World]
+}
+
 func ExampleGet() {
 	mux := &sync.RWMutex{}
 
@@ -30,6 +43,22 @@ func ExampleGet() {
 	// Output:
 	// Hello
 	// World
+}
+
+func ExampleGetOK() {
+	mux := &sync.RWMutex{}
+
+	m := map[int]string{0: "Hello", 1: "World"}
+
+	v, ok := tsmap.GetOK(mux, m, 0)
+	fmt.Println(v, ok)
+
+	v, ok = tsmap.GetOK(mux, m, 3)
+	fmt.Println(v, ok)
+
+	// Output:
+	// Hello true
+	//  false
 }
 
 func ExampleLen() {

@@ -38,10 +38,8 @@ func TestNew(t *testing.T) {
 	require.Equal(t, fn(http.DefaultTransport), got.client.Transport)
 }
 
-//nolint:gocognit
+//nolint:gocognit,tparallel,paralleltest
 func TestClient_Do(t *testing.T) {
-	t.Parallel()
-
 	bodyStr := `TEST BODY OK`
 	body := make([]byte, 0)
 

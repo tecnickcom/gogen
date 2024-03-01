@@ -18,12 +18,32 @@ func Set[M ~map[K]V, K comparable, V any](mux threadsafe.Locker, m M, k K, v V) 
 	m[k] = v
 }
 
+// Delete is a thread-safe function to delete the key-value pair with the specified key from the given map.
+func Delete[M ~map[K]V, K comparable, V any](mux threadsafe.Locker, m M, k K) {
+	mux.Lock()
+	defer mux.Unlock()
+
+	delete(m, k)
+}
+
 // Get is a thread-safe function to get a value by key k in a map m.
+// See also GetOK.
 func Get[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, k K) V {
 	mux.RLock()
 	defer mux.RUnlock()
 
 	return m[k]
+}
+
+// GetOK is a thread-safe function to get a value by key k in a map m.
+// The second return value is a boolean that indicates whether the key was present in the map.
+func GetOK[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, k K) (V, bool) {
+	mux.RLock()
+	defer mux.RUnlock()
+
+	v, ok := m[k]
+
+	return v, ok
 }
 
 // Len is a thread-safe function to get the length of a map m.
