@@ -16,12 +16,12 @@ func BenchmarkLookupHost_cache_miss(b *testing.B) {
 		},
 	}
 
-	r := New(resolver, int(1<<63-1), 1*time.Second)
+	c := New(resolver, int(1<<63-1), 1*time.Second)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = r.LookupHost(context.TODO(), strconv.Itoa(i)+testDomain)
+		_, _ = c.LookupHost(context.TODO(), strconv.Itoa(i)+testDomain)
 	}
 }
 
@@ -34,11 +34,11 @@ func BenchmarkLookupHost_cache_hit(b *testing.B) {
 
 	size := 255
 
-	r := New(resolver, size, 1*time.Minute)
+	c := New(resolver, size, 1*time.Minute)
 
 	// fill the cache
 	for i := 1; i <= size; i++ {
-		_, _ = r.LookupHost(context.TODO(), strconv.Itoa(i)+testDomain)
+		_, _ = c.LookupHost(context.TODO(), strconv.Itoa(i)+testDomain)
 	}
 
 	var j int
@@ -51,6 +51,6 @@ func BenchmarkLookupHost_cache_hit(b *testing.B) {
 			j = 0
 		}
 
-		_, _ = r.LookupHost(context.TODO(), strconv.Itoa(j)+testDomain)
+		_, _ = c.LookupHost(context.TODO(), strconv.Itoa(j)+testDomain)
 	}
 }
