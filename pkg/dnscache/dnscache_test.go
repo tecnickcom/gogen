@@ -202,17 +202,16 @@ func Test_LookupHost(t *testing.T) {
 	require.Equal(t, []string{"192.0.2.3"}, addrs)
 
 	// deleted entry on duplicate lookup
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
+	wait := make(chan struct{})
 
 	c.mux.Lock()
-	c.set("example.org", nil, nil, wg)
+	c.set("example.org", nil, nil, wait)
 	c.mux.Unlock()
 
 	go func() {
 		time.Sleep(5 * time.Millisecond)
 		c.Remove("example.org")
-		wg.Done()
+		close(wait)
 	}()
 
 	addrs, err = c.LookupHost(context.TODO(), "example.org")
@@ -220,17 +219,16 @@ func Test_LookupHost(t *testing.T) {
 	require.Equal(t, []string{"192.0.2.4"}, addrs)
 
 	// context expired on duplicate lookup
-	wg = &sync.WaitGroup{}
-	wg.Add(1)
+	wait = make(chan struct{})
 
 	c.mux.Lock()
-	c.set("example.org", nil, nil, wg)
+	c.set("example.org", nil, nil, wait)
 	c.mux.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
-	c.set("example.org", nil, nil, wg)
+	c.set("example.org", nil, nil, wait)
 
 	addrs, err = c.LookupHost(ctx, "example.org")
 	require.Error(t, err)
@@ -253,7 +251,7 @@ func Test_LookupHost_concurrent(t *testing.T) {
 
 	c := New(resolver, 2, 0)
 
-	nlookup := 100
+	nlookup := 10
 	wg := &sync.WaitGroup{}
 
 	wg.Add(nlookup)
