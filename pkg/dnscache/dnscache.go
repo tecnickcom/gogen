@@ -5,6 +5,7 @@ package dnscache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -113,6 +114,7 @@ func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 			select {
 			case <-item.wait:
 			case <-ctx.Done():
+				close(item.wait)
 				return nil, fmt.Errorf("context canceled: %w", ctx.Err())
 			}
 
@@ -133,7 +135,7 @@ func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 	wait := make(chan struct{})
 	defer close(wait)
 
-	c.set(host, nil, nil, wait)
+	c.set(host, nil, errors.New("held"), wait)
 	c.mux.Unlock()
 
 	addrs, err := c.resolver.LookupHost(ctx, host)
