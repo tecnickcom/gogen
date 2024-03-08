@@ -5,7 +5,6 @@ package dnscache
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -100,6 +99,7 @@ func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 	c.mux.Lock()
 	item, ok := c.hostmap[host]
 
+	//nolint:nestif
 	if ok {
 		if item.expireAt > time.Now().UTC().Unix() {
 			c.mux.Unlock()
@@ -107,26 +107,40 @@ func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 		}
 
 		if item.wait != nil {
-			// another external DNS lookup is already in progress,
+			// Another external DNS lookup is already in progress,
 			// waiting for completion and return values from cache.
 			c.mux.Unlock()
 
-			select {
-			case <-item.wait:
-			case <-ctx.Done():
-				close(item.wait)
-				return nil, fmt.Errorf("context canceled: %w", ctx.Err())
-			}
+			for {
+				// Wait until the DNS lookup is completed,
+				// or the Context is canceled.
+				select {
+				case <-ctx.Done():
+					defer close(item.wait)
+					return nil, fmt.Errorf("context canceled: %w", ctx.Err())
+				case <-item.wait:
+				}
 
-			c.mux.RLock()
-			item, ok := c.hostmap[host]
-			c.mux.RUnlock()
+				c.mux.RLock()
+				item, ok = c.hostmap[host]
+				c.mux.RUnlock()
 
-			if ok {
+				if !ok {
+					// The cache entry was removed during the wait.
+					break
+				}
+
+				if item.wait != nil {
+					// The cache entry was updated during the wait.
+					// This should not happen in real world scenarios,
+					// but it's good to have it covered.
+					continue
+				}
+
 				return item.addrs, item.err
 			}
 
-			// the cache entry was removed during the wait,
+			// The cache entry was removed during the wait,
 			// move on to perform a new DNS lookup.
 			c.mux.Lock()
 		}
@@ -135,7 +149,7 @@ func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 	wait := make(chan struct{})
 	defer close(wait)
 
-	c.set(host, nil, errors.New("held"), wait)
+	c.set(host, nil, nil, wait)
 	c.mux.Unlock()
 
 	addrs, err := c.resolver.LookupHost(ctx, host)
@@ -182,6 +196,7 @@ func (c *Cache) DialContext(ctx context.Context, network, address string) (net.C
 // set adds or updates the cache entry for the given host with the provided addresses.
 // If the cache is full, it will free up space by removing expired or old entries.
 // If the host already exists in the cache, it will update the entry with the new addresses.
+// NOTE: this is not thread-safe, it should be called within a mutex lock.
 func (c *Cache) set(host string, addrs []string, err error, wait chan struct{}) {
 	if len(c.hostmap) >= c.size {
 		if _, ok := c.hostmap[host]; !ok {

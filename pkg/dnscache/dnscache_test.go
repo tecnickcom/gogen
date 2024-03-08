@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 )
@@ -124,46 +123,6 @@ func (m *mockResolver) LookupHost(ctx context.Context, host string) ([]string, e
 	return m.lookupHost(ctx, host)
 }
 
-func Test_LookupHost_error(t *testing.T) {
-	t.Parallel()
-
-	var i int
-
-	resolver := &mockResolver{
-		lookupHost: func(_ context.Context, _ string) ([]string, error) {
-			time.Sleep(300 * time.Millisecond) // simulate slow lookup
-			i++
-			return nil, fmt.Errorf("mock error: %d", i)
-		},
-	}
-
-	c := New(resolver, 2, 10*time.Second)
-
-	addrs, err := c.LookupHost(context.TODO(), "example.com")
-	require.Error(t, err)
-	require.Nil(t, addrs)
-
-	// test concurrent lookups
-
-	nlookup := 10
-	wg := &sync.WaitGroup{}
-
-	wg.Add(nlookup)
-
-	for j := 0; j < nlookup; j++ {
-		go func() {
-			defer wg.Done()
-
-			addrs, err := c.LookupHost(context.TODO(), "example.net")
-			assert.Error(t, err)
-			assert.Equal(t, "mock error: 2", err.Error())
-			assert.Nil(t, addrs)
-		}()
-	}
-
-	wg.Wait()
-}
-
 func Test_LookupHost(t *testing.T) {
 	t.Parallel()
 
@@ -235,8 +194,15 @@ func Test_LookupHost(t *testing.T) {
 	require.Nil(t, addrs)
 }
 
-func Test_LookupHost_concurrent(t *testing.T) {
+func Test_LookupHost_concurrent_slow(t *testing.T) {
 	t.Parallel()
+
+	const nlookup = 10
+
+	type retval struct {
+		err   error
+		addrs []string
+	}
 
 	var i int
 
@@ -250,26 +216,177 @@ func Test_LookupHost_concurrent(t *testing.T) {
 	}
 
 	c := New(resolver, 2, 0)
-
-	nlookup := 10
+	ret := make(chan retval, nlookup)
 	wg := &sync.WaitGroup{}
 
-	wg.Add(nlookup)
-
 	for j := 0; j < nlookup; j++ {
+		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
 
 			addrs, err := c.LookupHost(context.TODO(), "example.org")
-			assert.NoError(t, err)
-			assert.NotNil(t, addrs)
-			assert.Len(t, addrs, 1)
-			assert.Equal(t, []string{"192.0.2.1"}, addrs)
-			assert.Contains(t, c.hostmap, "example.org")
+			ret <- retval{err, addrs}
 		}()
 	}
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(ret)
+	}()
+
+	for v := range ret {
+		require.NoError(t, v.err)
+		require.NotNil(t, v.addrs)
+		require.Len(t, v.addrs, 1)
+		require.Equal(t, []string{"192.0.2.1"}, v.addrs)
+	}
+}
+
+func Test_LookupHost_concurrent_fast(t *testing.T) {
+	t.Parallel()
+
+	const nlookup = 1234
+
+	type retval struct {
+		err   error
+		addrs []string
+	}
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			return []string{"192.0.2.13"}, nil
+		},
+	}
+
+	// With ttl = 0 the items expires immediately causing stress on the concurrent lookups.
+	// This covers the case when the cache entry was updated during the wait.
+	// This should not happen in real world scenarios, but it's good to have it covered.
+
+	c := New(resolver, 2, 0)
+	ret := make(chan retval, nlookup)
+	wg := &sync.WaitGroup{}
+
+	for j := 0; j < nlookup; j++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			addrs, err := c.LookupHost(context.TODO(), "example.org")
+			ret <- retval{err, addrs}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(ret)
+	}()
+
+	for v := range ret {
+		require.NoError(t, v.err)
+		require.NotNil(t, v.addrs)
+		require.Len(t, v.addrs, 1)
+		require.Equal(t, []string{"192.0.2.13"}, v.addrs)
+	}
+}
+
+func Test_LookupHost_error(t *testing.T) {
+	t.Parallel()
+
+	const nlookup = 10
+
+	type retval struct {
+		err   error
+		addrs []string
+	}
+
+	var i int
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			time.Sleep(300 * time.Millisecond) // simulate slow lookup
+			i++
+			return nil, fmt.Errorf("mock error: %d", i)
+		},
+	}
+
+	c := New(resolver, 2, 10*time.Second)
+
+	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	require.Error(t, err)
+	require.Nil(t, addrs)
+
+	// test concurrent lookups
+
+	ret := make(chan retval, nlookup)
+	wg := &sync.WaitGroup{}
+
+	for j := 0; j < nlookup; j++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			addrs, err := c.LookupHost(context.TODO(), "example.net")
+			ret <- retval{err, addrs}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(ret)
+	}()
+
+	for v := range ret {
+		require.Error(t, v.err)
+		require.Equal(t, "mock error: 2", v.err.Error())
+		require.Nil(t, v.addrs)
+	}
+}
+
+func Test_LookupHost_error_concurrent_fast(t *testing.T) {
+	t.Parallel()
+
+	const nlookup = 100
+
+	type retval struct {
+		err   error
+		addrs []string
+	}
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			return nil, errors.New("mock error")
+		},
+	}
+
+	c := New(resolver, 2, 0)
+
+	ret := make(chan retval, nlookup)
+	wg := &sync.WaitGroup{}
+
+	for j := 0; j < nlookup; j++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			addrs, err := c.LookupHost(context.TODO(), "example.net")
+			ret <- retval{err, addrs}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(ret)
+	}()
+
+	for v := range ret {
+		require.Error(t, v.err)
+		require.Equal(t, "mock error", v.err.Error())
+		require.Nil(t, v.addrs)
+	}
 }
 
 func Test_DialContext_lookup_errors(t *testing.T) {
