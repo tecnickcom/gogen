@@ -76,6 +76,8 @@ func New(db *sql.DB) *MySQLLock {
 }
 
 // Acquire attempts to acquire a database lock.
+//
+//nolint:contextcheck
 func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Duration) (ReleaseFunc, error) {
 	conn, err := l.db.Conn(ctx)
 	if err != nil {

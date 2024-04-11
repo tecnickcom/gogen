@@ -8,7 +8,6 @@ For random IDs suitable for security-sensitive work, please the uidc package ins
 */
 package uid
 
-//nolint:gci
 import (
 	"math/rand/v2"
 	"strconv"

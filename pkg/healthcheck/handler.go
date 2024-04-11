@@ -55,7 +55,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, hc := range h.checks {
 		hc := hc
 
-		go func() {
+		go func() { //nolint:contextcheck
 			defer wg.Done()
 
 			resCh <- checkResult{

@@ -16,9 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: setup go build environment
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod'
           check-latest: true
@@ -29,14 +29,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: setup go build environment
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod'
           check-latest: true
       - name: dependency cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: $(go env GOPATH)/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -52,7 +52,7 @@ jobs:
         run: echo "value=${{ hashFiles('**/*.go','!vendor/**','!examples/**') }}" >>"$GITHUB_OUTPUT"
       - name: cache coverage
         id: cover_cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: target/report/coverage.out
           key: go_cover_profile_${{ steps.go_hash.outputs.value }}
@@ -64,7 +64,7 @@ jobs:
     continue-on-error: true
     steps:
       - name: checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: hash go files
@@ -72,7 +72,7 @@ jobs:
         run: echo "value=${{ hashFiles('**/*.go','!vendor/**','!examples/**') }}" >>"$GITHUB_OUTPUT"
       - name: Get coverage from cache
         id: cover_cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: target/report/coverage.out
           key: go_cover_profile_${{ steps.go_hash.outputs.value }}
