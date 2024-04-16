@@ -41,3 +41,27 @@ func WithSigningMethod(signingMethod SigningMethod) Option {
 		c.signingMethod = signingMethod
 	}
 }
+
+// WithClaimIssuer sets the `iss` (Issuer) JWT claim.
+// See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1
+func WithClaimIssuer(issuer string) Option {
+	return func(c *JWT) {
+		c.issuer = issuer
+	}
+}
+
+// WithClaimSubject sets the `sub` (Subject) claim.
+// See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2
+func WithClaimSubject(subject string) Option {
+	return func(c *JWT) {
+		c.subject = subject
+	}
+}
+
+// WithClaimAudience sets the `aud` (Audience) claim.
+// See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
+func WithClaimAudience(audience []string) Option {
+	return func(c *JWT) {
+		c.audience = audience
+	}
+}

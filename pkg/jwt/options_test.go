@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,4 +61,31 @@ func TestWithSigningMethod(t *testing.T) {
 	want := jwt.SigningMethodHS384
 	WithSigningMethod(want)(c)
 	require.Equal(t, want, c.signingMethod)
+}
+
+func TestWithClaimIssuer(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+	want := "Test_Issuer_01"
+	WithClaimIssuer(want)(c)
+	require.Equal(t, want, c.issuer)
+}
+
+func TestWithClaimSubject(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+	want := "Test_Subject_02"
+	WithClaimSubject(want)(c)
+	require.Equal(t, want, c.subject)
+}
+
+func TestWithClaimAudience(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+	want := []string{"Audience_01", "Audience_02"}
+	WithClaimAudience(want)(c)
+	require.Equal(t, want, c.audience)
 }

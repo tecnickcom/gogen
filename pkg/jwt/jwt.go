@@ -13,7 +13,8 @@ import (
 
 	"github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/Vonage/gosrvlib/pkg/logging"
-	"github.com/golang-jwt/jwt"
+	"github.com/Vonage/gosrvlib/pkg/uidc"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -50,7 +51,7 @@ type Credentials struct {
 // Claims holds the JWT information to be encoded.
 type Claims struct {
 	Username string `json:"username"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 // JWT represents an instance of the HTTP retrier.
@@ -62,6 +63,9 @@ type JWT struct {
 	userHashFn          UserHashFn     // Function used to retrieve the password hash associated with each user.
 	signingMethod       SigningMethod  // Signing Method function
 	authorizationHeader string
+	issuer              string   // the `iss` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1
+	subject             string   // the `sub` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2
+	audience            []string // the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
 }
 
 func defaultJWT() *JWT {
@@ -139,11 +143,17 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exp := time.Now().Add(c.expirationTime)
+	tnow := time.Now().UTC()
 	claims := Claims{
 		Username: creds.Username,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: exp.Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(tnow.Add(c.expirationTime)), // exp
+			IssuedAt:  jwt.NewNumericDate(tnow),                       // iat
+			NotBefore: jwt.NewNumericDate(tnow),                       // nbf
+			ID:        uidc.NewID128(),                                // jti
+			Issuer:    c.issuer,                                       // iss
+			Subject:   c.subject,                                      // sub
+			Audience:  c.audience,                                     // aud
 		},
 	}
 
@@ -162,7 +172,7 @@ func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if time.Until(time.Unix(claims.ExpiresAt, 0)) > c.renewTime {
+	if time.Until(claims.ExpiresAt.Time) > c.renewTime {
 		c.sendResponseFn(r.Context(), w, http.StatusBadRequest, "the JWT token can be renewed only when it is close to expiration")
 		logging.FromContext(r.Context()).With(
 			zap.String("username", claims.Username),

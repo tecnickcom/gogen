@@ -388,12 +388,12 @@ func testUserHash(username string) ([]byte, error) {
 
 type testSigningMethodError struct{}
 
-func (c *testSigningMethodError) Verify(_, _ string, _ any) error {
+func (c *testSigningMethodError) Verify(_ string, _ []byte, _ interface{}) error {
 	return errors.New("VERIFY ERROR")
 }
 
-func (c *testSigningMethodError) Sign(_ string, _ any) (string, error) {
-	return "", errors.New("SIGN ERROR")
+func (c *testSigningMethodError) Sign(_ string, _ interface{}) ([]byte, error) {
+	return nil, errors.New("SIGN ERROR")
 }
 
 func (c *testSigningMethodError) Alg() string {
