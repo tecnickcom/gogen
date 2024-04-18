@@ -18,6 +18,12 @@ const (
 	regexMessageGroupID = `^[[:graph:]]{1,128}$`
 )
 
+// TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
+type TEncodeFunc func(ctx context.Context, data any) (string, error)
+
+// TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
+type TDecodeFunc func(ctx context.Context, msg string, data any) error
+
 // SQS represents the mockable functions in the AWS SDK SQS client.
 type SQS interface {
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
@@ -48,6 +54,15 @@ type Client struct {
 	// Values range: 0 to 43200. Maximum: 12 hours.
 	visibilityTimeout int32
 
+	// messageEncodeFunc is the function used by SendData()
+	// to encode and serialize the input data to a string compatible with SQS.
+	messageEncodeFunc TEncodeFunc
+
+	// messageDecodeFunc is the function used by ReceiveData()
+	// to decode a message encoded with messageEncodeFunc to the provided data object.
+	// The value underlying data must be a pointer to the correct type for the next data item received.
+	messageDecodeFunc TDecodeFunc
+
 	// hcGetQueueAttributesInput is the input parameter for the GetQueueAttributes function used by the HealthCheck.
 	hcGetQueueAttributesInput *sqs.GetQueueAttributesInput
 }
@@ -77,6 +92,8 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 		messageGroupID:    awsMsgGroupID,
 		waitTimeSeconds:   cfg.waitTimeSeconds,
 		visibilityTimeout: cfg.visibilityTimeout,
+		messageEncodeFunc: cfg.messageEncodeFunc,
+		messageDecodeFunc: cfg.messageDecodeFunc,
 		hcGetQueueAttributesInput: &sqs.GetQueueAttributesInput{
 			QueueUrl:       aws.String(queueURL),
 			AttributeNames: []types.QueueAttributeName{types.QueueAttributeNameLastModifiedTimestamp},
@@ -165,9 +182,20 @@ func MessageDecode(msg string, data any) error {
 	return typeutil.Decode(msg, data) //nolint:wrapcheck
 }
 
-// SendData delivers the specified data as message to the queue.
+// DefaultMessageEncodeFunc is the default function to encode and serialize the input data for SendData().
+func DefaultMessageEncodeFunc(_ context.Context, data any) (string, error) {
+	return MessageEncode(data)
+}
+
+// DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
+// The value underlying data must be a pointer to the correct type for the next data item received.
+func DefaultMessageDecodeFunc(_ context.Context, msg string, data any) error {
+	return MessageDecode(msg, data)
+}
+
+// SendData delivers the specified data as encoded message to the queue.
 func (c *Client) SendData(ctx context.Context, data any) error {
-	message, err := MessageEncode(data)
+	message, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
 		return err
 	}
@@ -191,7 +219,7 @@ func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 		return "", nil
 	}
 
-	err = MessageDecode(message.Body, data)
+	err = c.messageDecodeFunc(ctx, message.Body, data)
 
 	return message.ReceiptHandle, err
 }

@@ -2,8 +2,10 @@ package kafka
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/Vonage/gosrvlib/pkg/typeutil"
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/multierr"
 )
@@ -11,6 +13,9 @@ import (
 const (
 	network = "tcp"
 )
+
+// TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
+type TDecodeFunc func(ctx context.Context, msg []byte, data any) error
 
 type consumerClient interface {
 	ReadMessage(ctx context.Context) (kafka.Message, error)
@@ -32,6 +37,10 @@ func NewConsumer(brokers []string, topic, groupID string, opts ...Option) (*Cons
 
 	for _, applyOpt := range opts {
 		applyOpt(cfg)
+	}
+
+	if cfg.messageDecodeFunc == nil {
+		return nil, errors.New("missing message decoding function")
 	}
 
 	params := kafka.ReaderConfig{
@@ -95,4 +104,20 @@ func (c *Consumer) HealthCheck(ctx context.Context) error {
 	}
 
 	return fmt.Errorf("unable to connect to Kafka: %w", errors)
+}
+
+// DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
+// The value underlying data must be a pointer to the correct type for the next data item received.
+func DefaultMessageDecodeFunc(_ context.Context, msg []byte, data any) error {
+	return typeutil.ByteDecode(msg, data) //nolint:wrapcheck
+}
+
+// ReceiveData retrieves a message from the queue and extract its content in the data.
+func (c *Consumer) ReceiveData(ctx context.Context, data any) error {
+	message, err := c.Receive(ctx)
+	if err != nil {
+		return err
+	}
+
+	return c.cfg.messageDecodeFunc(ctx, message, data)
 }

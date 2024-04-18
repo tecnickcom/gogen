@@ -11,13 +11,17 @@ const (
 )
 
 type config struct {
-	sessionTimeout time.Duration
-	startOffset    int64
+	sessionTimeout    time.Duration
+	startOffset       int64
+	messageEncodeFunc TEncodeFunc
+	messageDecodeFunc TDecodeFunc
 }
 
 func defaultConfig() *config {
 	return &config{
-		sessionTimeout: defaultSessionTimeout,
-		startOffset:    kafka.LastOffset,
+		sessionTimeout:    defaultSessionTimeout,
+		startOffset:       kafka.LastOffset,
+		messageEncodeFunc: DefaultMessageEncodeFunc,
+		messageDecodeFunc: DefaultMessageDecodeFunc,
 	}
 }

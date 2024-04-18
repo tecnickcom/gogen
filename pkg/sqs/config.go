@@ -23,16 +23,28 @@ type cfg struct {
 	awsConfig         aws.Config
 	waitTimeSeconds   int32
 	visibilityTimeout int32
+	messageEncodeFunc TEncodeFunc
+	messageDecodeFunc TDecodeFunc
 }
 
 func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 	c := &cfg{
 		waitTimeSeconds:   DefaultWaitTimeSeconds,
 		visibilityTimeout: DefaultVisibilityTimeout,
+		messageEncodeFunc: DefaultMessageEncodeFunc,
+		messageDecodeFunc: DefaultMessageDecodeFunc,
 	}
 
 	for _, apply := range opts {
 		apply(c)
+	}
+
+	if c.messageEncodeFunc == nil {
+		return nil, errors.New("missing message encoding function")
+	}
+
+	if c.messageDecodeFunc == nil {
+		return nil, errors.New("missing message decoding function")
 	}
 
 	if c.waitTimeSeconds < 0 || c.waitTimeSeconds > 20 {

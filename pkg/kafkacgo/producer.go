@@ -1,11 +1,17 @@
 package kafkacgo
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/Vonage/gosrvlib/pkg/typeutil"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
+
+// TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
+type TEncodeFunc func(ctx context.Context, topic string, data any) ([]byte, error)
 
 type producerClient interface {
 	Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error
@@ -24,6 +30,10 @@ func NewProducer(urls []string, opts ...Option) (*Producer, error) {
 
 	for _, applyOpt := range opts {
 		applyOpt(cfg)
+	}
+
+	if cfg.messageEncodeFunc == nil {
+		return nil, errors.New("missing message encoding function")
 	}
 
 	_ = cfg.configMap.SetKey("bootstrap.servers", strings.Join(urls, ","))
@@ -58,4 +68,19 @@ func (p *Producer) Send(topic string, msg []byte) error {
 	}
 
 	return nil
+}
+
+// DefaultMessageEncodeFunc is the default function to encode the input data for SendData().
+func DefaultMessageEncodeFunc(_ context.Context, _ string, data any) ([]byte, error) {
+	return typeutil.ByteEncode(data) //nolint:wrapcheck
+}
+
+// SendData delivers the specified data as encoded message to the queue.
+func (p *Producer) SendData(ctx context.Context, topic string, data any) error {
+	message, err := p.cfg.messageEncodeFunc(ctx, topic, data)
+	if err != nil {
+		return err
+	}
+
+	return p.Send(topic, message)
 }

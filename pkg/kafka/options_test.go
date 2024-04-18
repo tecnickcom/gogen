@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -23,4 +24,32 @@ func Test_WithFirstOffset(t *testing.T) {
 	cfg := &config{}
 	WithFirstOffset()(cfg)
 	require.Equal(t, int64(-2), cfg.startOffset)
+}
+
+func Test_WithMessageEncodeFunc(t *testing.T) {
+	t.Parallel()
+
+	ret := []byte("test_data_001")
+	f := func(_ context.Context, _ any) ([]byte, error) {
+		return ret, nil
+	}
+
+	conf := &config{}
+	WithMessageEncodeFunc(f)(conf)
+
+	d, err := conf.messageEncodeFunc(context.TODO(), "")
+	require.NoError(t, err)
+	require.Equal(t, ret, d)
+}
+
+func Test_WithMessageDecodeFunc(t *testing.T) {
+	t.Parallel()
+
+	f := func(_ context.Context, _ []byte, _ any) error {
+		return nil
+	}
+
+	conf := &config{}
+	WithMessageDecodeFunc(f)(conf)
+	require.NoError(t, conf.messageDecodeFunc(context.TODO(), nil, ""))
 }

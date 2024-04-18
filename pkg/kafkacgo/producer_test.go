@@ -1,6 +1,7 @@
 package kafkacgo
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -39,6 +40,16 @@ func Test_NewProducer(t *testing.T) {
 				WithConfigParameter("badkey", 99),
 			},
 			expTimeout:            time.Millisecond * 15,
+			expProduceChannelSize: 1_000,
+			wantErr:               true,
+		},
+		{
+			name: "missing encoding function",
+			urls: []string{"url1", "url2"},
+			options: []Option{
+				WithMessageEncodeFunc(nil),
+			},
+			expTimeout:            time.Millisecond * 17,
 			expProduceChannelSize: 1_000,
 			wantErr:               true,
 		},
@@ -103,5 +114,43 @@ func Test_Send(t *testing.T) {
 
 	producer.client = mockProducerClientError{}
 	err = producer.Send("", nil)
+	require.Error(t, err)
+}
+
+type produceMock struct {
+	produce func(msg *kafka.Message, deliveryChan chan kafka.Event) error
+	close   func()
+}
+
+func (p produceMock) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
+	return p.produce(msg, deliveryChan)
+}
+
+func (p produceMock) Close() {}
+
+func TestSendData(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.TODO()
+	cli, err := NewProducer([]string{"testurl"})
+	require.NoError(t, err)
+	require.NotNil(t, cli)
+
+	cli.client = produceMock{
+		produce: func(_ *kafka.Message, _ chan kafka.Event) error {
+			return nil
+		},
+		close: func() {},
+	}
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	err = cli.SendData(ctx, "topic1", TestData{Alpha: "abc345", Beta: -678})
+	require.NoError(t, err)
+
+	err = cli.SendData(ctx, "topic2", nil)
 	require.Error(t, err)
 }

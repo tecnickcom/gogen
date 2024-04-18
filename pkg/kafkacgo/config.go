@@ -5,11 +5,15 @@ import (
 )
 
 type config struct {
-	configMap *kafka.ConfigMap
+	configMap         *kafka.ConfigMap
+	messageEncodeFunc TEncodeFunc
+	messageDecodeFunc TDecodeFunc
 }
 
 func defaultConfig() *config {
 	return &config{
-		configMap: &kafka.ConfigMap{},
+		configMap:         &kafka.ConfigMap{},
+		messageEncodeFunc: DefaultMessageEncodeFunc,
+		messageDecodeFunc: DefaultMessageDecodeFunc,
 	}
 }

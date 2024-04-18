@@ -30,6 +30,15 @@ func Test_NewProducer(t *testing.T) {
 			},
 			expTimeout: time.Millisecond * 17,
 		},
+		{
+			name: "missing encoding function",
+			urls: []string{"url1", "url2"},
+			options: []Option{
+				WithMessageEncodeFunc(nil),
+			},
+			expTimeout: time.Millisecond * 17,
+			wantErr:    true,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -92,5 +101,47 @@ func TestSendError(t *testing.T) {
 	require.Error(t, err)
 
 	err = producer.Close()
+	require.Error(t, err)
+}
+
+type produceMock struct {
+	writeMessages func(ctx context.Context, msg ...kafka.Message) error
+	close         func() error
+}
+
+func (p produceMock) WriteMessages(ctx context.Context, msg ...kafka.Message) error {
+	return p.writeMessages(ctx, msg...)
+}
+
+func (p produceMock) Close() error {
+	return p.close()
+}
+
+func TestSendData(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.TODO()
+	cli, err := NewProducer([]string{"testurl"}, "")
+	require.NoError(t, err)
+	require.NotNil(t, cli)
+
+	cli.client = produceMock{
+		writeMessages: func(_ context.Context, _ ...kafka.Message) error {
+			return nil
+		},
+		close: func() error {
+			return nil
+		},
+	}
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	err = cli.SendData(ctx, TestData{Alpha: "abc345", Beta: -678})
+	require.NoError(t, err)
+
+	err = cli.SendData(ctx, nil)
 	require.Error(t, err)
 }

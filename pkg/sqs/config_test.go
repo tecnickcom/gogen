@@ -31,6 +31,24 @@ func Test_loadConfig(t *testing.T) {
 	require.Equal(t, region, got.awsConfig.Region)
 	require.Equal(t, wt, got.waitTimeSeconds)
 	require.Equal(t, vt, got.visibilityTimeout)
+	require.NotNil(t, got.messageEncodeFunc)
+	require.NotNil(t, got.messageDecodeFunc)
+
+	got, err = loadConfig(
+		context.TODO(),
+		WithMessageEncodeFunc(nil),
+	)
+
+	require.Error(t, err)
+	require.Nil(t, got)
+
+	got, err = loadConfig(
+		context.TODO(),
+		WithMessageDecodeFunc(nil),
+	)
+
+	require.Error(t, err)
+	require.Nil(t, got)
 
 	got, err = loadConfig(
 		context.TODO(),

@@ -54,3 +54,20 @@ func WithAutoOffsetResetPolicy(p Offset) Option {
 func WithProduceChannelSize(size int) Option {
 	return WithConfigParameter("go.produce.channel.size", size)
 }
+
+// WithMessageEncodeFunc allow to replace DefaultMessageEncodeFunc.
+// This function used by SendData() to encode the input data.
+func WithMessageEncodeFunc(f TEncodeFunc) Option {
+	return func(c *config) {
+		c.messageEncodeFunc = f
+	}
+}
+
+// WithMessageDecodeFunc allow to replace DefaultMessageDecodeFunc().
+// This function used by ReceiveData() to decode a message encoded with messageEncodeFunc to the provided data object.
+// The value underlying data must be a pointer to the correct type for the next data item received.
+func WithMessageDecodeFunc(f TDecodeFunc) Option {
+	return func(c *config) {
+		c.messageDecodeFunc = f
+	}
+}

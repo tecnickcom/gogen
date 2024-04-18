@@ -1,12 +1,18 @@
 package kafkacgo
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/typeutil"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
+
+// TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
+type TDecodeFunc func(ctx context.Context, msg []byte, data any) error
 
 type consumerClient interface {
 	ReadMessage(duration time.Duration) (*kafka.Message, error)
@@ -25,6 +31,10 @@ func NewConsumer(urls, topics []string, groupID string, opts ...Option) (*Consum
 
 	for _, applyOpt := range opts {
 		applyOpt(cfg)
+	}
+
+	if cfg.messageDecodeFunc == nil {
+		return nil, errors.New("missing message decoding function")
 	}
 
 	_ = cfg.configMap.SetKey("bootstrap.servers", strings.Join(urls, ","))
@@ -55,4 +65,20 @@ func (c *Consumer) Receive() ([]byte, error) {
 	}
 
 	return msg.Value, nil
+}
+
+// DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
+// The value underlying data must be a pointer to the correct type for the next data item received.
+func DefaultMessageDecodeFunc(_ context.Context, msg []byte, data any) error {
+	return typeutil.ByteDecode(msg, data) //nolint:wrapcheck
+}
+
+// ReceiveData retrieves a message from the queue and extract its content in the data.
+func (c *Consumer) ReceiveData(ctx context.Context, data any) error {
+	message, err := c.Receive()
+	if err != nil {
+		return err
+	}
+
+	return c.cfg.messageDecodeFunc(ctx, message, data)
 }

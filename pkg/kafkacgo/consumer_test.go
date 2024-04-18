@@ -1,6 +1,7 @@
 package kafkacgo
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -51,6 +52,18 @@ func Test_NewConsumer(t *testing.T) {
 			topics:  nil,
 			groupID: "one",
 			wantErr: true,
+		},
+		{
+			name:    "missing decoding function",
+			urls:    []string{"url1", "url2"},
+			topics:  []string{"topic1", "topic2"},
+			groupID: "four",
+			options: []Option{
+				WithMessageDecodeFunc(nil),
+			},
+			expTimeout:               time.Millisecond * 17,
+			expAutoOffsetResetPolicy: OffsetLatest,
+			wantErr:                  true,
 		},
 	}
 
@@ -127,4 +140,109 @@ func Test_Receive(t *testing.T) {
 
 	err = consumer.Close()
 	require.Error(t, err)
+}
+
+type consumerMock struct {
+	readMessage func(duration time.Duration) (*kafka.Message, error)
+	close       func() error
+}
+
+func (c consumerMock) ReadMessage(duration time.Duration) (*kafka.Message, error) {
+	return c.readMessage(duration)
+}
+
+func (c consumerMock) Close() error {
+	return c.close()
+}
+
+func TestReceiveData(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	tests := []struct {
+		name    string
+		mock    consumerClient
+		data    TestData
+		wantErr bool
+	}{
+		{
+			name: "success",
+			mock: consumerMock{
+				readMessage: func(_ time.Duration) (*kafka.Message, error) {
+					return &kafka.Message{
+						Value: []byte("Kf+BAwEBCFRlc3REYXRhAf+CAAECAQVBbHBoYQEMAAEEQmV0YQEEAAAAD/+CAQZhYmMxMjMB/gLtAA=="),
+					}, nil
+				},
+				close: func() error { return nil },
+			},
+			data:    TestData{Alpha: "abc123", Beta: -375},
+			wantErr: false,
+		},
+		{
+			name: "empty",
+			mock: consumerMock{
+				readMessage: func(_ time.Duration) (*kafka.Message, error) {
+					return &kafka.Message{
+						Value: []byte{},
+					}, nil
+				},
+				close: func() error { return nil },
+			},
+			wantErr: true,
+		},
+		{
+			name: "error",
+			mock: consumerMock{
+				readMessage: func(_ time.Duration) (*kafka.Message, error) {
+					return &kafka.Message{}, errors.New("error")
+				},
+				close: func() error { return nil },
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid message",
+			mock: consumerMock{
+				readMessage: func(_ time.Duration) (*kafka.Message, error) {
+					return &kafka.Message{
+						Value: []byte("你好世界"),
+					}, nil
+				},
+				close: func() error { return nil },
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.TODO()
+			cli, err := NewConsumer([]string{"url1", "url2"}, []string{"topic"}, "groupID")
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			cli.client = tt.mock
+
+			var data TestData
+
+			err = cli.ReceiveData(ctx, &data)
+			if tt.wantErr {
+				require.Error(t, err)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.data.Alpha, data.Alpha)
+			require.Equal(t, tt.data.Beta, data.Beta)
+		})
+	}
 }
