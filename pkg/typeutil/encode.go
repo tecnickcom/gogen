@@ -39,7 +39,7 @@ func bufferEncode(data any) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-// ByteEncode encodes the input data to gob/base64 format into a byte slice.
+// ByteEncode encodes the input data to gob+base64 byte slice.
 func ByteEncode(data any) ([]byte, error) {
 	buf, err := bufferEncode(data)
 	if err != nil {
@@ -49,7 +49,7 @@ func ByteEncode(data any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Encode encodes the input data to gob/base64 format into a string.
+// Encode encodes the input data to gob+base64 string.
 func Encode(data any) (string, error) {
 	buf, err := bufferEncode(data)
 	if err != nil {
@@ -89,7 +89,7 @@ func bufferSerialize(data any) (*bytes.Buffer, error) {
 	return buf, nil
 }
 
-// ByteSerialize encodes the input data to JSON/base64 format into a byte slice.
+// ByteSerialize encodes the input data to JSON+base64 byte slice.
 func ByteSerialize(data any) ([]byte, error) {
 	buf, err := bufferSerialize(data)
 	if err != nil {
@@ -99,7 +99,7 @@ func ByteSerialize(data any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Serialize encodes the input data to JSON/base64 format into a string.
+// Serialize encodes the input data to JSON+base64 string.
 func Serialize(data any) (string, error) {
 	buf, err := bufferSerialize(data)
 	if err != nil {
