@@ -4,10 +4,10 @@ Package randkey provides utility functions to generate random uint64 keys in dif
 package randkey
 
 import (
-	"crypto/rand"
-	"encoding/binary"
 	"strconv"
 	"strings"
+
+	"github.com/Vonage/gosrvlib/pkg/typeutil"
 )
 
 // RandKey stores the random key.
@@ -17,10 +17,7 @@ type RandKey struct {
 
 // New generates a new uint64 random key.
 func New() *RandKey {
-	b := make([]byte, 8) // 8 bytes for 64 bit
-	_, _ = rand.Read(b)
-
-	return &RandKey{key: binary.LittleEndian.Uint64(b)}
+	return &RandKey{key: typeutil.RandUint64()}
 }
 
 // Key returns a uint64 key.
