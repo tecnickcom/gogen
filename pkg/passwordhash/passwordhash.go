@@ -1,9 +1,10 @@
 /*
-Package passwordhash contains functions to create and verify a password hash using a strong one-way hashing algorithm.
+Package passwordhash provides functions to create and verify a password hash using a strong one-way hashing algorithm.
 
 It supports "peppering" by encrypting the hashed passwords using a secret key.
 
-It is based on the Argon2id algorithm as recommended by the OWASP Password Storage Cheat Sheet:
+It is based on the Argon2id algorithm (https://www.rfc-editor.org/info/rfc9106),
+as recommended by the OWASP Password Storage Cheat Sheet:
 https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 */
 package passwordhash
@@ -19,43 +20,97 @@ import (
 
 const (
 	// DefaultAlgo is the default algorithm used to hash the password.
+	// It corresponds to Type y=2.
 	DefaultAlgo = "argon2id"
 
-	// DefaultKeyLen is the default length of the returned byte-slice that can be used as cryptographic key.
+	// DefaultKeyLen is the default length of the returned byte-slice that can be used as cryptographic key (Tag length).
+	// It must be an integer number of bytes from 4 to 2^(32)-1.
 	DefaultKeyLen = 32
+	minKeyLen     = 4
 
-	// DefaultSaltLen is the default length of the random password salt.
+	// DefaultSaltLen is the default length of the random password salt (Nonce S).
+	// It must be not greater than 2^(32)-1 bytes.
+	// The value of 16 bytes is recommended for password hashing.
 	DefaultSaltLen = 16
+	minSaltLen     = 1
 
-	// DefaultTime is the default number of passes over the memory.
-	DefaultTime = 1
+	// DefaultTime (t) is the default number of passes (iterations) over the memory.
+	// It must be an integer value from 1 to 2^(32)-1.
+	DefaultTime = 3
+	minTime     = 1
 
 	// DefaultMemory is the default size of the memory in KiB.
-	DefaultMemory = 65_536
+	// It must be an integer number of kibibytes from 8*p to 2^(32)-1.
+	// The actual number of blocks is m', which is m rounded down to the nearest multiple of 4*p.
+	DefaultMemory = 64 * 1024
+	minMemory     = 8
+	memBlock      = 4
+
+	minThreads = 1
+	maxThreads = 255
+
+	// DefaultMinPasswordLength is the default minimum length of the input password (Message string P).
+	// It must have a length not greater than 2^(32)-1 bytes.
+	DefaultMinPasswordLength = 8
+
+	// DefaultMaxPasswordLength is the default maximum length of the input password (Message string P).
+	// It must have a length not greater than 2^(32)-1 bytes.
+	DefaultMaxPasswordLength = 4096
 )
 
 // Params contains the parameters for hashing the password.
 type Params struct {
 	// Algo is the algorithm used to hash the password.
+	// It corresponds to Type y=2.
 	Algo string `json:"A"`
 
-	// Version is the algorithm version implemented by the parent package.
+	// Version is the algorithm version.
 	Version uint8 `json:"V"`
 
-	// KeyLen is the length of the returned byte-slice that can be used as cryptographic key.
+	// KeyLen is the length of the returned byte-slice that can be used as cryptographic key (Tag length).
+	// It must be an integer number of bytes from 4 to 2^(32)-1.
 	KeyLen uint32 `json:"K"`
 
-	// SaltLen is the length of the random password salt.
+	// SaltLen is the length of the random password salt (Nonce S).
+	// It must be not greater than 2^(32)-1 bytes.
+	// The value of 16 bytes is recommended for password hashing.
 	SaltLen uint32 `json:"S"`
 
-	// Time is the number of passes over the memory.
+	// Time (t) is the default number of passes over the memory.
+	// It must be an integer value from 1 to 2^(32)-1.
 	Time uint32 `json:"T"`
 
 	// Memory is the size of the memory in KiB.
+	// It must be an integer number of kibibytes from 8*p to 2^(32)-1.
+	// The actual number of blocks is m', which is m rounded down to the nearest multiple of 4*p.
 	Memory uint32 `json:"M"`
 
-	// Threads is number of threads used by hashing the algorithm.
+	// Threads (p) is the degree of parallelism p that determines how many independent
+	// (but	synchronizing) computational chains (lanes) can be run.
+	// According to the RFC9106 it must be an integer value from 1 to 2^(24)-1,
+	// but in this implementation is limited to 2^(8)-1.
 	Threads uint8 `json:"P"`
+
+	// minPLen is the minimum length of the input password (Message string P).
+	// It must have a length not greater than 2^(32)-1 bytes.
+	minPLen uint32
+
+	// maxPLen is the maximum length of the input password (Message string P).
+	// It must have a length not greater than 2^(32)-1 bytes.
+	maxPLen uint32
+}
+
+// Hashed contains the hashed password key and hashing parameters.
+type Hashed struct {
+	// Params contains the hashing parameters.
+	Params *Params `json:"P"`
+
+	// Salt is the password salt (Nonce S) of length Params.SaltLen.
+	// The salt should be unique for each password.
+	Salt []byte `json:"S"`
+
+	// Key is the hashed password (Tag) of length Params.KeyLen.
+	Key []byte `json:"K"`
 }
 
 // defaultParams returns the default parameter values.
@@ -67,7 +122,9 @@ func defaultParams() *Params {
 		SaltLen: DefaultSaltLen,
 		Time:    DefaultTime,
 		Memory:  DefaultMemory,
-		Threads: uint8(runtime.NumCPU()),
+		Threads: uint8(max(minThreads, min(runtime.NumCPU(), maxThreads))),
+		minPLen: DefaultMinPasswordLength,
+		maxPLen: DefaultMaxPasswordLength,
 	}
 }
 
@@ -79,22 +136,24 @@ func New(opts ...Option) *Params {
 		applyOpt(ph)
 	}
 
+	ph.Memory = adjustMemory(ph.Memory, uint32(ph.Threads))
+
 	return ph
 }
 
-// Hashed contains the hashed password key and hashing parameters.
-type Hashed struct {
-	// Params contains the hashing parameters.
-	Params *Params `json:"P"`
-
-	// Salt is the password salt.
-	Salt []byte `json:"S"`
-
-	// Key is the hashed password.
-	Key []byte `json:"K"`
-}
-
+// passwordHashData generates a hashed password using the provided password string.
+// It generates a random salt of length ph.SaltLen and uses the argon2id algorithm
+// to hash the password with the salt, using the parameters specified in ph.
+// The resulting hashed password, the salt and the parameters are returned as a struct.
 func (ph *Params) passwordHashData(password string) (*Hashed, error) {
+	if len(password) < int(ph.minPLen) {
+		return nil, fmt.Errorf("the password is too short: %d > %d", len(password), ph.minPLen)
+	}
+
+	if len(password) > int(ph.maxPLen) {
+		return nil, fmt.Errorf("the password is too long: %d > %d", len(password), ph.maxPLen)
+	}
+
 	salt, err := typeutil.RandomBytes(typeutil.RandReader, int(ph.SaltLen))
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -115,6 +174,8 @@ func (ph *Params) passwordHashData(password string) (*Hashed, error) {
 	}, nil
 }
 
+// passwordVerifyData verifies if a given password matches a hashed password generated with the passwordHashData method.
+// It returns true if the password matches the hashed password, otherwise false.
 func (ph *Params) passwordVerifyData(password string, data *Hashed) (bool, error) {
 	if data.Params.Algo != ph.Algo {
 		return false, fmt.Errorf("different algorithm type: lib=%s, hash=%s", ph.Algo, data.Params.Algo)
@@ -176,4 +237,11 @@ func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool
 	}
 
 	return ph.passwordVerifyData(password, data)
+}
+
+// adjustMemory returns the actual number of blocks is m',
+// which is m rounded down to the nearest multiple of 4*p.
+func adjustMemory(m uint32, p uint32) uint32 {
+	block := (memBlock * p)
+	return max((2 * block), ((m / block) * block))
 }

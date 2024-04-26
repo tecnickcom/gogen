@@ -25,6 +25,8 @@ func TestNew(t *testing.T) {
 		WithTime(3),
 		WithMemory(65_537),
 		WithThreads(5),
+		WithMinPasswordLength(16),
+		WithMaxPasswordLength(128),
 	}
 
 	p = New(opts...)
@@ -34,18 +36,34 @@ func TestNew(t *testing.T) {
 	require.Equal(t, uint32(31), p.KeyLen)
 	require.Equal(t, uint32(17), p.SaltLen)
 	require.Equal(t, uint32(3), p.Time)
-	require.Equal(t, uint32(65_537), p.Memory)
+	require.Equal(t, uint32(0xfff0), p.Memory)
 	require.Equal(t, uint8(5), p.Threads)
+	require.Equal(t, uint32(16), p.minPLen)
+	require.Equal(t, uint32(128), p.maxPLen)
 }
 
 //nolint:paralleltest
 func Test_passwordHashData(t *testing.T) {
 	p := New()
 
-	hash, err := p.passwordHashData("test")
+	hash, err := p.passwordHashData("test-password")
 
 	require.NoError(t, err)
 	require.NotEmpty(t, hash)
+
+	shortPassword := string(make([]byte, p.minPLen-1))
+
+	hash, err = p.passwordHashData(shortPassword)
+
+	require.Error(t, err)
+	require.Empty(t, hash)
+
+	longPassword := string(make([]byte, p.maxPLen+1))
+
+	hash, err = p.passwordHashData(longPassword)
+
+	require.Error(t, err)
+	require.Empty(t, hash)
 
 	rr := typeutil.RandReader
 	defer func() { typeutil.RandReader = rr }()
@@ -99,7 +117,7 @@ func Test_passwordHashData_passwordVerifyData(t *testing.T) {
 func TestPasswordHash(t *testing.T) {
 	p := New()
 
-	hash, err := p.PasswordHash("test")
+	hash, err := p.PasswordHash("TestPasswordString")
 
 	require.NoError(t, err)
 	require.NotEmpty(t, hash)
@@ -135,7 +153,7 @@ func TestPasswordVerify(t *testing.T) {
 func Test_PasswordHash_PasswordVerify(t *testing.T) {
 	t.Parallel()
 
-	secret := "test-secret-string"
+	secret := "Test-Password-01234"
 
 	p := New()
 

@@ -60,3 +60,25 @@ func TestWithThreads(t *testing.T) {
 	WithThreads(v)(c)
 	require.Equal(t, v, c.Threads)
 }
+
+func TestWithMinPasswordLength(t *testing.T) {
+	t.Parallel()
+
+	c := defaultParams()
+
+	var v uint32 = 13
+
+	WithMinPasswordLength(v)(c)
+	require.Equal(t, v, c.minPLen)
+}
+
+func TestWithMaxPasswordLength(t *testing.T) {
+	t.Parallel()
+
+	c := defaultParams()
+
+	var v uint32 = 13
+
+	WithMaxPasswordLength(v)(c)
+	require.Equal(t, v, c.maxPLen)
+}
