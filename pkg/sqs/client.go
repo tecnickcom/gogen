@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/Vonage/gosrvlib/pkg/encode"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -173,13 +173,13 @@ func (c *Client) Delete(ctx context.Context, receiptHandle string) error {
 
 // MessageEncode encodes and serialize the input data to a string compatible with SQS.
 func MessageEncode(data any) (string, error) {
-	return typeutil.Encode(data) //nolint:wrapcheck
+	return encode.Encode(data) //nolint:wrapcheck
 }
 
 // MessageDecode decodes a message encoded with MessageEncode to the provided data object.
 // The value underlying data must be a pointer to the correct type for the next data item received.
 func MessageDecode(msg string, data any) error {
-	return typeutil.Decode(msg, data) //nolint:wrapcheck
+	return encode.Decode(msg, data) //nolint:wrapcheck
 }
 
 // DefaultMessageEncodeFunc is the default function to encode and serialize the input data for SendData().

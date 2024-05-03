@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/Vonage/gosrvlib/pkg/encode"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
@@ -72,7 +72,7 @@ func (p *Producer) Send(topic string, msg []byte) error {
 
 // DefaultMessageEncodeFunc is the default function to encode the input data for SendData().
 func DefaultMessageEncodeFunc(_ context.Context, _ string, data any) ([]byte, error) {
-	return typeutil.ByteEncode(data) //nolint:wrapcheck
+	return encode.ByteEncode(data) //nolint:wrapcheck
 }
 
 // SendData delivers the specified data as encoded message to the queue.

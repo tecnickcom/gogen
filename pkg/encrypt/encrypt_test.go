@@ -1,4 +1,4 @@
-package typeutil
+package encrypt
 
 import (
 	"errors"
@@ -10,10 +10,10 @@ import (
 
 //nolint:paralleltest
 func TestEncrypt_RandError(t *testing.T) {
-	rr := RandReader
-	defer func() { RandReader = rr }()
+	rr := randReader
+	defer func() { randReader = rr }()
 
-	RandReader = iotest.ErrReader(errors.New("test-encrypt-randombytes-error"))
+	randReader = iotest.ErrReader(errors.New("test-encrypt-randombytes-error"))
 
 	enc, err := Encrypt([]byte("abcdefghijklmnop"), []byte("test"))
 

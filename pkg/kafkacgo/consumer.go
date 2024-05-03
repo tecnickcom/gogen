@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/Vonage/gosrvlib/pkg/encode"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
@@ -70,7 +70,7 @@ func (c *Consumer) Receive() ([]byte, error) {
 // DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
 // The value underlying data must be a pointer to the correct type for the next data item received.
 func DefaultMessageDecodeFunc(_ context.Context, msg []byte, data any) error {
-	return typeutil.ByteDecode(msg, data) //nolint:wrapcheck
+	return encode.ByteDecode(msg, data) //nolint:wrapcheck
 }
 
 // ReceiveData retrieves a message from the queue and extract its content in the data.

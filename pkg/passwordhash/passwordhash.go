@@ -14,7 +14,9 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/Vonage/gosrvlib/pkg/encode"
+	"github.com/Vonage/gosrvlib/pkg/encrypt"
+	"github.com/Vonage/gosrvlib/pkg/random"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -98,6 +100,9 @@ type Params struct {
 	// maxPLen is the maximum length of the input password (Message string P).
 	// It must have a length not greater than 2^(32)-1 bytes.
 	maxPLen uint32
+
+	// rnd is the random generator.
+	rnd *random.Rnd
 }
 
 // Hashed contains the hashed password key and hashing parameters.
@@ -125,6 +130,7 @@ func defaultParams() *Params {
 		Threads: uint8(max(minThreads, min(runtime.NumCPU(), maxThreads))),
 		minPLen: DefaultMinPasswordLength,
 		maxPLen: DefaultMaxPasswordLength,
+		rnd:     random.New(nil),
 	}
 }
 
@@ -154,7 +160,7 @@ func (ph *Params) passwordHashData(password string) (*Hashed, error) {
 		return nil, fmt.Errorf("the password is too long: %d > %d", len(password), ph.maxPLen)
 	}
 
-	salt, err := typeutil.RandomBytes(typeutil.RandReader, int(ph.SaltLen))
+	salt, err := ph.rnd.RandomBytes(int(ph.SaltLen))
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -200,7 +206,7 @@ func (ph *Params) PasswordHash(password string) (string, error) {
 		return "", err
 	}
 
-	return typeutil.Serialize(data) //nolint:wrapcheck
+	return encode.Serialize(data) //nolint:wrapcheck
 }
 
 // PasswordVerify verifies if a given password matches a hashed password generated with the PasswordHash method.
@@ -208,7 +214,7 @@ func (ph *Params) PasswordHash(password string) (string, error) {
 func (ph *Params) PasswordVerify(password, hash string) (bool, error) {
 	data := &Hashed{}
 
-	err := typeutil.Deserialize(hash, data)
+	err := encode.Deserialize(hash, data)
 	if err != nil {
 		return false, fmt.Errorf("unable to decode the hash string: %w", err)
 	}
@@ -224,14 +230,14 @@ func (ph *Params) EncryptPasswordHash(key []byte, password string) (string, erro
 		return "", err
 	}
 
-	return typeutil.EncryptSerializeAny(key, data) //nolint:wrapcheck
+	return encrypt.EncryptSerializeAny(key, data) //nolint:wrapcheck
 }
 
 // EncryptPasswordVerify extends the PasswordVerify method by decrypting the password hash using the provided key (pepper).
 func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool, error) {
 	data := &Hashed{}
 
-	err := typeutil.DecryptSerializeAny(key, hash, data)
+	err := encrypt.DecryptSerializeAny(key, hash, data)
 	if err != nil {
 		return false, fmt.Errorf("unable to decode the hash string: %w", err)
 	}

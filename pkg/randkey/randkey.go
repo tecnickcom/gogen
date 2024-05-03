@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/Vonage/gosrvlib/pkg/random"
 )
 
 // RandKey stores the random key.
@@ -17,7 +17,7 @@ type RandKey struct {
 
 // New generates a new uint64 random key.
 func New() *RandKey {
-	return &RandKey{key: typeutil.RandUint64()}
+	return &RandKey{key: random.New(nil).RandUint64()}
 }
 
 // Key returns a uint64 key.

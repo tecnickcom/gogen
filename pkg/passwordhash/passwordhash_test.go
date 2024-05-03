@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/iotest"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/Vonage/gosrvlib/pkg/random"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/argon2"
 )
@@ -42,8 +42,9 @@ func TestNew(t *testing.T) {
 	require.Equal(t, uint32(128), p.maxPLen)
 }
 
-//nolint:paralleltest
 func Test_passwordHashData(t *testing.T) {
+	t.Parallel()
+
 	p := New()
 
 	hash, err := p.passwordHashData("test-password")
@@ -65,10 +66,7 @@ func Test_passwordHashData(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, hash)
 
-	rr := typeutil.RandReader
-	defer func() { typeutil.RandReader = rr }()
-
-	typeutil.RandReader = iotest.ErrReader(errors.New("test-rand-reader-error"))
+	p.rnd = random.New(iotest.ErrReader(errors.New("test-rand-reader-error")))
 
 	hash, err = p.passwordHashData("test")
 
@@ -113,8 +111,9 @@ func Test_passwordHashData_passwordVerifyData(t *testing.T) {
 	require.False(t, ok)
 }
 
-//nolint:paralleltest
 func TestPasswordHash(t *testing.T) {
+	t.Parallel()
+
 	p := New()
 
 	hash, err := p.PasswordHash("TestPasswordString")
@@ -122,10 +121,7 @@ func TestPasswordHash(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, hash)
 
-	rr := typeutil.RandReader
-	defer func() { typeutil.RandReader = rr }()
-
-	typeutil.RandReader = iotest.ErrReader(errors.New("test-rand-reader-error"))
+	p.rnd = random.New(iotest.ErrReader(errors.New("test-rand-reader-error")))
 
 	_, err = p.PasswordHash("test")
 
@@ -168,8 +164,9 @@ func Test_PasswordHash_PasswordVerify(t *testing.T) {
 	require.True(t, ok)
 }
 
-//nolint:paralleltest
 func Test_EncryptPasswordHash(t *testing.T) {
+	t.Parallel()
+
 	p := New()
 
 	key := []byte("0123456789012345")
@@ -180,10 +177,7 @@ func Test_EncryptPasswordHash(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, hash)
 
-	rr := typeutil.RandReader
-	defer func() { typeutil.RandReader = rr }()
-
-	typeutil.RandReader = iotest.ErrReader(errors.New("test-rand-reader-error"))
+	p.rnd = random.New(iotest.ErrReader(errors.New("test-rand-reader-error")))
 
 	hash, err = p.EncryptPasswordHash(key, secret)
 

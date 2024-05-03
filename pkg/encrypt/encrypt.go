@@ -1,4 +1,7 @@
-package typeutil
+/*
+Package encrypt contains a collection of utility functions to encrypt and decrypt data.
+*/
+package encrypt
 
 import (
 	"bytes"
@@ -9,7 +12,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+
+	"github.com/Vonage/gosrvlib/pkg/random"
 )
+
+// randReader is the default random number generator.
+var randReader io.Reader //nolint:gochecknoglobals
 
 func newAESGCM(key []byte) (cipher.AEAD, error) {
 	block, err := aes.NewCipher(key)
@@ -28,9 +37,9 @@ func Encrypt(key, msg []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	nonce, err := RandomBytes(RandReader, aesgcm.NonceSize())
+	nonce, err := random.New(randReader).RandomBytes(aesgcm.NonceSize())
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return aesgcm.Seal(nonce, nonce, msg, nil), nil
@@ -106,7 +115,7 @@ func ByteDecryptAny(key, msg []byte, data any) error {
 }
 
 // EncryptAny wraps the ByteEncryptAny function to return a string instead of a byte slice.
-func EncryptAny(key []byte, data any) (string, error) {
+func EncryptAny(key []byte, data any) (string, error) { //nolint:revive
 	b, err := ByteEncryptAny(key, data)
 	if err != nil {
 		return "", fmt.Errorf("decrypt: %w", err)
@@ -150,7 +159,7 @@ func ByteDecryptSerializeAny(key, msg []byte, data any) error {
 }
 
 // EncryptSerializeAny wraps the ByteEncrypSerializetAny function to return a string instead of a byte slice.
-func EncryptSerializeAny(key []byte, data any) (string, error) {
+func EncryptSerializeAny(key []byte, data any) (string, error) { //nolint:revive
 	b, err := ByteEncryptSerializeAny(key, data)
 	if err != nil {
 		return "", fmt.Errorf("decrypt: %w", err)

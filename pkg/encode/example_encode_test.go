@@ -1,10 +1,10 @@
-package typeutil_test
+package encode_test
 
 import (
 	"fmt"
 	"log"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/Vonage/gosrvlib/pkg/encode"
 )
 
 //nolint:testableexamples
@@ -16,7 +16,7 @@ func ExampleEncode() {
 
 	data := &TestData{Alpha: "test_string", Beta: -9876}
 
-	v, err := typeutil.Encode(data)
+	v, err := encode.Encode(data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func ExampleDecode() {
 
 	msg := "Kf+BAwEBCFRlc3REYXRhAf+CAAECAQVBbHBoYQEMAAEEQmV0YQEEAAAAD/+CAQZhYmMxMjMB/gLtAA=="
 
-	err := typeutil.Decode(msg, &data)
+	err := encode.Decode(msg, &data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func ExampleSerialize() {
 
 	data := &TestData{Alpha: "test_string", Beta: -9876}
 
-	v, err := typeutil.Serialize(data)
+	v, err := encode.Serialize(data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func ExampleDeserialize() {
 
 	msg := "eyJBbHBoYSI6ImFiYzEyMyIsIkJldGEiOi0zNzV9Cg=="
 
-	err := typeutil.Deserialize(msg, &data)
+	err := encode.Deserialize(msg, &data)
 	if err != nil {
 		log.Fatal(err)
 	}

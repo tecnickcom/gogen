@@ -1,4 +1,8 @@
-package typeutil
+/*
+Package encode provides serialization and deserialization functions to safely transmit,
+store and retrieve data between different systems (e.g., databases, queues, caches, etc.).
+*/
+package encode
 
 import (
 	"bytes"

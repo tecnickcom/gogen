@@ -2,7 +2,6 @@
 Package typeutil contains a collection of type-related utility functions.
 
 This package provides a set of utility functions and definitions to work with generic types in Go.
-It also provides serialization and deserialization functions to safely transmit, store and retrieve data between different systems (e.g., databases, queues, caches, etc.).
 */
 package typeutil
 
