@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	chrDigits    = "0123456789"
-	chrUppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	chrLowercase = "abcdefghijklmnopqrstuvwxyz"
-	chrSymbols   = "!#$%&()*+,-./:;<=>?@[]^_{|}~" // (exclude "\"'\\`")
-	chrMap       = chrDigits + chrUppercase + chrLowercase + chrSymbols
-	chrMapMaxLen = 256
+	chrDigits     = "0123456789"
+	chrUppercase  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	chrLowercase  = "abcdefghijklmnopqrstuvwxyz"
+	chrSymbols    = "!#$%&()*+,-./:;<=>?@[]^_{|}~" // (exclude "\"'\\`")
+	chrMapDefault = chrDigits + chrUppercase + chrLowercase + chrSymbols
+	chrMapMaxLen  = 256
 )
 
 // Rnd defines then random number generator.
@@ -36,7 +36,7 @@ func New(r io.Reader, opts ...Option) *Rnd {
 
 	rnd := &Rnd{
 		reader: r,
-		chrMap: []byte(chrMap),
+		chrMap: []byte(chrMapDefault),
 	}
 
 	for _, applyOpt := range opts {
@@ -89,8 +89,10 @@ func (r *Rnd) RandString(n int) (string, error) {
 		return "", err
 	}
 
+	cmlen := len(r.chrMap)
+
 	for i, v := range b {
-		b[i] = r.chrMap[(int(v)*len(chrMap))>>8]
+		b[i] = r.chrMap[(int(v)*cmlen)>>8]
 	}
 
 	return string(b), nil

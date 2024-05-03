@@ -88,6 +88,13 @@ func TestRandString(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, s, 17)
 
+	rc := New(nil, WithByteToCharMap([]byte(chrDigits+chrLowercase)))
+
+	sc, err := rc.RandString(16)
+
+	require.NoError(t, err)
+	require.Len(t, sc, 16)
+
 	re := New(iotest.ErrReader(errors.New("test-randstring-error")))
 
 	s, err = re.RandString(32)

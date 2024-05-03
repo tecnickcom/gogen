@@ -9,7 +9,7 @@ import (
 func TestWithByteToCharMap(t *testing.T) {
 	t.Parallel()
 
-	want := []byte(chrMap)
+	want := []byte(chrMapDefault)
 	c := &Rnd{}
 
 	WithByteToCharMap(want)(c)

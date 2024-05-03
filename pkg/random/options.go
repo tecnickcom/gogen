@@ -9,7 +9,7 @@ type Option func(c *Rnd)
 func WithByteToCharMap(cm []byte) Option {
 	switch d := len(cm); {
 	case d == 0:
-		cm = []byte(chrMap)
+		cm = []byte(chrMapDefault)
 	case d > chrMapMaxLen:
 		cm = cm[:chrMapMaxLen]
 	}
