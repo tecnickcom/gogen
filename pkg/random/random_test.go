@@ -14,6 +14,18 @@ func TestNew(t *testing.T) {
 	r := New(nil)
 
 	require.NotNil(t, r.reader)
+	require.NotNil(t, r.chrMap)
+
+	errReader := iotest.ErrReader(errors.New("test-rand-reader-error"))
+	re := New(
+		errReader,
+		WithByteToCharMap([]byte("0123456789abcdefx")),
+	)
+
+	require.NotNil(t, re.reader)
+	require.Equal(t, errReader, re.reader)
+	require.NotNil(t, re.chrMap)
+	require.Len(t, re.chrMap, 17)
 }
 
 func TestRandomBytes(t *testing.T) {
@@ -64,4 +76,22 @@ func TestRandUint64(t *testing.T) {
 	u = re.RandUint64()
 
 	require.NotZero(t, u)
+}
+
+func TestRandString(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+
+	s, err := r.RandString(17)
+
+	require.NoError(t, err)
+	require.Len(t, s, 17)
+
+	re := New(iotest.ErrReader(errors.New("test-randstring-error")))
+
+	s, err = re.RandString(32)
+
+	require.Error(t, err)
+	require.Empty(t, s)
 }
