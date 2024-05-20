@@ -7,7 +7,6 @@ sudo: true
 branches:
   only:
     - main
-    - develop
 
 go:
   - '1.22'
