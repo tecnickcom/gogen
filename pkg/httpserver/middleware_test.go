@@ -10,6 +10,7 @@ import (
 	"github.com/Vonage/gosrvlib/pkg/redact"
 	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/Vonage/gosrvlib/pkg/traceid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 )
@@ -19,14 +20,14 @@ func TestRequestInjectHandler(t *testing.T) {
 
 	nextHandler := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		l := logging.FromContext(r.Context())
-		require.NotNil(t, l, "logger not found")
+		assert.NotNil(t, l, "logger not found")
 
 		l.Info("injected")
 
 		// check if the request_time can be retrieved.
 		reqTime, ok := httputil.GetRequestTime(r)
-		require.True(t, ok)
-		require.NotEmpty(t, reqTime)
+		assert.True(t, ok)
+		assert.NotEmpty(t, reqTime)
 	})
 
 	ctx, logs := testutil.ContextWithLogObserver(zapcore.DebugLevel)

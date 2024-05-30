@@ -54,7 +54,7 @@ func TestWithCreateMetricsClientFunc(t *testing.T) {
 	cfg := &config{}
 
 	v := func() (metrics.Client, error) {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 	WithCreateMetricsClientFunc(v)(cfg)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createMetricsClientFunc).Pointer())

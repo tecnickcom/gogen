@@ -63,7 +63,7 @@ func (r *Rnd) RandomBytes(n int) ([]byte, error) {
 func (r *Rnd) RandUint32() uint32 {
 	b, err := r.RandomBytes(4)
 	if err != nil {
-		return mrand.Uint32()
+		return mrand.Uint32() //nolint:gosec
 	}
 
 	return binary.LittleEndian.Uint32(b)
@@ -74,7 +74,7 @@ func (r *Rnd) RandUint32() uint32 {
 func (r *Rnd) RandUint64() uint64 {
 	b, err := r.RandomBytes(8)
 	if err != nil {
-		return mrand.Uint64()
+		return mrand.Uint64() //nolint:gosec
 	}
 
 	return binary.LittleEndian.Uint64(b)

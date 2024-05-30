@@ -10,6 +10,7 @@ import (
 
 	libhttputil "github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/Vonage/gosrvlib/pkg/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -95,14 +96,14 @@ func TestClient_ForwardRequest(t *testing.T) {
 		}()
 
 		rd, err := httputil.DumpRequest(r, false)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		t.Logf("%s", string(rd))
 
 		proxyTestURL, err := url.Parse(targetServer.URL)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
-		require.Equal(t, r.Host, proxyTestURL.Host)
-		require.Equal(t, "127.0.0.1", r.Header.Get("X-Forwarded-For"))
+		assert.Equal(t, r.Host, proxyTestURL.Host)
+		assert.Equal(t, "127.0.0.1", r.Header.Get("X-Forwarded-For"))
 	})
 
 	targetMux.HandleFunc("/badrequest", func(w http.ResponseWriter, r *http.Request) {

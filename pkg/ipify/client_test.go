@@ -8,6 +8,7 @@ import (
 
 	"github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/Vonage/gosrvlib/pkg/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -109,7 +110,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 				w.WriteHeader(http.StatusOK)
 				_, err := w.Write([]byte("0.0.0.0"))
-				require.NoError(t, err, "unexpected error: %v", err)
+				assert.NoError(t, err, "unexpected error: %v", err)
 			},
 			wantIP:  "0.0.0.0",
 			wantErr: false,
