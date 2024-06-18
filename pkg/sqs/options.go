@@ -6,15 +6,12 @@ import (
 
 	"github.com/Vonage/gosrvlib/pkg/awsopt"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awssrv "github.com/aws/aws-sdk-go-v2/service/sqs"
-	smithyendpoints "github.com/aws/smithy-go/endpoints"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	sep "github.com/aws/smithy-go/endpoints"
 )
 
-// SrvOption is an alias for this service option type.
-type SrvOption = awssrv.Options
-
 // SrvOptionFunc is an alias for this service option function.
-type SrvOptionFunc = func(*SrvOption)
+type SrvOptionFunc = func(*sqs.Options)
 
 // Option is a type to allow setting custom client options.
 type Option func(*cfg)
@@ -36,7 +33,7 @@ func WithSrvOptionFuncs(opt ...SrvOptionFunc) Option {
 // WithEndpointMutable sets a mutable endpoint.
 func WithEndpointMutable(url string) Option {
 	return WithSrvOptionFuncs(
-		func(o *SrvOption) {
+		func(o *sqs.Options) {
 			o.BaseEndpoint = aws.String(url)
 		},
 	)
@@ -45,7 +42,7 @@ func WithEndpointMutable(url string) Option {
 // WithEndpointImmutable sets an immutable endpoint.
 func WithEndpointImmutable(url string) Option {
 	return WithSrvOptionFuncs(
-		func(o *SrvOption) {
+		func(o *sqs.Options) {
 			o.EndpointResolverV2 = &endpointResolver{url: url}
 		},
 	)
@@ -55,16 +52,16 @@ type endpointResolver struct {
 	url string
 }
 
-func (r *endpointResolver) ResolveEndpoint(_ context.Context, _ awssrv.EndpointParameters) (
-	smithyendpoints.Endpoint,
+func (r *endpointResolver) ResolveEndpoint(_ context.Context, _ sqs.EndpointParameters) (
+	sep.Endpoint,
 	error,
 ) {
 	u, err := url.Parse(r.url)
 	if err != nil {
-		return smithyendpoints.Endpoint{}, err //nolint:wrapcheck
+		return sep.Endpoint{}, err //nolint:wrapcheck
 	}
 
-	return smithyendpoints.Endpoint{URI: *u}, nil
+	return sep.Endpoint{URI: *u}, nil
 }
 
 // WithWaitTimeSeconds overrides the default duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
