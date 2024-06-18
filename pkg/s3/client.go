@@ -31,7 +31,7 @@ func New(ctx context.Context, bucketName string, opts ...Option) (*Client, error
 	}
 
 	return &Client{
-		s3:         s3.NewFromConfig(cfg.awsConfig),
+		s3:         s3.NewFromConfig(cfg.awsConfig, cfg.srvOptFns...),
 		bucketName: bucketName,
 	}, nil
 }

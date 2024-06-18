@@ -83,6 +83,9 @@ func awsRegionFromURL(url, defaultRegion string) string {
 }
 
 // WithEndpoint overrides the AWS endpoint for the service.
+//
+// Deprecated: Use instead the WithEndpointMutable or WithEndpointImmutable in the gosrvlib aws service packages.
+// Ref.: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#WithEndpointResolver
 func (c *Options) WithEndpoint(url string, isImmutable bool) {
 	c.WithAWSOption(
 		config.WithEndpointResolverWithOptions(
@@ -100,6 +103,9 @@ type endpointResolver struct {
 }
 
 // ResolveEndpoint returns an aws.Endpoint.
+//
+// Deprecated: Use instead the WithEndpointMutable or WithEndpointImmutable in the gosrvlib aws service packages.
+// Ref.: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#WithEndpointResolver
 func (r endpointResolver) ResolveEndpoint(_, region string, _ ...any) (aws.Endpoint, error) {
 	return aws.Endpoint{
 		SigningRegion:     region,

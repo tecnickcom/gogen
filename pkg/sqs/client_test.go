@@ -20,13 +20,14 @@ func TestNew(t *testing.T) {
 
 	o := awsopt.Options{}
 	o.WithRegion("eu-west-1")
-	o.WithEndpoint("https://test.endpoint.invalid", true)
+	// o.WithEndpoint("https://test.endpoint.invalid", true) // deprecated
 
 	got, err := New(
 		context.TODO(),
 		"https://test_queue.invalid/queue0.fifo",
 		"",
 		WithAWSOptions(o),
+		WithEndpointMutable("https://test.endpoint.invalid"),
 		WithWaitTimeSeconds(wt),
 		WithVisibilityTimeout(vt),
 	)
@@ -39,6 +40,7 @@ func TestNew(t *testing.T) {
 		"https://test_queue.invalid/queue1.fifo",
 		"alpha beta",
 		WithAWSOptions(o),
+		WithEndpointImmutable("https://test.endpoint.invalid"),
 		WithWaitTimeSeconds(wt),
 		WithVisibilityTimeout(vt),
 	)
@@ -52,6 +54,7 @@ func TestNew(t *testing.T) {
 		"https://test_queue.invalid/queue2.fifo",
 		msgGrpID,
 		WithAWSOptions(o),
+		WithEndpointMutable("https://test.endpoint.invalid"),
 		WithWaitTimeSeconds(wt),
 		WithVisibilityTimeout(vt),
 	)
@@ -68,6 +71,7 @@ func TestNew(t *testing.T) {
 		"https://test_queue.invalid/queue3.standard",
 		"SOMETHING_TO_IGNORE",
 		WithAWSOptions(o),
+		WithEndpointImmutable("https://test.endpoint.invalid"),
 		WithWaitTimeSeconds(wt),
 		WithVisibilityTimeout(vt),
 	)

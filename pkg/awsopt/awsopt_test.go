@@ -141,7 +141,7 @@ func Test_WithEndpoint(t *testing.T) {
 			url:       "https://test.immutable.invalid",
 			immutable: true,
 			want: Options{
-				config.WithEndpointResolverWithOptions(
+				config.WithEndpointResolverWithOptions( //nolint:staticcheck
 					endpointResolver{
 						url:         "https://test.immutable.invalid",
 						isImmutable: true,
@@ -154,7 +154,7 @@ func Test_WithEndpoint(t *testing.T) {
 			url:       "https://test.mutable.invalid",
 			immutable: false,
 			want: Options{
-				config.WithEndpointResolverWithOptions(
+				config.WithEndpointResolverWithOptions( //nolint:staticcheck
 					endpointResolver{
 						url:         "https://test.mutable.invalid",
 						isImmutable: false,

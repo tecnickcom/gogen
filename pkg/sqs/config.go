@@ -21,6 +21,7 @@ const (
 type cfg struct {
 	awsOpts           awsopt.Options
 	awsConfig         aws.Config
+	srvOptFns         []SrvOptionFunc
 	waitTimeSeconds   int32
 	visibilityTimeout int32
 	messageEncodeFunc TEncodeFunc

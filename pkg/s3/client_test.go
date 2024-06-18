@@ -16,12 +16,24 @@ import (
 
 func TestNew(t *testing.T) {
 	o := awsopt.Options{}
-	o.WithEndpoint("https://test.endpoint.invalid", true)
+	// o.WithEndpoint("https://test.endpoint.invalid", true) // deprecated
 
 	got, err := New(
 		context.TODO(),
 		"name",
 		WithAWSOptions(o),
+		WithEndpointImmutable("https://test.endpoint.invalid"),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, "name", got.bucketName)
+
+	got, err = New(
+		context.TODO(),
+		"name",
+		WithAWSOptions(o),
+		WithEndpointMutable("https://test.endpoint.invalid"),
 	)
 
 	require.NoError(t, err)

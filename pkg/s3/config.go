@@ -9,8 +9,9 @@ import (
 )
 
 type cfg struct {
-	awsOpts   awsopt.Options
 	awsConfig aws.Config
+	awsOpts   awsopt.Options
+	srvOptFns []SrvOptionFunc
 }
 
 func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
