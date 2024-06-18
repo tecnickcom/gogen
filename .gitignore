@@ -1,6 +1,7 @@
 *.bak
 *.test
 *.tmp
+*.temp
 .idea
 /Dockerfile
 golangci-lint
