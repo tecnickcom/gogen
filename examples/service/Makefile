@@ -401,7 +401,7 @@ deps: ensuretarget
 	$(GO) install github.com/mikefarah/yq/v4@latest
 	$(GO) install github.com/hairyhenderson/gomplate/v3/cmd/gomplate@latest
 	$(GO) install github.com/rakyll/gotest
-	$(GO) install github.com/jstemmer/go-junit-report
+	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
 	$(GO) install github.com/golang/mock/mockgen
 
 # Build a docker container to run this service
