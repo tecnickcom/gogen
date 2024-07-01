@@ -108,6 +108,7 @@ help:
 	@echo "    make qa        : Run all tests and static analysis tools"
 	@echo "    make tag       : Tag the Git repository"
 	@echo "    make test      : Run unit tests"
+	@echo "    make version   : Update this library version in the examples"
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo ""
@@ -123,7 +124,7 @@ all: help
 # Alias to test and build everything from scratch
 .PHONY: x
 x:
-	DEVMODE=LOCAL $(MAKE) format clean mod deps generate qa example
+	DEVMODE=LOCAL $(MAKE) version format clean mod deps generate qa example
 
 # Remove any build artifact
 .PHONY: clean
@@ -246,3 +247,8 @@ test: ensuretarget
 	-coverprofile=$(TARGETDIR)/report/coverage.out \
 	-v $(GOPKGS) $(TESTEXTRACMD)
 	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
+
+# Set the gosrvlib version in the example go.mod
+.PHONY: version
+version:
+	sed -i "s|github.com/Vonage/gosrvlib v.*$$|github.com/Vonage/gosrvlib v$(VERSION)|" examples/service/go.mod
