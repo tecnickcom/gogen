@@ -61,7 +61,6 @@ func TestParseJSON(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -106,7 +105,6 @@ func TestNew(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -175,7 +173,6 @@ func TestFilter_ParseURLQuery(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1011,7 +1008,6 @@ func TestFilter_Apply(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1117,7 +1113,6 @@ func TestFilter_ApplySubset(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1155,7 +1150,7 @@ func benchmarkFilterApply(b *testing.B, n int, json string, opts ...Option) {
 	require.NoError(b, err)
 
 	data := make([]simpleStruct, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		data[i] = simpleStruct{
 			StringField: "hello world",
 		}

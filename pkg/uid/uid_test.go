@@ -51,11 +51,11 @@ func collisionTest(t *testing.T, f func() string, concurrency, iterations int) {
 	genWg := &sync.WaitGroup{}
 	genWg.Add(concurrency)
 
-	for i := 0; i < concurrency; i++ {
+	for range concurrency {
 		go func() {
 			defer genWg.Done()
 
-			for i := 0; i < iterations; i++ {
+			for range iterations {
 				idCh <- f()
 			}
 		}()
@@ -66,7 +66,7 @@ func collisionTest(t *testing.T, f func() string, concurrency, iterations int) {
 
 	ids := make(map[string]bool, total)
 
-	for i := 0; i < total; i++ {
+	for range total {
 		id, ok := <-idCh
 		if !ok {
 			t.Errorf("unexpected closed id channel")

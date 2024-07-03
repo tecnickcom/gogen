@@ -87,7 +87,7 @@ func ExampleAppend_concurrent() {
 	max := 5
 	s := make([]int, 0, max)
 
-	for i := 0; i < max; i++ {
+	for i := range max {
 		wg.Add(1)
 
 		go func(item int) {

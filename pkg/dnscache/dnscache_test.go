@@ -219,7 +219,7 @@ func Test_LookupHost_concurrent_slow(t *testing.T) {
 	ret := make(chan retval, nlookup)
 	wg := &sync.WaitGroup{}
 
-	for j := 0; j < nlookup; j++ {
+	for range nlookup {
 		wg.Add(1)
 
 		go func() {
@@ -267,7 +267,7 @@ func Test_LookupHost_concurrent_fast(t *testing.T) {
 	ret := make(chan retval, nlookup)
 	wg := &sync.WaitGroup{}
 
-	for j := 0; j < nlookup; j++ {
+	for range nlookup {
 		wg.Add(1)
 
 		go func() {
@@ -322,7 +322,7 @@ func Test_LookupHost_error(t *testing.T) {
 	ret := make(chan retval, nlookup)
 	wg := &sync.WaitGroup{}
 
-	for j := 0; j < nlookup; j++ {
+	for range nlookup {
 		wg.Add(1)
 
 		go func() {
@@ -366,7 +366,7 @@ func Test_LookupHost_error_concurrent_fast(t *testing.T) {
 	ret := make(chan retval, nlookup)
 	wg := &sync.WaitGroup{}
 
-	for j := 0; j < nlookup; j++ {
+	for range nlookup {
 		wg.Add(1)
 
 		go func() {

@@ -43,7 +43,7 @@ func TestClient_Do(t *testing.T) {
 	bodyStr := `TEST BODY OK`
 	body := make([]byte, 0)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		body = append(body, []byte(bodyStr+`\n`)...)
 	}
 
@@ -94,7 +94,6 @@ func TestClient_Do(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

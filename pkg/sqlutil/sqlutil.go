@@ -87,7 +87,7 @@ func defaultQuoteValue(s string) string {
 func escape(s string) string {
 	dest := make([]byte, 0, 2*len(s))
 
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 
 		switch c {

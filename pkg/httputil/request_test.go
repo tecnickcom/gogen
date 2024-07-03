@@ -52,7 +52,6 @@ func TestPathParam(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -87,12 +86,12 @@ func TestHeaderOrDefault(t *testing.T) {
 	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	require.NoError(t, err)
 
-	r.Header.Add("set-header", "test")
+	r.Header.Add("Set-Header", "test")
 
-	v1 := HeaderOrDefault(r, "unset-header", "default")
+	v1 := HeaderOrDefault(r, "Unset-Header", "default")
 	require.Equal(t, "default", v1)
 
-	v2 := HeaderOrDefault(r, "set-header", "default")
+	v2 := HeaderOrDefault(r, "Set-Header", "default")
 	require.Equal(t, "test", v2)
 }
 
@@ -142,7 +141,6 @@ func TestQueryStringOrDefault(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -207,7 +205,6 @@ func TestQueryIntOrDefault(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -272,7 +269,6 @@ func TestQueryUintOrDefault(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

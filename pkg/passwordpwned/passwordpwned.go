@@ -35,7 +35,7 @@ func (c *Client) IsPwnedPassword(ctx context.Context, password string) (bool, er
 		return false, fmt.Errorf("create request: %w", err)
 	}
 
-	r.Header.Set("user-agent", c.userAgent)
+	r.Header.Set("User-Agent", c.userAgent)
 	r.Header.Set("Accept-Encoding", "br") // Responses are brotli-encoded.
 	r.Header.Set("Add-Padding", "true")   // All responses will contain between 800 and 1,000 results regardless of the number of hash suffixes returned by the service.
 

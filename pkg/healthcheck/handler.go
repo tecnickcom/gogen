@@ -53,8 +53,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	wg.Add(h.checksCount)
 
 	for _, hc := range h.checks {
-		hc := hc
-
 		go func() { //nolint:contextcheck
 			defer wg.Done()
 

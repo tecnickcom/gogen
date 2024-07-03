@@ -109,8 +109,6 @@ func Test_WithRegionFromURL(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
-
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("AWS_REGION", tt.envAWSRegion)
 			t.Setenv("AWS_DEFAULT_REGION", tt.envAWSDefaultregion)
@@ -165,8 +163,6 @@ func Test_WithEndpoint(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
-
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

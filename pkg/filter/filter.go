@@ -211,7 +211,7 @@ func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length in
 		m uint
 	)
 
-	for i := 0; i < slice.Len(); i++ {
+	for i := range slice.Len() {
 		value := slice.Index(i)
 
 		// value can always be Interface() because it's in a slice and cannot point to an unexported field

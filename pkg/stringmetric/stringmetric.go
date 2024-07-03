@@ -113,7 +113,7 @@ func initDLAlphabet(ra, rb []rune, maxdist int) map[rune]int {
 func initDLMatrix(ncols, nrows, maxdist int) [][]int {
 	dist := make([][]int, ncols)
 
-	for i := 0; i < ncols; i++ {
+	for i := range ncols {
 		dist[i] = make([]int, nrows)
 		dist[i][0] = maxdist
 		dist[i][1] = i - 1

@@ -174,7 +174,6 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 
 	//nolint:paralleltest
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
