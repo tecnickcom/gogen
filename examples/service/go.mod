@@ -7,7 +7,7 @@ toolchain go1.22.5
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.94.0
+	github.com/Vonage/gosrvlib v1.94.1
 	github.com/golang/mock v1.6.0
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/prometheus/client_golang v1.19.1
@@ -21,10 +21,10 @@ require (
 require (
 	cloud.google.com/go v0.115.0 // indirect
 	cloud.google.com/go/auth v0.7.0 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
-	cloud.google.com/go/compute/metadata v0.4.0 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	cloud.google.com/go/firestore v1.15.0 // indirect
-	cloud.google.com/go/longrunning v0.5.9 // indirect
+	cloud.google.com/go/longrunning v0.5.10 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
