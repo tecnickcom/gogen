@@ -18,101 +18,7 @@ func TestNew(t *testing.T) {
 
 	got := New(nil, 3, 5*time.Second)
 	require.NotNil(t, got)
-
-	require.NotNil(t, got.resolver)
-	require.NotNil(t, got.mux)
-
-	require.Equal(t, 3, got.size)
-	require.Equal(t, 5*time.Second, got.ttl)
-
-	require.NotNil(t, got.hostmap)
-	require.Empty(t, got.hostmap)
-
-	got = New(nil, 0, 1*time.Second)
-	require.Equal(t, 1, got.size)
-}
-
-func Test_evict_expired(t *testing.T) {
-	t.Parallel()
-
-	r := New(nil, 3, 1*time.Minute)
-
-	r.hostmap = map[string]*entry{
-		"example.com": {
-			expireAt: time.Now().UTC().Add(-2 * time.Second).Unix(),
-		},
-		"example.org": {
-			expireAt: time.Now().UTC().Add(11 * time.Second).Unix(),
-		},
-		"example.net": {
-			expireAt: time.Now().UTC().Add(13 * time.Second).Unix(),
-		},
-	}
-
-	require.Len(t, r.hostmap, 3)
-
-	r.evict()
-
-	require.Len(t, r.hostmap, 2)
-	require.Contains(t, r.hostmap, "example.org")
-	require.Contains(t, r.hostmap, "example.net")
-}
-
-func Test_evict_oldest(t *testing.T) {
-	t.Parallel()
-
-	c := New(nil, 3, 1*time.Second)
-
-	c.hostmap = map[string]*entry{
-		"example.com": {
-			expireAt: time.Now().UTC().Add(11 * time.Second).Unix(),
-		},
-		"example.org": {
-			expireAt: time.Now().UTC().Add(7 * time.Second).Unix(),
-		},
-		"example.net": {
-			expireAt: time.Now().UTC().Add(13 * time.Second).Unix(),
-		},
-	}
-
-	c.evict()
-
-	require.Len(t, c.hostmap, 2)
-	require.Contains(t, c.hostmap, "example.com")
-	require.Contains(t, c.hostmap, "example.net")
-}
-
-/*
-NOTE:
-The IP blocks 192.0.2.0/24 (TEST-NET-1), 198.51.100.0/24 (TEST-NET-2),
-and 203.0.113.0/24 (TEST-NET-3) are provided for use in documentation.
-*/
-
-func Test_set(t *testing.T) {
-	t.Parallel()
-
-	c := New(nil, 2, 10*time.Second)
-
-	c.set("example.com", []string{"192.0.2.1"}, nil, nil)
-	time.Sleep(1 * time.Second)
-	c.set("example.org", []string{"192.0.2.2", "198.51.100.2"}, nil, nil)
-
-	require.Len(t, c.hostmap, 2)
-	require.Contains(t, c.hostmap, "example.com")
-	require.Contains(t, c.hostmap, "example.org")
-
-	c.set("example.net", []string{"192.0.2.3", "198.51.100.3", "203.0.113.3"}, nil, nil)
-
-	require.Len(t, c.hostmap, 2)
-	require.Contains(t, c.hostmap, "example.org")
-	require.Contains(t, c.hostmap, "example.net")
-
-	c.set("example.net", []string{"198.51.100.4"}, nil, nil)
-
-	require.Len(t, c.hostmap, 2)
-	require.Contains(t, c.hostmap, "example.org")
-	require.Contains(t, c.hostmap, "example.net")
-	require.Equal(t, []string{"198.51.100.4"}, c.hostmap["example.net"].addrs)
+	require.NotNil(t, got.cache)
 }
 
 type mockResolver struct {
@@ -159,39 +65,6 @@ func Test_LookupHost(t *testing.T) {
 	addrs, err = c.LookupHost(context.TODO(), "example.net")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.3"}, addrs)
-
-	// deleted entry on duplicate lookup
-	wait := make(chan struct{})
-
-	c.mux.Lock()
-	c.set("example.org", nil, nil, wait)
-	c.mux.Unlock()
-
-	go func() {
-		time.Sleep(5 * time.Millisecond)
-		c.Remove("example.org")
-		close(wait)
-	}()
-
-	addrs, err = c.LookupHost(context.TODO(), "example.org")
-	require.NoError(t, err)
-	require.Equal(t, []string{"192.0.2.4"}, addrs)
-
-	// context expired on duplicate lookup
-	wait = make(chan struct{})
-
-	c.mux.Lock()
-	c.set("example.org", nil, nil, wait)
-	c.mux.Unlock()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-
-	c.set("example.org", nil, nil, wait)
-
-	addrs, err = c.LookupHost(ctx, "example.org")
-	require.Error(t, err)
-	require.Nil(t, addrs)
 }
 
 func Test_LookupHost_concurrent_slow(t *testing.T) {
@@ -456,44 +329,4 @@ func Test_DialContext(t *testing.T) {
 	conn, err := r.DialContext(context.TODO(), network, address)
 	require.NoError(t, err)
 	require.NotNil(t, conn)
-}
-
-func Test_Reset(t *testing.T) {
-	t.Parallel()
-
-	c := New(nil, 1, 1*time.Second)
-
-	c.hostmap = map[string]*entry{
-		"example.com": {
-			expireAt: time.Now().UTC().Unix(),
-		},
-	}
-
-	c.Reset()
-
-	require.Empty(t, c.hostmap)
-}
-
-func Test_Remove(t *testing.T) {
-	t.Parallel()
-
-	c := New(nil, 3, 1*time.Second)
-
-	c.hostmap = map[string]*entry{
-		"example.com": {
-			expireAt: time.Now().UTC().Unix(),
-		},
-		"example.net": {
-			expireAt: time.Now().UTC().Unix(),
-		},
-		"example.org": {
-			expireAt: time.Now().UTC().Unix(),
-		},
-	}
-
-	c.Remove("example.net")
-
-	require.Len(t, c.hostmap, 2)
-	require.Contains(t, c.hostmap, "example.com")
-	require.Contains(t, c.hostmap, "example.org")
 }
