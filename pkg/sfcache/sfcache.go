@@ -67,6 +67,14 @@ func New(lookupFn LookupFunc, size int, ttl time.Duration) *Cache {
 	}
 }
 
+// Len returns the number of items in the cache.
+func (c *Cache) Len() int {
+	c.mux.RLock()
+	defer c.mux.RUnlock()
+
+	return len(c.keymap)
+}
+
 // Reset clears the whole cache.
 func (c *Cache) Reset() {
 	c.mux.Lock()

@@ -84,3 +84,18 @@ func (c *Cache) DialContext(ctx context.Context, network, address string) (net.C
 
 	return nil, fmt.Errorf("failed to dial %s: %w", address, err)
 }
+
+// Len returns the number of items in the cache.
+func (c *Cache) Len() int {
+	return c.cache.Len()
+}
+
+// Reset clears the whole cache.
+func (c *Cache) Reset() {
+	c.cache.Reset()
+}
+
+// Remove removes the cache entry for the specified host.
+func (c *Cache) Remove(host string) {
+	c.cache.Remove(host)
+}

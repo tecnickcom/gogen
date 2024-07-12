@@ -330,3 +330,74 @@ func Test_DialContext(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 }
+
+func Test_Len(t *testing.T) {
+	t.Parallel()
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			return []string{"192.0.2.1"}, nil
+		},
+	}
+
+	c := New(resolver, 3, 1*time.Second)
+
+	// cache miss
+	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1"}, addrs)
+
+	require.Equal(t, 1, c.Len())
+}
+
+func Test_Reset(t *testing.T) {
+	t.Parallel()
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			return []string{"192.0.2.1"}, nil
+		},
+	}
+
+	c := New(resolver, 3, 1*time.Second)
+
+	// cache miss
+	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1"}, addrs)
+
+	// cache miss
+	addrs, err = c.LookupHost(context.TODO(), "example.net")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1"}, addrs)
+
+	c.Reset()
+
+	require.Empty(t, c.Len())
+}
+
+func Test_Remove(t *testing.T) {
+	t.Parallel()
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			return []string{"192.0.2.1"}, nil
+		},
+	}
+
+	c := New(resolver, 3, 1*time.Minute)
+
+	// cache miss
+	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1"}, addrs)
+
+	// cache miss
+	addrs, err = c.LookupHost(context.TODO(), "example.net")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1"}, addrs)
+
+	c.Remove("example.net")
+
+	require.Equal(t, 1, c.Len())
+}

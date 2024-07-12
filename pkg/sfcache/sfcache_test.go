@@ -34,6 +34,22 @@ func TestNew(t *testing.T) {
 	require.Equal(t, 1, got.size)
 }
 
+func Test_Len(t *testing.T) {
+	t.Parallel()
+
+	c := New(nil, 3, 1*time.Second)
+
+	c.keymap = map[string]*entry{
+		"example.com": {
+			expireAt: time.Now().UTC().Unix(),
+		},
+		"example.net": {
+			expireAt: time.Now().UTC().Unix(),
+		},
+	}
+	require.Equal(t, 2, c.Len())
+}
+
 func Test_Reset(t *testing.T) {
 	t.Parallel()
 
@@ -69,7 +85,7 @@ func Test_Remove(t *testing.T) {
 
 	c.Remove("example.net")
 
-	require.Len(t, c.keymap, 2)
+	require.Equal(t, 2, c.Len())
 	require.Contains(t, c.keymap, "example.com")
 	require.Contains(t, c.keymap, "example.org")
 }
@@ -91,11 +107,11 @@ func Test_evict_expired(t *testing.T) {
 		},
 	}
 
-	require.Len(t, r.keymap, 3)
+	require.Equal(t, 3, r.Len())
 
 	r.evict()
 
-	require.Len(t, r.keymap, 2)
+	require.Equal(t, 2, r.Len())
 	require.Contains(t, r.keymap, "example.org")
 	require.Contains(t, r.keymap, "example.net")
 }
@@ -119,7 +135,7 @@ func Test_evict_oldest(t *testing.T) {
 
 	c.evict()
 
-	require.Len(t, c.keymap, 2)
+	require.Equal(t, 2, c.Len())
 	require.Contains(t, c.keymap, "example.com")
 	require.Contains(t, c.keymap, "example.net")
 }
@@ -139,19 +155,19 @@ func Test_set(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	c.set("example.org", []string{"192.0.2.2", "198.51.100.2"}, nil, nil)
 
-	require.Len(t, c.keymap, 2)
+	require.Equal(t, 2, c.Len())
 	require.Contains(t, c.keymap, "example.com")
 	require.Contains(t, c.keymap, "example.org")
 
 	c.set("example.net", []string{"192.0.2.3", "198.51.100.3", "203.0.113.3"}, nil, nil)
 
-	require.Len(t, c.keymap, 2)
+	require.Equal(t, 2, c.Len())
 	require.Contains(t, c.keymap, "example.org")
 	require.Contains(t, c.keymap, "example.net")
 
 	c.set("example.net", []string{"198.51.100.4"}, nil, nil)
 
-	require.Len(t, c.keymap, 2)
+	require.Equal(t, 2, c.Len())
 	require.Contains(t, c.keymap, "example.org")
 	require.Contains(t, c.keymap, "example.net")
 	require.Equal(t, []string{"198.51.100.4"}, c.keymap["example.net"].val)
