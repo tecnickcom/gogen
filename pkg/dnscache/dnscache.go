@@ -50,7 +50,11 @@ func New(resolver Resolver, size int, ttl time.Duration) *Cache {
 // If the external lookup call is successful, it updates the cache with the newly obtained value.
 func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 	val, err := c.cache.Lookup(ctx, host)
-	return val.([]string), err //nolint:forcetypeassert,wrapcheck
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve DNS for host %s: %w", host, err)
+	}
+
+	return val.([]string), nil //nolint:forcetypeassert
 }
 
 // DialContext dials the network and address specified by the parameters.

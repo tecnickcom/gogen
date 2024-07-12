@@ -213,7 +213,7 @@ func Test_LookupHost_error(t *testing.T) {
 
 	for v := range ret {
 		require.Error(t, v.err)
-		require.Equal(t, "mock error: 2", v.err.Error())
+		require.Equal(t, "unable to retrieve DNS for host example.net: mock error: 2", v.err.Error())
 		require.Nil(t, v.addrs)
 	}
 }
@@ -257,7 +257,7 @@ func Test_LookupHost_error_concurrent_fast(t *testing.T) {
 
 	for v := range ret {
 		require.Error(t, v.err)
-		require.Equal(t, "mock error", v.err.Error())
+		require.Equal(t, "unable to retrieve DNS for host example.net: mock error", v.err.Error())
 		require.Nil(t, v.addrs)
 	}
 }
@@ -348,6 +348,13 @@ func Test_Len(t *testing.T) {
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 
 	require.Equal(t, 1, c.Len())
+
+	// cache miss
+	addrs, err = c.LookupHost(context.TODO(), "example.net")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1"}, addrs)
+
+	require.Equal(t, 2, c.Len())
 }
 
 func Test_Reset(t *testing.T) {
@@ -370,6 +377,8 @@ func Test_Reset(t *testing.T) {
 	addrs, err = c.LookupHost(context.TODO(), "example.net")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
+
+	require.Equal(t, 2, c.Len())
 
 	c.Reset()
 
@@ -396,6 +405,8 @@ func Test_Remove(t *testing.T) {
 	addrs, err = c.LookupHost(context.TODO(), "example.net")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
+
+	require.Equal(t, 2, c.Len())
 
 	c.Remove("example.net")
 
