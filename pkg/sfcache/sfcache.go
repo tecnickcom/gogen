@@ -1,7 +1,32 @@
 /*
-Package sfcache provides a thread-safe local single-flight cache for external lookup calls.
-The cache has a maximum size and a time-to-live (TTL) for each entry.
-Duplicate external calls for the same key will wait for the first call to complete and return the same value.
+Package sfcache provides a simple, local, thread-safe, fixed-size, and
+single-flight cache for expensive lookup calls.
+
+This package is designed to improve the performance of expensive, slow, or
+high-frequency function calls that retrieve data associated with a unique
+identifier (key). It achieves this by caching previous values, eliminating the
+need for repeated expensive requests.
+
+The sfcache package offers a local in-memory cache with a configurable maximum
+number of entries. The fixed-size nature of the cache ensures efficient memory
+management and prevents excessive memory usage. Additionally, the cache is
+thread-safe, allowing concurrent access without the need for external
+synchronization. It efficiently handles concurrent requests by sharing results
+from the first lookup, ensuring that only one request performs the expensive
+call. This approach avoids unnecessary network load or resource starvation.
+Duplicate calls for the same key will wait for the first call to complete and
+return the same value.
+
+Each cache entry has a time-to-live (TTL) value, which determines its
+expiration. The cache also provides methods to force the removal of a specific
+entry or reset the entire cache.
+
+The sfcache package is ideal for any Go application that heavily relies on
+expensive or slow lookups.
+
+Example applications that can benefit from this package include:
+  - github.com/Vonage/gosrvlib/pkg/awssecretcache
+  - github.com/Vonage/gosrvlib/pkg/dnscache
 */
 package sfcache
 

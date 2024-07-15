@@ -1,9 +1,11 @@
 /*
-Package enumdb allows to load enumeration sets (enumcache) from multiple database tables.
+Package enumdb allows loading enumeration sets
+(github.com/Vonage/gosrvlib/pkg/enumcache) from multiple database tables.
 
-Each enumeration has a numerical ID ("id" on the database table as primary key) and a string name ("name" on the database table as unique string).
+Each enumeration has a numerical ID ("id" on the database table as the primary
+key) and a string name ("name" on the database table as a unique string).
 
-Example of MySQL database table that can be used with this package:
+Example of a MySQL database table that can be used with this package:
 
 	CREATE TABLE IF NOT EXISTS `example` (
 	  `id` SMALLINT UNSIGNED NOT NULL,

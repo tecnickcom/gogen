@@ -1,5 +1,8 @@
 /*
-Package sliceutil provides a collection of slice utility functions, including descriptive statistics functions for numerical slices.
+Package sliceutil provides a collection of utility functions for Go slices.
+
+It includes functions for filtering, mapping, and reducing slices, as well as
+generating descriptive statistics for numerical slices.
 */
 package sliceutil
 

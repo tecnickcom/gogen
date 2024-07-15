@@ -1,5 +1,7 @@
 /*
-Package errtrace provides a function to automatically trace errors.
+Package errtrace provides a function to automatically trace Go errors. Each
+error is annotated with the filename, line number, and function name where it
+was created.
 */
 package errtrace
 
@@ -8,7 +10,7 @@ import (
 	"runtime"
 )
 
-// Trace annotates the error message with the filename, line number and function name.
+// Trace annotates the error message with the filename, line number, and function name.
 func Trace(err error) error {
 	if err == nil {
 		return nil

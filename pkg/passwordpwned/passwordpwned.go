@@ -1,8 +1,12 @@
 /*
-Package passwordpwned allows to verify if a password was pwned
-via the haveibeenpwned.com (HIBP) service API.
+Package passwordpwned allows you to verify if a password has been pwned
+(compromised) in a data breach.
 
-Ref.: https://haveibeenpwned.com/API/v3#PwnedPasswords
+The checks are performed by using the k-anonymity model of the HIBP service API
+(https://haveibeenpwned.com/API/v3#PwnedPasswords).
+
+The client transmits only the first 5 characters of the SHA-1 hash of the
+password to query the HIBP service API.
 */
 package passwordpwned
 

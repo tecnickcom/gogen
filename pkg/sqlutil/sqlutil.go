@@ -1,4 +1,7 @@
-// Package sqlutil provides SQL utilities.
+/*
+Package sqlutil provides SQL utility functions.
+It includes functions for quoting identifiers and values in SQL queries.
+*/
 package sqlutil
 
 import (

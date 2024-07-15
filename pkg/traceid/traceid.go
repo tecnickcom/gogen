@@ -1,13 +1,17 @@
 /*
-Package traceid allows to store and retrieve a trace ID value associated with a context.Context and an HTTP request.
+Package traceid allows storing and retrieving a Trace ID value associated with a
+context.Context and an HTTP request.
 
-It provides functions to set and retrieve the trace ID from both the context and the HTTP request headers.
+It provides functions to set and retrieve the trace ID from both the Context and
+the HTTP request headers.
 
-The trace ID is typically used in distributed systems to track requests as they propagate through different services.
-It can be used for debugging, performance monitoring, and troubleshooting purposes.
+The Trace ID is typically used in distributed systems to track requests as they
+propagate through different services. It can be used for debugging, performance
+monitoring, and troubleshooting purposes.
 
-The trace ID is expected to be a string that follows the regex pattern "^[0-9A-Za-z\-\_\.]{1,64}$".
-If the trace ID does not match this pattern, the default value is used instead.
+The Trace ID is expected to be a string that follows the regex pattern
+"^[0-9A-Za-z\-\_\.]{1,64}$". If the Trace ID does not match this pattern, the
+default value is used instead.
 */
 package traceid
 

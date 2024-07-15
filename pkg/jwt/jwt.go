@@ -1,5 +1,10 @@
 /*
-Package jwt provides simple wrapper functions to manage basic JWT Auth with username/password credentials.
+Package jwt provides simple wrapper functions for managing basic JWT
+Authentication with username/password credentials.
+
+The package is designed to be used in conjunction with the net/http package in
+the Go standard library. It includes functions for handling login, renewal, and
+authorization of JWT tokens.
 */
 package jwt
 

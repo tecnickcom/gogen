@@ -1,7 +1,11 @@
 /*
-Package tsmap provides a collection of generic thread-safe map utility functions that can be safely used between multiple goroutines.
+Package tsmap provides a collection of generic thread-safe Go map utility
+functions that can be safely used between multiple goroutines.
 
-The provided functions are intended to simplify the process of working with maps in a thread-safe manner.
+The provided functions are intended to simplify the process of working with maps
+in a thread-safe manner.
+
+See also: github.com/Vonage/gosrvlib/pkg/threadsafe
 */
 package tsmap
 

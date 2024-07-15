@@ -1,7 +1,8 @@
 /*
 Package redact contains utility functions to obscure sensitive data.
 
-This is useful for logging and debugging, where sensitive data should not be exposed.
+This package is useful for logging and debugging, where sensitive data should
+not be exposed.
 */
 package redact
 

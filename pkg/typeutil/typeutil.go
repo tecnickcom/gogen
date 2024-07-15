@@ -1,7 +1,9 @@
 /*
-Package typeutil contains a collection of type-related utility functions.
+Package typeutil contains a collection of type-related generic utility
+functions.
 
-This package provides a set of utility functions and definitions to work with generic types in Go.
+This package provides a set of utility functions and definitions for working
+with generic types in Go.
 */
 package typeutil
 

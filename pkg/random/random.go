@@ -1,5 +1,13 @@
 /*
-Package random contains a collection of utility functions to generate random numbers and strings.
+Package random contains a collection of utility functions for generating random
+numbers and strings.
+
+The random number generator uses the crypto/rand package as the default, but it
+can be customized by using the WithReader option.
+
+The RandString function, which generates random strings, uses a default
+character set that includes digits, uppercase and lowercase letters, and
+symbols. However, it can be customized by using the WithCharByteMap option.
 */
 package random
 

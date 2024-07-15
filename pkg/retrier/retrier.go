@@ -1,14 +1,14 @@
 /*
-Package retrier provides the ability to automatically repeat a user-defined function based on the error status.
+Package retrier provides the ability to automatically repeat a user-defined
+function based on the error status.
 
 The default behavior is to retry in case of any error.
 
-This package also offers ready-made DefaultRetryIf function that can be used for most cases.
-
-Additionally, it allows you to set the maximum number of retries,
-the delay after the first failed attempt,
-the time multiplication factor to determine the successive delay value,
-and the jitter used to introduce randomness and avoid request collisions.
+This package provides a ready-made DefaultRetryIf function that can be used for
+most cases. Additionally, it allows to set the maximum number of retries, the
+delay after the first failed attempt, the time multiplication factor to
+determine the successive delay value, and the jitter used to introduce
+randomness and avoid request collisions.
 */
 package retrier
 

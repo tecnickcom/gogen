@@ -1,11 +1,87 @@
 /*
-Package passwordhash provides functions to create and verify a password hash using a strong one-way hashing algorithm.
+Package passwordhash implements a practical model to create and verify a
+password hashes using a strong one-way hashing algorithm.
 
-It supports "peppering" by encrypting the hashed passwords using a secret key.
+The model implements the best advice of OWASP Password Storage Cheat
+(https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+with specific default settings (parameters) and encoding format. Is uses the
+Argon2id algorithm (https://www.rfc-editor.org/info/rfc9106) as implemented in
+the golang.org/x/crypto/argon2 package.
 
-It is based on the Argon2id algorithm (https://www.rfc-editor.org/info/rfc9106),
-as recommended by the OWASP Password Storage Cheat Sheet:
-https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+The implementation is based on available standard cryptographic libraries,
+enforcing standard settings, and the way parameters and salt are encoded
+alongside the hashed password.
+
+Password Storage Object
+
+  - The input password is checked for min/max length. This prevents any
+    computation if these requirements are not met.
+
+  - The input password is hashed using the Argon2id algorithm with some default
+    parameters and a random salt. Argon2id is currently the best recommendation
+    from OWASP and it is a variant of Argon2 that provides a balanced approach
+    to resisting both side-channel (Argon2i) and GPU-based (Argon2d) attacks.
+
+  - The hashed password is then encoded as base64 and added as a "K" field in a
+    JSON object, alongside the Argon2id parameters and base64 encoded salt.
+
+  - The JSON object is then encoded as a base64 string ready for storage.
+
+Example:
+
+	Password: "Test-Password-01234"
+
+	{
+	"P": { < Argon2id parameters.
+	"A": "argon2id", < Name of the hashing algorithm (always "argon2id").
+	"V": 19,         < Argon2id algorithm version (0x13).
+	"K": 32,         < Length of the returned byte-slice that can be used as a cryptographic key.
+	"S": 16,         < Length of the random password salt.
+	"T": 3,          < Number of passes over the memory.
+	"M": 65536,      < Size of the memory in KiB.
+	"P": 16          < Number of threads used by the hashing algorithm.
+	},
+	"S": "wQYm4bfktbHq2omIwFu+4Q==", < base64-encoded random salt of "P.S" length.
+	"K": "aU8hO900Odq6aKtWiWz3RW9ygn734liJaPtM6ynvkYI=" < base64-encoded Argon2id password hash.
+	}
+
+While other serialization methods are available, JSON and base64 have been
+chosen for their extraordinary portability and compatibility with multiple
+systems and programming languages. The proposed JSON schema is such that it can
+be easily adapted to other hashing algorithms if required.
+
+NOTE: Custom parameters should be agreed for production following the
+recommendations at:
+https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-argon2-04#section-4 The
+current reference implementation uses recommended and sensible values by
+default.
+
+The JSON object is then encoded as base64 string for storage (200 bytes in this
+example):
+
+	eyJQIjp7IkEiOiJhcmdvbjJpZCIsIlYiOjE5LCJLIjozMiwiUyI6MTYsIlQiOjMsIk0iOjY1NTM2LCJQIjoxNn0sIlMiOiJ3UVltNGJma3RiSHEyb21Jd0Z1KzRRPT0iLCJLIjoiYVU4aE85MDBPZHE2YUt0V2lXejNSVzl5Z243MzRsaUphUHRNNnludmtZST0ifQo=
+
+Password Verification
+
+  - The hashed password object string is retrieved from the storage and it is
+    decoded using base64.
+
+  - The resulting JSON is also decoded (unmarshalled) to access the fields
+    values.
+
+  - The field P.A (name of the hashing algorithm) is compared with the one in
+    the library to ensure we are using the correct algorithm.
+
+  - The field P.V (algorithm version) is compared with the one in the library to
+    ensure we are using the correct version.
+
+  - The provided live password is hashed using the same Argon2id algorithm with
+    the parameters extracted from the JSON.
+
+  - The hash of the live password is compared with the one retrieved from the
+    JSON P.K field. The time taken for the comparison is a function of the
+    length of the slices and is independent of the contents. This prevents
+    timing attacks.
 */
 package passwordhash
 

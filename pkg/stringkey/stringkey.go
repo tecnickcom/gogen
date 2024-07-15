@@ -1,13 +1,19 @@
 /*
-Package stringkey provides the ability to create a simple unique key from multiple strings.
+Package stringkey provides the ability to create a simple unique hash key from
+multiple strings.
 
-This package uses the farmhash64 algorithm to create a 64 bit hash from the concatenation of input strings.
-The input strings are tab-concatenated, unicode-normalized, converted to lowercase and stripped of multiple, leading and trailing spaces.
+This package uses the farmhash64 algorithm to create a 64-bit hash from the
+concatenation of input strings. The input strings are tab-concatenated,
+unicode-normalized, converted to lowercase, and stripped of leading, trailing,
+and multiple spaces.
 
-This package only works with few small strings and it is not intended to be used for cryptographic purposes.
-The total number of input bytes should be reasonably small to be compatible with a 64 bit hash.
+This package is designed for working with a small number of strings and is not
+intended for cryptographic purposes. The total number of input bytes should be
+reasonably small to be compatible with a 64-bit hash.
 
-According to the birthday problem, with a 64 bit hash, the hash space is 1.8x10^19 and the probability of a collision is 1% with 6.1×10^8 keys and 50% with 5.1×10^9 keys.
+According to the birthday problem, with a 64-bit hash, the hash space is
+1.8x10^19 and the probability of a collision is 1% with 6.1×10^8 keys and 50%
+with 5.1×10^9 keys.
 */
 package stringkey
 

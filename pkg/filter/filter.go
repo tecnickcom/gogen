@@ -1,14 +1,18 @@
 /*
-Package filter provides generic rule-based filtering capabilities for struct slices.
+Package filter provides generic rule-based filtering capabilities for struct
+slices.
 
-Large sets of data can be filtered down to a subset of elements using a set of rules.
+Large sets of data can be filtered down to a subset of elements using a set of
+rules.
 
-The filter can be specified as a slice of slices of rules or as JSON (see filter_schema.json for the JSON schema).
-The first slice contains the rule sets that will be combined with a boolean AND.
-The sub-slices contain the rules that will be combined with a boolean OR.
+The filter can be specified as a slice of slices of rules or as JSON (see
+filter_schema.json for the JSON schema). The first slice contains the rule sets
+that will be combined with a boolean AND. The sub-slices contain the rules that
+will be combined with a boolean OR.
 
-A common application consists of users specifying a filter in a URL query parameter to reduce the amount of data to download on a GET request.
-The rules are parsed and applied server-side.
+A common application consists of users specifying a filter in a URL query
+parameter to reduce the amount of data to download on a GET request. The rules
+are parsed and applied server-side.
 
 # Example:
 
@@ -62,7 +66,8 @@ The supported rule types are listed in the rule.go file:
   - ">="     : Greater than or equal to - matches when the value is greater than or equal the reference.
 
 Every rule type can be prefixed with the symbol "!" to get the negated value.
-For example "!==" is equivalent to "Not Equal", matching values that are different.
+For example "!==" is equivalent to "Not Equal", matching values that are
+different.
 */
 package filter
 

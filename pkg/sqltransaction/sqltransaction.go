@@ -1,8 +1,11 @@
 /*
-Package sqltransaction provides a simple way to execute a function inside an SQL transaction.
-The function to be executed is passed as an argument to the Exec function.
+Package sqltransaction provides a simple way to execute a function inside an SQL
+transaction. The function to be executed is passed as an argument to the Exec
+function.
 
-See also the sqlxtransaction package for the same functionality but using the jmoiron/sqlx package.
+For a similar functionality using the github.com/jmoiron/sqlx package instead of
+the standard database/sql one, see the
+github.com/Vonage/gosrvlib/pkg/sqlxtransaction package.
 */
 package sqltransaction
 

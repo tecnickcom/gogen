@@ -1,9 +1,9 @@
 /*
 Package healthcheck provides a simple way to define health checks for external services or components.
 
-It provides an HTTP handler to collect the results of the health checks concurrently.
+It provides an HTTP handler to collect and return the results of the health checks concurrently.
 
-For an implementation example see the examples/service/internal/cli/bind.go file.
+For an implementation example, see the file examples/service/internal/cli/bind.go.
 */
 package healthcheck
 

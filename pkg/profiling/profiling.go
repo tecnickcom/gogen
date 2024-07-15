@@ -1,5 +1,11 @@
 /*
-Package profiling provides an HTTP handler that can be registered to a router to expose pprof profiling data.
+Package profiling allows accessing the pprof profiling data via the HTTP
+interface of the Go program. It provides an HTTP handler that can be registered
+to an HTTP router to expose pprof profiling data.
+
+The tool pprof provides a way to analyze the performance of Go programs. It can
+be used to generate a profile of a Go program, display the profile in a web
+browser, and analyze the profile data.
 
 For an example implementation, see the pkg/httpserver/config.go file.
 */

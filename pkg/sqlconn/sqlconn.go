@@ -1,6 +1,8 @@
 /*
-Package sqlconn provides a simple way to connect to a SQL database and manage the connection.
-It also provides a way to perform a health check on the connection.
+Package sqlconn provides a simple way to connect to a SQL database and manage
+the connection. It is based on the database/sql package and provides a way to
+perform a health check on the connection. This packages also provide a way to
+gracefully shutdown the connection when the application is shutting down.
 */
 package sqlconn
 

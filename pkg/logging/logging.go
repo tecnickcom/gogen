@@ -1,10 +1,26 @@
 /*
-Package logging implements a structured-log model with common functionalities and utility functions.
-The log messages are augmented with additional fields to enrich the response with application metadata.
-The standard syslog levels are automatically mapped to the corresponding zap log levels.
+Package logging implements a structured-log model with common functionalities
+and utility functions.
 
-This is a Zap-based custom implementation of the configuration model described in the following article:
-  - Nicola Asuni, 2014-08-11, "Software Logging Format", https://technick.net/guides/software/software_logging_format/
+The log messages are augmented by default with additional fields to enrich the
+response with application metadata. The standard syslog levels are automatically
+mapped to the corresponding zap log levels.
+
+It includes the following features:
+  - Default logger configuration with program name, version, and release.
+  - Custom logger configuration with additional fields.
+  - Context-based logging with component and method tags.
+  - Log level function hook for incrementing log metrics.
+  - Log sync function to flush the logger and ignore the error.
+  - Log close function to close an object and log an error in case of failure.
+
+The package is designed to be used in conjunction with the go.uber.org/zap
+package.
+
+This is a custom implementation of the configuration model described in the
+following article:
+  - Nicola Asuni, 2014-08-11, "Software Logging Format",
+    https://technick.net/guides/software/software_logging_format/
 */
 package logging
 

@@ -1,12 +1,14 @@
 /*
-Package httpserver defines a default configurable HTTP server with common routes and options.
+Package httpserver defines a default configurable HTTP server with common routes
+and options.
 
 Optional common routes are defined in the routes.go file. The routes include:
   - /ip: Returns the public IP address of the service instance.
   - /metrics: Returns Prometheus metrics (default and custom).
   - /ping: Pings the service to check if it is alive.
   - /pprof: Returns pprof profiling data for the selected profile.
-  - /status: Checks and returns the health status of the service, including external services or components.
+  - /status: Checks and returns the health status of the service, including
+    external services or components.
 
 For a usage example, refer to the examples/service/internal/cli/bind.go file.
 */

@@ -1,7 +1,9 @@
 /*
-Package validator provides a simple and extensible fields validation mechanism for structs and individual fields based on tags.
+Package validator provides a simple and extensible field validation mechanism
+for structs and individual fields based on tags.
 
-It wraps the package https://github.com/go-playground/validator and includes new custom validation rules and a simpler translation mechanism for errors.
+It wraps the https://github.com/go-playground/validator package and includes new
+custom validation rules and a simpler error translation mechanism.
 */
 package validator
 

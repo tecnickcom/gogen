@@ -1,6 +1,11 @@
 /*
-Package periodic provides a way to execute a given function periodically at a specified interval.
-It allows for the configuration of a maximum random jitter time between each function call and a timeout applied to each function call via Context.
+Package periodic provides a way to execute a given function periodically at a
+specified time interval.
+
+It allows for the configuration of a maximum random jitter time between each
+function call and a timeout applied to each function call via Context. The
+jitter is useful for avoiding the Thundering herd problem
+(https://en.wikipedia.org/wiki/Thundering_herd_problem).
 */
 package periodic
 

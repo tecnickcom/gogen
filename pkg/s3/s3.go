@@ -1,8 +1,8 @@
 /*
-Package s3 provides a simple client to interact with a AWS S3 bucket, including the ability to upload, download, and delete objects.
+Package s3 provides a simple and basic wrapper client for interacting with an
+AWS S3 bucket. It includes the ability to upload, download, and delete objects.
 
-It is based on the official aws-sdk-go-v2 library.
-
-Ref.: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/s3
+This package is based on github.com/aws/aws-sdk-go-v2/service/s3 and abstracts
+away the complexities of the S3 protocol, providing a simplified interface.
 */
 package s3

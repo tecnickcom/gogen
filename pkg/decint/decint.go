@@ -1,7 +1,9 @@
 /*
-Package decint provides utility functions to parse and represent decimal values as integers with a set precision.
+Package decint provides utility functions to parse and represent decimal values
+as integers with a set precision.
 
-The functions in this package are typically used to store and retrieve small currency values without loss of precision.
+The functions in this package are typically used to store and retrieve small
+currency values without loss of precision.
 
 Safe decimal values are limited up to 2^53 / 1e+6 = 9_007_199_254.740_992.
 */

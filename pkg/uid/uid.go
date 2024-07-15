@@ -1,5 +1,6 @@
 /*
-Package uid provides functions to generate simple time-and-random-based unique identifiers.
+Package uid provides functions to generate simple time-and-random-based unique
+identifiers.
 
 Deprecated: Use github.com/Vonage/gosrvlib/pkg/uidc instead.
 */

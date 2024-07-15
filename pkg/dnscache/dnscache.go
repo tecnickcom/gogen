@@ -1,7 +1,28 @@
 /*
-Package dnscache provides a thread-safe local single-flight DNS cache for LookupHost.
-The cache has a maximum size and a time-to-live (TTL) for each DNS entry.
-Duplicate LookupHost calls for the same host will wait for the first lookup to complete and return the same value.
+Package dnscache implements github.com/Vonage/gosrvlib/pkg/sfcache to provide a
+simple, local, thread-safe, fixed-size, and single-flight cache for DNS lookup
+calls.
+
+This package provides LookupHost() and DialContext() functions that can be used
+in place of the standard ones in the net package.
+
+By caching previous values, dnscache improves DNS lookup performance by
+eliminating the need for repeated expensive requests.
+
+This package provides a local in-memory cache with a configurable maximum number
+of entries. The fixed size helps with efficient memory management and prevents
+excessive memory usage. The cache is thread-safe, allowing concurrent access
+without the need for external synchronization. It efficiently handles concurrent
+requests by sharing results from the first lookup, ensuring only one request
+does the expensive call, and avoiding unnecessary network load or resource
+starvation. Duplicate calls for the same key will wait for the first call to
+complete and return the same value.
+
+Each cache entry has a set time-to-live (TTL), so it will automatically expire.
+However, it is also possible to force the removal of a specific DNS entry or
+reset the entire cache.
+
+This package is ideal for any Go application that relies heavily on DNS lookups.
 */
 package dnscache
 

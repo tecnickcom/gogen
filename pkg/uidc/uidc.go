@@ -1,7 +1,13 @@
 /*
-Package uidc provides functions to generate simple time-and-random-based unique identifiers.
+Package uidc provides functions to generate simple time-and-random-based unique
+identifiers.
 
-It provides functions to generate 64 and 128 bit random identifiers in base-36 string format.
+It offers functions to generate 64-bit and 128-bit random identifiers in base-36
+string format.
+
+The generated IDs are not intended for cryptographic or security-related
+purposes. Instead, they serve as simple unique identifiers for various use
+cases.
 */
 package uidc
 

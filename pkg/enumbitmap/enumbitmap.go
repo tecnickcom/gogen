@@ -1,9 +1,11 @@
 /*
-Package enumbitmap provides functions to encode slices of enumeration strings into integer bitmap values and vice versa.
+Package enumbitmap provides functions to encode slices of enumeration strings
+into integer bitmap values and vice versa.
 
-Each bit correspond to a unique enumeration value.
+Each bit correspond to a unique enumeration value. It supports maximum 32 bit
+(33 distinct values including NONE).
 
-# Example:
+# Example with 8 bits:
 
 	00000000 =   0 dec = NONE
 	00000001 =   1 dec = FIRST

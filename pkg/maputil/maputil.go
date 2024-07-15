@@ -1,5 +1,7 @@
 /*
-Package maputil provides a collection of map utility functions.
+Package maputil provides a collection of utility functions for Go maps.
+
+The functions in this package are generic and can be used with any type of map.
 */
 package maputil
 
@@ -31,7 +33,7 @@ func Map[M ~map[K]V, K, J comparable, V, U any](m M, f func(K, V) (J, U)) map[J]
 }
 
 // Reduce applies the reducing function f
-// to each element of the input map m, and returns the value of the last call to f.
+// to each element of the input map m and returns the value of the last call to f.
 // The first parameter of the reducing function f is initialized with init.
 func Reduce[M ~map[K]V, K comparable, V, U any](m M, init U, f func(K, V, U) U) U {
 	r := init
@@ -43,7 +45,7 @@ func Reduce[M ~map[K]V, K comparable, V, U any](m M, init U, f func(K, V, U) U) 
 	return r
 }
 
-// Invert returns a new map were keys and values are swapped.
+// Invert returns a new map where keys and values are swapped.
 func Invert[M ~map[K]V, K, V comparable](m M) map[V]K {
 	r := make(map[V]K, len(m))
 

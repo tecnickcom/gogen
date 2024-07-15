@@ -1,6 +1,8 @@
 /*
-Package enumcache provides simple thread-safe methods to store and retrieve enumeration sets with an integer ID and string name.
-It includes support for binary maps (enumbitmap), where each bit represents a different name in the enumeration set.
+Package enumcache provides a collection of thread-safe methods for storing and
+retrieving enumeration sets with integer IDs and string names. It includes
+support for binary maps (github.com/Vonage/gosrvlib/pkg/enumbitmap), where each
+bit represents a different name in the enumeration set.
 */
 package enumcache
 

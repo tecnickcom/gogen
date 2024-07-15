@@ -1,6 +1,8 @@
 /*
-Package timeutil adds utility functions to the standard time library.
+Package timeutil provides utility functions for working with time-related
+operations.
 
-The package provides a set of functions to work with time.Duration in human readable format in JSON.
+This package offers a collection of functions that facilitate working with
+time.Duration in a human-readable format when dealing with JSON.
 */
 package timeutil

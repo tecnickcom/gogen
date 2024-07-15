@@ -1,6 +1,7 @@
 /*
-Package encode provides serialization and deserialization functions to safely transmit,
-store and retrieve data between different systems (e.g., databases, queues, caches, etc.).
+Package encode provides a collection of functions for safe serialization and
+deserialization of data between different systems, such as databases, queues,
+and caches.
 */
 package encode
 

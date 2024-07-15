@@ -1,8 +1,10 @@
 /*
-Package mysqllock provides a distributed locking mechanism leveraging MySQL internal functions.
+Package mysqllock provides a distributed locking mechanism that leverages
+MySQL's internal functions.
 
-This package allows acquiring and releasing locks using MySQL's GET_LOCK and RELEASE_LOCK functions.
-It provides a MySQLLock struct that represents a locker and has methods for acquiring and releasing locks.
+This package allows you to acquire and release locks using MySQL's GET_LOCK and
+RELEASE_LOCK functions. It provides a MySQLLock struct that represents a locker
+and has methods for acquiring and releasing locks.
 
 Example usage:
 

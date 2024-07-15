@@ -1,7 +1,11 @@
 /*
-Package tsslice provides a collection of generic thread-safe slice utility functions that can be safely used between multiple goroutines.
+Package tsslice provides a collection of generic thread-safe Go slice utility
+functions that can be safely used across multiple goroutines.
 
-The provided functions are intended to simplify the process of working with slices in a thread-safe manner.
+The provided functions are intended to simplify the process of working with
+slices in a thread-safe manner.
+
+See also: github.com/Vonage/gosrvlib/pkg/threadsafe
 */
 package tsslice
 

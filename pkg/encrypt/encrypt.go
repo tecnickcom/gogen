@@ -1,5 +1,7 @@
 /*
-Package encrypt contains a collection of utility functions to encrypt and decrypt data.
+Package encrypt provides a collection of functions for safe encryption and
+decryption of data between different systems, such as databases, queues, and
+caches.
 */
 package encrypt
 

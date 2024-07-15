@@ -1,6 +1,6 @@
 /*
-Package bootstrap provides a simple way to bootstrap an application with
-managed configuration, logging, metrics, application context, and shutdown signals.
+Package bootstrap provides a simple way to bootstrap an application with managed
+configuration, logging, metrics, application context, and shutdown signals.
 
 For an implementation example see in order:
   - examples/service/cmd/main.go

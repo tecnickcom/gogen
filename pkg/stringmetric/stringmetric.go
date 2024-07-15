@@ -1,15 +1,17 @@
 /*
-Package stringmetric provides functions to calculate string metrics,
-also known as string similarity metrics or string distance functions.
+Package stringmetric provides functions to calculate string metrics, also known
+as string similarity metrics or string distance functions.
 
-A string metric measures the distance ("inverse similarity") between two text strings
-for approximate string matching, comparison, and fuzzy string searching.
+A string metric measures the distance ("inverse similarity") between two text
+strings for approximate string matching, comparison, and fuzzy string searching.
 */
 package stringmetric
 
-// DLDistance calculates the Damerau-Levenshtein edit distance between two strings.
-// It provides the distance between two strings as the minimum number of operations required to change one string into the other.
-// The operations include insertions, deletions, substitutions, and transpositions of two adjacent characters.
+// DLDistance calculates the Damerau-Levenshtein edit distance between two
+// strings. It provides the distance between two strings as the minimum number
+// of operations required to change one string into the other. The operations
+// include insertions, deletions, substitutions, and transpositions of two
+// adjacent characters.
 //
 // Ref.: https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
 func DLDistance(sa, sb string) int {
