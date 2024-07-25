@@ -79,8 +79,9 @@ func (t *Node[T]) Add(num string, val *T) bool {
 }
 
 // Get retrieves a value from the trie with the given numerical key. It supports
-// partial matches. The return value should always be checked for the nil value.
-// The second return value provides information about the match status:
+// partial matches. It returns the last non-nil value found in the trie path for
+// the specified number. The return value should always be checked for the nil
+// value. The second return value provides information about the match status:
 //   - StatusMatchEmpty (-127 = 0b10000001) indicates that the input string is
 //     empty and no match was found.
 //   - StatusMatchNo (-125 = 0b10000011) indicates that no match was found. The
@@ -98,20 +99,33 @@ func (t *Node[T]) Get(num string) (*T, int8) {
 	var match, digit int
 
 	node := t
+	val := node.value // the root node value is also the default value
 
 	for _, v := range num {
 		i, ok := phonekeypad.KeypadDigit(v)
 		if !ok {
+			// ingnore non-digit characters
 			continue
 		}
 
 		digit++
 
 		if node.children[i] == nil {
+			// there are no more children to match
+			if node.value != nil {
+				val = node.value
+			}
+
 			break
 		}
 
+		// move to the next child node
 		node = node.children[i]
+
+		if node.value != nil {
+			// remember the last non-nil value found
+			val = node.value
+		}
 
 		match++
 	}
@@ -120,5 +134,5 @@ func (t *Node[T]) Get(num string) (*T, int8) {
 		int8(typeutil.BoolToInt(digit > match)<<1) |
 		int8(typeutil.BoolToInt(node.numChildren > 0)))
 
-	return node.value, status
+	return val, status
 }

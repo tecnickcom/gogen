@@ -46,8 +46,14 @@ func TestNode_Get(t *testing.T) {
 	valC := 53
 	node.Add("4567", &valC)
 
-	valD := 57
+	valD := 59
 	node.Add("456", &valD)
+
+	valE := 61
+	node.Add("07", &valE)
+
+	valF := 67
+	node.Add("0732", &valF)
 
 	tests := []struct {
 		name   string
@@ -132,6 +138,48 @@ func TestNode_Get(t *testing.T) {
 			num:    "4561",
 			exp:    &valD,
 			status: StatusMatchPartialPrefix,
+		},
+		{
+			name:   "partial match -4 with current val",
+			num:    "0",
+			exp:    nil,
+			status: StatusMatchPartial,
+		},
+		{
+			name:   "partial match -2 with current val",
+			num:    "07",
+			exp:    &valE,
+			status: StatusMatchPartial,
+		},
+		{
+			name:   "partial match -1 with parent val",
+			num:    "073",
+			exp:    &valE,
+			status: StatusMatchPartial,
+		},
+		{
+			name:   "partial match -2 with parent val",
+			num:    "075",
+			exp:    &valE,
+			status: StatusMatchPartialPrefix,
+		},
+		{
+			name:   "full match with current val",
+			num:    "0732",
+			exp:    &valF,
+			status: StatusMatchFull,
+		},
+		{
+			name:   "partial prefix match with parent value",
+			num:    "0739",
+			exp:    &valE,
+			status: StatusMatchPartialPrefix,
+		},
+		{
+			name:   "prefix match with parent value",
+			num:    "07325",
+			exp:    &valF,
+			status: StatusMatchPrefix,
 		},
 	}
 
