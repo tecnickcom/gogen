@@ -250,3 +250,21 @@ func TestValue(t *testing.T) {
 		})
 	}
 }
+
+func TestBoolToInt(t *testing.T) {
+	t.Parallel()
+
+	t.Run("true", func(t *testing.T) {
+		t.Parallel()
+
+		got := BoolToInt(true)
+		require.Equal(t, 1, got)
+	})
+
+	t.Run("false", func(t *testing.T) {
+		t.Parallel()
+
+		got := BoolToInt(false)
+		require.Equal(t, 0, got)
+	})
+}

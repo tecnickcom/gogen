@@ -147,6 +147,7 @@ func charOffsetLower(b byte) (uint16, error) {
 	return charOffset(b, chrOffsetLower)
 }
 
+// encodeAlpha2 encodes a 2-uppercase-character alpha-2 code (AA to ZZ) into a uint16.
 func encodeAlpha2(s string) (uint16, error) {
 	if len(s) != 2 {
 		return 0, errInvalidLength
@@ -165,6 +166,7 @@ func encodeAlpha2(s string) (uint16, error) {
 	return ((c1 << bitPosChar1) | (c0 << bitPosChar0)), nil
 }
 
+// decodeAlpha2 decodes a uint16 into a 2-uppercase-character alpha-2 code.
 func decodeAlpha2(code uint16) string {
 	return string([]byte{
 		byte(((code & bitMaskChar1) >> bitPosChar1) + chrOffsetUpper),

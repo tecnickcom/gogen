@@ -53,3 +53,22 @@ func Value[T any](p *T) T {
 
 	return *p
 }
+
+// BoolToInt converts a boolean value to an integer.
+//
+// NOTE: this is currently the fastest implementation as it will be optimized by
+// the compiler with a MOVBLZX instruction.
+// Ref.:
+//   - https://0x0f.me/blog/golang-compiler-optimization/
+//   - https://github.com/golang/go/issues/6011
+func BoolToInt(b bool) int {
+	var i int
+
+	if b {
+		i = 1
+	} else {
+		i = 0
+	}
+
+	return i
+}
