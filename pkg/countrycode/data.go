@@ -42,7 +42,7 @@ type Data struct {
 }
 
 // New generates the country data, including various indexes.
-// If the cdata parameter is nil, the default data is used.
+// If the cdata parameter is nil, the embedded default data is used.
 // The generated object should be reused to avoid copying the data.
 //
 // Default data sources (updated at: 2024-07-17):
