@@ -189,13 +189,9 @@ func (d *Data) insertPrefix(prefix string, info *NumInfo) {
 	d.trie.Add(prefix, info)
 }
 
-func (d *Data) insertGroups(a2, cc string, data []InPrefixGroup) {
-	if len(data) == 0 {
-		return
-	}
-
-	for _, g := range data {
-		info := &NumInfo{
+func (d *Data) insertGroups(a2 string, cdata *InCountryData) {
+	for _, g := range cdata.Groups {
+		groupInfo := &NumInfo{
 			Type: g.PrefixType,
 			Geo: []*GeoInfo{
 				{
@@ -207,12 +203,12 @@ func (d *Data) insertGroups(a2, cc string, data []InPrefixGroup) {
 		}
 
 		if len(g.Prefixes) == 0 {
-			d.insertPrefix(cc, info)
+			d.insertPrefix(cdata.CC, groupInfo)
 			continue
 		}
 
 		for _, p := range g.Prefixes {
-			d.insertPrefix(p, info)
+			d.insertPrefix(p, groupInfo)
 		}
 	}
 }
@@ -221,19 +217,27 @@ func (d *Data) insertGroups(a2, cc string, data []InPrefixGroup) {
 func (d *Data) loadData(data InData) {
 	d.trie = numtrie.New[NumInfo]()
 
-	for k, v := range data {
-		info := &NumInfo{
-			Type: 0,
-			Geo: []*GeoInfo{
-				{
-					Alpha2: k,
-					Area:   "",
-					Type:   0,
+	doneRootCC := make(map[string]bool, (26*26)+1) // all possible CCs + 1 for non-geographic
+
+	for a2, cdata := range data {
+		if _, ok := doneRootCC[a2]; !ok {
+			// insert the root node for the country code only once
+			d.insertPrefix(cdata.CC, &NumInfo{
+				Type: 0,
+				Geo: []*GeoInfo{
+					{
+						Alpha2: a2,
+						Area:   "",
+						Type:   0,
+					},
 				},
-			},
+			})
+
+			doneRootCC[a2] = true
 		}
 
-		d.insertPrefix(v.CC, info)
-		d.insertGroups(k, v.CC, v.Groups)
+		if len(cdata.Groups) > 0 {
+			d.insertGroups(a2, cdata)
+		}
 	}
 }

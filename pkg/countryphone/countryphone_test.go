@@ -133,7 +133,8 @@ func TestData_NumberInfo(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.EqualExportedValues(t, tt.want, got)
+			require.Equal(t, tt.want.Type, got.Type)
+			require.ElementsMatch(t, tt.want.Geo, got.Geo)
 		})
 	}
 }
@@ -330,7 +331,8 @@ func TestData_NumberInfo_custom(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.EqualExportedValues(t, tt.want, got)
+			require.Equal(t, tt.want.Type, got.Type)
+			require.ElementsMatch(t, tt.want.Geo, got.Geo)
 		})
 	}
 }
