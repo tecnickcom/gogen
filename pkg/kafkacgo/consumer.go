@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/encode"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
 // TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Vonage/gosrvlib/pkg/encode"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
