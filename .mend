@@ -1,0 +1,7 @@
+{
+  "settingsInheritedFrom": "Vonage/whitesource-config@api-platform",
+  "remediateSettings": {
+    "timezone": "UTC",
+    "dependencyDashboardAutoclose": true
+  }
+}
