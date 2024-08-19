@@ -84,10 +84,10 @@ func ExampleAppend_concurrent() {
 	wg := &sync.WaitGroup{}
 	mux := &sync.RWMutex{}
 
-	max := 5
-	s := make([]int, 0, max)
+	maxgor := 5
+	s := make([]int, 0, maxgor)
 
-	for i := range max {
+	for i := range maxgor {
 		wg.Add(1)
 
 		go func(item int) {

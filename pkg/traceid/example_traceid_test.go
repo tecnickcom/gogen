@@ -25,7 +25,7 @@ func ExampleNewContext() {
 
 	// Output:
 	// test-1-218549
-	// context.Background.WithValue(type traceid.ctxKey, val test-1-218549)
+	// context.Background.WithValue(traceid.ctxKey, test-1-218549)
 }
 
 func ExampleFromContext() {

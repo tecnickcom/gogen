@@ -17,7 +17,9 @@ func TestWithContext(t *testing.T) {
 
 	cfg := &config{}
 
-	v := context.WithValue(context.Background(), struct{}{}, "")
+	type empty struct{}
+
+	v := context.WithValue(context.Background(), empty{}, "")
 	WithContext(v)(cfg)
 	require.Equal(t, v, cfg.context)
 }

@@ -38,31 +38,31 @@ func WithQueryFilterKey(key string) Option {
 // WithMaxRules sets the maximum number of rules to pass to the Processor.Apply() function without errors.
 // If this option is not set, it defaults to 3.
 //
-// Return an error if max is less than 1.
-func WithMaxRules(max uint) Option {
+// Return an error if rulemax is less than 1.
+func WithMaxRules(rulemax uint) Option {
 	return func(p *Processor) error {
-		if max < 1 {
-			return errors.New("maxRules must be at least 1")
+		if rulemax < 1 {
+			return errors.New("max Rules must be at least 1")
 		}
 
-		p.maxRules = max
+		p.maxRules = rulemax
 
 		return nil
 	}
 }
 
 // WithMaxResults sets the maximum length of the slice returned by Apply() and ApplySubset().
-func WithMaxResults(max uint) Option {
+func WithMaxResults(resmax uint) Option {
 	return func(p *Processor) error {
-		if max < 1 {
+		if resmax < 1 {
 			return errors.New("maxResults must be at least 1")
 		}
 
-		if max > MaxResults {
+		if resmax > MaxResults {
 			return errors.New("maxResults must be less than MaxResults")
 		}
 
-		p.maxResults = max
+		p.maxResults = resmax
 
 		return nil
 	}
