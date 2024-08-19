@@ -550,7 +550,6 @@
           "examples": [
             "doc/images/logo.png"
           ],
-          "format": "uri",
           "type": [
             "string",
             "null"

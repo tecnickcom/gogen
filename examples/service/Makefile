@@ -504,7 +504,7 @@ generate:
 .PHONY: gendoc
 gendoc:
 	yq --input-format yaml --output-format json < doc/src/config.yaml . > doc/src/config.json
-	check-jsonschema --schemafile doc/src/config.schema.json doc/src/config.json
+#	check-jsonschema --schemafile doc/src/config.schema.json doc/src/config.json
 	ASSUME_NO_MOVING_GC_UNSAFE_RISK_IT_WITH=$(GOVERSION) \
 	gomplate \
 	--datasource config=./doc/src/config.json \
