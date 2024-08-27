@@ -42,6 +42,10 @@ linters-settings:
         allow:
           - $gostd
           - github.com/stretchr
+  gosec:
+    excludes:
+      # Flags for potentially-unsafe casting of ints, similar problem to globally-disabled G103
+      - G115
 
 issues:
   exclude-dirs:
@@ -70,3 +74,4 @@ linters:
     - tagliatelle    # Checks the struct tags. [fast: true, auto-fix: false]
     - testpackage    # linter that makes you use a separate _test package [fast: true, auto-fix: false]
     - varnamelen    # checks that the length of a variable's name matches its scope [fast: false, auto-fix: false]
+    - exportloopref # deprecated
