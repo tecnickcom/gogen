@@ -43,7 +43,7 @@ func Test_config_validate(t *testing.T) {
 		{
 			name: "fail with missing context",
 			setupConfig: func(cfg *config) {
-				cfg.context = nil
+				cfg.context = nil //nolint:fatcontext
 			},
 			wantErr: true,
 		},

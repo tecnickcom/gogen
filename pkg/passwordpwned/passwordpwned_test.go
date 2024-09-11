@@ -13,10 +13,10 @@ import (
 	"github.com/Vonage/gosrvlib/pkg/httpretrier"
 	"github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/Vonage/gosrvlib/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/undefinedlabs/go-mpatch"
+	"go.uber.org/mock/gomock"
 )
 
 //go:noinline

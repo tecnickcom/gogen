@@ -1,4 +1,4 @@
-package redis
+package valkey
 
 // Option is a type to allow setting custom client options.
 type Option func(*cfg)
@@ -20,16 +20,17 @@ func WithMessageDecodeFunc(f TDecodeFunc) Option {
 	}
 }
 
-// WithSubscrChannels sets the channels to subscribe to and receive data from.
-func WithSubscrChannels(channels ...string) Option {
+// WithChannels sets the channels to subscribe to and receive data from.
+func WithChannels(channels ...string) Option {
 	return func(c *cfg) {
-		c.subChannels = channels
+		c.channels = channels
 	}
 }
 
-// WithSubscrChannelOptions sets options for the subscribed channels.
-func WithSubscrChannelOptions(opts ...ChannelOption) Option {
+// WithValkeyClient overrides the default Valkey client.
+// This function is mainly used for testing.
+func WithValkeyClient(vkclient VKClient) Option {
 	return func(c *cfg) {
-		c.subChannelOpts = opts
+		c.vkclient = vkclient
 	}
 }

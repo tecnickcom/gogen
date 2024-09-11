@@ -149,7 +149,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v1.60.3
+GOLANGCILINTVERSION=v1.61.0
 
 # Current operating system and architecture as one string.
 GOOSARCH=$(shell go env GOOS GOARCH | tr -d \\n)
@@ -405,7 +405,7 @@ deps: ensuretarget
 	$(GO) install github.com/hairyhenderson/gomplate/v3/cmd/gomplate@latest
 	$(GO) install github.com/rakyll/gotest
 	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
-	$(GO) install github.com/golang/mock/mockgen
+	$(GO) install go.uber.org/mock/mockgen@latest
 
 # Build a docker container to run this service
 .PHONY: docker
@@ -591,7 +591,7 @@ mod:
 .PHONY: modupdate
 modupdate:
 	# $(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
-	$(GO) get -t -u -d ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
+	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
 
 # Test the OpenAPI specification against the real deployed service
 .PHONY: openapitest

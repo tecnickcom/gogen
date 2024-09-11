@@ -14,7 +14,7 @@ type Option func(*config)
 // WithContext overrides the application context (useful for testing).
 func WithContext(ctx context.Context) Option {
 	return func(cfg *config) {
-		cfg.context = ctx
+		cfg.context = ctx //nolint:fatcontext
 	}
 }
 

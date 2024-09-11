@@ -17,8 +17,8 @@ import (
 
 	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/Vonage/gosrvlib/pkg/testutil"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
 

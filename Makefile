@@ -61,7 +61,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v1.60.3
+GOLANGCILINTVERSION=v1.61.0
 
 # Directory containing the source code
 SRCDIR=./pkg
@@ -151,7 +151,7 @@ deps: ensuretarget
 	curl --silent --show-error --fail --location "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
 	$(GO) install github.com/rakyll/gotest
 	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
-	$(GO) install github.com/golang/mock/mockgen
+	$(GO) install go.uber.org/mock/mockgen@latest
 
 # Build a base development Docker image
 .PHONY: dockerdev
@@ -199,7 +199,7 @@ mod:
 .PHONY: modupdate
 modupdate:
 	# $(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
-	$(GO) get -t -u -d ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
+	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
 	cd examples/service && make modupdate
 
 # Create a new project based on the example template
