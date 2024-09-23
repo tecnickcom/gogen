@@ -197,7 +197,7 @@ mod:
 
 # Update dependencies
 .PHONY: modupdate
-modupdate:
+modupdate: version
 	# $(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
 	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
 	cd examples/service && make modupdate

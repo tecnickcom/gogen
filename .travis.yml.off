@@ -9,7 +9,7 @@ branches:
     - main
 
 go:
-  - '1.22'
+  - '1.23'
 
 services:
   - docker
