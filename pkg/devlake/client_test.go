@@ -1,5 +1,5 @@
-//go:generate mockgen -package sleuth -destination ./mock_test.go . HTTPClient
-package sleuth
+//go:generate mockgen -package devlake -destination ./mock_test.go . HTTPClient
+package devlake
 
 import (
 	"context"
@@ -24,7 +24,6 @@ func TestNew(t *testing.T) {
 	tests := []struct {
 		name        string
 		addr        string
-		org         string
 		apikey      string
 		opts        []Option
 		wantTimeout time.Duration
@@ -33,28 +32,18 @@ func TestNew(t *testing.T) {
 		{
 			name:    "fails with invalid character in URL",
 			addr:    "http://invalid-url.domain.invalid\u007F",
-			org:     "testorg",
-			apikey:  "0123456789abcdef",
-			wantErr: true,
-		},
-		{
-			name:    "fails with empty org",
-			addr:    "http://service.domain.invalid:1234",
-			org:     "",
 			apikey:  "0123456789abcdef",
 			wantErr: true,
 		},
 		{
 			name:    "fails with empty api key",
 			addr:    "http://service.domain.invalid:1234",
-			org:     "testorg",
 			apikey:  "",
 			wantErr: true,
 		},
 		{
 			name:        "succeeds with defaults",
 			addr:        "http://service.domain.invalid:1234",
-			org:         "testorg",
 			apikey:      "0123456789abcdef",
 			wantTimeout: defaultPingTimeout,
 			wantErr:     false,
@@ -62,7 +51,6 @@ func TestNew(t *testing.T) {
 		{
 			name:        "succeeds with options",
 			addr:        "http://service.domain.invalid:1234",
-			org:         "testorg",
 			apikey:      "0123456789abcdef",
 			opts:        []Option{WithPingTimeout(2 * time.Second)},
 			wantTimeout: 2 * time.Second,
@@ -78,7 +66,6 @@ func TestNew(t *testing.T) {
 
 			c, err := New(
 				tt.addr,
-				tt.org,
 				tt.apikey,
 				tt.opts...,
 			)
@@ -116,39 +103,22 @@ func TestClient_HealthCheck(t *testing.T) {
 			name:                  "fails because ping url error",
 			pingHandlerStatusCode: http.StatusOK,
 			pingURL:               "%^*&-ERROR",
-			pingBody:              regexPatternHealthcheck,
-			wantErr:               true,
-		},
-		{
-			name:                  "fails because bad response body",
-			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              regexPatternHealthcheck,
-			bodyErr:               true,
 			wantErr:               true,
 		},
 		{
 			name:                  "returns error because of timeout",
 			pingHandlerDelay:      timeout + 1,
-			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              regexPatternHealthcheck,
+			pingHandlerStatusCode: http.StatusOK,
 			wantErr:               true,
 		},
 		{
 			name:                  "returns error from endpoint",
 			pingHandlerStatusCode: http.StatusInternalServerError,
-			pingBody:              regexPatternHealthcheck,
-			wantErr:               true,
-		},
-		{
-			name:                  "fails because bad response body",
-			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              "error response",
 			wantErr:               true,
 		},
 		{
 			name:                  "returns success from endpoint",
-			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              regexPatternHealthcheck,
+			pingHandlerStatusCode: http.StatusOK,
 			wantErr:               false,
 		},
 	}
@@ -164,11 +134,7 @@ func TestClient_HealthCheck(t *testing.T) {
 					time.Sleep(tt.pingHandlerDelay)
 				}
 
-				if tt.bodyErr {
-					w.Header().Set("Content-Length", "1")
-				}
-
-				httputil.SendText(r.Context(), w, tt.pingHandlerStatusCode, tt.pingBody)
+				httputil.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"version":"v1.0.2-beta1@2e768b5"}`)
 			})
 
 			ts := httptest.NewServer(mux)
@@ -176,7 +142,6 @@ func TestClient_HealthCheck(t *testing.T) {
 
 			c, err := New(
 				ts.URL,
-				"testorg",
 				"0123456789abcdef",
 				WithRetryAttempts(1),
 				WithTimeout(timeout),
@@ -203,7 +168,6 @@ func TestClient_newWriteHTTPRetrier(t *testing.T) {
 
 	c, err := New(
 		"https://test.invalid",
-		"testorg",
 		"0123456789abcdef",
 		WithRetryAttempts(1),
 	)
@@ -215,7 +179,7 @@ func TestClient_newWriteHTTPRetrier(t *testing.T) {
 	require.NotNil(t, hr)
 }
 
-func Test_httpRequest(t *testing.T) {
+func Test_httpPostRequest(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -271,11 +235,44 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 	return nil, errors.New("ERROR: newHTTPRetrierPatch")
 }
 
+func getValidDeploymentReq() *DeploymentRequest {
+	nowdate := time.Now()
+
+	return &DeploymentRequest{
+		ConnectionID: 1,
+		ID:           "one",
+		DisplayTitle: "deploy",
+		Result:       "SUCCESS",
+		Environment:  "TESTING",
+		Name:         "test_deployment",
+		URL:          "https://cicd.invalid/test/deployment/1234",
+		CreatedDate:  &nowdate,
+		StartedDate:  &nowdate,
+		FinishedDate: &nowdate,
+		DeploymentCommits: []DeploymentCommitsRequest{
+			{
+				DisplayTitle: "commit_title",
+				RepoID:       "repo_id",
+				RepoURL:      "https://cvs.invalid/repo/name",
+				Name:         "commit_name",
+				RefName:      "ref_name",
+				CommitSha:    "b3633555db2f1ebb42712403e4a4603709012f23",
+				CommitMsg:    "test commit message",
+				Result:       "SUCCESS",
+				Status:       "status",
+				CreatedDate:  &nowdate,
+				StartedDate:  &nowdate,
+				FinishedDate: &nowdate,
+			},
+		},
+	}
+}
+
 //nolint:gocognit,paralleltest
 func Test_sendRequest(t *testing.T) {
 	tests := []struct {
 		name              string
-		req               *DeployRegistrationRequest
+		req               *DeploymentRequest
 		createMockHandler func(t *testing.T) http.HandlerFunc
 		setupMocks        func(client *MockHTTPClient)
 		setupPatches      func() (*mpatch.Patch, error)
@@ -338,8 +335,8 @@ func Test_sendRequest(t *testing.T) {
 		},
 		{
 			name: "fail input validation",
-			req: &DeployRegistrationRequest{
-				Deployment: "test_deployment_error",
+			req: &DeploymentRequest{
+				Environment: "WRONG_VALUE",
 			},
 			wantErr: true,
 		},
@@ -381,7 +378,6 @@ func Test_sendRequest(t *testing.T) {
 
 			c, err := New(
 				ts.URL,
-				"testorg",
 				"0123456789abcdef",
 				clientOpts...,
 			)
@@ -397,10 +393,7 @@ func Test_sendRequest(t *testing.T) {
 			}
 
 			if tt.req == nil {
-				tt.req = &DeployRegistrationRequest{
-					Deployment: "test_deployment",
-					Sha:        "96086c3354a0475073837a24a7fa95a5eb42aab9",
-				}
+				tt.req = getValidDeploymentReq()
 			}
 
 			err = sendRequest(testutil.Context(), c, ts.URL+urlTestPath, tt.req)
@@ -427,57 +420,44 @@ func getTestServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(mux)
 }
 
-func TestClient_SendDeployRegistration(t *testing.T) {
+func TestClient_SendDeployment(t *testing.T) {
 	t.Parallel()
+
+	nowdate := time.Now()
 
 	tests := []struct {
 		name    string
-		req     *DeployRegistrationRequest
+		req     *DeploymentRequest
 		wantErr bool
 	}{
 		{
-			name:    "fail with empty request",
-			req:     &DeployRegistrationRequest{},
+			name:    "fail with missing required field",
+			req:     &DeploymentRequest{},
 			wantErr: true,
 		},
 		{
-			name: "fail with invalid tags",
-			req: &DeployRegistrationRequest{
-				Deployment: "test_deployment",
-				Sha:        "96086c3354a0475073837a24a7fa95a5eb42aab9",
-				Tags: []string{
-					"alpha",
-					"beta",
-				},
+			name: "fail with empty ID",
+			req: &DeploymentRequest{
+				ConnectionID: 1,
+				ID:           "",
+				StartedDate:  &nowdate,
+				FinishedDate: &nowdate,
 			},
 			wantErr: true,
 		},
 		{
 			name: "success with required fields",
-			req: &DeployRegistrationRequest{
-				Deployment: "test_deployment",
-				Sha:        "96086c3354a0475073837a24a7fa95a5eb42aab9",
+			req: &DeploymentRequest{
+				ConnectionID: 2,
+				ID:           "id",
+				StartedDate:  &nowdate,
+				FinishedDate: &nowdate,
 			},
 			wantErr: false,
 		},
 		{
-			name: "success with all fields set",
-			req: &DeployRegistrationRequest{
-				Deployment:  "test_deployment",
-				Sha:         "96086c3354a0475073837a24a7fa95a5eb42aab9",
-				Environment: "test",
-				Date:        "2023-04-24 12:20:00",
-				Tags: []string{
-					"#alpha",
-					"#beta",
-				},
-				IgnoreIfDuplicate: true,
-				Email:             "test@example.invalid",
-				Links: map[string]string{
-					"one": "https://test.one.invalid",
-					"two": "https://test.two.invalid",
-				},
-			},
+			name:    "success with all fields set",
+			req:     getValidDeploymentReq(),
 			wantErr: false,
 		},
 	}
@@ -491,136 +471,92 @@ func TestClient_SendDeployRegistration(t *testing.T) {
 
 			c, err := New(
 				ts.URL,
-				"testorg",
 				"0123456789abcdef",
 				WithRetryAttempts(1),
 			)
 			require.NoError(t, err)
 
-			err = c.SendDeployRegistration(testutil.Context(), tt.req)
+			err = c.SendDeployment(testutil.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
 }
 
-func TestClient_SendManualChange(t *testing.T) {
-	t.Parallel()
+func getValidIncidentRequest() *IncidentRequest {
+	nowdate := time.Now()
 
-	tests := []struct {
-		name    string
-		req     *ManualChangeRequest
-		wantErr bool
-	}{
-		{
-			name:    "fail with empty request",
-			req:     &ManualChangeRequest{},
-			wantErr: true,
-		},
-		{
-			name: "fail with invalid tags",
-			req: &ManualChangeRequest{
-				Project: "test_project",
-				Name:    "test_name",
-				Tags: []string{
-					"alpha",
-					"beta",
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "success with required fields",
-			req: &ManualChangeRequest{
-				Project: "test_project",
-				Name:    "test_name",
-			},
-			wantErr: false,
-		},
-		{
-			name: "success with all fields set",
-			req: &ManualChangeRequest{
-				Project:     "test_project",
-				Name:        "test_name",
-				Description: "test_description",
-				Environment: "test",
-				Tags: []string{
-					"#alpha",
-					"#beta",
-				},
-				Author: "author@example.invalid",
-				Email:  "test@example.invalid",
-			},
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			ts := getTestServer(t)
-			defer ts.Close()
-
-			c, err := New(
-				ts.URL,
-				"testorg",
-				"0123456789abcdef",
-				WithRetryAttempts(1),
-			)
-			require.NoError(t, err)
-
-			err = c.SendManualChange(testutil.Context(), tt.req)
-			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
-		})
+	return &IncidentRequest{
+		ConnectionID:            3,
+		URL:                     "https://incident.invalid/data/1234",
+		IssueKey:                "issue_key",
+		Title:                   "issue_title",
+		Description:             "issue_description",
+		EpicKey:                 "epic_key",
+		Type:                    "INCIDENT",
+		Status:                  "IN_PROGRESS",
+		OriginalStatus:          "open",
+		StoryPoint:              5,
+		ResolutionDate:          &nowdate,
+		CreatedDate:             &nowdate,
+		UpdatedDate:             &nowdate,
+		LeadTimeMinutes:         33,
+		ParentIssueKey:          "parent_issue_key",
+		Priority:                "priority",
+		OriginalEstimateMinutes: 57,
+		TimeSpentMinutes:        53,
+		TimeRemainingMinutes:    4,
+		CreatorID:               "creator_id",
+		CreatorName:             "creator_name",
+		AssigneeID:              "assignee_id",
+		AssigneeName:            "assignee_name",
+		Severity:                "severity",
+		Component:               "component",
 	}
 }
 
-func TestClient_SendCustomIncidentImpactRegistration(t *testing.T) {
+func TestClient_SendIncident(t *testing.T) {
 	t.Parallel()
+
+	nowdate := time.Now()
 
 	tests := []struct {
 		name    string
-		req     *CustomIncidentImpactRegistrationRequest
+		req     *IncidentRequest
 		wantErr bool
 	}{
 		{
 			name:    "fail with empty request",
-			req:     &CustomIncidentImpactRegistrationRequest{},
+			req:     &IncidentRequest{},
 			wantErr: true,
 		},
 		{
 			name: "fail with invalid type",
-			req: &CustomIncidentImpactRegistrationRequest{
-				Project:      "test_project",
-				Environment:  "test",
-				ImpactSource: "test_impact_source",
-				Type:         "invalid",
+			req: &IncidentRequest{
+				ConnectionID:   3,
+				URL:            "~'~%",
+				IssueKey:       "issue_key",
+				Title:          "issue_title",
+				Status:         "IN_PROGRESS",
+				OriginalStatus: "open",
+				CreatedDate:    &nowdate,
 			},
 			wantErr: true,
 		},
 		{
 			name: "success with required fields",
-			req: &CustomIncidentImpactRegistrationRequest{
-				Project:      "test_project",
-				Environment:  "test",
-				ImpactSource: "test_impact_source",
-				Type:         Triggered,
+			req: &IncidentRequest{
+				ConnectionID:   3,
+				IssueKey:       "issue_key",
+				Title:          "issue_title",
+				Status:         "IN_PROGRESS",
+				OriginalStatus: "open",
+				CreatedDate:    &nowdate,
 			},
 			wantErr: false,
 		},
 		{
-			name: "success with all fields set",
-			req: &CustomIncidentImpactRegistrationRequest{
-				Project:      "test_project",
-				Environment:  "test",
-				ImpactSource: "test_impact_source",
-				Type:         Triggered,
-				ID:           "abcdef0123456789",
-				Date:         "2023-04-24 13:00:00",
-				EndedDate:    "2023-04-24 14:10:00",
-				Title:        "test_incident_title",
-				URL:          "http://test.external.url.invalid",
-			},
+			name:    "success with all fields set",
+			req:     getValidIncidentRequest(),
 			wantErr: false,
 		},
 	}
@@ -634,54 +570,43 @@ func TestClient_SendCustomIncidentImpactRegistration(t *testing.T) {
 
 			c, err := New(
 				ts.URL,
-				"testorg",
 				"0123456789abcdef",
 				WithRetryAttempts(1),
 			)
 			require.NoError(t, err)
 
-			err = c.SendCustomIncidentImpactRegistration(testutil.Context(), tt.req)
+			err = c.SendIncident(testutil.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
 }
 
-func TestClient_SendCustomMetricImpactRegistration(t *testing.T) {
+func TestClient_SendIncidentClose(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name    string
-		req     *CustomMetricImpactRegistrationRequest
+		req     *IncidentRequestClose
 		wantErr bool
 	}{
 		{
 			name:    "fail with empty request",
-			req:     &CustomMetricImpactRegistrationRequest{},
+			req:     &IncidentRequestClose{},
 			wantErr: true,
 		},
 		{
-			name: "fail with invalid date",
-			req: &CustomMetricImpactRegistrationRequest{
-				ImpactID: 3451,
-				Value:    123.4561,
-				Date:     "error_date",
+			name: "fail with empty issueKey",
+			req: &IncidentRequestClose{
+				ConnectionID: 3,
+				IssueKey:     "",
 			},
 			wantErr: true,
-		},
-		{
-			name: "success with required fields",
-			req: &CustomMetricImpactRegistrationRequest{
-				ImpactID: 3452,
-				Value:    123.4562,
-			},
-			wantErr: false,
 		},
 		{
 			name: "success with all fields set",
-			req: &CustomMetricImpactRegistrationRequest{
-				ImpactID: 3453,
-				Value:    123.4563,
-				Date:     "2023-04-24 13:14:15",
+			req: &IncidentRequestClose{
+				ConnectionID: 3,
+				IssueKey:     "issue_key",
 			},
 			wantErr: false,
 		},
@@ -696,13 +621,12 @@ func TestClient_SendCustomMetricImpactRegistration(t *testing.T) {
 
 			c, err := New(
 				ts.URL,
-				"testorg",
 				"0123456789abcdef",
 				WithRetryAttempts(1),
 			)
 			require.NoError(t, err)
 
-			err = c.SendCustomMetricImpactRegistration(testutil.Context(), tt.req)
+			err = c.SendIncidentClose(testutil.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}

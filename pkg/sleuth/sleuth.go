@@ -8,14 +8,6 @@ https://help.sleuth.io/sleuth-api
 */
 package sleuth
 
-import (
-	"context"
-	"fmt"
-	"net/http"
-
-	"github.com/Vonage/gosrvlib/pkg/logging"
-)
-
 // DeployRegistrationRequest defines the request for Deploy Registration.
 type DeployRegistrationRequest struct {
 	// Deployment is the Sleuth deploymnet ID as found in the Sleuth URL, following the prefix https://app.sleuth.io/org_slug/deployments/.
@@ -137,63 +129,4 @@ type CustomMetricImpactRegistrationRequest struct {
 // requestData aggregates the types for different API requests.
 type requestData interface {
 	DeployRegistrationRequest | ManualChangeRequest | CustomIncidentImpactRegistrationRequest | CustomMetricImpactRegistrationRequest
-}
-
-// sendRequest sends a request to the Sleuth API.
-func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) error {
-	if err := c.valid.ValidateStructCtx(ctx, request); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
-	}
-
-	r, err := httpRequest(ctx, urlStr, c.apiKey, request)
-	if err != nil {
-		return err
-	}
-
-	hr, err := c.newWriteHTTPRetrier()
-	if err != nil {
-		return fmt.Errorf("create retrier: %w", err)
-	}
-
-	resp, err := hr.Do(r) //nolint:bodyclose
-	if err != nil {
-		return fmt.Errorf("execute request: %w", err)
-	}
-
-	defer logging.Close(ctx, resp.Body, "error closing response body")
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("sleuth client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)
-	}
-
-	return nil
-}
-
-// SendDeployRegistration register a deployment with Sleuth.
-func (c *Client) SendDeployRegistration(ctx context.Context, request *DeployRegistrationRequest) error {
-	urlStr := fmt.Sprintf(c.deployRegistrationURLFormat, request.Deployment)
-	return sendRequest[DeployRegistrationRequest](ctx, c, urlStr, request)
-}
-
-// SendManualChange register a manual change with Sleuth.
-// Manual changes are any changes not tracked by source code, feature flags,
-// or any other type of change not supported by Sleuth.
-func (c *Client) SendManualChange(ctx context.Context, request *ManualChangeRequest) error {
-	urlStr := fmt.Sprintf(c.manualChangeURLFormat, request.Project)
-	return sendRequest[ManualChangeRequest](ctx, c, urlStr, request)
-}
-
-// SendCustomIncidentImpactRegistration register Custom Incident Impact values.
-// Allows to submit custom incident impact values to Sleuth to get Failure Rate and MTTR values.
-func (c *Client) SendCustomIncidentImpactRegistration(ctx context.Context, request *CustomIncidentImpactRegistrationRequest) error {
-	urlStr := fmt.Sprintf(c.customIncidentURLFormat, request.Project, request.Environment, request.ImpactSource, c.apiKey)
-	return sendRequest[CustomIncidentImpactRegistrationRequest](ctx, c, urlStr, request)
-}
-
-// SendCustomMetricImpactRegistration register Custom Metric Impact values.
-// Allows to submit custom metric impact values to Sleuth.
-// Sleuth will perform anomaly detection on these values and they will inform the health of the deployments.
-func (c *Client) SendCustomMetricImpactRegistration(ctx context.Context, request *CustomMetricImpactRegistrationRequest) error {
-	urlStr := fmt.Sprintf(c.customMetricURLFormat, request.ImpactID)
-	return sendRequest[CustomMetricImpactRegistrationRequest](ctx, c, urlStr, request)
 }
