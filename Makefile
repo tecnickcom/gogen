@@ -109,6 +109,7 @@ help:
 	@echo "    make tag       : Tag the Git repository"
 	@echo "    make test      : Run unit tests"
 	@echo "    make version   : Update this library version in the examples"
+	@echo "    make versionup : Increase the patch number in the VERSION file"
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo ""
@@ -197,7 +198,7 @@ mod:
 
 # Update dependencies
 .PHONY: modupdate
-modupdate: version
+modupdate:
 	# $(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
 	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
 	cd examples/service && make modupdate
@@ -252,3 +253,9 @@ test: ensuretarget
 .PHONY: version
 version:
 	sed -i "s|github.com/Vonage/gosrvlib v.*$$|github.com/Vonage/gosrvlib v$(VERSION)|" examples/service/go.mod
+
+# Increase the patch number in the VERSION file
+.PHONY: versionup
+versionup:
+	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d",$$1,$$2,(($$3+1)));}' > VERSION
+	$(MAKE) version
