@@ -29,7 +29,7 @@ jobs:
           git checkout -B ${{ env.BRANCH_NAME }}
           git reset origin/main --hard
       - name: update dependencies
-        run: make modupdate x
+        run: make updateall x
       - name: commit changes
         run: | 
             if [[ -n $(git status | grep -q '"git add"') ]]; then

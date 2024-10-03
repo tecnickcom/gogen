@@ -94,22 +94,25 @@ help:
 	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
-	@echo "    make clean     : Remove any build artifact"
-	@echo "    make coverage  : Generate the coverage report"
-	@echo "    make dbuild    : Build everything inside a Docker container"
-	@echo "    make deps      : Get dependencies"
-	@echo "    make example   : Build and test the service example"
-	@echo "    make format    : Format the source code"
-	@echo "    make generate  : Generate go code automatically"
-	@echo "    make linter    : Check code against multiple linters"
-	@echo "    make mod       : Download dependencies"
-	@echo "    make modupdate : Update dependencies"
-	@echo "    make project   : Generate a new project from the example using the data set via CONFIG=project.cfg"
-	@echo "    make qa        : Run all tests and static analysis tools"
-	@echo "    make tag       : Tag the Git repository"
-	@echo "    make test      : Run unit tests"
-	@echo "    make version   : Update this library version in the examples"
-	@echo "    make versionup : Increase the patch number in the VERSION file"
+	@echo "  make clean      : Remove any build artifact"
+	@echo "  make coverage   : Generate the coverage report"
+	@echo "  make dbuild     : Build everything inside a Docker container"
+	@echo "  make deps       : Get dependencies"
+	@echo "  make example    : Build and test the service example"
+	@echo "  make format     : Format the source code"
+	@echo "  make generate   : Generate go code automatically"
+	@echo "  make linter     : Check code against multiple linters"
+	@echo "  make mod        : Download dependencies"
+	@echo "  make project    : Generate a new project from the example using the data set via CONFIG=project.cfg"
+	@echo "  make qa         : Run all tests and static analysis tools"
+	@echo "  make tag        : Tag the Git repository"
+	@echo "  make test       : Run unit tests"
+	@echo "  make updateall  : Update everything"
+	@echo "  make updatego   : Update Go version"
+	@echo "  make updatelint : Update golangci-lint version"
+	@echo "  make updatemod  : Update dependencies"
+	@echo "  make version    : Update this library version in the examples"
+	@echo "  make versionup  : Increase the patch number in the VERSION file"
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo ""
@@ -196,13 +199,6 @@ linter:
 mod:
 	$(GO) mod download all
 
-# Update dependencies
-.PHONY: modupdate
-modupdate:
-	# $(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
-	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
-	cd examples/service && make modupdate
-
 # Create a new project based on the example template
 .PHONY: project
 project:
@@ -249,6 +245,32 @@ test: ensuretarget
 	-v $(GOPKGS) $(TESTEXTRACMD)
 	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
 
+# Update everything
+.PHONY: updateall
+updateall: updatego updatelint updatemod
+
+# Update go version
+.PHONY: updatego
+updatego:
+	$(eval LAST_GO_TOOLCHAIN=$(shell curl -s https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64\.tar\.gz' | head -n 1 | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+'))
+	$(eval LAST_GO_VERSION=$(shell echo ${LAST_GO_TOOLCHAIN} | grep -oP '[0-9]+\.[0-9]+'))
+	sed -i "s|^go [0-9]*\.[0-9]*$$|go ${LAST_GO_VERSION}|g" go.mod
+	sed -i "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod
+	cd examples/service && make updatego
+
+# Update linter version
+.PHONY: updatelint
+updatelint:
+	$(eval LAST_GOLANGCILINT_VERSION=$(shell curl -sL https://github.com/golangci/golangci-lint/releases/latest | grep -oP '<title>Release \Kv[0-9]+\.[0-9]+\.[0-9]+'))
+	sed -i "s|^GOLANGCILINTVERSION=v[0-9]*\.[0-9]*\.[0-9]*$$|GOLANGCILINTVERSION=${LAST_GOLANGCILINT_VERSION}|g" Makefile
+	cd examples/service && make updatelint
+
+# Update dependencies
+.PHONY: updatemod
+updatemod:
+	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
+	cd examples/service && make updatemod
+
 # Set the gosrvlib version in the example go.mod
 .PHONY: version
 version:
@@ -257,5 +279,5 @@ version:
 # Increase the patch number in the VERSION file
 .PHONY: versionup
 versionup:
-	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d",$$1,$$2,(($$3+1)));}' > VERSION
+	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION
 	$(MAKE) version

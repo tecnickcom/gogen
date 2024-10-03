@@ -276,30 +276,34 @@ help:
 	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
-	@echo "    make apitest       : Execute API tests"
-	@echo "    make buildall      : Full build and test sequence"
-	@echo "    make build         : Compile the application"
-	@echo "    make clean         : Remove any build artifact"
-	@echo "    make confcheck     : Check the configuration files"
-	@echo "    make coverage      : Generate the coverage report"
-	@echo "    make dbuild        : Build everything inside a Docker container"
-	@echo "    make deb           : Build a DEB package"
-	@echo "    make deps          : Get dependencies"
-	@echo "    make docker        : Build a scratch docker container to run this service"
-	@echo "    make dockerpromote : Promote docker image from  DEV to PROD reporitory"
-	@echo "    make dockerpush    : Push docker container to a remote repository"
-	@echo "    make dockertest    : Test the newly built docker container"
-	@echo "    make format        : Format the source code"
-	@echo "    make generate      : Generate go code automatically"
-	@echo "    make gendoc        : Generate static documentation from /doc/src"
-	@echo "    make install       : Install this application"
-	@echo "    make linter        : Check code against multiple linters"
-	@echo "    make mod           : Download dependencies"
-	@echo "    make modupdate     : Update dependencies"
-	@echo "    make openapitest   : Test the OpenAPI specification"
-	@echo "    make qa            : Run all tests and static analysis tools"
-	@echo "    make rpm           : Build an RPM package"
-	@echo "    make test          : Run unit tests"
+	@echo "  make apitest       : Execute API tests"
+	@echo "  make build         : Compile the application"
+	@echo "  make buildall      : Full build and test sequence"
+	@echo "  make clean         : Remove any build artifact"
+	@echo "  make confcheck     : Check the configuration files"
+	@echo "  make coverage      : Generate the coverage report"
+	@echo "  make dbuild        : Build everything inside a Docker container"
+	@echo "  make deb           : Build a DEB package"
+	@echo "  make deps          : Get dependencies"
+	@echo "  make docker        : Build a scratch docker container to run this service"
+	@echo "  make dockerpromote : Promote docker image from  DEV to PROD reporitory"
+	@echo "  make dockerpush    : Push docker container to a remote repository"
+	@echo "  make dockertest    : Test the newly built docker container"
+	@echo "  make format        : Format the source code"
+	@echo "  make gendoc        : Generate static documentation from /doc/src"
+	@echo "  make generate      : Generate go code automatically"
+	@echo "  make install       : Install this application"
+	@echo "  make linter        : Check code against multiple linters"
+	@echo "  make mod           : Download dependencies"
+	@echo "  make openapitest   : Test the OpenAPI specification"
+	@echo "  make qa            : Run all tests and static analysis tools"
+	@echo "  make rpm           : Build an RPM package"
+	@echo "  make test          : Run unit tests"
+	@echo "  make updateall     : Update everything"
+	@echo "  make updatego      : Update Go version"
+	@echo "  make updatelint    : Update golangci-lint version"
+	@echo "  make updatemod     : Update dependencies"
+	@echo "  make versionup     : Increase the patch number in the VERSION file"
 	@echo ""
 	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo ""
@@ -587,12 +591,6 @@ linter:
 mod:
 	$(GO) mod download all
 
-# Update dependencies
-.PHONY: modupdate
-modupdate:
-	# $(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
-	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
-
 # Test the OpenAPI specification against the real deployed service
 .PHONY: openapitest
 openapitest:
@@ -667,6 +665,30 @@ uninstall:
 	rm -rf $(PATHINSTBIN)$(PROJECT)
 	rm -rf $(PATHINSTDOC)
 
+# Update everything
+.PHONY: updateall
+updateall: updatego updatelint updatemod
+
+# Update go version
+.PHONY: updatego
+updatego:
+	$(eval LAST_GO_TOOLCHAIN=$(shell curl -s https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64\.tar\.gz' | head -n 1 | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+'))
+	$(eval LAST_GO_VERSION=$(shell echo ${LAST_GO_TOOLCHAIN} | grep -oP '[0-9]+\.[0-9]+'))
+	sed -i "s|^go [0-9]*\.[0-9]*$$|go ${LAST_GO_VERSION}|g" go.mod
+	sed -i "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod
+
+# Update linter version
+.PHONY: updatelint
+updatelint:
+	$(eval LAST_GOLANGCILINT_VERSION=$(shell curl -sL https://github.com/golangci/golangci-lint/releases/latest | grep -oP '<title>Release \Kv[0-9]+\.[0-9]+\.[0-9]+'))
+	sed -i "s|^GOLANGCILINTVERSION=v[0-9]*\.[0-9]*\.[0-9]*$$|GOLANGCILINTVERSION=${LAST_GOLANGCILINT_VERSION}|g" Makefile
+
+# Update dependencies
+.PHONY: updatemod
+updatemod:
+	# $(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
+	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
+
 # Run venom tests (https://github.com/ovh/venom)
 .PHONY: venomtest
 venomtest:
@@ -678,3 +700,8 @@ venomtest:
 		-vv \
 		--output-dir=$(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR) \
 		resources/test/venom/$(API_TEST_DIR)/$(API_TEST_FILE)
+
+# Increase the patch number in the VERSION file
+.PHONY: versionup
+versionup:
+	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION
