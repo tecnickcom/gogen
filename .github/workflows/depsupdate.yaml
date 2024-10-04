@@ -3,7 +3,7 @@ name: Dependencies Update
 on:
   workflow_dispatch:
   #schedule:
-  #    - cron: "17 5 * * 1"
+  #  - cron: "17 5 * * 1"
 
 permissions: read-all
 
@@ -19,17 +19,23 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
+      - name: update branch
+        run: |
+          git checkout -B ${{ env.BRANCH_NAME }}
+          git reset origin/main --hard
       - name: setup go build environment
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           check-latest: true
-      - name: switch branch
-        run: |
-          git checkout -B ${{ env.BRANCH_NAME }}
-          git reset origin/main --hard
+      - name: dependency cache
+        uses: actions/cache@v4
+        with:
+          path: $(go env GOPATH)/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
       - name: update dependencies
-        run: make updateall x
+        run: make updateall x GOPATH=$(go env GOPATH)
       - name: commit changes
         run: | 
             if [[ -n $(git status | grep -q '"git add"') ]]; then
