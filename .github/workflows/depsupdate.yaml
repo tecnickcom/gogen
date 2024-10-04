@@ -23,6 +23,8 @@ jobs:
         run: |
           git checkout -B ${{ env.BRANCH_NAME }}
           git reset origin/main --hard
+      - name: install tools
+        run: pip install --upgrade check-jsonschema
       - name: setup go build environment
         uses: actions/setup-go@v5
         with:
