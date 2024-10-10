@@ -9,6 +9,9 @@ type Option func(p *Processor) error
 
 // WithFieldNameTag allows to use the field names specified by the tag instead of the original struct names.
 //
+// Note that this is evaluated against the value before the first comma in the field definition.
+// For example if a field is defined as: `json:my_field,omitempty`, the evaluated tag value is `my_field`.
+//
 // Returns an error if the tag is empty.
 func WithFieldNameTag(tag string) Option {
 	return func(p *Processor) error {

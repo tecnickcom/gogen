@@ -200,7 +200,7 @@ func TestFilter_Apply(t *testing.T) {
 
 	type simpleStruct struct {
 		StringField    string `json:"string_field"`
-		IntField       int
+		IntField       int    `json:"int_field,omitempty"`
 		Float64Field   float64
 		StringPtrField *string
 		unexported     string
@@ -684,6 +684,35 @@ func TestFilter_Apply(t *testing.T) {
 				{
 					Internal: simpleStruct{
 						StringField: "value 1",
+					},
+				},
+			},
+			wantTotalMatches: 1,
+		},
+		{
+			name: "success - with field tags with commas",
+			elements: &[]complexStruct{
+				{
+					Internal: simpleStruct{
+						IntField: 1,
+					},
+				},
+				{
+					Internal: simpleStruct{
+						IntField: 2,
+					},
+				},
+			},
+			opts: []Option{WithFieldNameTag("json")},
+			rules: [][]Rule{{{
+				Field: "internal.int_field",
+				Type:  TypeEqual,
+				Value: 1,
+			}}},
+			want: &[]complexStruct{
+				{
+					Internal: simpleStruct{
+						IntField: 1,
 					},
 				},
 			},
