@@ -1,4 +1,5 @@
 FROM scratch
 COPY ./ /
+USER scratchuser
 ENTRYPOINT ["/usr/bin/gosrvlibexample"]
 HEALTHCHECK NONE
