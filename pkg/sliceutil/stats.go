@@ -103,7 +103,7 @@ func Stats[S ~[]V, V typeutil.Number](s S) (*DescStats[V], error) {
 	return ds, nil
 }
 
-// statsCenter calculates Min, Max, Mode,  ModeFreq, Range, Mean and Median.
+// statsCenter calculates Min, Max, Mode, ModeFreq, Range, Mean and Median.
 func statsCenter[S ~[]V, V typeutil.Number](ds *DescStats[V], s, ord S, n int, nf float64) {
 	freq := 1
 
@@ -153,7 +153,8 @@ func statsMedian[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, n int) {
 	}
 }
 
-// statsVariability calculates Entropy, MeanDev, Varianceand  StdDev. It must be called after statsCenter().
+// statsVariability calculates Entropy, MeanDev, Varianceand  StdDev.
+// It must be called after statsCenter().
 func statsVariability[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf float64) {
 	sum := float64(ds.Sum)
 
@@ -174,7 +175,8 @@ func statsVariability[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf flo
 	ds.StdDev = math.Sqrt(ds.Variance)
 }
 
-// statsShape calculates Skewness and ExKurtosis. It must be called after statsVariability().
+// statsShape calculates Skewness and ExKurtosis.
+// It must be called after statsVariability().
 func statsShape[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf float64) {
 	if nf < 3 {
 		return
