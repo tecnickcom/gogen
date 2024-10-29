@@ -20,6 +20,7 @@ import (
 type MockTestHTTPResponseWriter struct {
 	ctrl     *gomock.Controller
 	recorder *MockTestHTTPResponseWriterMockRecorder
+	isgomock struct{}
 }
 
 // MockTestHTTPResponseWriterMockRecorder is the mock recorder for MockTestHTTPResponseWriter.
@@ -69,13 +70,13 @@ func (mr *MockTestHTTPResponseWriterMockRecorder) Write(arg0 any) *gomock.Call {
 }
 
 // WriteHeader mocks base method.
-func (m *MockTestHTTPResponseWriter) WriteHeader(arg0 int) {
+func (m *MockTestHTTPResponseWriter) WriteHeader(statusCode int) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "WriteHeader", arg0)
+	m.ctrl.Call(m, "WriteHeader", statusCode)
 }
 
 // WriteHeader indicates an expected call of WriteHeader.
-func (mr *MockTestHTTPResponseWriterMockRecorder) WriteHeader(arg0 any) *gomock.Call {
+func (mr *MockTestHTTPResponseWriterMockRecorder) WriteHeader(statusCode any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteHeader", reflect.TypeOf((*MockTestHTTPResponseWriter)(nil).WriteHeader), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteHeader", reflect.TypeOf((*MockTestHTTPResponseWriter)(nil).WriteHeader), statusCode)
 }

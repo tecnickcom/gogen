@@ -20,6 +20,7 @@ import (
 type MockBinder struct {
 	ctrl     *gomock.Controller
 	recorder *MockBinderMockRecorder
+	isgomock struct{}
 }
 
 // MockBinderMockRecorder is the mock recorder for MockBinder.
@@ -40,15 +41,15 @@ func (m *MockBinder) EXPECT() *MockBinderMockRecorder {
 }
 
 // BindHTTP mocks base method.
-func (m *MockBinder) BindHTTP(arg0 context.Context) []Route {
+func (m *MockBinder) BindHTTP(ctx context.Context) []Route {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BindHTTP", arg0)
+	ret := m.ctrl.Call(m, "BindHTTP", ctx)
 	ret0, _ := ret[0].([]Route)
 	return ret0
 }
 
 // BindHTTP indicates an expected call of BindHTTP.
-func (mr *MockBinderMockRecorder) BindHTTP(arg0 any) *gomock.Call {
+func (mr *MockBinderMockRecorder) BindHTTP(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindHTTP", reflect.TypeOf((*MockBinder)(nil).BindHTTP), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindHTTP", reflect.TypeOf((*MockBinder)(nil).BindHTTP), ctx)
 }
