@@ -40,6 +40,8 @@ jobs:
         run: make updateall x GOPATH=$(go env GOPATH)
       - name: commit changes
         run: | 
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
             if $(git status | grep -q '"git add"'); then
                 git add . -A
                 git commit -m 'Automatic dependencies update'

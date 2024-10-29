@@ -6,15 +6,10 @@
   },
   "packageRules": [
     {
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch",
       "matchPackageNames": [
-        "*"
+        "github.com/tecnickcom/statsd"
       ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ]
+      "allowedVersions": "<2.0.0"
     }
   ]
 }
