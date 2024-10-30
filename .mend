@@ -2,14 +2,17 @@
   "settingsInheritedFrom": "Vonage/whitesource-config@api-platform",
   "remediateSettings": {
     "timezone": "UTC",
-    "dependencyDashboardAutoclose": true
-  },
-  "packageRules": [
-    {
-      "matchPackageNames": [
-        "github.com/tecnickcom/statsd"
-      ],
-      "allowedVersions": "<2.0.0"
-    }
-  ]
+    "dependencyDashboardAutoclose": true,
+    "packageRules": [
+      {
+        "dependencyDashboardApproval": true
+      },
+      {
+        "matchPackageNames": [
+          "/statsd/"
+        ],
+        "allowedVersions": "/^v1\\.[0-9]+\\.[0-9]+$/"
+      }
+    ]
+  }
 }
