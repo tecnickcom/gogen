@@ -64,29 +64,12 @@ func TestNew(t *testing.T) {
 func TestSet(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	tests := []struct {
 		name    string
 		key     string
 		val     string
 		exp     time.Duration
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
@@ -94,7 +77,7 @@ func TestSet(t *testing.T) {
 			key:  "key1",
 			val:  "val1",
 			exp:  time.Second,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("SET", "key1", "val1", "EX", "1"),
@@ -107,7 +90,7 @@ func TestSet(t *testing.T) {
 			key:  "key2",
 			val:  "val2",
 			exp:  2 * time.Second,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("SET", "key2", "val2", "EX", "2"),
@@ -121,9 +104,26 @@ func TestSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
 
-			err := cli.Set(ctx, tt.key, tt.val, tt.exp)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
+
+			err = cli.Set(ctx, tt.key, tt.val, tt.exp)
 			if tt.wantErr {
 				require.Error(t, err)
 
@@ -138,35 +138,18 @@ func TestSet(t *testing.T) {
 func TestGet(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	tests := []struct {
 		name    string
 		key     string
 		val     string
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
 			name: "success",
 			key:  "key1",
 			val:  "val1",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("GET", "key1"),
@@ -178,7 +161,7 @@ func TestGet(t *testing.T) {
 			name: "error",
 			key:  "key2",
 			val:  "val2",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("GET", "key2"),
@@ -192,7 +175,24 @@ func TestGet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
+
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
 
 			val, err := cli.Get(ctx, tt.key)
 			if tt.wantErr {
@@ -211,33 +211,16 @@ func TestGet(t *testing.T) {
 func TestDel(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	tests := []struct {
 		name    string
 		key     string
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
 			name: "success",
 			key:  "key1",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("DEL", "key1"),
@@ -248,7 +231,7 @@ func TestDel(t *testing.T) {
 		{
 			name: "error",
 			key:  "key2",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("DEL", "key2"),
@@ -262,9 +245,26 @@ func TestDel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
 
-			err := cli.Del(ctx, tt.key)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
+
+			err = cli.Del(ctx, tt.key)
 			if tt.wantErr {
 				require.Error(t, err)
 
@@ -279,35 +279,18 @@ func TestDel(t *testing.T) {
 func TestSend(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	tests := []struct {
 		name    string
 		channel string
 		message string
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
 			name:    "success",
 			channel: "ch1",
 			message: "msg1",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("PUBLISH", "ch1", "msg1"),
@@ -319,7 +302,7 @@ func TestSend(t *testing.T) {
 			name:    "error",
 			channel: "ch2",
 			message: "msg2",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("PUBLISH", "ch2", "msg2"),
@@ -333,9 +316,26 @@ func TestSend(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
 
-			err := cli.Send(ctx, tt.channel, tt.message)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
+
+			err = cli.Send(ctx, tt.channel, tt.message)
 			if tt.wantErr {
 				require.Error(t, err)
 
@@ -350,36 +350,18 @@ func TestSend(t *testing.T) {
 func TestReceive(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-		WithChannels("ch1", "ch2"),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	tests := []struct {
 		name    string
 		channel string
 		message string
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
 			name:    "success",
 			channel: "ch1",
 			message: "msg1",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Receive(
 					ctx,
 					mock.Match("SUBSCRIBE", "ch1", "ch2"),
@@ -394,7 +376,7 @@ func TestReceive(t *testing.T) {
 			name:    "error",
 			channel: "ch2",
 			message: "msg2",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Receive(
 					ctx,
 					mock.Match("SUBSCRIBE", "ch1", "ch2"),
@@ -411,7 +393,25 @@ func TestReceive(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
+
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+				WithChannels("ch1", "ch2"),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
 
 			channel, message, err := cli.Receive(ctx)
 			if tt.wantErr {
@@ -432,23 +432,6 @@ func TestReceive(t *testing.T) {
 func TestSetData(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	type TestData struct {
 		Alpha string
 		Beta  int
@@ -464,7 +447,7 @@ func TestSetData(t *testing.T) {
 		key     string
 		val     any
 		exp     time.Duration
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
@@ -472,7 +455,7 @@ func TestSetData(t *testing.T) {
 			key:  "key1",
 			val:  testMsg,
 			exp:  2 * time.Second,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("SET", "key1", testEncMsg, "EX", "2"),
@@ -485,7 +468,7 @@ func TestSetData(t *testing.T) {
 			key:  "key2",
 			val:  testMsg,
 			exp:  time.Second,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("SET", "key2", testEncMsg, "EX", "1"),
@@ -498,7 +481,7 @@ func TestSetData(t *testing.T) {
 			key:     "key2",
 			val:     nil,
 			exp:     time.Second,
-			mock:    func() {},
+			mock:    func(_ context.Context, _ *mock.Client) {},
 			wantErr: true,
 		},
 	}
@@ -507,9 +490,26 @@ func TestSetData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
 
-			err := cli.SetData(ctx, tt.key, tt.val, tt.exp)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
+
+			err = cli.SetData(ctx, tt.key, tt.val, tt.exp)
 			if tt.wantErr {
 				require.Error(t, err)
 
@@ -523,23 +523,6 @@ func TestSetData(t *testing.T) {
 
 func TestGetData(t *testing.T) {
 	t.Parallel()
-
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
 
 	type TestData struct {
 		Alpha string
@@ -555,14 +538,14 @@ func TestGetData(t *testing.T) {
 		name    string
 		key     string
 		val     any
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
 			name: "success",
 			key:  "key1",
 			val:  testMsg,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("GET", "key1"),
@@ -574,7 +557,7 @@ func TestGetData(t *testing.T) {
 			name: "error",
 			key:  "key2",
 			val:  TestData{},
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("GET", "key2"),
@@ -586,7 +569,7 @@ func TestGetData(t *testing.T) {
 			name: "data error",
 			key:  "key3",
 			val:  TestData{},
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("GET", "key3"),
@@ -600,11 +583,28 @@ func TestGetData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
+
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
 
 			var data TestData
 
-			err := cli.GetData(ctx, tt.key, &data)
+			err = cli.GetData(ctx, tt.key, &data)
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Empty(t, data)
@@ -621,23 +621,6 @@ func TestGetData(t *testing.T) {
 func TestSendData(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	type TestData struct {
 		Alpha string
 		Beta  int
@@ -652,14 +635,14 @@ func TestSendData(t *testing.T) {
 		name    string
 		channel string
 		message any
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
 			name:    "success",
 			channel: "ch1",
 			message: testMsg,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("PUBLISH", "ch1", testEncMsg),
@@ -671,7 +654,7 @@ func TestSendData(t *testing.T) {
 			name:    "error",
 			channel: "ch2",
 			message: testMsg,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("PUBLISH", "ch2", testEncMsg),
@@ -683,7 +666,7 @@ func TestSendData(t *testing.T) {
 			name:    "data error",
 			channel: "ch2",
 			message: nil,
-			mock:    func() {},
+			mock:    func(_ context.Context, _ *mock.Client) {},
 			wantErr: true,
 		},
 	}
@@ -692,9 +675,26 @@ func TestSendData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
 
-			err := cli.SendData(ctx, tt.channel, tt.message)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
+
+			err = cli.SendData(ctx, tt.channel, tt.message)
 			if tt.wantErr {
 				require.Error(t, err)
 
@@ -709,24 +709,6 @@ func TestSendData(t *testing.T) {
 func TestReceiveData(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-		WithChannels("ch1", "ch2"),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	type TestData struct {
 		Alpha string
 		Beta  int
@@ -741,14 +723,14 @@ func TestReceiveData(t *testing.T) {
 		name    string
 		channel string
 		message any
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
 			name:    "success",
 			channel: "ch1",
 			message: testMsg,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Receive(
 					ctx,
 					mock.Match("SUBSCRIBE", "ch1", "ch2"),
@@ -763,7 +745,7 @@ func TestReceiveData(t *testing.T) {
 			name:    "error",
 			channel: "ch2",
 			message: testMsg,
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Receive(
 					ctx,
 					mock.Match("SUBSCRIBE", "ch1", "ch2"),
@@ -778,7 +760,7 @@ func TestReceiveData(t *testing.T) {
 			name:    "data error",
 			channel: "ch2",
 			message: TestData{},
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Receive(
 					ctx,
 					mock.Match("SUBSCRIBE", "ch1", "ch2"),
@@ -795,7 +777,25 @@ func TestReceiveData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
+
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+				WithChannels("ch1", "ch2"),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
 
 			var data TestData
 
@@ -817,31 +817,14 @@ func TestReceiveData(t *testing.T) {
 func TestHealthCheck(t *testing.T) {
 	t.Parallel()
 
-	srvOpts := getTestSrvOptions()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() { ctrl.Finish() })
-
-	vkc := mock.NewClient(ctrl)
-	ctx := context.TODO()
-
-	cli, err := New(
-		ctx,
-		srvOpts,
-		WithValkeyClient(vkc),
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
 	tests := []struct {
 		name    string
-		mock    func()
+		mock    func(ctx context.Context, vkc *mock.Client)
 		wantErr bool
 	}{
 		{
 			name: "success",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("PING"),
@@ -851,7 +834,7 @@ func TestHealthCheck(t *testing.T) {
 		},
 		{
 			name: "error",
-			mock: func() {
+			mock: func(ctx context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Do(
 					ctx,
 					mock.Match("PING"),
@@ -865,9 +848,26 @@ func TestHealthCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.mock()
+			srvOpts := getTestSrvOptions()
 
-			err := cli.HealthCheck(ctx)
+			ctrl := gomock.NewController(t)
+			t.Cleanup(func() { ctrl.Finish() })
+
+			vkc := mock.NewClient(ctrl)
+			ctx := context.TODO()
+
+			cli, err := New(
+				ctx,
+				srvOpts,
+				WithValkeyClient(vkc),
+			)
+
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			tt.mock(ctx, vkc)
+
+			err = cli.HealthCheck(ctx)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
