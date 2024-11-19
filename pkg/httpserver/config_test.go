@@ -124,6 +124,7 @@ func Test_config_isIndexRouteEnabled(t *testing.T) {
 }
 
 func Test_setRouter(t *testing.T) {
+	//nolint:iface
 	type testRouter interface {
 		http.Handler
 

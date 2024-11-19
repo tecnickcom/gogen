@@ -62,10 +62,8 @@ linters:
   enable-all: true
   disable:
     - depguard    # Go linter that checks if package imports are in a list of acceptable packages [fast: true, auto-fix: false]
-    - execinquery    # execinquery is a linter about query string checker in Query function which reads your Go src files and warning it finds [fast: false, auto-fix: false]
     - exhaustruct    # Checks if all structure fields are initialized [fast: false, auto-fix: false]
     - err113    # Go linter to check the errors handling expressions [fast: false, auto-fix: false]
-    - gomnd    # An analyzer to detect magic numbers. [fast: true, auto-fix: false]
     - ireturn    # Accept Interfaces, Return Concrete Types [fast: false, auto-fix: false]
     - lll    # Reports long lines [fast: true, auto-fix: false]
     - mnd   # An analyzer to detect magic numbers. [fast: true, auto-fix: false]

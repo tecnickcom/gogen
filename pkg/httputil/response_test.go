@@ -125,7 +125,7 @@ func TestSendJSON(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, MimeApplicationJSON, resp.Header.Get("Content-Type"))
+	require.Equal(t, MimeApplicationJSON, resp.Header.Get("Content-Type")) //nolint:testifylint
 	require.Equal(t, "\""+data+"\"\n", string(body))
 
 	// test error condition

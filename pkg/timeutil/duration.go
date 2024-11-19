@@ -7,6 +7,8 @@ import (
 )
 
 // Duration is an alias for the standard time.Duration.
+//
+//nolint:recvcheck
 type Duration time.Duration
 
 // String returns a string representing the duration in the form "72h3m0.5s".

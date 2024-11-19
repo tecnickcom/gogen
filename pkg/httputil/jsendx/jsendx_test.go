@@ -81,12 +81,12 @@ func TestDefaultNotFoundHandlerFunc(t *testing.T) {
 	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+	body = testutil.ReplaceDateTime(body, "1970-01-01T00:00:00")
+	body = testutil.ReplaceUnixTimestamp(body, "0")
 
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"1.1.1\",\"release\":\"1\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":404,\"message\":\"Not Found\",\"data\":\"invalid endpoint\"}\n", body)
+	require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"1.1.1\",\"release\":\"1\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"fail\",\"code\":404,\"message\":\"Not Found\",\"data\":\"invalid endpoint\"}\n", body)
 }
 
 func TestDefaultMethodNotAllowedHandlerFunc(t *testing.T) {
@@ -113,12 +113,12 @@ func TestDefaultMethodNotAllowedHandlerFunc(t *testing.T) {
 	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+	body = testutil.ReplaceDateTime(body, "1970-01-01T00:00:00")
+	body = testutil.ReplaceUnixTimestamp(body, "0")
 
 	require.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"2.2.2\",\"release\":\"2\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":405,\"message\":\"Method Not Allowed\",\"data\":\"the request cannot be routed\"}\n", body)
+	require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"2.2.2\",\"release\":\"2\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"fail\",\"code\":405,\"message\":\"Method Not Allowed\",\"data\":\"the request cannot be routed\"}\n", body)
 }
 
 func TestDefaultPanicHandlerFunc(t *testing.T) {
@@ -145,12 +145,12 @@ func TestDefaultPanicHandlerFunc(t *testing.T) {
 	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+	body = testutil.ReplaceDateTime(body, "1970-01-01T00:00:00")
+	body = testutil.ReplaceUnixTimestamp(body, "0")
 
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"3.3.3\",\"release\":\"3\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"error\",\"code\":500,\"message\":\"Internal Server Error\",\"data\":\"internal error\"}\n", body)
+	require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"3.3.3\",\"release\":\"3\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"error\",\"code\":500,\"message\":\"Internal Server Error\",\"data\":\"internal error\"}\n", body)
 }
 
 func TestDefaultIndexHandler(t *testing.T) {
@@ -190,12 +190,12 @@ func TestDefaultIndexHandler(t *testing.T) {
 
 	bodyData, _ := io.ReadAll(resp.Body)
 	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+	body = testutil.ReplaceDateTime(body, "1970-01-01T00:00:00")
+	body = testutil.ReplaceUnixTimestamp(body, "0")
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"4.4.4\",\"release\":\"4\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":{\"routes\":[{\"method\":\"GET\",\"path\":\"/get\",\"description\":\"Get endpoint\"},{\"method\":\"POST\",\"path\":\"/post\",\"description\":\"Post endpoint\"}]}}\n", body)
+	require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"4.4.4\",\"release\":\"4\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":{\"routes\":[{\"method\":\"GET\",\"path\":\"/get\",\"description\":\"Get endpoint\"},{\"method\":\"POST\",\"path\":\"/post\",\"description\":\"Post endpoint\"}]}}\n", body)
 }
 
 func TestDefaultIPHandler(t *testing.T) {
@@ -245,17 +245,17 @@ func TestDefaultIPHandler(t *testing.T) {
 
 			bodyData, _ := io.ReadAll(resp.Body)
 			body := string(bodyData)
-			body = testutil.ReplaceDateTime(body, "<DT>")
-			body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+			body = testutil.ReplaceDateTime(body, "1970-01-01T00:00:00")
+			body = testutil.ReplaceUnixTimestamp(body, "0")
 
 			require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 			if tt.wantErr {
 				require.Equal(t, http.StatusFailedDependency, resp.StatusCode)
-				require.Equal(t, "{\"program\":\"Test\",\"version\":\"5.5.5\",\"release\":\"5\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"fail\",\"code\":424,\"message\":\"Failed Dependency\",\"data\":\"ERROR\"}\n", body)
+				require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"5.5.5\",\"release\":\"5\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"fail\",\"code\":424,\"message\":\"Failed Dependency\",\"data\":\"ERROR\"}\n", body)
 			} else {
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				require.Equal(t, "{\"program\":\"Test\",\"version\":\"5.5.5\",\"release\":\"5\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"0.0.0.0\"}\n", body)
+				require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"5.5.5\",\"release\":\"5\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"0.0.0.0\"}\n", body)
 			}
 		})
 	}
@@ -285,12 +285,12 @@ func TestDefaultPingHandler(t *testing.T) {
 	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+	body = testutil.ReplaceDateTime(body, "1970-01-01T00:00:00")
+	body = testutil.ReplaceUnixTimestamp(body, "0")
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"6.6.6\",\"release\":\"6\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+	require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"6.6.6\",\"release\":\"6\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 func TestDefaultStatusHandler(t *testing.T) {
@@ -317,12 +317,12 @@ func TestDefaultStatusHandler(t *testing.T) {
 	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+	body = testutil.ReplaceDateTime(body, "1970-01-01T00:00:00")
+	body = testutil.ReplaceUnixTimestamp(body, "0")
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"7.7.7\",\"release\":\"7\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
+	require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"7.7.7\",\"release\":\"7\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"OK\"}\n", body)
 }
 
 func TestHealthCheckResultWriter(t *testing.T) {
@@ -348,10 +348,10 @@ func TestHealthCheckResultWriter(t *testing.T) {
 	bodyData, _ := io.ReadAll(resp.Body)
 
 	body := string(bodyData)
-	body = testutil.ReplaceDateTime(body, "<DT>")
-	body = testutil.ReplaceUnixTimestamp(body, "<TS>")
+	body = testutil.ReplaceDateTime(body, "1970-01-01T00:00:00")
+	body = testutil.ReplaceUnixTimestamp(body, "0")
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "{\"program\":\"Test\",\"version\":\"8.8.8\",\"release\":\"8\",\"datetime\":\"<DT>\",\"timestamp\":<TS>,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
+	require.JSONEq(t, "{\"program\":\"Test\",\"version\":\"8.8.8\",\"release\":\"8\",\"datetime\":\"1970-01-01T00:00:00\",\"timestamp\":0,\"status\":\"success\",\"code\":200,\"message\":\"OK\",\"data\":\"test body\"}\n", body)
 }

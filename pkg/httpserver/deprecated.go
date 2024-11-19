@@ -6,6 +6,8 @@ import (
 
 // Router is deprecated.
 // Deprecated: use *httprouter.Router instead.
+//
+//nolint:iface
 type Router interface {
 	http.Handler
 
