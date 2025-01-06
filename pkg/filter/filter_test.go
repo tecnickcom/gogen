@@ -1190,7 +1190,7 @@ func benchmarkFilterApply(b *testing.B, n int, json string, opts ...Option) {
 
 	b.ResetTimer()
 
-	for n := 0; n < b.N; n++ {
+	for range b.N {
 		b.StopTimer()
 
 		dataCopy := make([]simpleStruct, len(data))

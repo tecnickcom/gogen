@@ -220,7 +220,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			)
 
 			if tt.configContent != nil {
-				configDir, err = os.MkdirTemp("", "test-loadLocalConfig-*")
+				configDir = t.TempDir()
 				require.NoError(t, err, "failed creating temp config dir: %v", err)
 
 				defer func() { _ = os.RemoveAll(configDir) }()
@@ -1012,7 +1012,7 @@ func Test_loadConfig(t *testing.T) {
 			var err error
 
 			if tt.configContent != nil {
-				tmpConfigDir, err = os.MkdirTemp("", "test-loadConfig-*")
+				tmpConfigDir = t.TempDir()
 				require.NoError(t, err, "failed creating temp config dir: %v", err)
 
 				defer func() { _ = os.RemoveAll(tmpConfigDir) }()
@@ -1074,7 +1074,7 @@ func TestLoad(t *testing.T) {
 		err          error
 	)
 
-	tmpConfigDir, err = os.MkdirTemp("", "test-Load-*")
+	tmpConfigDir = t.TempDir()
 	require.NoError(t, err, "failed creating temp config dir: %v", err)
 
 	defer func() { _ = os.RemoveAll(tmpConfigDir) }()

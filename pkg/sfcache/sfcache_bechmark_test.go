@@ -18,7 +18,7 @@ func BenchmarkLookup_cache_miss(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		_, _ = c.Lookup(context.TODO(), strconv.Itoa(i)+testDomain)
 	}
 }
@@ -41,7 +41,7 @@ func BenchmarkLookup_cache_hit(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		j++
 		if j > size {
 			j = 0

@@ -20,7 +20,7 @@ func BenchmarkLookupHost_cache_miss(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		_, _ = c.LookupHost(context.TODO(), strconv.Itoa(i)+testDomain)
 	}
 }
@@ -45,7 +45,7 @@ func BenchmarkLookupHost_cache_hit(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		j++
 		if j > size {
 			j = 0

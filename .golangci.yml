@@ -5,7 +5,6 @@ run:
   issues-exit-code: 1
   tests: true
   timeout: 5m
-  skip-dirs-use-default: true
 
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
@@ -48,6 +47,7 @@ linters-settings:
       - G115
 
 issues:
+  exclude-dirs-use-default: true
   exclude-dirs:
     - .github
     - .githook
@@ -61,15 +61,15 @@ issues:
 linters:
   enable-all: true
   disable:
-    - depguard    # Go linter that checks if package imports are in a list of acceptable packages [fast: true, auto-fix: false]
-    - exhaustruct    # Checks if all structure fields are initialized [fast: false, auto-fix: false]
-    - err113    # Go linter to check the errors handling expressions [fast: false, auto-fix: false]
-    - ireturn    # Accept Interfaces, Return Concrete Types [fast: false, auto-fix: false]
-    - lll    # Reports long lines [fast: true, auto-fix: false]
-    - mnd   # An analyzer to detect magic numbers. [fast: true, auto-fix: false]
-    - musttag    # enforce field tags in (un)marshaled structs [fast: false, auto-fix: false]
-    - nlreturn    # Accept Nil, Return Non-Nil [fast: false, auto-fix: false]
-    - tagliatelle    # Checks the struct tags. [fast: true, auto-fix: false]
-    - testpackage    # linter that makes you use a separate _test package [fast: true, auto-fix: false]
-    - varnamelen    # checks that the length of a variable's name matches its scope [fast: false, auto-fix: false]
+    - depguard # Go linter that checks if package imports are in a list of acceptable packages [fast: true, auto-fix: false]
+    - exhaustruct # Checks if all structure fields are initialized [fast: false, auto-fix: false]
+    - err113 # Go linter to check the errors handling expressions [fast: false, auto-fix: false]
+    - ireturn # Accept Interfaces, Return Concrete Types [fast: false, auto-fix: false]
+    - lll # Reports long lines [fast: true, auto-fix: false]
+    - mnd # An analyzer to detect magic numbers. [fast: true, auto-fix: false]
+    - musttag # enforce field tags in (un)marshaled structs [fast: false, auto-fix: false]
+    - nlreturn # Accept Nil, Return Non-Nil [fast: false, auto-fix: false]
+    - tagliatelle # Checks the struct tags. [fast: true, auto-fix: false]
+    - testpackage # linter that makes you use a separate _test package [fast: true, auto-fix: false]
+    - varnamelen # checks that the length of a variable's name matches its scope [fast: false, auto-fix: false]
     - exportloopref # deprecated
