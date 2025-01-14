@@ -125,6 +125,7 @@ func Test_WithRegionFromURL(t *testing.T) {
 	}
 }
 
+//nolint:staticcheck
 func Test_WithEndpoint(t *testing.T) {
 	t.Parallel()
 
@@ -139,7 +140,7 @@ func Test_WithEndpoint(t *testing.T) {
 			url:       "https://test.immutable.invalid",
 			immutable: true,
 			want: Options{
-				config.WithEndpointResolverWithOptions( //nolint:staticcheck
+				config.WithEndpointResolverWithOptions(
 					endpointResolver{
 						url:         "https://test.immutable.invalid",
 						isImmutable: true,
@@ -152,7 +153,7 @@ func Test_WithEndpoint(t *testing.T) {
 			url:       "https://test.mutable.invalid",
 			immutable: false,
 			want: Options{
-				config.WithEndpointResolverWithOptions( //nolint:staticcheck
+				config.WithEndpointResolverWithOptions(
 					endpointResolver{
 						url:         "https://test.mutable.invalid",
 						isImmutable: false,
