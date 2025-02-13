@@ -1,7 +1,6 @@
 package statsd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net"
@@ -100,7 +99,7 @@ TEST.inbound.test.POST.out:1\|c`
 	defer c.Close() //nolint:errcheck
 
 	rr := httptest.NewRecorder()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/test", strings.NewReader("TEST"))
 	require.NoError(t, err, "failed creating http request: %s", err)

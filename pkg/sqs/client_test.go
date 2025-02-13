@@ -23,7 +23,7 @@ func TestNew(t *testing.T) {
 	// o.WithEndpoint("https://test.endpoint.invalid", true) // deprecated
 
 	got, err := New(
-		context.TODO(),
+		t.Context(),
 		"https://test_queue.invalid/queue0.fifo",
 		"",
 		WithAWSOptions(o),
@@ -36,7 +36,7 @@ func TestNew(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = New(
-		context.TODO(),
+		t.Context(),
 		"https://test_queue.invalid/queue1.fifo",
 		"alpha beta",
 		WithAWSOptions(o),
@@ -50,7 +50,7 @@ func TestNew(t *testing.T) {
 
 	msgGrpID := `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!"#$%&'()*+,\-./:;<=>?@[\\\]^_` + "`" + `{|}~`
 	got, err = New(
-		context.TODO(),
+		t.Context(),
 		"https://test_queue.invalid/queue2.fifo",
 		msgGrpID,
 		WithAWSOptions(o),
@@ -67,7 +67,7 @@ func TestNew(t *testing.T) {
 	require.Equal(t, vt, got.visibilityTimeout)
 
 	got, err = New(
-		context.TODO(),
+		t.Context(),
 		"https://test_queue.invalid/queue3.standard",
 		"SOMETHING_TO_IGNORE",
 		WithAWSOptions(o),
@@ -88,7 +88,7 @@ func TestNew(t *testing.T) {
 	// make AWS lib to return an error
 	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
-	got, err = New(context.TODO(), "", "")
+	got, err = New(t.Context(), "", "")
 	require.Error(t, err)
 	require.Nil(t, got)
 }
@@ -144,7 +144,7 @@ func TestSend(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, "https://test_queue.invalid/queue1.fifo", "TEST_MSG_GROUP_ID_1")
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -211,7 +211,7 @@ func TestReceive(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, "https://test_queue.invalid/queue2.fifo", "TEST_MSG_GROUP_ID_2")
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -269,7 +269,7 @@ func TestDelete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, "https://test_queue.invalid/queue3.fifo", "TEST_MSG_GROUP_ID_3")
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -290,7 +290,7 @@ func TestDelete(t *testing.T) {
 func TestSendData(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli, err := New(ctx, "https://test_queue.invalid/queue4.fifo", "TEST_MSG_GROUP_ID_4")
 	require.NoError(t, err)
 	require.NotNil(t, cli)
@@ -379,7 +379,7 @@ func TestReceiveData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, "https://test_queue.invalid/queue5.fifo", "TEST_MSG_GROUP_ID_5")
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -443,7 +443,7 @@ func TestHealthCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, queueURL, "TEST_MSG_GROUP_ID_6")
 			require.NoError(t, err)
 			require.NotNil(t, cli)

@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 	srvOpts := getTestSrvOptions()
 
 	got, err := New(
-		context.TODO(),
+		t.Context(),
 		srvOpts,
 		WithMessageEncodeFunc(nil),
 	)
@@ -35,7 +35,7 @@ func TestNew(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = New(
-		context.TODO(),
+		t.Context(),
 		srvOpts,
 	)
 
@@ -48,7 +48,7 @@ func TestNew(t *testing.T) {
 	vkc := mock.NewClient(ctrl)
 
 	got, err = New(
-		context.TODO(),
+		t.Context(),
 		srvOpts,
 		WithValkeyClient(vkc),
 	)
@@ -110,7 +110,7 @@ func TestSet(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -181,7 +181,7 @@ func TestGet(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -251,7 +251,7 @@ func TestDel(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -322,7 +322,7 @@ func TestSend(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -399,7 +399,7 @@ func TestReceive(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -496,7 +496,7 @@ func TestSetData(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -589,7 +589,7 @@ func TestGetData(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -681,7 +681,7 @@ func TestSendData(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -783,7 +783,7 @@ func TestReceiveData(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,
@@ -854,7 +854,7 @@ func TestHealthCheck(t *testing.T) {
 			t.Cleanup(func() { ctrl.Finish() })
 
 			vkc := mock.NewClient(ctrl)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			cli, err := New(
 				ctx,

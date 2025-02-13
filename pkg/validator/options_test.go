@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"context"
 	"database/sql"
 	"database/sql/driver"
 	"reflect"
@@ -103,7 +102,7 @@ func TestWithCustomTypeFunc(t *testing.T) {
 
 	x := DBBackedUser{Name: sql.NullString{String: "", Valid: true}, Age: sql.NullInt64{Int64: 0, Valid: false}}
 
-	err = validator.ValidateStructCtx(context.Background(), x)
+	err = validator.ValidateStructCtx(t.Context(), x)
 	require.Error(t, err)
 }
 

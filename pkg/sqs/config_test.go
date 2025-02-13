@@ -1,7 +1,6 @@
 package sqs
 
 import (
-	"context"
 	"testing"
 
 	"github.com/Vonage/gosrvlib/pkg/awsopt"
@@ -20,7 +19,7 @@ func Test_loadConfig(t *testing.T) {
 	// o.WithEndpoint("https://test.endpoint.invalid", true) // deprecated
 
 	got, err := loadConfig(
-		context.TODO(),
+		t.Context(),
 		WithAWSOptions(o),
 		WithEndpointMutable("https://test.endpoint.invalid"),
 		WithWaitTimeSeconds(wt),
@@ -36,7 +35,7 @@ func Test_loadConfig(t *testing.T) {
 	require.NotNil(t, got.messageDecodeFunc)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		WithMessageEncodeFunc(nil),
 	)
 
@@ -44,7 +43,7 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		WithMessageDecodeFunc(nil),
 	)
 
@@ -52,7 +51,7 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		WithWaitTimeSeconds(-1),
 	)
 
@@ -60,7 +59,7 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		WithWaitTimeSeconds(21),
 	)
 
@@ -68,7 +67,7 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		WithVisibilityTimeout(-1),
 	)
 
@@ -76,7 +75,7 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		WithVisibilityTimeout(43201),
 	)
 
@@ -86,7 +85,7 @@ func Test_loadConfig(t *testing.T) {
 	// force aws config.LoadDefaultConfig to fail
 	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
-	got, err = loadConfig(context.TODO())
+	got, err = loadConfig(t.Context())
 
 	require.Error(t, err)
 	require.Nil(t, got)

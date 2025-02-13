@@ -72,4 +72,4 @@ linters:
     - tagliatelle # Checks the struct tags. [fast: true, auto-fix: false]
     - testpackage # linter that makes you use a separate _test package [fast: true, auto-fix: false]
     - varnamelen # checks that the length of a variable's name matches its scope [fast: false, auto-fix: false]
-    - exportloopref # deprecated
+    - tenv # deprecated

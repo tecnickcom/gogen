@@ -72,7 +72,7 @@ func TestWithDialContext(t *testing.T) {
 	v := func(_ context.Context, _, _ string) (net.Conn, error) { return nil, errors.New("TEST") }
 	WithDialContext(v)(c)
 
-	out, err := c.client.Transport.(*http.Transport).DialContext(context.TODO(), "", "")
+	out, err := c.client.Transport.(*http.Transport).DialContext(t.Context(), "", "")
 	require.Error(t, err)
 	require.Nil(t, out)
 }

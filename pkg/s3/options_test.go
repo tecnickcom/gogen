@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -81,7 +80,7 @@ func Test_ResolveEndpoint(t *testing.T) {
 				url: tt.url,
 			}
 
-			ep, err := er.ResolveEndpoint(context.TODO(), awssrv.EndpointParameters{})
+			ep, err := er.ResolveEndpoint(t.Context(), awssrv.EndpointParameters{})
 
 			if tt.wantErr {
 				require.Error(t, err)

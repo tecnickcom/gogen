@@ -96,7 +96,7 @@ func Test_ResolveEndpoint(t *testing.T) {
 				url: tt.url,
 			}
 
-			ep, err := er.ResolveEndpoint(context.TODO(), awssm.EndpointParameters{})
+			ep, err := er.ResolveEndpoint(t.Context(), awssm.EndpointParameters{})
 
 			if tt.wantErr {
 				require.Error(t, err)

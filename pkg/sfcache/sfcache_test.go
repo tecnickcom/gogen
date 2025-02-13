@@ -189,24 +189,24 @@ func Test_Lookup(t *testing.T) {
 	c := New(lookupFn, 1, 1*time.Second)
 
 	// cache miss
-	val, err := c.Lookup(context.TODO(), "example.com")
+	val, err := c.Lookup(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, val)
 
 	// cache hit
-	val, err = c.Lookup(context.TODO(), "example.com")
+	val, err = c.Lookup(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, val)
 
 	time.Sleep(1 * time.Second)
 
 	// cache expired
-	val, err = c.Lookup(context.TODO(), "example.com")
+	val, err = c.Lookup(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.2"}, val)
 
 	// cache miss with eviction
-	val, err = c.Lookup(context.TODO(), "example.net")
+	val, err = c.Lookup(t.Context(), "example.net")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.3"}, val)
 
@@ -223,7 +223,7 @@ func Test_Lookup(t *testing.T) {
 		close(wait)
 	}()
 
-	val, err = c.Lookup(context.TODO(), "example.org")
+	val, err = c.Lookup(t.Context(), "example.org")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.4"}, val)
 
@@ -234,7 +234,7 @@ func Test_Lookup(t *testing.T) {
 	c.set("example.org", nil, nil, wait)
 	c.mux.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
 
 	c.set("example.org", nil, nil, wait)
@@ -275,7 +275,7 @@ func Test_Lookup_concurrent_slow(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			val, err := c.Lookup(context.TODO(), "example.org")
+			val, err := c.Lookup(t.Context(), "example.org")
 
 			v, ok := val.([]string)
 			if !ok {
@@ -328,7 +328,7 @@ func Test_Lookup_concurrent_fast(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			val, err := c.Lookup(context.TODO(), "example.org")
+			val, err := c.Lookup(t.Context(), "example.org")
 
 			v, ok := val.([]string)
 			if !ok {
@@ -375,7 +375,7 @@ func Test_Lookup_error(t *testing.T) {
 
 	c := New(lookupFn, 2, 10*time.Second)
 
-	val, err := c.Lookup(context.TODO(), "example.com")
+	val, err := c.Lookup(t.Context(), "example.com")
 	require.Error(t, err)
 	require.Nil(t, val)
 
@@ -390,7 +390,7 @@ func Test_Lookup_error(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			val, err := c.Lookup(context.TODO(), "example.net")
+			val, err := c.Lookup(t.Context(), "example.net")
 
 			v, ok := val.([]string)
 			if !ok {
@@ -439,7 +439,7 @@ func Test_Lookup_error_concurrent_fast(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			val, err := c.Lookup(context.TODO(), "example.net")
+			val, err := c.Lookup(t.Context(), "example.net")
 
 			v, ok := val.([]string)
 			if !ok {

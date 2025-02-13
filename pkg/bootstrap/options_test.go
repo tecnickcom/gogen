@@ -19,7 +19,7 @@ func TestWithContext(t *testing.T) {
 
 	type empty struct{}
 
-	v := context.WithValue(context.Background(), empty{}, "")
+	v := context.WithValue(t.Context(), empty{}, "")
 	WithContext(v)(cfg)
 	require.Equal(t, v, cfg.context)
 }

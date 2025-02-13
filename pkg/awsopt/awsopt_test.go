@@ -1,7 +1,6 @@
 package awsopt
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -15,7 +14,7 @@ func Test_LoadDefaultConfig(t *testing.T) {
 	c := Options{}
 	c.WithAWSOption(config.WithRegion(region))
 
-	got, err := c.LoadDefaultConfig(context.TODO())
+	got, err := c.LoadDefaultConfig(t.Context())
 
 	require.NoError(t, err)
 	require.NotNil(t, got)
@@ -24,7 +23,7 @@ func Test_LoadDefaultConfig(t *testing.T) {
 	// force aws config.LoadDefaultConfig to fail
 	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
-	_, err = c.LoadDefaultConfig(context.TODO())
+	_, err = c.LoadDefaultConfig(t.Context())
 
 	require.Error(t, err)
 }

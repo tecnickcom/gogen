@@ -110,7 +110,7 @@ func Test_Consumer_Receive(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, consumer)
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	consumer.client = &mockConsumerClient{}
 	msg, err := consumer.Receive(ctx)
@@ -139,7 +139,7 @@ func Test_Consumer_HealthCheck(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, consumer)
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	consumer.client = &mockConsumerClient{}
 	err = consumer.HealthCheck(ctx)
@@ -227,7 +227,7 @@ func TestReceiveData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := NewConsumer([]string{"url1", "url2"}, "topic", "groupID")
 			require.NoError(t, err)
 			require.NotNil(t, cli)

@@ -29,7 +29,7 @@ func TestNopBinder(t *testing.T) {
 
 func Test_nopBinder_BindHTTP(t *testing.T) {
 	t.Parallel()
-	require.Nil(t, NopBinder().BindHTTP(context.Background()))
+	require.Nil(t, NopBinder().BindHTTP(t.Context()))
 }
 
 func Test_defaultIndexHandler(t *testing.T) {
@@ -242,7 +242,7 @@ func Test_customMiddlewares(t *testing.T) {
 		secondMiddleware: make(chan struct{}),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	l := zap.NewNop()
@@ -451,7 +451,7 @@ func Test_Serve_error(t *testing.T) {
 
 	h := &HTTPServer{
 		cfg: defaultConfig(),
-		ctx: context.TODO(),
+		ctx: t.Context(),
 		httpServer: &http.Server{
 			Addr:              ":54321",
 			ReadHeaderTimeout: 1 * time.Millisecond,

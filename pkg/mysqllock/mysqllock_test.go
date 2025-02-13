@@ -138,7 +138,7 @@ func Test_keepConnectionAlive(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
 			},
 			ctxFunc: func() (context.Context, context.CancelFunc) {
-				return context.WithTimeout(context.Background(), intervalFullTime)
+				return context.WithTimeout(t.Context(), intervalFullTime)
 			},
 			interval: intervalFullTime,
 		},
@@ -149,7 +149,7 @@ func Test_keepConnectionAlive(t *testing.T) {
 					WillReturnError(errors.New("can't execute keep alive query at this time"))
 			},
 			ctxFunc: func() (context.Context, context.CancelFunc) {
-				return context.WithTimeout(context.Background(), intervalFullTime)
+				return context.WithTimeout(t.Context(), intervalFullTime)
 			},
 			interval: intervalHalfTime,
 		},
@@ -160,7 +160,7 @@ func Test_keepConnectionAlive(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
 			},
 			ctxFunc: func() (context.Context, context.CancelFunc) {
-				return context.WithTimeout(context.Background(), intervalFullTime)
+				return context.WithTimeout(t.Context(), intervalFullTime)
 			},
 			interval: intervalHalfTime,
 		},
@@ -171,7 +171,7 @@ func Test_keepConnectionAlive(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
 			},
 			ctxFunc: func() (context.Context, context.CancelFunc) {
-				return context.WithTimeout(context.Background(), intervalFullTime)
+				return context.WithTimeout(t.Context(), intervalFullTime)
 			},
 			interval: intervalHalfTime,
 		},

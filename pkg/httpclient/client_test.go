@@ -2,7 +2,6 @@ package httpclient
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -41,11 +40,7 @@ func TestNew(t *testing.T) {
 //nolint:gocognit,tparallel,paralleltest
 func TestClient_Do(t *testing.T) {
 	bodyStr := `TEST BODY OK`
-	body := make([]byte, 0)
-
-	for range 100 {
-		body = append(body, []byte(bodyStr+`\n`)...)
-	}
+	body := bytes.Repeat([]byte(bodyStr+`\n`), 10000)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(body)
@@ -98,7 +93,7 @@ func TestClient_Do(t *testing.T) {
 			t.Parallel()
 
 			client := New(tt.opts...)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			// Create a sink instance, and register it with zap for the "memory" protocol.
 			sink := &MemorySink{new(bytes.Buffer)}

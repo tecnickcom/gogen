@@ -145,7 +145,7 @@ func TestWithLogger(t *testing.T) {
 	t.Parallel()
 
 	l1 := zap.NewNop()
-	ctx := WithLogger(context.Background(), l1)
+	ctx := WithLogger(t.Context(), l1)
 
 	el1 := FromContext(ctx)
 	require.Equal(t, el1, l1)
@@ -176,11 +176,11 @@ func TestFromContext(t *testing.T) {
 	t.Parallel()
 
 	// Context without logger
-	l1 := FromContext(context.Background())
+	l1 := FromContext(t.Context())
 	require.NotNil(t, l1)
 
 	// Context with logger
-	ctx := WithLogger(context.Background(), zap.NewNop())
+	ctx := WithLogger(t.Context(), zap.NewNop())
 	l2 := FromContext(ctx)
 	require.NotNil(t, l2)
 }
@@ -323,7 +323,7 @@ func TestClose(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, l)
 
-	ctx := WithLogger(context.Background(), l)
+	ctx := WithLogger(t.Context(), l)
 
 	objOK := &testCloseOK{}
 

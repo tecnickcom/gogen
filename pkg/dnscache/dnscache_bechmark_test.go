@@ -21,7 +21,7 @@ func BenchmarkLookupHost_cache_miss(b *testing.B) {
 	b.ResetTimer()
 
 	for i := range b.N {
-		_, _ = c.LookupHost(context.TODO(), strconv.Itoa(i)+testDomain)
+		_, _ = c.LookupHost(b.Context(), strconv.Itoa(i)+testDomain)
 	}
 }
 
@@ -38,7 +38,7 @@ func BenchmarkLookupHost_cache_hit(b *testing.B) {
 
 	// fill the cache
 	for i := 1; i <= size; i++ {
-		_, _ = c.LookupHost(context.TODO(), strconv.Itoa(i)+testDomain)
+		_, _ = c.LookupHost(b.Context(), strconv.Itoa(i)+testDomain)
 	}
 
 	var j int
@@ -51,6 +51,6 @@ func BenchmarkLookupHost_cache_hit(b *testing.B) {
 			j = 0
 		}
 
-		_, _ = c.LookupHost(context.TODO(), strconv.Itoa(j)+testDomain)
+		_, _ = c.LookupHost(b.Context(), strconv.Itoa(j)+testDomain)
 	}
 }

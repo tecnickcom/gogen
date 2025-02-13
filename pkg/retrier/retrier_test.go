@@ -122,7 +122,7 @@ func TestRetrier_Run(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, r)
 
-			ctx, cancel := context.WithTimeout(context.TODO(), tt.timeout)
+			ctx, cancel := context.WithTimeout(t.Context(), tt.timeout)
 			defer cancel()
 
 			err = r.Run(ctx, tt.task)

@@ -1,7 +1,6 @@
 package traceid
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -12,7 +11,7 @@ func TestNewContext(t *testing.T) {
 	t.Parallel()
 
 	// store value in context
-	ctx := NewContext(context.Background(), "test-1-218549")
+	ctx := NewContext(t.Context(), "test-1-218549")
 
 	// load the value from context and ignore default
 	el1 := FromContext(ctx, "default-104173")
@@ -27,12 +26,12 @@ func TestFromContext(t *testing.T) {
 	t.Parallel()
 
 	// context without set id, should return the default value
-	id1 := FromContext(context.Background(), "default-1-206951")
+	id1 := FromContext(t.Context(), "default-1-206951")
 	require.NotEmpty(t, id1)
 	require.Equal(t, "default-1-206951", id1)
 
 	// context with set id, should return the existing value
-	ctx := NewContext(context.Background(), "default-2-616841")
+	ctx := NewContext(t.Context(), "default-2-616841")
 	id2 := FromContext(ctx, "default-3-67890")
 	require.NotEmpty(t, id2)
 	require.Equal(t, "default-2-616841", id2)
@@ -41,13 +40,13 @@ func TestFromContext(t *testing.T) {
 func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// header not set
 	r1, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	require.NoError(t, err)
 
-	id1 := SetHTTPRequestHeaderFromContext(context.Background(), r1, DefaultHeader, DefaultValue)
+	id1 := SetHTTPRequestHeaderFromContext(t.Context(), r1, DefaultHeader, DefaultValue)
 	require.Equal(t, DefaultValue, id1)
 	require.Equal(t, DefaultValue, r1.Header.Get(DefaultHeader))
 
@@ -102,7 +101,7 @@ func TestFromHTTPRequestHeader(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 			require.NoError(t, err)

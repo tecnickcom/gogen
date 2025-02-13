@@ -44,6 +44,7 @@ jobs:
       - name: unit tests
         run: make mod deps test GOPATH=$(go env GOPATH)
       - name: coverage report
+        continue-on-error: true
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: target/report/coverage.out

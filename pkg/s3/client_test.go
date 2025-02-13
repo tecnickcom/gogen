@@ -19,7 +19,7 @@ func TestNew(t *testing.T) {
 	// o.WithEndpoint("https://test.endpoint.invalid", true) // deprecated
 
 	got, err := New(
-		context.TODO(),
+		t.Context(),
 		"name",
 		WithAWSOptions(o),
 		WithEndpointImmutable("https://test.endpoint.invalid"),
@@ -30,7 +30,7 @@ func TestNew(t *testing.T) {
 	require.Equal(t, "name", got.bucketName)
 
 	got, err = New(
-		context.TODO(),
+		t.Context(),
 		"name",
 		WithAWSOptions(o),
 		WithEndpointMutable("https://test.endpoint.invalid"),
@@ -43,7 +43,7 @@ func TestNew(t *testing.T) {
 	// make AWS lib to return an error
 	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
-	got, err = New(context.TODO(), "name")
+	got, err = New(t.Context(), "name")
 	require.Error(t, err)
 	require.Nil(t, got)
 }
@@ -104,7 +104,7 @@ func TestS3Client_DeleteObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, tt.bucket)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -165,7 +165,7 @@ func TestS3Client_GetObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, tt.bucket)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -247,7 +247,7 @@ func TestS3Client_ListObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, tt.bucket)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -300,7 +300,7 @@ func TestS3Client_PutObject(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, tt.bucket)
 			require.NoError(t, err)
 			require.NotNil(t, cli)

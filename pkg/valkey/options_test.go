@@ -20,7 +20,7 @@ func Test_WithMessageEncodeFunc(t *testing.T) {
 	conf := &cfg{}
 	WithMessageEncodeFunc(f)(conf)
 
-	d, err := conf.messageEncodeFunc(context.TODO(), "")
+	d, err := conf.messageEncodeFunc(t.Context(), "")
 	require.NoError(t, err)
 	require.Equal(t, ret, d)
 }
@@ -34,7 +34,7 @@ func Test_WithMessageDecodeFunc(t *testing.T) {
 
 	conf := &cfg{}
 	WithMessageDecodeFunc(f)(conf)
-	require.NoError(t, conf.messageDecodeFunc(context.TODO(), "", ""))
+	require.NoError(t, conf.messageDecodeFunc(t.Context(), "", ""))
 }
 
 func Test_WithChannels(t *testing.T) {

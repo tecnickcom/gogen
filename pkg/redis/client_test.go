@@ -21,7 +21,7 @@ func TestNew(t *testing.T) {
 	}
 
 	got, err := New(
-		context.TODO(),
+		t.Context(),
 		srvOpts,
 		WithMessageEncodeFunc(nil),
 	)
@@ -30,7 +30,7 @@ func TestNew(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = New(
-		context.TODO(),
+		t.Context(),
 		srvOpts,
 	)
 
@@ -141,7 +141,7 @@ func TestClose(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -195,7 +195,7 @@ func TestSet(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -248,7 +248,7 @@ func TestGet(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -304,7 +304,7 @@ func TestDel(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -357,7 +357,7 @@ func TestSend(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -385,7 +385,7 @@ func TestSetData(t *testing.T) {
 		DB:       0,
 	}
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli, err := New(ctx, srvOpts)
 	require.NoError(t, err)
 	require.NotNil(t, cli)
@@ -453,7 +453,7 @@ func TestGetData(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -485,7 +485,7 @@ func TestSendData(t *testing.T) {
 		DB:       0,
 	}
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli, err := New(ctx, srvOpts)
 	require.NoError(t, err)
 	require.NotNil(t, cli)
@@ -567,7 +567,7 @@ func TestReceive(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -665,7 +665,7 @@ func TestReceiveData(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)
@@ -724,7 +724,7 @@ func TestHealthCheck(t *testing.T) {
 				DB:       0,
 			}
 
-			ctx := context.TODO()
+			ctx := t.Context()
 			cli, err := New(ctx, srvOpts)
 			require.NoError(t, err)
 			require.NotNil(t, cli)

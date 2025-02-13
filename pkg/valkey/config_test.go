@@ -1,7 +1,6 @@
 package valkey
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,7 +17,7 @@ func Test_loadConfig(t *testing.T) {
 	}
 
 	got, err := loadConfig(
-		context.TODO(),
+		t.Context(),
 		srvOpts,
 		WithMessageEncodeFunc(DefaultMessageEncodeFunc),
 		WithMessageDecodeFunc(DefaultMessageDecodeFunc),
@@ -35,7 +34,7 @@ func Test_loadConfig(t *testing.T) {
 	require.NotNil(t, got.messageDecodeFunc)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		SrvOptions{},
 	)
 
@@ -43,7 +42,7 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		srvOpts,
 		WithMessageEncodeFunc(nil),
 	)
@@ -52,7 +51,7 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		context.TODO(),
+		t.Context(),
 		srvOpts,
 		WithMessageDecodeFunc(nil),
 	)

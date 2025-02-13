@@ -45,24 +45,24 @@ func Test_LookupHost(t *testing.T) {
 	c := New(resolver, 1, 1*time.Second)
 
 	// cache miss
-	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	addrs, err := c.LookupHost(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 
 	// cache hit
-	addrs, err = c.LookupHost(context.TODO(), "example.com")
+	addrs, err = c.LookupHost(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 
 	time.Sleep(1 * time.Second)
 
 	// cache expired
-	addrs, err = c.LookupHost(context.TODO(), "example.com")
+	addrs, err = c.LookupHost(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.2"}, addrs)
 
 	// cache miss with eviction
-	addrs, err = c.LookupHost(context.TODO(), "example.net")
+	addrs, err = c.LookupHost(t.Context(), "example.net")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.3"}, addrs)
 }
@@ -98,7 +98,7 @@ func Test_LookupHost_concurrent_slow(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			addrs, err := c.LookupHost(context.TODO(), "example.org")
+			addrs, err := c.LookupHost(t.Context(), "example.org")
 			ret <- retval{err, addrs}
 		}()
 	}
@@ -146,7 +146,7 @@ func Test_LookupHost_concurrent_fast(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			addrs, err := c.LookupHost(context.TODO(), "example.org")
+			addrs, err := c.LookupHost(t.Context(), "example.org")
 			ret <- retval{err, addrs}
 		}()
 	}
@@ -186,7 +186,7 @@ func Test_LookupHost_error(t *testing.T) {
 
 	c := New(resolver, 2, 10*time.Second)
 
-	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	addrs, err := c.LookupHost(t.Context(), "example.com")
 	require.Error(t, err)
 	require.Nil(t, addrs)
 
@@ -201,7 +201,7 @@ func Test_LookupHost_error(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			addrs, err := c.LookupHost(context.TODO(), "example.net")
+			addrs, err := c.LookupHost(t.Context(), "example.net")
 			ret <- retval{err, addrs}
 		}()
 	}
@@ -245,7 +245,7 @@ func Test_LookupHost_error_concurrent_fast(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			addrs, err := c.LookupHost(context.TODO(), "example.net")
+			addrs, err := c.LookupHost(t.Context(), "example.net")
 			ret <- retval{err, addrs}
 		}()
 	}
@@ -274,12 +274,12 @@ func Test_DialContext_lookup_errors(t *testing.T) {
 	c := New(resolver, 1, 1*time.Second)
 
 	// SplitHostPort error
-	conn, err := c.DialContext(context.TODO(), "tcp", "~~~")
+	conn, err := c.DialContext(t.Context(), "tcp", "~~~")
 	require.Error(t, err)
 	require.Nil(t, conn)
 
 	// LookupHost error
-	conn, err = c.DialContext(context.TODO(), "tcp", "example.com:80")
+	conn, err = c.DialContext(t.Context(), "tcp", "example.com:80")
 	require.Error(t, err)
 	require.Nil(t, conn)
 }
@@ -295,7 +295,7 @@ func Test_DialContext_ip_error(t *testing.T) {
 
 	c := New(resolver, 1, 1*time.Second)
 
-	conn, err := c.DialContext(context.TODO(), "tcp", "example.com:80")
+	conn, err := c.DialContext(t.Context(), "tcp", "example.com:80")
 	require.Error(t, err)
 	require.Nil(t, conn)
 }
@@ -326,7 +326,7 @@ func Test_DialContext(t *testing.T) {
 
 	r := New(resolver, 1, 1*time.Second)
 
-	conn, err := r.DialContext(context.TODO(), network, address)
+	conn, err := r.DialContext(t.Context(), network, address)
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 }
@@ -343,14 +343,14 @@ func Test_Len(t *testing.T) {
 	c := New(resolver, 3, 1*time.Second)
 
 	// cache miss
-	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	addrs, err := c.LookupHost(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 
 	require.Equal(t, 1, c.Len())
 
 	// cache miss
-	addrs, err = c.LookupHost(context.TODO(), "example.net")
+	addrs, err = c.LookupHost(t.Context(), "example.net")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 
@@ -369,12 +369,12 @@ func Test_Reset(t *testing.T) {
 	c := New(resolver, 3, 1*time.Second)
 
 	// cache miss
-	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	addrs, err := c.LookupHost(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 
 	// cache miss
-	addrs, err = c.LookupHost(context.TODO(), "example.net")
+	addrs, err = c.LookupHost(t.Context(), "example.net")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 
@@ -397,12 +397,12 @@ func Test_Remove(t *testing.T) {
 	c := New(resolver, 3, 1*time.Minute)
 
 	// cache miss
-	addrs, err := c.LookupHost(context.TODO(), "example.com")
+	addrs, err := c.LookupHost(t.Context(), "example.com")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 
 	// cache miss
-	addrs, err = c.LookupHost(context.TODO(), "example.net")
+	addrs, err = c.LookupHost(t.Context(), "example.net")
 	require.NoError(t, err)
 	require.Equal(t, []string{"192.0.2.1"}, addrs)
 

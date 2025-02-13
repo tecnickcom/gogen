@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 	o.WithRegion("eu-west-1")
 
 	got, err := New(
-		context.TODO(),
+		t.Context(),
 		1,
 		1*time.Second,
 		WithAWSOptions(o),
@@ -36,7 +36,7 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, got.cache)
 
 	got, err = New(
-		context.TODO(),
+		t.Context(),
 		1,
 		1*time.Second,
 		WithAWSOptions(o),
@@ -50,7 +50,7 @@ func TestNew(t *testing.T) {
 	// make AWS lib to return an error
 	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
-	got, err = New(context.TODO(), 1, 1*time.Second)
+	got, err = New(t.Context(), 1, 1*time.Second)
 	require.Error(t, err)
 	require.Nil(t, got)
 }
@@ -93,7 +93,7 @@ func Test_GetSecretData(t *testing.T) {
 			t.Parallel()
 
 			c, err := New(
-				context.TODO(),
+				t.Context(),
 				1,
 				1*time.Second,
 				WithSecretsManagerClient(tt.mock),
@@ -102,7 +102,7 @@ func Test_GetSecretData(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, c)
 
-			got, err := c.GetSecretData(context.TODO(), "test_key")
+			got, err := c.GetSecretData(t.Context(), "test_key")
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -171,7 +171,7 @@ func Test_GetSecretBinary(t *testing.T) {
 			t.Parallel()
 
 			c, err := New(
-				context.TODO(),
+				t.Context(),
 				1,
 				1*time.Second,
 				WithSecretsManagerClient(tt.mock),
@@ -180,7 +180,7 @@ func Test_GetSecretBinary(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, c)
 
-			got, err := c.GetSecretBinary(context.TODO(), "test_key")
+			got, err := c.GetSecretBinary(t.Context(), "test_key")
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -248,7 +248,7 @@ func Test_GetSecretString(t *testing.T) {
 			t.Parallel()
 
 			c, err := New(
-				context.TODO(),
+				t.Context(),
 				1,
 				1*time.Second,
 				WithSecretsManagerClient(tt.mock),
@@ -257,7 +257,7 @@ func Test_GetSecretString(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, c)
 
-			got, err := c.GetSecretString(context.TODO(), "test_key")
+			got, err := c.GetSecretString(t.Context(), "test_key")
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -280,7 +280,7 @@ func Test_Len(t *testing.T) {
 	}
 
 	c, err := New(
-		context.TODO(),
+		t.Context(),
 		3,
 		10*time.Second,
 		WithSecretsManagerClient(smclient),
@@ -290,14 +290,14 @@ func Test_Len(t *testing.T) {
 	require.NotNil(t, c)
 
 	// cache miss
-	got, err := c.GetSecretString(context.TODO(), "test_key_1")
+	got, err := c.GetSecretString(t.Context(), "test_key_1")
 	require.NoError(t, err)
 	require.Equal(t, secval, got)
 
 	require.Equal(t, 1, c.Len())
 
 	// cache miss
-	got, err = c.GetSecretString(context.TODO(), "test_key_2")
+	got, err = c.GetSecretString(t.Context(), "test_key_2")
 	require.NoError(t, err)
 	require.Equal(t, secval, got)
 
@@ -316,7 +316,7 @@ func Test_Reset(t *testing.T) {
 	}
 
 	c, err := New(
-		context.TODO(),
+		t.Context(),
 		3,
 		10*time.Second,
 		WithSecretsManagerClient(smclient),
@@ -326,12 +326,12 @@ func Test_Reset(t *testing.T) {
 	require.NotNil(t, c)
 
 	// cache miss
-	got, err := c.GetSecretString(context.TODO(), "test_key_1")
+	got, err := c.GetSecretString(t.Context(), "test_key_1")
 	require.NoError(t, err)
 	require.Equal(t, secval, got)
 
 	// cache miss
-	got, err = c.GetSecretString(context.TODO(), "test_key_2")
+	got, err = c.GetSecretString(t.Context(), "test_key_2")
 	require.NoError(t, err)
 	require.Equal(t, secval, got)
 
@@ -354,7 +354,7 @@ func Test_Remove(t *testing.T) {
 	}
 
 	c, err := New(
-		context.TODO(),
+		t.Context(),
 		3,
 		10*time.Second,
 		WithSecretsManagerClient(smclient),
@@ -364,12 +364,12 @@ func Test_Remove(t *testing.T) {
 	require.NotNil(t, c)
 
 	// cache miss
-	got, err := c.GetSecretString(context.TODO(), "test_key_1")
+	got, err := c.GetSecretString(t.Context(), "test_key_1")
 	require.NoError(t, err)
 	require.Equal(t, secval, got)
 
 	// cache miss
-	got, err = c.GetSecretString(context.TODO(), "test_key_2")
+	got, err = c.GetSecretString(t.Context(), "test_key_2")
 	require.NoError(t, err)
 	require.Equal(t, secval, got)
 

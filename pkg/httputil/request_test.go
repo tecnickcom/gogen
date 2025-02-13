@@ -1,7 +1,6 @@
 package httputil
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +15,7 @@ import (
 func TestAddBasicAuth(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
 	AddBasicAuth("key", "secret", r)
@@ -60,7 +59,7 @@ func TestPathParam(t *testing.T) {
 				SendText(r.Context(), w, http.StatusOK, val)
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			rr := httptest.NewRecorder()
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, tt.requestPath, nil)
@@ -81,7 +80,7 @@ func TestPathParam(t *testing.T) {
 func TestHeaderOrDefault(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	require.NoError(t, err)
@@ -283,7 +282,7 @@ func TestGetRequestTimeFromContext(t *testing.T) {
 
 	testTime := time.Date(2023, time.January, 31, 10, 0, 0, 0, time.UTC)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = WithRequestTime(ctx, testTime)
 
 	outTime, ok := GetRequestTimeFromContext(ctx)
@@ -297,7 +296,7 @@ func TestGetRequestTime(t *testing.T) {
 
 	testTime := time.Date(2023, time.January, 31, 11, 0, 0, 0, time.UTC)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = WithRequestTime(ctx, testTime)
 
 	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)

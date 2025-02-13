@@ -115,7 +115,7 @@ func Test_Start_Stop(t *testing.T) {
 	require.NotNil(t, p)
 	require.NoError(t, err)
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	p.Start(ctx)
 

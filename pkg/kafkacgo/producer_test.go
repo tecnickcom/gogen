@@ -1,7 +1,6 @@
 package kafkacgo
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -129,7 +128,7 @@ func (p produceMock) Close() {}
 func TestSendData(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli, err := NewProducer([]string{"testurl"})
 	require.NoError(t, err)
 	require.NotNil(t, cli)

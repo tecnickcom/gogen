@@ -52,8 +52,8 @@ func New(opts ...Option) *Client {
 func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	reqTime := time.Now().UTC()
 
-	ctx, cancel := context.WithTimeout(r.Context(), c.client.Timeout)
-	defer cancel()
+	//nolint:govet // calling cancel() causes long body reads to return context canceled errors.
+	ctx, _ := context.WithTimeout(r.Context(), c.client.Timeout)
 
 	l := logging.FromContext(ctx).With(zap.String(c.logPrefix+"component", c.component))
 	debug := l.Check(zap.DebugLevel, "debug") != nil

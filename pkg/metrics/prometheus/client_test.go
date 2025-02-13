@@ -1,7 +1,6 @@
 package prometheus
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -79,7 +78,7 @@ func TestNew(t *testing.T) {
 func TestInstrumentHandler(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	c, err := New()
 	require.NoError(t, err, "New() unexpected error = %v", err)

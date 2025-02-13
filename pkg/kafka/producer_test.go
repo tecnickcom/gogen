@@ -91,11 +91,11 @@ func TestSendError(t *testing.T) {
 	require.NotNil(t, producer)
 
 	producer.client = &mockProducerClient{}
-	err = producer.Send(context.TODO(), nil)
+	err = producer.Send(t.Context(), nil)
 	require.NoError(t, err)
 
 	producer.client = &mockProducerClientError{}
-	err = producer.Send(context.TODO(), nil)
+	err = producer.Send(t.Context(), nil)
 	require.Error(t, err)
 
 	err = producer.Close()
@@ -118,7 +118,7 @@ func (p produceMock) Close() error {
 func TestSendData(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	cli, err := NewProducer([]string{"testurl"}, "")
 	require.NoError(t, err)
 	require.NotNil(t, cli)
