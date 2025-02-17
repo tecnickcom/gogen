@@ -41,6 +41,6 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{_configpath}*
 
 %changelog
-* Fri Dec 04 2020 gosrvlibexampleauthor <gosrvlibexampleemail> 1.0.0-1
+* Wed Jan 01 2025 gosrvlibexampleauthor <gosrvlibexampleemail> 1.0.0-1
 - Initial Commit
 

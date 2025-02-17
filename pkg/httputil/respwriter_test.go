@@ -205,7 +205,11 @@ func Test_responseWriterWrapper_ReadFrom(t *testing.T) {
 	require.NotNil(t, ww)
 
 	inputBuf := bytes.NewBufferString("0123456789")
-	count, err := ww.(*responseWriterWrapper).ReadFrom(inputBuf)
+
+	rww, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	count, err := rww.ReadFrom(inputBuf)
 	require.NoError(t, err)
 	require.Equal(t, int64(10), count)
 
@@ -218,7 +222,11 @@ func Test_responseWriterWrapper_ReadFrom(t *testing.T) {
 	wwTee.Tee(teeBuf)
 
 	inputBufTee := bytes.NewBufferString("0123456789")
-	countTee, err := wwTee.(*responseWriterWrapper).ReadFrom(inputBufTee)
+
+	rwwTee, ok := wwTee.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	countTee, err := rwwTee.ReadFrom(inputBufTee)
 	require.NoError(t, err)
 	require.Equal(t, int64(10), countTee)
 	require.Equal(t, "0123456789", teeBuf.String())
@@ -236,6 +244,10 @@ func Test_broken_responseWriterWrapper_ReadFrom(t *testing.T) {
 	require.NotNil(t, ww)
 
 	inputBuf := bytes.NewBufferString("-")
-	_, err := ww.(*responseWriterWrapper).ReadFrom(inputBuf)
+
+	rww, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	_, err := rww.ReadFrom(inputBuf)
 	require.Error(t, err)
 }
