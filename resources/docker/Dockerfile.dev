@@ -12,7 +12,7 @@ dh-make \
 dh-golang \
 python3 \
 python3-pip \
-&& pip3 install --upgrade --break-system-packages check-jsonschema schemathesis httpx \
+&& pip3 install --upgrade --break-system-packages schemathesis httpx \
 && curl --location https://github.com/ovh/venom/releases/download/v1.2.0/venom.linux-amd64 > /usr/bin/venom \
 && chmod ug+x /usr/bin/venom
 HEALTHCHECK CMD go version || exit 1

@@ -78,15 +78,6 @@ For the general style and conventions, please refer to external documents:
 https://github.com/uber-go/guide/blob/master/style.md
 
 
-<a name="requirements"></a>
-## Requirements
-
-* [check-jsonschema](https://pypi.org/project/check-jsonschema/) to check the validity of the JSON configuration files against the JSON schema.
-
-```bash
-sudo pip install --upgrade check-jsonschema
-```
-
 
 <a name="quickstart"></a>
 ## Developers' Quick Start

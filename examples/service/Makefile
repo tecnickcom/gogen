@@ -104,7 +104,7 @@ DOCKERPREFIX=
 DOCKERSUFFIX=
 
 # Command used to check the configuration files
-CONFCHECKCMD=check-jsonschema --schemafile resources/etc/${PROJECT}/config.schema.json
+CONFCHECKCMD=jv resources/etc/${PROJECT}/config.schema.json
 
 # Set default AWS region (if using AWS for deployments)
 ifeq ($(AWS_DEFAULT_REGION),)
@@ -405,10 +405,11 @@ endif
 .PHONY: deps
 deps: ensuretarget
 	curl --silent --show-error --fail --location "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
-	$(GO) install github.com/mikefarah/yq/v4@latest
 	$(GO) install github.com/hairyhenderson/gomplate/v3/cmd/gomplate@latest
-	$(GO) install github.com/rakyll/gotest
 	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
+	$(GO) install github.com/mikefarah/yq/v4@latest
+	$(GO) install github.com/rakyll/gotest
+	$(GO) install github.com/santhosh-tekuri/jsonschema/cmd/jv@latest
 	$(GO) install go.uber.org/mock/mockgen@latest
 
 # Build a docker container to run this service
@@ -517,7 +518,7 @@ generate:
 .PHONY: gendoc
 gendoc:
 	yq --input-format yaml --output-format json < doc/src/config.yaml . > doc/src/config.json
-#	check-jsonschema --schemafile doc/src/config.schema.json doc/src/config.json
+	#jv doc/src/config.schema.json doc/src/config.json
 	ASSUME_NO_MOVING_GC_UNSAFE_RISK_IT_WITH=$(GOVERSION) \
 	gomplate \
 	--datasource config=./doc/src/config.json \

@@ -35,10 +35,6 @@ addons:
     - python
     - python-pip
 
-install:
-  - sudo pip install --upgrade pip
-  - pip install --upgrade check-jsonschema
-
 script:
   - echo "$TRAVIS_BUILD_NUMBER" > RELEASE
   - make mod deps build qa docker dockertest
