@@ -17,13 +17,13 @@ require (
 	github.com/dlmiddlecote/sqlstats v1.0.2
 	github.com/go-playground/validator/v10 v10.25.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.21.0
 	github.com/rakyll/gotest v0.0.6
-	github.com/redis/go-redis/v9 v9.7.0
+	github.com/redis/go-redis/v9 v9.7.1
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.19.0
@@ -31,19 +31,19 @@ require (
 	github.com/tecnickcom/farmhash64 v1.9.28
 	github.com/tecnickcom/statsd v1.0.30
 	github.com/undefinedlabs/go-mpatch v1.0.7
-	github.com/valkey-io/valkey-go v1.0.54
-	github.com/valkey-io/valkey-go/mock v1.0.54
+	github.com/valkey-io/valkey-go v1.0.55
+	github.com/valkey-io/valkey-go/mock v1.0.55
 	go.uber.org/mock v0.5.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.34.0
 	golang.org/x/net v0.35.0
 	golang.org/x/text v0.22.0
 )
 
 require (
-	cloud.google.com/go v0.118.2 // indirect
-	cloud.google.com/go/auth v0.14.1 // indirect
+	cloud.google.com/go v0.118.3 // indirect
+	cloud.google.com/go/auth v0.15.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	cloud.google.com/go/firestore v1.18.0 // indirect
