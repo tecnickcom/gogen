@@ -150,6 +150,7 @@ GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
 GOLANGCILINTVERSION=v1.64.5
+DOCKERIZEVERSION=v0.9.2
 
 # Current operating system and architecture as one string.
 GOOSARCH=$(shell go env GOOS GOARCH | tr -d \\n)
@@ -481,7 +482,7 @@ dockerpush:
 # Test the newly built docker container
 .PHONY: dockertest
 dockertest: dockertestenv dockerdev
-	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | tar -xz -C $(BINUTIL)
+	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/${DOCKERIZEVERSION}/dockerize-linux-amd64-${DOCKERIZEVERSION}.tar.gz | tar -xz -C $(BINUTIL)
 	@echo 0 > $(TARGETDIR)/make.exit
 	$(DOCKERCOMPOSECMD) down --volumes || true
 	$(DOCKERCOMPOSECMD) build $(DOCKERBUILDARG)
