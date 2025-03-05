@@ -149,7 +149,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v1.64.5
+GOLANGCILINTVERSION=v1.64.6
 DOCKERIZEVERSION=v0.9.2
 
 # Current operating system and architecture as one string.
@@ -406,7 +406,7 @@ endif
 .PHONY: deps
 deps: ensuretarget
 	curl --silent --show-error --fail --location "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
-	$(GO) install github.com/hairyhenderson/gomplate/v3/cmd/gomplate@latest
+	$(GO) install github.com/hairyhenderson/gomplate/v4/cmd/gomplate@latest
 	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
 	$(GO) install github.com/mikefarah/yq/v4@latest
 	$(GO) install github.com/rakyll/gotest
