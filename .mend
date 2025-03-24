@@ -1,12 +1,7 @@
 {
   "settingsInheritedFrom": "Vonage/whitesource-config@main",
   "remediateSettings": {
-    "timezone": "UTC",
-    "dependencyDashboardAutoclose": true,
     "packageRules": [
-      {
-        "dependencyDashboardApproval": true
-      },
       {
         "matchPackageNames": [
           "/statsd/"
