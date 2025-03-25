@@ -35,7 +35,7 @@ func TestDelete(t *testing.T) {
 
 	v, ok = m[5]
 	require.False(t, ok)
-	require.Equal(t, "", v)
+	require.Empty(t, v)
 }
 
 func TestGet(t *testing.T) {
@@ -47,7 +47,7 @@ func TestGet(t *testing.T) {
 
 	require.Equal(t, "Hello", Get(mux, m, 0))
 	require.Equal(t, "World", Get(mux, m, 1))
-	require.Equal(t, "", Get(mux, m, 3))
+	require.Empty(t, Get(mux, m, 3))
 }
 
 func TestGetOK(t *testing.T) {
@@ -63,7 +63,7 @@ func TestGetOK(t *testing.T) {
 
 	v, ok = GetOK(mux, m, 6)
 	require.False(t, ok)
-	require.Equal(t, "", v)
+	require.Empty(t, v)
 }
 
 func TestLen(t *testing.T) {

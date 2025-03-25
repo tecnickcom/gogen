@@ -146,7 +146,7 @@ func TestWithErrorTemplates(t *testing.T) {
 				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
 			} else {
 				require.NoError(t, err, "unexpected error = %v", err)
-				require.Equal(t, len(tt.arg), len(v.tpl), "Not all templates were imported")
+				require.Len(t, v.tpl, len(tt.arg), "Not all templates were imported")
 			}
 		})
 	}

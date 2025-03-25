@@ -96,7 +96,7 @@ TEST.inbound.test.POST.out:1\|c`
 	)
 	require.NoError(t, err, "New() unexpected error = %v", err)
 
-	defer c.Close() //nolint:errcheck
+	defer c.Close()
 
 	rr := httptest.NewRecorder()
 	ctx := t.Context()
@@ -139,7 +139,7 @@ TEST.outbound.GET.out:1\|c`
 	)
 	require.NoError(t, err, "New() unexpected error = %v", err)
 
-	defer c.Close() //nolint:errcheck
+	defer c.Close()
 
 	server := httptest.NewServer(
 		http.HandlerFunc(

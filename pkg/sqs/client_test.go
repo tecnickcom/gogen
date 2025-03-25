@@ -364,7 +364,7 @@ func TestReceiveData(t *testing.T) {
 				return &sqs.ReceiveMessageOutput{
 					Messages: []types.Message{
 						{
-							Body:          aws.String("你好世界"),
+							Body:          aws.String("你好世界"), //nolint:gosmopolitan
 							ReceiptHandle: aws.String("TestReceiptHandle03"),
 						},
 					},

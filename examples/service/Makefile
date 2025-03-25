@@ -149,7 +149,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v1.64.8
+GOLANGCILINTVERSION=v2.0.1
 DOCKERIZEVERSION=v0.9.2
 
 # Current operating system and architecture as one string.
@@ -586,7 +586,7 @@ endif
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
-	$(GOLANGCILINT) run --exclude-use-default=false --max-issues-per-linter 0 --max-same-issues 0 $(CMDDIR)/... $(SRCDIR)/...
+	$(GOLANGCILINT) run --max-issues-per-linter 0 --max-same-issues 0 $(CMDDIR)/... $(SRCDIR)/...
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
 # Download dependencies

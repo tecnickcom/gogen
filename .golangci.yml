@@ -1,75 +1,89 @@
-# https://golangci-lint.run/usage/configuration/
-# To get the list of available linters: ./target/binutil/golangci-lint help linters
-
+version: "2"
 run:
   issues-exit-code: 1
   tests: true
-  timeout: 5m
-
 output:
-  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
-  formats: colored-line-number
-
-linters-settings:
-  funlen:
-    lines: 100
-    statements: 50
-    ignore-comments: true
-  gocognit:
-    min-complexity: 10
-  gocyclo:
-    min-complexity: 10
-  gofmt:
-    simplify: true
-  misspell:
-    locale: US
-  whitespace:
-    multi-if: false   # Enforces newlines (or comments) after every multi-line if statement
-    multi-func: false # Enforces newlines (or comments) after every multi-line function signature
-  depguard:
-    rules:
-      main:
-        files:
-          - $all
-          - "!$test"
-        allow:
-          - $gostd
-          - github.com/Vonage
-      test:
-        files:
-          - "$test"
-        allow:
-          - $gostd
-          - github.com/stretchr
-  gosec:
-    excludes:
-      # Flags for potentially-unsafe casting of ints, similar problem to globally-disabled G103
-      - G115
-
-issues:
-  exclude-dirs-use-default: true
-  exclude-dirs:
-    - .github
-    - .githook
-  exclude-rules:
-    - path: _test.go
-      linters:
-        - dupl
-        - funlen
-  # fix: true
-
+  formats:
+    text:
+      path: stdout
 linters:
-  enable-all: true
+  default: all
   disable:
-    - depguard # Go linter that checks if package imports are in a list of acceptable packages [fast: true, auto-fix: false]
-    - exhaustruct # Checks if all structure fields are initialized [fast: false, auto-fix: false]
-    - err113 # Go linter to check the errors handling expressions [fast: false, auto-fix: false]
-    - ireturn # Accept Interfaces, Return Concrete Types [fast: false, auto-fix: false]
-    - lll # Reports long lines [fast: true, auto-fix: false]
-    - mnd # An analyzer to detect magic numbers. [fast: true, auto-fix: false]
-    - musttag # enforce field tags in (un)marshaled structs [fast: false, auto-fix: false]
-    - nlreturn # Accept Nil, Return Non-Nil [fast: false, auto-fix: false]
-    - tagliatelle # Checks the struct tags. [fast: true, auto-fix: false]
-    - testpackage # linter that makes you use a separate _test package [fast: true, auto-fix: false]
-    - varnamelen # checks that the length of a variable's name matches its scope [fast: false, auto-fix: false]
-    - tenv # deprecated
+    - depguard
+    - err113
+    - exhaustruct
+    - ireturn
+    - lll
+    - mnd
+    - musttag
+    - nlreturn
+    - tagliatelle
+    - testpackage
+    - varnamelen
+  settings:
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+            - '!$test'
+          allow:
+            - $gostd
+            - github.com/Vonage
+        test:
+          files:
+            - $test
+          allow:
+            - $gostd
+            - github.com/stretchr
+    funlen:
+      lines: 100
+      statements: 50
+      ignore-comments: true
+    gocognit:
+      min-complexity: 10
+    gocyclo:
+      min-complexity: 10
+    gosec:
+      excludes:
+        - G115
+    misspell:
+      locale: US
+    whitespace:
+      multi-if: false
+      multi-func: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - funlen
+        path: _test.go
+    paths:
+      - .github
+      - .githook
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+  exclusions:
+    generated: lax
+    paths:
+      - .github
+      - .githook
+      - third_party$
+      - builtin$
+      - examples$

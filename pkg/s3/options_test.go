@@ -25,7 +25,7 @@ func Test_WithAWSOptions(t *testing.T) {
 
 	want := &cfg{awsOpts: awsopt.Options{config.WithRegion(region)}}
 
-	require.Equal(t, len(want.awsOpts), len(c.awsOpts))
+	require.Len(t, c.awsOpts, len(want.awsOpts))
 
 	for i, opt := range want.awsOpts {
 		reflect.DeepEqual(opt, c.awsOpts[i])

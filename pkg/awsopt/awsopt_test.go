@@ -37,7 +37,7 @@ func Test_WithAWSOption(t *testing.T) {
 	c := Options{}
 	c.WithAWSOption(config.WithRegion(region))
 
-	require.Equal(t, len(want), len(c))
+	require.Len(t, c, len(want))
 
 	for i, opt := range want {
 		reflect.DeepEqual(opt, c[i])
@@ -53,7 +53,7 @@ func Test_WithRegion(t *testing.T) {
 	c := Options{}
 	c.WithRegion(region)
 
-	require.Equal(t, len(want), len(c))
+	require.Len(t, c, len(want))
 
 	for i, opt := range want {
 		reflect.DeepEqual(opt, c[i])
@@ -115,7 +115,7 @@ func Test_WithRegionFromURL(t *testing.T) {
 			c := Options{}
 			c.WithRegionFromURL(tt.url, tt.defaultRegion)
 
-			require.Equal(t, len(tt.want), len(c))
+			require.Len(t, c, len(tt.want))
 
 			for i, opt := range tt.want {
 				reflect.DeepEqual(opt, c[i])
@@ -169,7 +169,7 @@ func Test_WithEndpoint(t *testing.T) {
 			c := Options{}
 			c.WithEndpoint(tt.url, tt.immutable)
 
-			require.Equal(t, len(tt.want), len(c))
+			require.Len(t, c, len(tt.want))
 
 			for i, opt := range tt.want {
 				reflect.DeepEqual(opt, c[i])

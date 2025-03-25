@@ -237,7 +237,7 @@ func TestDecode(t *testing.T) {
 		},
 		{
 			name:    "invalid base64",
-			msg:     "你好世界",
+			msg:     "你好世界", //nolint:gosmopolitan
 			want:    TestData{},
 			wantErr: true,
 		},
@@ -457,7 +457,7 @@ func TestDeserialize(t *testing.T) {
 		},
 		{
 			name:    "invalid base64",
-			msg:     "你好世界",
+			msg:     "你好世界", //nolint:gosmopolitan
 			want:    TestData{},
 			wantErr: true,
 		},

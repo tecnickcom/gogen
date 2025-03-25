@@ -206,7 +206,7 @@ func TestReceiveData(t *testing.T) {
 			mock: consumerMock{
 				readMessage: func(_ time.Duration) (*kafka.Message, error) {
 					return &kafka.Message{
-						Value: []byte("你好世界"),
+						Value: []byte("你好世界"), //nolint:gosmopolitan
 					}, nil
 				},
 				close: func() error { return nil },

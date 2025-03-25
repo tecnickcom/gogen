@@ -43,7 +43,7 @@ func getTestData() []testItem {
 		},
 		{
 			name: "chinese address and romanian diacritics",
-			args: []string{"学院路30号", " ăâîșț  ĂÂÎȘȚ  "},
+			args: []string{"学院路30号", " ăâîșț  ĂÂÎȘȚ  "}, //nolint:gosmopolitan
 			want: &StringKey{key: 0xc8bca6255513b74},
 			key:  0xc8bca6255513b74,
 			str:  "6v9iypdk4l10",

@@ -36,7 +36,7 @@ func TestWithFields(t *testing.T) {
 	err := WithFields(v...)(cfg)
 	require.NoError(t, err)
 	require.Len(t, v, len(cfg.fields))
-	require.EqualValues(t, v, cfg.fields)
+	require.Equal(t, v, cfg.fields)
 }
 
 func TestWithIncrementLogMetricsFunc(t *testing.T) {

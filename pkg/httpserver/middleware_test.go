@@ -65,7 +65,7 @@ func TestRequestInjectHandler(t *testing.T) {
 	// check request_query
 	rqValue, rqExists := logContextMap["request_query"]
 	require.True(t, rqExists, "request_query field missing")
-	require.Equal(t, "", rqValue)
+	require.Empty(t, rqValue)
 
 	// check request_user_agent
 	_, ipExists := logContextMap["request_remote_address"]
@@ -79,12 +79,12 @@ func TestRequestInjectHandler(t *testing.T) {
 	// check request_user_agent
 	uaValue, uaExists := logContextMap["request_user_agent"]
 	require.True(t, uaExists, "request_user_agent field missing")
-	require.Equal(t, "", uaValue)
+	require.Empty(t, uaValue)
 
 	// check request_x_forwarded_for
 	rxffValue, rxffExists := logContextMap["request_x_forwarded_for"]
 	require.True(t, rxffExists, "request_x_forwarded_for field missing")
-	require.Equal(t, "", rxffValue)
+	require.Empty(t, rxffValue)
 
 	// message
 	require.Equal(t, "injected", logEntry.Message)

@@ -161,7 +161,7 @@ func TestZero(t *testing.T) {
 		v := "test"
 
 		got := Zero(v)
-		require.Equal(t, "", got)
+		require.Empty(t, got)
 	})
 
 	t.Run("slice", func(t *testing.T) {
