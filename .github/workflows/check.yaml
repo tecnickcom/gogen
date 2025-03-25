@@ -81,7 +81,7 @@ jobs:
         id: read_version
         run: echo "value=$(cat VERSION)" >>"$GITHUB_OUTPUT"
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
