@@ -2,14 +2,14 @@ module github.com/Vonage/gosrvlib
 
 go 1.24
 
-toolchain go1.24.1
+toolchain go1.24.2
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/aperturerobotics/go-brotli-decoder v0.1.1
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.12
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.78.2
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.2
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.38.3
 	github.com/aws/smithy-go v1.22.3
@@ -29,8 +29,8 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/spf13/viper/remote v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/tecnickcom/farmhash64 v1.9.33
-	github.com/tecnickcom/statsd v1.0.34
+	github.com/tecnickcom/farmhash64 v1.9.34
+	github.com/tecnickcom/statsd v1.0.35
 	github.com/undefinedlabs/go-mpatch v1.0.7
 	github.com/valkey-io/valkey-go v1.0.56
 	github.com/valkey-io/valkey-go/mock v1.0.56
@@ -143,7 +143,7 @@ require (
 	google.golang.org/genproto v0.0.0-20250324211829-b45e905df463 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250324211829-b45e905df463 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
-	google.golang.org/grpc v1.71.0 // indirect
+	google.golang.org/grpc v1.71.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

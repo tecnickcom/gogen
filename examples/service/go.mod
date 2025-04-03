@@ -2,12 +2,12 @@ module github.com/gosrvlibexampleowner/gosrvlibexample
 
 go 1.24
 
-toolchain go1.24.1
+toolchain go1.24.2
 
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.101.38
+	github.com/Vonage/gosrvlib v1.101.39
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/prometheus/client_golang v1.21.1
 	github.com/rakyll/gotest v0.0.6
@@ -112,7 +112,7 @@ require (
 	google.golang.org/genproto v0.0.0-20250324211829-b45e905df463 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250324211829-b45e905df463 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
-	google.golang.org/grpc v1.71.0 // indirect
+	google.golang.org/grpc v1.71.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
