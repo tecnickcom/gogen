@@ -51,8 +51,6 @@ func New(ctx context.Context, db *sql.DB, queries EnumTableQuery) (EnumDB, error
 }
 
 // loadTableEnumCache load the cache using the specified SQL query.
-//
-//nolint:interfacer
 func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (*enumcache.EnumCache, error) {
 	stmt, err := db.PrepareContext(ctx, query) //nolint:sqlclosecheck
 	if err != nil {

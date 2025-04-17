@@ -144,15 +144,6 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
-	//nolint:wrapcheck
-	return httpretrier.New(
-		c.httpClient,
-		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
-		httpretrier.WithAttempts(c.retryAttempts),
-	)
-}
-
 // httpPostRequest prepare an HTTP request encoding the payload as JSON.
 func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*http.Request, error) {
 	buffer := &bytes.Buffer{}
@@ -230,4 +221,13 @@ func (c *Client) SendCustomIncidentImpactRegistration(ctx context.Context, reque
 func (c *Client) SendCustomMetricImpactRegistration(ctx context.Context, request *CustomMetricImpactRegistrationRequest) error {
 	urlStr := fmt.Sprintf(c.customMetricURLFormat, request.ImpactID)
 	return sendRequest[CustomMetricImpactRegistrationRequest](ctx, c, urlStr, request)
+}
+
+func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
+	//nolint:wrapcheck
+	return httpretrier.New(
+		c.httpClient,
+		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
+		httpretrier.WithAttempts(c.retryAttempts),
+	)
 }

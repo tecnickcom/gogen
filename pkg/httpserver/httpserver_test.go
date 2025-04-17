@@ -194,25 +194,6 @@ type customMiddlewareBinder struct {
 	secondMiddleware chan struct{}
 }
 
-func (c *customMiddlewareBinder) handler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-}
-
-func (c *customMiddlewareBinder) slowHandler(w http.ResponseWriter, _ *http.Request) {
-	time.Sleep(2 * time.Millisecond)
-	w.WriteHeader(http.StatusOK)
-}
-
-func (c *customMiddlewareBinder) middleware(ch chan struct{}) MiddlewareFn {
-	return func(_ MiddlewareArgs, next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ch <- struct{}{}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
 func (c *customMiddlewareBinder) BindHTTP(_ context.Context) []Route {
 	return []Route{
 		{
@@ -231,6 +212,25 @@ func (c *customMiddlewareBinder) BindHTTP(_ context.Context) []Route {
 			Middleware:  []MiddlewareFn{c.middleware(c.firstMiddleware), c.middleware(c.secondMiddleware)},
 			Timeout:     1 * time.Millisecond,
 		},
+	}
+}
+
+func (c *customMiddlewareBinder) handler(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func (c *customMiddlewareBinder) slowHandler(w http.ResponseWriter, _ *http.Request) {
+	time.Sleep(2 * time.Millisecond)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (c *customMiddlewareBinder) middleware(ch chan struct{}) MiddlewareFn {
+	return func(_ MiddlewareArgs, next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ch <- struct{}{}
+
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 

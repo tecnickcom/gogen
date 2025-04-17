@@ -98,6 +98,54 @@ func initClient() *Client {
 	}
 }
 
+// InstrumentDB wraps a sql.DB to collect metrics.
+func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
+	coll := sqlstats.NewStatsCollector(dbName, db)
+	return c.registry.Register(coll) //nolint:wrapcheck
+}
+
+// InstrumentHandler wraps an http.Handler to collect Prometheus metrics.
+func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
+	var h http.Handler
+	h = promhttp.InstrumentHandlerRequestSize(c.collectorRequestSize.MustCurryWith(prometheus.Labels{labelHandler: path}), handler)
+	h = promhttp.InstrumentHandlerResponseSize(c.collectorResponseSize.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
+	h = promhttp.InstrumentHandlerCounter(c.collectorAPIRequests.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
+	h = promhttp.InstrumentHandlerDuration(c.collectorRequestDuration.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
+	h = promhttp.InstrumentHandlerInFlight(c.collectorInFlightRequests, h)
+
+	return h
+}
+
+// InstrumentRoundTripper is a middleware that wraps the provided http.RoundTripper to observe the request result with default metrics.
+func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
+	next = promhttp.InstrumentRoundTripperCounter(c.collectorOutboundRequests, next)
+	next = promhttp.InstrumentRoundTripperDuration(c.collectorOutboundRequestsDuration, next)
+	next = promhttp.InstrumentRoundTripperInFlight(c.collectorOutboundInFlightRequests, next)
+
+	return next
+}
+
+// MetricsHandlerFunc returns an http handler function to serve the metrics endpoint.
+func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
+	h := promhttp.HandlerFor(c.registry, c.handlerOpts)
+	return promhttp.InstrumentMetricHandler(c.registry, h).ServeHTTP
+}
+
+// IncLogLevelCounter counts the number of errors for each log severity level.
+func (c *Client) IncLogLevelCounter(level string) {
+	c.collectorErrorLevel.With(prometheus.Labels{labelLevel: level}).Inc()
+}
+
+// IncErrorCounter increments the number of errors by task, operation and error code.
+func (c *Client) IncErrorCounter(task, operation, code string) {
+	c.collectorErrorCode.With(prometheus.Labels{labelTask: task, labelOperation: operation, labelCode: code}).Inc()
+}
+
+// Close method.
+func (c *Client) Close() error {
+	return nil
+}
+
 //nolint:funlen
 func (c *Client) defaultCollectors() error {
 	c.collectorInFlightRequests = prometheus.NewGauge(
@@ -203,53 +251,5 @@ func (c *Client) defaultCollectors() error {
 		}
 	}
 
-	return nil
-}
-
-// InstrumentDB wraps a sql.DB to collect metrics.
-func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
-	coll := sqlstats.NewStatsCollector(dbName, db)
-	return c.registry.Register(coll) //nolint:wrapcheck
-}
-
-// InstrumentHandler wraps an http.Handler to collect Prometheus metrics.
-func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
-	var h http.Handler
-	h = promhttp.InstrumentHandlerRequestSize(c.collectorRequestSize.MustCurryWith(prometheus.Labels{labelHandler: path}), handler)
-	h = promhttp.InstrumentHandlerResponseSize(c.collectorResponseSize.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
-	h = promhttp.InstrumentHandlerCounter(c.collectorAPIRequests.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
-	h = promhttp.InstrumentHandlerDuration(c.collectorRequestDuration.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
-	h = promhttp.InstrumentHandlerInFlight(c.collectorInFlightRequests, h)
-
-	return h
-}
-
-// InstrumentRoundTripper is a middleware that wraps the provided http.RoundTripper to observe the request result with default metrics.
-func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
-	next = promhttp.InstrumentRoundTripperCounter(c.collectorOutboundRequests, next)
-	next = promhttp.InstrumentRoundTripperDuration(c.collectorOutboundRequestsDuration, next)
-	next = promhttp.InstrumentRoundTripperInFlight(c.collectorOutboundInFlightRequests, next)
-
-	return next
-}
-
-// MetricsHandlerFunc returns an http handler function to serve the metrics endpoint.
-func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
-	h := promhttp.HandlerFor(c.registry, c.handlerOpts)
-	return promhttp.InstrumentMetricHandler(c.registry, h).ServeHTTP
-}
-
-// IncLogLevelCounter counts the number of errors for each log severity level.
-func (c *Client) IncLogLevelCounter(level string) {
-	c.collectorErrorLevel.With(prometheus.Labels{labelLevel: level}).Inc()
-}
-
-// IncErrorCounter increments the number of errors by task, operation and error code.
-func (c *Client) IncErrorCounter(task, operation, code string) {
-	c.collectorErrorCode.With(prometheus.Labels{labelTask: task, labelOperation: operation, labelCode: code}).Inc()
-}
-
-// Close method.
-func (c *Client) Close() error {
 	return nil
 }

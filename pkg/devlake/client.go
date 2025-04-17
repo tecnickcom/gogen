@@ -135,15 +135,6 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 	return r, nil
 }
 
-func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
-	//nolint:wrapcheck
-	return httpretrier.New(
-		c.httpClient,
-		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
-		httpretrier.WithAttempts(c.retryAttempts),
-	)
-}
-
 // sendRequest sends a request to the DevLake API.
 func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) error {
 	if err := c.valid.ValidateStructCtx(ctx, request); err != nil {
@@ -195,4 +186,13 @@ func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequest
 	urlStr := fmt.Sprintf(c.incidentCloseURLFormat, request.ConnectionID, request.IssueKey)
 
 	return sendRequest[IncidentRequest](ctx, c, urlStr, nil)
+}
+
+func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
+	//nolint:wrapcheck
+	return httpretrier.New(
+		c.httpClient,
+		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
+		httpretrier.WithAttempts(c.retryAttempts),
+	)
 }

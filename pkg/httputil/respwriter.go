@@ -8,11 +8,6 @@ import (
 	"net/http"
 )
 
-// NewResponseWriterWrapper wraps an http.ResponseWriter with an enhanced proxy.
-func NewResponseWriterWrapper(w http.ResponseWriter) ResponseWriterWrapper {
-	return &responseWriterWrapper{ResponseWriter: w}
-}
-
 // ResponseWriterWrapper is the interface defining the extendend functions of the proxy.
 type ResponseWriterWrapper interface {
 	http.ResponseWriter
@@ -33,6 +28,11 @@ type responseWriterWrapper struct {
 	size          int
 	status        int
 	tee           io.Writer
+}
+
+// NewResponseWriterWrapper wraps an http.ResponseWriter with an enhanced proxy.
+func NewResponseWriterWrapper(w http.ResponseWriter) ResponseWriterWrapper {
+	return &responseWriterWrapper{ResponseWriter: w}
 }
 
 func (b *responseWriterWrapper) Size() int {

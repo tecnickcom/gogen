@@ -40,6 +40,17 @@ func defaultSQLUtil() *SQLUtil {
 	}
 }
 
+// QuoteID quotes identifiers such as schema, table, or column names.
+func (c *SQLUtil) QuoteID(s string) string {
+	return c.quoteIDFunc(s)
+}
+
+// QuoteValue quotes database string values.
+// The returned value will include all surrounding quotes.
+func (c *SQLUtil) QuoteValue(s string) string {
+	return c.quoteValueFunc(s)
+}
+
 func (c *SQLUtil) validate() error {
 	if c.quoteIDFunc == nil {
 		return errors.New("the QuoteID function must be set")
@@ -50,17 +61,6 @@ func (c *SQLUtil) validate() error {
 	}
 
 	return nil
-}
-
-// QuoteID quotes identifiers such as schema, table, or column names.
-func (c *SQLUtil) QuoteID(s string) string {
-	return c.quoteIDFunc(s)
-}
-
-// QuoteValue quotes database string values.
-// The returned value will include all surrounding quotes.
-func (c *SQLUtil) QuoteValue(s string) string {
-	return c.quoteValueFunc(s)
 }
 
 // defaultQuoteID is the QuoteID default function for mysql-like databases.

@@ -223,55 +223,6 @@ func New(opts ...Option) *Params {
 	return ph
 }
 
-// passwordHashData generates a hashed password using the provided password string.
-// It generates a random salt of length ph.SaltLen and uses the argon2id algorithm
-// to hash the password with the salt, using the parameters specified in ph.
-// The resulting hashed password, the salt and the parameters are returned as a struct.
-func (ph *Params) passwordHashData(password string) (*Hashed, error) {
-	if len(password) < int(ph.minPLen) {
-		return nil, fmt.Errorf("the password is too short: %d > %d", len(password), ph.minPLen)
-	}
-
-	if len(password) > int(ph.maxPLen) {
-		return nil, fmt.Errorf("the password is too long: %d > %d", len(password), ph.maxPLen)
-	}
-
-	salt, err := ph.rnd.RandomBytes(int(ph.SaltLen))
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	return &Hashed{
-		Params: &Params{
-			Algo:    ph.Algo,
-			Version: ph.Version,
-			KeyLen:  ph.KeyLen,
-			SaltLen: ph.SaltLen,
-			Time:    ph.Time,
-			Memory:  ph.Memory,
-			Threads: ph.Threads,
-		},
-		Salt: salt,
-		Key:  argon2.IDKey([]byte(password), salt, ph.Time, ph.Memory, ph.Threads, ph.KeyLen),
-	}, nil
-}
-
-// passwordVerifyData verifies if a given password matches a hashed password generated with the passwordHashData method.
-// It returns true if the password matches the hashed password, otherwise false.
-func (ph *Params) passwordVerifyData(password string, data *Hashed) (bool, error) {
-	if data.Params.Algo != ph.Algo {
-		return false, fmt.Errorf("different algorithm type: lib=%s, hash=%s", ph.Algo, data.Params.Algo)
-	}
-
-	if data.Params.Version != ph.Version {
-		return false, fmt.Errorf("different argon2 versions: lib=%d, hash=%d", ph.Version, data.Params.Version)
-	}
-
-	newkey := argon2.IDKey([]byte(password), data.Salt, data.Params.Time, data.Params.Memory, data.Params.Threads, data.Params.KeyLen)
-
-	return subtle.ConstantTimeCompare(newkey, data.Key) == 1, nil
-}
-
 // PasswordHash generates a hashed password using the provided password string.
 // It generates a random salt of length ph.SaltLen and uses the argon2id algorithm
 // to hash the password with the salt, using the parameters specified in ph.
@@ -319,6 +270,55 @@ func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool
 	}
 
 	return ph.passwordVerifyData(password, data)
+}
+
+// passwordHashData generates a hashed password using the provided password string.
+// It generates a random salt of length ph.SaltLen and uses the argon2id algorithm
+// to hash the password with the salt, using the parameters specified in ph.
+// The resulting hashed password, the salt and the parameters are returned as a struct.
+func (ph *Params) passwordHashData(password string) (*Hashed, error) {
+	if len(password) < int(ph.minPLen) {
+		return nil, fmt.Errorf("the password is too short: %d > %d", len(password), ph.minPLen)
+	}
+
+	if len(password) > int(ph.maxPLen) {
+		return nil, fmt.Errorf("the password is too long: %d > %d", len(password), ph.maxPLen)
+	}
+
+	salt, err := ph.rnd.RandomBytes(int(ph.SaltLen))
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	return &Hashed{
+		Params: &Params{
+			Algo:    ph.Algo,
+			Version: ph.Version,
+			KeyLen:  ph.KeyLen,
+			SaltLen: ph.SaltLen,
+			Time:    ph.Time,
+			Memory:  ph.Memory,
+			Threads: ph.Threads,
+		},
+		Salt: salt,
+		Key:  argon2.IDKey([]byte(password), salt, ph.Time, ph.Memory, ph.Threads, ph.KeyLen),
+	}, nil
+}
+
+// passwordVerifyData verifies if a given password matches a hashed password generated with the passwordHashData method.
+// It returns true if the password matches the hashed password, otherwise false.
+func (ph *Params) passwordVerifyData(password string, data *Hashed) (bool, error) {
+	if data.Params.Algo != ph.Algo {
+		return false, fmt.Errorf("different algorithm type: lib=%s, hash=%s", ph.Algo, data.Params.Algo)
+	}
+
+	if data.Params.Version != ph.Version {
+		return false, fmt.Errorf("different argon2 versions: lib=%d, hash=%d", ph.Version, data.Params.Version)
+	}
+
+	newkey := argon2.IDKey([]byte(password), data.Salt, data.Params.Time, data.Params.Memory, data.Params.Threads, data.Params.KeyLen)
+
+	return subtle.ConstantTimeCompare(newkey, data.Key) == 1, nil
 }
 
 // adjustMemory returns the actual number of blocks is m',
