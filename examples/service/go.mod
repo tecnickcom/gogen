@@ -7,19 +7,19 @@ toolchain go1.24.2
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.101.42
+	github.com/Vonage/gosrvlib v1.101.43
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/rakyll/gotest v0.0.6
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
-	go.uber.org/mock v0.5.1
+	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.27.0
 )
 
 require (
-	cloud.google.com/go v0.120.1 // indirect
+	cloud.google.com/go v0.121.0 // indirect
 	cloud.google.com/go/auth v0.16.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
@@ -108,10 +108,10 @@ require (
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	golang.org/x/tools v0.32.0 // indirect
-	google.golang.org/api v0.230.0 // indirect
-	google.golang.org/genproto v0.0.0-20250422160041-2d3770c4ea7f // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250422160041-2d3770c4ea7f // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250422160041-2d3770c4ea7f // indirect
+	google.golang.org/api v0.231.0 // indirect
+	google.golang.org/genproto v0.0.0-20250428153025-10db94c68c34 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250428153025-10db94c68c34 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250428153025-10db94c68c34 // indirect
 	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

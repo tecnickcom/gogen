@@ -9,7 +9,7 @@ require (
 	github.com/aperturerobotics/go-brotli-decoder v0.1.1
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.2
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.3
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.4
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.38.5
 	github.com/aws/smithy-go v1.22.3
@@ -23,18 +23,18 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/rakyll/gotest v0.0.6
-	github.com/redis/go-redis/v9 v9.7.3
+	github.com/redis/go-redis/v9 v9.8.0
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.1
 	github.com/spf13/viper/remote v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/tecnickcom/farmhash64 v1.9.36
+	github.com/tecnickcom/farmhash64 v1.9.37
 	github.com/tecnickcom/statsd v1.0.37
 	github.com/undefinedlabs/go-mpatch v1.0.7
-	github.com/valkey-io/valkey-go v1.0.57
-	github.com/valkey-io/valkey-go/mock v1.0.57
-	go.uber.org/mock v0.5.1
+	github.com/valkey-io/valkey-go v1.0.59
+	github.com/valkey-io/valkey-go/mock v1.0.59
+	go.uber.org/mock v0.5.2
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.37.0
@@ -43,7 +43,7 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.120.1 // indirect
+	cloud.google.com/go v0.121.0 // indirect
 	cloud.google.com/go/auth v0.16.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
@@ -58,7 +58,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.34 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.3 // indirect
@@ -139,10 +139,10 @@ require (
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	golang.org/x/tools v0.32.0 // indirect
-	google.golang.org/api v0.230.0 // indirect
-	google.golang.org/genproto v0.0.0-20250422160041-2d3770c4ea7f // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250422160041-2d3770c4ea7f // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250422160041-2d3770c4ea7f // indirect
+	google.golang.org/api v0.231.0 // indirect
+	google.golang.org/genproto v0.0.0-20250428153025-10db94c68c34 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250428153025-10db94c68c34 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250428153025-10db94c68c34 // indirect
 	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
