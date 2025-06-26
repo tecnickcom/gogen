@@ -9,63 +9,67 @@ import (
 )
 
 type testCustomTagStruct struct {
-	E164NoPlus       string  `json:"e164_no_plus"      validate:"e164noplus"`
-	EIN              string  `json:"ein"               validate:"ein"`
-	EINB             string  `json:"ein_b"             validate:"ein"`
-	USZIPCode        string  `json:"zip"               validate:"zipcode"`
-	USZIPCodeB       string  `json:"zip_b"             validate:"zipcode"`
-	Country          string  `json:"country"           validate:"iso3166_1_alpha2"`
-	State            string  `json:"state"             validate:"usstate"`
-	StateB           string  `json:"state_b"           validate:"falseif=Country|usstate"`
-	StateC           string  `json:"state_c"           validate:"falseif=Country US|usstate"`
-	StateD           string  `json:"state_d"           validate:"falseif|usstate"`
-	StateE           string  `json:"state_e"           validate:"falseif=Country US|usterritory"`
-	FalseIfMissing   string  `json:"falseif_string"    validate:"falseif=MissingField"`
-	FieldArray       []int   `json:"field_array"       validate:"required"`
-	FieldInt         int     `json:"field_int"         validate:"required"`
-	FieldUint        uint    `json:"field_uint"        validate:"required"`
-	FieldFloat       float32 `json:"field_float"       validate:"required"`
-	FieldBool        bool    `json:"field_bool"        validate:"required"`
-	FieldInterface   any     `json:"field_interface"`
-	FalseIfEmpty     string  `json:"falseif_empty"     validate:"falseif"`
-	FalseIfArray     string  `json:"falseif_array"     validate:"falseif=FieldArray 3|alpha"`
-	FalseIfInt       string  `json:"falseif_int"       validate:"falseif=FieldInt -123|alpha"`
-	FalseIfUint      string  `json:"falseif_uint"      validate:"falseif=FieldUint 123|alpha"`
-	FalseIfFloat     string  `json:"falseif_float"     validate:"falseif=FieldFloat 1.23|alpha"`
-	FalseIfBool      string  `json:"falseif_bool"      validate:"falseif=FieldBool true|alpha"`
-	FalseIfReqArray  string  `json:"falseif_req_array" validate:"falseif=FieldArray|alpha"`
-	FalseIfInterface string  `json:"falseif_interface" validate:"falseif=FieldInterface 1|alpha"`
-	FieldOrTest      string  `json:"field_or_test"     validate:"max=3|alpha"`
+	E164NoPlus             string  `json:"e164_no_plus"             validate:"e164noplus"`
+	EIN                    string  `json:"ein"                      validate:"ein"`
+	EINB                   string  `json:"ein_b"                    validate:"ein"`
+	USZIPCode              string  `json:"zip"                      validate:"zipcode"`
+	USZIPCodeB             string  `json:"zip_b"                    validate:"zipcode"`
+	Country                string  `json:"country"                  validate:"iso3166_1_alpha2"`
+	State                  string  `json:"state"                    validate:"usstate"`
+	StateB                 string  `json:"state_b"                  validate:"falseif=Country|usstate"`
+	StateC                 string  `json:"state_c"                  validate:"falseif=Country US|usstate"`
+	StateD                 string  `json:"state_d"                  validate:"falseif|usstate"`
+	StateE                 string  `json:"state_e"                  validate:"falseif=Country US|usterritory"`
+	FalseIfMissing         string  `json:"falseif_string"           validate:"falseif=MissingField"`
+	FieldArray             []int   `json:"field_array"              validate:"required"`
+	FieldInt               int     `json:"field_int"                validate:"required"`
+	FieldUint              uint    `json:"field_uint"               validate:"required"`
+	FieldFloat             float32 `json:"field_float"              validate:"required"`
+	FieldBool              bool    `json:"field_bool"               validate:"required"`
+	FieldInterface         any     `json:"field_interface"`
+	FalseIfEmpty           string  `json:"falseif_empty"            validate:"falseif"`
+	FalseIfArray           string  `json:"falseif_array"            validate:"falseif=FieldArray 3|alpha"`
+	FalseIfInt             string  `json:"falseif_int"              validate:"falseif=FieldInt -123|alpha"`
+	FalseIfUint            string  `json:"falseif_uint"             validate:"falseif=FieldUint 123|alpha"`
+	FalseIfFloat           string  `json:"falseif_float"            validate:"falseif=FieldFloat 1.23|alpha"`
+	FalseIfBool            string  `json:"falseif_bool"             validate:"falseif=FieldBool true|alpha"`
+	FalseIfReqArray        string  `json:"falseif_req_array"        validate:"falseif=FieldArray|alpha"`
+	FalseIfInterface       string  `json:"falseif_interface"        validate:"falseif=FieldInterface 1|alpha"`
+	FieldOrTest            string  `json:"field_or_test"            validate:"max=3|alpha"`
+	DatetimeRFC3339        string  `json:"datetime_rfc3339"         validate:"datetime_rfc3339"`
+	DatetimeRFC3339Relaxed string  `json:"datetime_rfc3339_relaxed" validate:"datetime_rfc3339_relaxed"`
 }
 
 func getTestCustomTagData() testCustomTagStruct {
 	return testCustomTagStruct{
-		E164NoPlus:       "123456789012345",
-		EIN:              "12-3456789",
-		EINB:             "123456789",
-		USZIPCode:        "12345",
-		USZIPCodeB:       "12345-1234",
-		Country:          "US",
-		State:            "NY",
-		StateB:           "AL",
-		StateC:           "WI",
-		StateD:           "AK",
-		StateE:           "VI",
-		FalseIfMissing:   "hello",
-		FieldArray:       []int{1, 2, 3},
-		FieldInt:         -123,
-		FieldUint:        123,
-		FieldFloat:       1.23,
-		FieldBool:        true,
-		FalseIfEmpty:     "X",
-		FalseIfArray:     "A",
-		FalseIfInt:       "B",
-		FalseIfUint:      "C",
-		FalseIfFloat:     "D",
-		FalseIfBool:      "E",
-		FalseIfReqArray:  "F",
-		FalseIfInterface: "G",
-		FieldOrTest:      "123",
+		E164NoPlus:             "123456789012345",
+		EIN:                    "12-3456789",
+		EINB:                   "123456789",
+		USZIPCode:              "12345",
+		USZIPCodeB:             "12345-1234",
+		Country:                "US",
+		State:                  "NY",
+		StateB:                 "AL",
+		StateC:                 "WI",
+		StateD:                 "AK",
+		StateE:                 "VI",
+		FalseIfMissing:         "hello",
+		FieldArray:             []int{1, 2, 3},
+		FieldInt:               -123,
+		FieldUint:              123,
+		FieldFloat:             1.23,
+		FieldBool:              true,
+		FalseIfEmpty:           "X",
+		FalseIfArray:           "A",
+		FalseIfInt:             "B",
+		FalseIfUint:            "C",
+		FalseIfFloat:           "D",
+		FalseIfBool:            "E",
+		FalseIfReqArray:        "F",
+		FalseIfInterface:       "G",
+		FieldOrTest:            "123",
+		DatetimeRFC3339:        "2023-07-08T12:34:56Z",
+		DatetimeRFC3339Relaxed: "2023-07-08 12:34:56",
 	}
 }
 
@@ -151,6 +155,24 @@ func TestCustomTags(t *testing.T) {
 			fobj:         func(obj testCustomTagStruct) testCustomTagStruct { obj.FieldOrTest = "1234"; return obj },
 			wantErr:      true,
 			wantErrCount: 2,
+		},
+		{
+			name: "fail with invalid RFC-3339 datetime",
+			fobj: func(obj testCustomTagStruct) testCustomTagStruct {
+				obj.DatetimeRFC3339 = "2023-07-08 12:34:56"
+				return obj
+			},
+			wantErr:      true,
+			wantErrCount: 1,
+		},
+		{
+			name: "fail with invalid RFC-3339 relaxed datetime",
+			fobj: func(obj testCustomTagStruct) testCustomTagStruct {
+				obj.DatetimeRFC3339Relaxed = "2023-07-08_12:34:56"
+				return obj
+			},
+			wantErr:      true,
+			wantErrCount: 1,
 		},
 	}
 	opts := []Option{

@@ -29,6 +29,8 @@ func ErrorTemplates() map[string]string {
 		"cve":                           `{{.Namespace}} must be a valid cve id, defined in cve.mitre.org`,
 		"datauri":                       `{{.Namespace}} must contain a valid Data URI`,
 		"datetime":                      `{{.Namespace}} does not match the {{.Param}} format`,
+		"datetime_rfc3339":              `{{.Namespace}} is not a valid RFC-3339 datetime format`,
+		"datetime_rfc3339_relaxed":      `{{.Namespace}} is not a valid RFC-3339 datetime format, or a relaxed version with a space instead of 'T'`,
 		"dir":                           `{{.Namespace}} must be a valid existing directory`,
 		"dirpath":                       `{{.Namespace}} must be a valid directory path`,
 		"dns_rfc1035_label":             `{{.Namespace}} must be a valid DNS RFC 1035 label`,

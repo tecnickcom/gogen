@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	vt "github.com/go-playground/validator/v10"
 )
@@ -25,12 +26,14 @@ var (
 // CustomValidationTags returns a map of custom tags with validation function.
 func CustomValidationTags() map[string]vt.FuncCtx {
 	return map[string]vt.FuncCtx{
-		"falseif":     isFalseIf,
-		"e164noplus":  isE164NoPlus,
-		"ein":         isEIN,
-		"zipcode":     isUSZIPCode,
-		"usstate":     isUSState,
-		"usterritory": isUSTerritory,
+		"falseif":                  isFalseIf,
+		"e164noplus":               isE164NoPlus,
+		"ein":                      isEIN,
+		"zipcode":                  isUSZIPCode,
+		"usstate":                  isUSState,
+		"usterritory":              isUSTerritory,
+		"datetime_rfc3339":         isDatetimeRFC3339,
+		"datetime_rfc3339_relaxed": isDatetimeRFC3339Relaxed,
 	}
 }
 
@@ -147,4 +150,37 @@ func hasNotValue(value reflect.Value, kind reflect.Kind, paramValue string) bool
 	}
 
 	return true
+}
+
+// isDatetimeRFC3339 checks if the fields value is a valid RFC3339 date format (e.g.: 2023-10-01T12:00:00Z).
+func isDatetimeRFC3339(_ context.Context, fl vt.FieldLevel) bool {
+	field := fl.Field()
+
+	if field.Kind() == reflect.String {
+		_, err := time.Parse(time.RFC3339, field.String())
+		if err == nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isRFC3339DatetimeRelaxed checks if the fields value is a
+// valid RFC3339 date format or a relaxed format "2006-01-02 15:04:05".
+func isDatetimeRFC3339Relaxed(_ context.Context, fl vt.FieldLevel) bool {
+	field := fl.Field()
+
+	if field.Kind() == reflect.String {
+		_, err := time.Parse("2006-01-02 15:04:05", field.String())
+		if err != nil {
+			_, err = time.Parse(time.RFC3339, field.String())
+		}
+
+		if err == nil {
+			return true
+		}
+	}
+
+	return false
 }
