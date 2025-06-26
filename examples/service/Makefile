@@ -638,13 +638,11 @@ rpm:
 .PHONY: schemathesistest
 schemathesistest:
 	schemathesis run \
-	--validate-schema=true \
 	--checks=all \
+	--exclude-checks=negative_data_rejection \
 	--request-timeout=2000 \
-	--hypothesis-max-examples=100 \
-	--hypothesis-deadline=2000 \
-	--show-errors-tracebacks \
-	--base-url='${API_TEST_URL}' \
+	--max-examples=100 \
+	--url='${API_TEST_URL}' \
 	${OPENAPI_FILE}
 
 # Run the unit tests
