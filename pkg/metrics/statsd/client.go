@@ -123,6 +123,7 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 		resp, err := next.RoundTrip(r)
 		if err == nil {
 			labelStatus := labelOutboundPath + strconv.Itoa(resp.StatusCode) + labelSeparator
+
 			c.statsd.Increment(labelStatus + labelCount)
 			defer t.Send(labelStatus + labelTime)
 		}

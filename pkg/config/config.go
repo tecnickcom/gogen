@@ -233,11 +233,13 @@ func loadConfig(localViper, remoteViper Viper, cmdName, configDir, envPrefix str
 		return fmt.Errorf("failed loading local configuration: %w", err)
 	}
 
-	if err := loadRemoteConfig(localViper, remoteViper, remoteSourceCfg, envPrefix, cfg); err != nil {
+	err = loadRemoteConfig(localViper, remoteViper, remoteSourceCfg, envPrefix, cfg)
+	if err != nil {
 		return fmt.Errorf("failed loading remote configuration: %w", err)
 	}
 
-	if err := cfg.Validate(); err != nil {
+	err = cfg.Validate()
+	if err != nil {
 		return fmt.Errorf("failed validating configuration: %w", err)
 	}
 
@@ -288,13 +290,15 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 	}
 
 	// Find and read the local configuration file (if any)
-	if err := v.ReadInConfig(); err != nil {
+	err := v.ReadInConfig()
+	if err != nil {
 		return nil, fmt.Errorf("failed reading in config: %w", err)
 	}
 
 	var rsCfg remoteSourceConfig
 
-	if err := v.Unmarshal(&rsCfg); err != nil {
+	err = v.Unmarshal(&rsCfg)
+	if err != nil {
 		return nil, fmt.Errorf("failed unmarshalling config: %w", err)
 	}
 
@@ -324,7 +328,8 @@ func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix stri
 		return fmt.Errorf("failed loading configuration from remote source: %w", err)
 	}
 
-	if err := rv.Unmarshal(cfg); err != nil {
+	err = rv.Unmarshal(cfg)
+	if err != nil {
 		return fmt.Errorf("failed loading application configuration: %w", err)
 	}
 

@@ -64,7 +64,8 @@ func New(cdata []*CountryData) (*Data, error) {
 	if cdata == nil {
 		d.defaultData()
 	} else {
-		if err := d.loadData(cdata); err != nil {
+		err := d.loadData(cdata)
+		if err != nil {
 			return nil, err
 		}
 	}

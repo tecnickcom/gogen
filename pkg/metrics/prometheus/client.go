@@ -75,12 +75,14 @@ func New(opts ...Option) (*Client, error) {
 	c := initClient()
 
 	for _, applyOpt := range opts {
-		if err := applyOpt(c); err != nil {
+		err := applyOpt(c)
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	if err := c.defaultCollectors(); err != nil {
+	err := c.defaultCollectors()
+	if err != nil {
 		return nil, err
 	}
 
@@ -107,6 +109,7 @@ func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
 // InstrumentHandler wraps an http.Handler to collect Prometheus metrics.
 func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
 	var h http.Handler
+
 	h = promhttp.InstrumentHandlerRequestSize(c.collectorRequestSize.MustCurryWith(prometheus.Labels{labelHandler: path}), handler)
 	h = promhttp.InstrumentHandlerResponseSize(c.collectorResponseSize.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
 	h = promhttp.InstrumentHandlerCounter(c.collectorAPIRequests.MustCurryWith(prometheus.Labels{labelHandler: path}), h)
@@ -246,7 +249,8 @@ func (c *Client) defaultCollectors() error {
 	}
 
 	for _, m := range colls {
-		if err := c.registry.Register(m); err != nil {
+		err := c.registry.Register(m)
+		if err != nil {
 			return fmt.Errorf("failed registering collector: %w", err)
 		}
 	}

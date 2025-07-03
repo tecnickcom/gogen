@@ -24,6 +24,7 @@ type ResponseWriterWrapper interface {
 
 type responseWriterWrapper struct {
 	http.ResponseWriter
+
 	headerWritten bool
 	size          int
 	status        int

@@ -31,7 +31,8 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 		applyOpt(cfg)
 	}
 
-	if err := cfg.validate(); err != nil {
+	err := cfg.validate()
+	if err != nil {
 		return err
 	}
 
@@ -56,7 +57,8 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 
 	l.Debug("binding application components")
 
-	if err := bindFn(ctx, l, m); err != nil {
+	err = bindFn(ctx, l, m)
+	if err != nil {
 		return fmt.Errorf("application bootstrap error: %w", err)
 	}
 
@@ -102,6 +104,7 @@ func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *zap.Logg
 
 	go func() {
 		defer close(wait)
+
 		wg.Wait()
 	}()
 

@@ -74,14 +74,16 @@ func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (*enumcac
 	)
 
 	for rows.Next() {
-		if err := rows.Scan(&id, &name); err != nil {
+		err := rows.Scan(&id, &name)
+		if err != nil {
 			return nil, fmt.Errorf("unable to scan row: %w", err)
 		}
 
 		cache.Set(id, name)
 	}
 
-	if err = rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("failed reading the rows: %w", err)
 	}
 

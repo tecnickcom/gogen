@@ -177,7 +177,9 @@ func Test_appConfig_Validate(t *testing.T) {
 			t.Parallel()
 
 			cfg := tt.fcfg(getValidTestConfig())
-			if err := cfg.Validate(); (err != nil) != tt.wantErr {
+
+			err := cfg.Validate()
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

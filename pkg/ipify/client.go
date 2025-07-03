@@ -50,7 +50,8 @@ func New(opts ...Option) (*Client, error) {
 		c.httpClient = &http.Client{Timeout: c.timeout}
 	}
 
-	if _, err := url.Parse(c.apiURL); err != nil {
+	_, err := url.Parse(c.apiURL)
+	if err != nil {
 		return nil, fmt.Errorf("invalid service address: %s", c.apiURL)
 	}
 

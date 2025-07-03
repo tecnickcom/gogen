@@ -51,7 +51,8 @@ func NewConsumer(brokers []string, topic, groupID string, opts ...Option) (*Cons
 		StartOffset:    cfg.startOffset,
 	}
 
-	if err := params.Validate(); err != nil {
+	err := params.Validate()
+	if err != nil {
 		return nil, fmt.Errorf("invalid parameters: %w", err)
 	}
 

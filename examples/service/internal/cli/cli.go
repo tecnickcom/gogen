@@ -37,7 +37,9 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 	rootCmd.RunE = func(_ *cobra.Command, _ []string) error {
 		// Read CLI configuration
 		cfg := &appConfig{}
-		if err := config.Load(AppName, argConfigDir, appEnvPrefix, cfg); err != nil {
+
+		err := config.Load(AppName, argConfigDir, appEnvPrefix, cfg)
+		if err != nil {
 			return fmt.Errorf("failed loading config: %w", err)
 		}
 
@@ -92,7 +94,8 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 
 	rootCmd.AddCommand(versionCmd)
 
-	if err := rootCmd.ParseFlags(os.Args); err != nil {
+	err := rootCmd.ParseFlags(os.Args)
+	if err != nil {
 		return nil, fmt.Errorf("failed parsing comman-line arguments: %w", err)
 	}
 

@@ -149,7 +149,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v2.1.6
+GOLANGCILINTVERSION=v2.2.1
 DOCKERIZEVERSION=v0.9.2
 
 # Current operating system and architecture as one string.
@@ -639,7 +639,6 @@ rpm:
 schemathesistest:
 	schemathesis run \
 	--checks=all \
-	--exclude-checks=negative_data_rejection \
 	--request-timeout=2000 \
 	--max-examples=100 \
 	--url='${API_TEST_URL}' \

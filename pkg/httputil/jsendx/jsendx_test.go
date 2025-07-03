@@ -41,6 +41,7 @@ func TestSend(t *testing.T) {
 	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	var okResp Response
+
 	_ = json.Unmarshal(body, &okResp)
 
 	require.Equal(t, "test", okResp.Program, "unexpected response: %s", body)

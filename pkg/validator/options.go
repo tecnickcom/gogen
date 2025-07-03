@@ -36,7 +36,8 @@ func WithFieldNameTag(tag string) Option {
 func WithCustomValidationTags(t map[string]vt.FuncCtx) Option {
 	return func(v *Validator) error {
 		for tag, fn := range t {
-			if err := v.v.RegisterValidationCtx(tag, fn); err != nil {
+			err := v.v.RegisterValidationCtx(tag, fn)
+			if err != nil {
 				return fmt.Errorf("failed registering custom tag: %w", err)
 			}
 		}

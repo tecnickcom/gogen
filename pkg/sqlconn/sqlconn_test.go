@@ -101,7 +101,8 @@ func TestConnect(t *testing.T) {
 				// wait to allow the disconnect goroutine to execute
 				time.Sleep(100 * time.Millisecond)
 
-				if err := mock.ExpectationsWereMet(); err != nil {
+				err := mock.ExpectationsWereMet()
+				if err != nil {
 					t.Errorf("there were unfulfilled expectations: %s", err)
 				}
 			}()
@@ -118,7 +119,6 @@ func TestConnect(t *testing.T) {
 				WithShutdownWaitGroup(shutdownWG),
 				WithShutdownSignalChan(shutdownSG),
 			)
-
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -146,7 +146,8 @@ func TestSQLConn_DB(t *testing.T) {
 	require.NotNil(t, conn)
 	require.Equal(t, db, conn.DB())
 
-	if err := mock.ExpectationsWereMet(); err != nil {
+	err = mock.ExpectationsWereMet()
+	if err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }
@@ -214,7 +215,8 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 				time.Sleep(100 * time.Millisecond)
 			}
 
-			if err := conn.HealthCheck(testutil.Context()); (err != nil) != tt.wantErr {
+			err = conn.HealthCheck(testutil.Context())
+			if (err != nil) != tt.wantErr {
 				t.Errorf("HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -265,11 +267,13 @@ func Test_checkConnection(t *testing.T) {
 				tt.configMockFunc(mock)
 			}
 
-			if err := checkConnection(testutil.Context(), db); (err != nil) != tt.wantErr {
+			err = checkConnection(testutil.Context(), db)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("checkConnection() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if err := mock.ExpectationsWereMet(); err != nil {
+			err = mock.ExpectationsWereMet()
+			if err != nil {
 				t.Errorf("there were unfulfilled expectations: %s", err)
 			}
 		})

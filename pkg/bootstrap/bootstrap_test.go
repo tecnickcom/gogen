@@ -100,6 +100,7 @@ func TestBootstrap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// cannot run in parallel because signals are received by all parallel tests
 			var ctx context.Context
+
 			ctx, logs := testutil.ContextWithLogObserver(zap.DebugLevel)
 
 			if tt.stopAfter != 0 {
@@ -110,6 +111,7 @@ func TestBootstrap(t *testing.T) {
 					time.AfterFunc(tt.stopAfter, f)
 				} else {
 					var stop context.CancelFunc
+
 					ctx, stop = context.WithTimeout(ctx, tt.stopAfter)
 					defer stop()
 				}
@@ -138,7 +140,8 @@ func TestBootstrap(t *testing.T) {
 				opts = append(opts, WithCreateMetricsClientFunc(fn))
 			}
 
-			if err := Bootstrap(tt.bindFunc, opts...); (err != nil) != tt.wantErr {
+			err := Bootstrap(tt.bindFunc, opts...)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Bootstrap() error = %v, wantErr %v", err, tt.wantErr)
 			}
 

@@ -98,6 +98,7 @@ func Test_Exec(t *testing.T) {
 
 type dbMock struct {
 	*sql.DB
+
 	givenOptions *sql.TxOptions
 }
 

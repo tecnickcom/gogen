@@ -20,7 +20,8 @@ func base64Encoder(w io.Writer) io.WriteCloser {
 }
 
 func gobEncode(enc io.WriteCloser, data any) error {
-	if err := gob.NewEncoder(enc).Encode(data); err != nil {
+	err := gob.NewEncoder(enc).Encode(data)
+	if err != nil {
 		return fmt.Errorf("gob: %w", err)
 	}
 
@@ -28,7 +29,8 @@ func gobEncode(enc io.WriteCloser, data any) error {
 }
 
 func jsonEncode(enc io.WriteCloser, data any) error {
-	if err := json.NewEncoder(enc).Encode(data); err != nil {
+	err := json.NewEncoder(enc).Encode(data)
+	if err != nil {
 		return fmt.Errorf("JSON: %w", err)
 	}
 
@@ -37,7 +39,9 @@ func jsonEncode(enc io.WriteCloser, data any) error {
 
 func bufferEncode(data any) (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
-	if err := gobEncode(base64Encoder(buf), data); err != nil {
+
+	err := gobEncode(base64Encoder(buf), data)
+	if err != nil {
 		return nil, fmt.Errorf("encode: %w", err)
 	}
 
@@ -66,7 +70,9 @@ func Encode(data any) (string, error) {
 
 func bufferDecode(reader io.Reader, data any) error {
 	decoder := base64.NewDecoder(base64.StdEncoding, reader)
-	if err := gob.NewDecoder(decoder).Decode(data); err != nil {
+
+	err := gob.NewDecoder(decoder).Decode(data)
+	if err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
 
@@ -87,7 +93,9 @@ func Decode(msg string, data any) error {
 
 func bufferSerialize(data any) (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
-	if err := jsonEncode(base64Encoder(buf), data); err != nil {
+
+	err := jsonEncode(base64Encoder(buf), data)
+	if err != nil {
 		return nil, fmt.Errorf("serialize: %w", err)
 	}
 
@@ -116,7 +124,9 @@ func Serialize(data any) (string, error) {
 
 func bufferDeserialize(reader io.Reader, data any) error {
 	decoder := base64.NewDecoder(base64.StdEncoding, reader)
-	if err := json.NewDecoder(decoder).Decode(data); err != nil {
+
+	err := json.NewDecoder(decoder).Decode(data)
+	if err != nil {
 		return fmt.Errorf("deserialize: %w", err)
 	}
 

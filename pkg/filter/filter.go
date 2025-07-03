@@ -117,7 +117,8 @@ func New(opts ...Option) (*Processor, error) {
 	}
 
 	for _, opt := range opts {
-		if err := opt(p); err != nil {
+		err := opt(p)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -294,7 +295,9 @@ func (p *Processor) evaluateRule(rule *Rule, obj any) (bool, error) {
 // ParseJSON parses and returns a [][]Rule from its JSON representation.
 func ParseJSON(s string) ([][]Rule, error) {
 	var r [][]Rule
-	if err := json.Unmarshal([]byte(s), &r); err != nil {
+
+	err := json.Unmarshal([]byte(s), &r)
+	if err != nil {
 		return nil, fmt.Errorf("failed unmarshaling rules: %w", err)
 	}
 

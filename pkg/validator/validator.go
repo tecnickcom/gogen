@@ -33,7 +33,8 @@ func New(opts ...Option) (*Validator, error) {
 	v := &Validator{v: vt.New()}
 
 	for _, applyOpt := range opts {
-		if err := applyOpt(v); err != nil {
+		err := applyOpt(v)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -54,7 +55,6 @@ func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 		valErr vt.ValidationErrors
 		err    error
 	)
-
 	if errors.As(vErr, &valErr) {
 		for _, fe := range valErr {
 			// separate tags grouped by OR
@@ -111,7 +111,9 @@ func (v *Validator) tagError(fe vt.FieldError, tag string) error {
 func (v *Validator) translate(ve *Error) string {
 	if t, ok := v.tpl[ve.Tag]; ok {
 		var out bytes.Buffer
-		if err := t.Execute(&out, ve); err == nil {
+
+		err := t.Execute(&out, ve)
+		if err == nil {
 			return out.String()
 		}
 	}

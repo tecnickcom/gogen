@@ -68,7 +68,8 @@ func SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data s
 
 	writeHeaders(w, statusCode, MimeTextPlain)
 
-	if _, err := w.Write([]byte(data)); err != nil {
+	_, err := w.Write([]byte(data))
+	if err != nil {
 		logging.FromContext(ctx).Error("httputil.SendText()", zap.Error(err))
 	}
 }
@@ -79,7 +80,8 @@ func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data a
 
 	writeHeaders(w, statusCode, MimeApplicationJSON)
 
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
 		logging.FromContext(ctx).Error("httputil.SendJSON()", zap.Error(err))
 	}
 }
@@ -90,11 +92,13 @@ func SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, xmlHead
 
 	writeHeaders(w, statusCode, MimeApplicationXML)
 
-	if _, err := w.Write([]byte(xmlHeader)); err != nil {
+	_, err := w.Write([]byte(xmlHeader))
+	if err != nil {
 		logging.FromContext(ctx).Error("httputil.SendXML() unable to send XML Declaration Header", zap.Error(err))
 	}
 
-	if err := xml.NewEncoder(w).Encode(data); err != nil {
+	err = xml.NewEncoder(w).Encode(data)
+	if err != nil {
 		logging.FromContext(ctx).Error("httputil.SendXML()", zap.Error(err))
 	}
 }

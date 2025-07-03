@@ -45,7 +45,8 @@ func NewConsumer(urls, topics []string, groupID string, opts ...Option) (*Consum
 		return nil, fmt.Errorf("failed to create new kafka consumerClient: %w", err)
 	}
 
-	if err := consumer.SubscribeTopics(topics, nil); err != nil {
+	err = consumer.SubscribeTopics(topics, nil)
+	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe kafka topic: %w", err)
 	}
 

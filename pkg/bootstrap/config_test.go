@@ -93,7 +93,8 @@ func Test_config_validate(t *testing.T) {
 				tt.setupConfig(cfg)
 			}
 
-			if err := cfg.validate(); (err != nil) != tt.wantErr {
+			err := cfg.validate()
+			if (err != nil) != tt.wantErr {
 				t.Errorf("validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

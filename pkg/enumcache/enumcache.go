@@ -23,6 +23,7 @@ type NameByID map[int]string
 // EnumCache handles name and id value mapping.
 type EnumCache struct {
 	sync.RWMutex
+
 	id   IDByName
 	name NameByID
 }

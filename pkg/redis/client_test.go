@@ -578,6 +578,7 @@ func TestReceive(t *testing.T) {
 			if tt.ctxTimeout > 0 {
 				cctx, cancel := context.WithTimeout(ctx, tt.ctxTimeout)
 				ctx = cctx
+
 				defer cancel()
 			}
 

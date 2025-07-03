@@ -50,9 +50,10 @@ type cfgClients struct {
 // appConfig contains the full application configuration.
 type appConfig struct {
 	config.BaseConfig `mapstructure:",squash" validate:"required"`
-	Enabled           bool       `mapstructure:"enabled"`
-	Servers           cfgServers `mapstructure:"servers" validate:"required"`
-	Clients           cfgClients `mapstructure:"clients" validate:"required"`
+
+	Enabled bool       `mapstructure:"enabled"`
+	Servers cfgServers `mapstructure:"servers" validate:"required"`
+	Clients cfgClients `mapstructure:"clients" validate:"required"`
 }
 
 // SetDefaults sets the default configuration values in Viper.

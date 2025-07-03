@@ -55,8 +55,9 @@ type Credentials struct {
 
 // Claims holds the JWT information to be encoded.
 type Claims struct {
-	Username string `json:"username"`
 	jwt.RegisteredClaims
+
+	Username string `json:"username"`
 }
 
 // JWT represents an instance of the HTTP retrier.

@@ -89,7 +89,9 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 	row := conn.QueryRowContext(ctx, sqlGetLock, key, int(timeout.Seconds()), resLockError)
 
 	var res int
-	if err = row.Scan(&res); err != nil {
+
+	err = row.Scan(&res)
+	if err != nil {
 		closeConnection(ctx, conn)
 		return nil, fmt.Errorf("unable to scan mysql lock: %w", err)
 	}
@@ -112,7 +114,8 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 		defer closeConnection(releaseCtx, conn)
 		defer cancelReleaseCtx()
 
-		if _, err := conn.ExecContext(releaseCtx, sqlReleaseLock, key); err != nil {
+		_, err := conn.ExecContext(releaseCtx, sqlReleaseLock, key)
+		if err != nil {
 			return fmt.Errorf("unable to release mysql lock: %w", err)
 		}
 

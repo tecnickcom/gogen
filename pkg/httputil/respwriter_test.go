@@ -14,6 +14,7 @@ import (
 
 type mockResponseWriter struct {
 	*bytes.Buffer
+
 	hijackCalled bool
 	pushCalled   bool
 }

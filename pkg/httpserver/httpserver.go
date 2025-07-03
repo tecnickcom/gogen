@@ -69,7 +69,8 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 	cfg := defaultConfig()
 
 	for _, applyOpt := range opts {
-		if err := applyOpt(cfg); err != nil {
+		err := applyOpt(cfg)
+		if err != nil {
 			return nil, err
 		}
 	}

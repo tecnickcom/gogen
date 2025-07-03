@@ -119,7 +119,8 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*http.Request, error) {
 	buffer := &bytes.Buffer{}
 
-	if err := json.NewEncoder(buffer).Encode(request); err != nil {
+	err := json.NewEncoder(buffer).Encode(request)
+	if err != nil {
 		return nil, fmt.Errorf("json encoding: %w", err)
 	}
 
@@ -137,7 +138,8 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 
 // sendRequest sends a request to the DevLake API.
 func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) error {
-	if err := c.valid.ValidateStructCtx(ctx, request); err != nil {
+	err := c.valid.ValidateStructCtx(ctx, request)
+	if err != nil {
 		return fmt.Errorf("invalid request: %w", err)
 	}
 
@@ -179,7 +181,8 @@ func (c *Client) SendIncident(ctx context.Context, request *IncidentRequest) err
 
 // SendIncidentClose closes an incident with DevLake.
 func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequestClose) error {
-	if err := c.valid.ValidateStructCtx(ctx, request); err != nil {
+	err := c.valid.ValidateStructCtx(ctx, request)
+	if err != nil {
 		return fmt.Errorf("invalid request: %w", err)
 	}
 

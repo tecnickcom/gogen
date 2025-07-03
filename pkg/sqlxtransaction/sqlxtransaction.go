@@ -47,16 +47,19 @@ func ExecWithOptions(ctx context.Context, db DB, run ExecFunc, opts *sql.TxOptio
 			return
 		}
 
-		if err := tx.Rollback(); err != nil && !errors.Is(err, sql.ErrTxDone) {
+		err := tx.Rollback()
+		if err != nil && !errors.Is(err, sql.ErrTxDone) {
 			logging.FromContext(ctx).Error("failed rolling back SQLX transaction", zap.Error(err))
 		}
 	}()
 
-	if err = run(ctx, tx); err != nil {
+	err = run(ctx, tx)
+	if err != nil {
 		return fmt.Errorf("failed executing a function inside SQLX transaction: %w", err)
 	}
 
-	if err = tx.Commit(); err != nil {
+	err = tx.Commit()
+	if err != nil {
 		return fmt.Errorf("unable to commit SQL transaction: %w", err)
 	}
 

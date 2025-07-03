@@ -407,6 +407,7 @@ YlAqGKDZ+A+l
 			opts = append(opts, WithShutdownSignalChan(shutdownSG))
 
 			ctx, cancelCtx := context.WithCancel(testutil.Context())
+
 			defer func() {
 				if tt.shutdownSig {
 					close(shutdownSG)

@@ -11,6 +11,7 @@ import (
 //nolint:paralleltest
 func TestEncrypt_RandError(t *testing.T) {
 	rr := randReader
+
 	defer func() { randReader = rr }()
 
 	randReader = iotest.ErrReader(errors.New("test-encrypt-randombytes-error"))

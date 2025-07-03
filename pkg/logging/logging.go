@@ -70,7 +70,8 @@ func NewLogger(opts ...Option) (*zap.Logger, error) {
 	cfg := defaultConfig()
 
 	for _, applyOpt := range opts {
-		if err := applyOpt(cfg); err != nil {
+		err := applyOpt(cfg)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -195,7 +196,8 @@ func WithLevelFunctionHook(l *zap.Logger, fn IncrementLogMetricsFunc) *zap.Logge
 
 // Close closes an object and logs an error in case of failure.
 func Close(ctx context.Context, obj io.Closer, errorMessage string) {
-	if err := obj.Close(); err != nil {
+	err := obj.Close()
+	if err != nil {
 		FromContext(ctx).Error(errorMessage, zap.Error(err))
 	}
 }

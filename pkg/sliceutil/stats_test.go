@@ -83,7 +83,6 @@ func TestStats(t *testing.T) {
 			t.Parallel()
 
 			got, err := Stats(tt.data)
-
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 			}

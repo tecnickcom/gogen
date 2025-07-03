@@ -242,7 +242,8 @@ func newTestStatsdServer(tb testing.TB, f func([]byte)) (*testStatsdServer, erro
 }
 
 func (s *testStatsdServer) Close() {
-	if err := s.closer.Close(); err != nil {
+	err := s.closer.Close()
+	if err != nil {
 		s.tb.Error(err)
 	}
 

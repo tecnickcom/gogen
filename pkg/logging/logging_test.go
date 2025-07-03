@@ -264,6 +264,7 @@ func TestLogDifferences(t *testing.T) {
 	}
 
 	var log1 LogData
+
 	err = json.Unmarshal([]byte(logs[0]), &log1)
 	require.NoError(t, err)
 	require.NotEmpty(t, log1.Level, "first log level should not be empty")
@@ -274,6 +275,7 @@ func TestLogDifferences(t *testing.T) {
 	require.NotEmpty(t, log1.Release, "first log release should not be empty")
 
 	var log2 LogData
+
 	err = json.Unmarshal([]byte(logs[1]), &log2)
 	require.NoError(t, err)
 	require.NotEmpty(t, log2.Level, "second log level should not be empty")

@@ -26,7 +26,8 @@ func main() {
 	}
 
 	// execute the root command and log errors (if any)
-	if err = rootCmd.Execute(); err != nil {
+	err = rootCmd.Execute()
+	if err != nil {
 		logging.LogFatal("UNABLE TO RUN THE COMMAND", zap.Error(err))
 	}
 }

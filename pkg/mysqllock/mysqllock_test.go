@@ -189,6 +189,7 @@ func runKeepConnectionAlive(t *testing.T, tt keepConnectionAliveTest) {
 	t.Helper()
 
 	mockDB, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+
 	defer func() { _ = mockDB.Close() }()
 
 	if tt.setupMocks != nil {

@@ -24,7 +24,8 @@ type testData struct {
 }
 
 type testConfig struct {
-	BaseConfig  `mapstructure:",squash"`
+	BaseConfig `mapstructure:",squash"`
+
 	Data        testData `mapstructure:"data"`
 	Slice       []string `mapstructure:"slice"`
 	validateErr error
@@ -234,7 +235,6 @@ func Test_loadLocalConfig(t *testing.T) {
 			var testCfg testConfig
 
 			got, err := loadLocalConfig(v, "test_name", configDir, "test", &testCfg)
-
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadLocalConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -394,7 +394,9 @@ func Test_loadRemoteConfig(t *testing.T) {
 			rv := tt.setupRemoteViper(ctrl)
 
 			var testCfg testConfig
-			if err := loadRemoteConfig(lv, rv, rsCfg, "test", &testCfg); (err != nil) != tt.wantErr {
+
+			err := loadRemoteConfig(lv, rv, rsCfg, "test", &testCfg)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("loadRemoteConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
@@ -474,7 +476,8 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 				tt.setupMocks(v)
 			}
 
-			if err := loadFromEnvVarSource(v, tt.setupConfigSource(), "test"); (err != nil) != tt.wantErr {
+			err := loadFromEnvVarSource(v, tt.setupConfigSource(), "test")
+			if (err != nil) != tt.wantErr {
 				t.Errorf("loadFromEnvVarSource() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -600,7 +603,8 @@ func Test_loadFromRemoteSource(t *testing.T) {
 				tt.setupMocks(v)
 			}
 
-			if err := loadFromRemoteSource(v, tt.setupConfigSource(), "test"); (err != nil) != tt.wantErr {
+			err := loadFromRemoteSource(v, tt.setupConfigSource(), "test")
+			if (err != nil) != tt.wantErr {
 				t.Errorf("loadFromRemoteSource() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -1040,7 +1044,8 @@ func Test_loadConfig(t *testing.T) {
 				t.Setenv(envKey, base64.StdEncoding.EncodeToString(tt.envDataContent))
 			}
 
-			if err := loadConfig(localViper, remoteViper, "cmd", tmpConfigDir, "test", tt.targetConfig); (err != nil) != tt.wantErr {
+			err = loadConfig(localViper, remoteViper, "cmd", tmpConfigDir, "test", tt.targetConfig)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}
 

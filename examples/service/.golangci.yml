@@ -22,6 +22,7 @@ linters:
     - tagliatelle
     - testpackage
     - varnamelen
+    - wsl
   settings:
     depguard:
       rules:

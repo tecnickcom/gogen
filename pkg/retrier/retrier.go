@@ -80,7 +80,8 @@ func New(opts ...Option) (*Retrier, error) {
 	r := defaultRetrier()
 
 	for _, applyOpt := range opts {
-		if err := applyOpt(r); err != nil {
+		err := applyOpt(r)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -141,6 +142,7 @@ func (r *Retrier) exec(ctx context.Context, task TaskFn) bool {
 	}
 
 	r.resetTimer <- time.Duration(int64(r.nextDelay) + rand.Int63n(int64(r.jitter))) //nolint:gosec
+
 	r.nextDelay *= r.delayFactor
 
 	return false

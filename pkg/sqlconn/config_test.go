@@ -128,7 +128,8 @@ func Test_config_validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if err := tt.cfg.validate(); (err != nil) != tt.wantErr {
+			err := tt.cfg.validate()
+			if (err != nil) != tt.wantErr {
 				t.Errorf("validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

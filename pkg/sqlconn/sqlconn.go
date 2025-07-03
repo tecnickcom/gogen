@@ -48,7 +48,8 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 		applyOpt(cfg)
 	}
 
-	if err := cfg.validate(); err != nil {
+	err = cfg.validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -129,7 +130,8 @@ func (c *SQLConn) Shutdown(_ context.Context) error {
 }
 
 func checkConnection(ctx context.Context, db *sql.DB) error {
-	if err := db.PingContext(ctx); err != nil {
+	err := db.PingContext(ctx)
+	if err != nil {
 		return fmt.Errorf("failed ping on database: %w", err)
 	}
 
@@ -153,7 +155,8 @@ func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
 	ctx, cancel := context.WithTimeout(ctx, cfg.pingTimeout)
 	defer cancel()
 
-	if err = cfg.checkConnectionFunc(ctx, db); err != nil {
+	err = cfg.checkConnectionFunc(ctx, db)
+	if err != nil {
 		return nil, fmt.Errorf("failed checking database connection: %w", err)
 	}
 

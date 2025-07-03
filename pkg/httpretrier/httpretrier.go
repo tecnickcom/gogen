@@ -85,7 +85,8 @@ func New(httpClient HTTPClient, opts ...Option) (*HTTPRetrier, error) {
 	c := defaultHTTPRetrier()
 
 	for _, applyOpt := range opts {
-		if err := applyOpt(c); err != nil {
+		err := applyOpt(c)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -221,6 +222,7 @@ func (c *HTTPRetrier) run(r *http.Request) bool {
 	r.Body = bodyRC
 
 	c.resetTimer <- time.Duration(int64(c.nextDelay) + rand.Int63n(int64(c.jitter))) //nolint:gosec
+
 	c.nextDelay *= c.delayFactor
 
 	return false

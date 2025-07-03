@@ -30,7 +30,8 @@ func WithRouter(r *httprouter.Router) Option {
 // WithServerAddr sets the address the httpServer will bind to.
 func WithServerAddr(addr string) Option {
 	return func(cfg *config) error {
-		if err := validateAddr(addr); err != nil {
+		err := validateAddr(addr)
+		if err != nil {
 			return err
 		}
 

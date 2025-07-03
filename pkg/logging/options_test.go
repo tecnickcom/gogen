@@ -76,7 +76,8 @@ func TestWithFormatStr(t *testing.T) {
 
 			cfg := &config{}
 
-			if err := WithFormatStr(tt.testValue)(cfg); (err != nil) != tt.wantErr {
+			err := WithFormatStr(tt.testValue)(cfg)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("WithFormatStr() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -108,7 +109,8 @@ func TestWithLevelStr(t *testing.T) {
 
 			cfg := &config{}
 
-			if err := WithLevelStr(tt.testValue)(cfg); (err != nil) != tt.wantErr {
+			err := WithLevelStr(tt.testValue)(cfg)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("WithLevelStr() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

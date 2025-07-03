@@ -92,7 +92,9 @@ func byteDecryptEncoded(key, msg []byte) ([]byte, error) {
 // The key argument must be either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
 func ByteEncryptAny(key []byte, data any) ([]byte, error) {
 	buf := &bytes.Buffer{}
-	if err := gob.NewEncoder(buf).Encode(data); err != nil {
+
+	err := gob.NewEncoder(buf).Encode(data)
+	if err != nil {
 		return nil, fmt.Errorf("encode gob: %w", err)
 	}
 
@@ -109,7 +111,8 @@ func ByteDecryptAny(key, msg []byte, data any) error {
 		return err
 	}
 
-	if err := gob.NewDecoder(bytes.NewBuffer(dec)).Decode(data); err != nil {
+	err = gob.NewDecoder(bytes.NewBuffer(dec)).Decode(data)
+	if err != nil {
 		return fmt.Errorf("decode gob: %w", err)
 	}
 
@@ -136,7 +139,9 @@ func DecryptAny(key []byte, msg string, data any) error {
 // The key argument must be either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
 func ByteEncryptSerializeAny(key []byte, data any) ([]byte, error) {
 	buf := &bytes.Buffer{}
-	if err := json.NewEncoder(buf).Encode(data); err != nil {
+
+	err := json.NewEncoder(buf).Encode(data)
+	if err != nil {
 		return nil, fmt.Errorf("encode gob: %w", err)
 	}
 
@@ -153,7 +158,8 @@ func ByteDecryptSerializeAny(key, msg []byte, data any) error {
 		return err
 	}
 
-	if err := json.NewDecoder(bytes.NewBuffer(dec)).Decode(data); err != nil {
+	err = json.NewDecoder(bytes.NewBuffer(dec)).Decode(data)
+	if err != nil {
 		return fmt.Errorf("decode gob: %w", err)
 	}
 

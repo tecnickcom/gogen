@@ -102,7 +102,8 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 
 	respBody := &status{}
 
-	if err := json.NewDecoder(resp.Body).Decode(respBody); err != nil {
+	err = json.NewDecoder(resp.Body).Decode(respBody)
+	if err != nil {
 		return fmt.Errorf("failed decoding response body: %w", err)
 	}
 

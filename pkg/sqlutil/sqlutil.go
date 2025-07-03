@@ -26,7 +26,8 @@ func New(opts ...Option) (*SQLUtil, error) {
 		applyOpt(c)
 	}
 
-	if err := c.validate(); err != nil {
+	err := c.validate()
+	if err != nil {
 		return nil, err
 	}
 
