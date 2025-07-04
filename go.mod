@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.7
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.38.8
 	github.com/aws/smithy-go v1.22.4
-	github.com/confluentinc/confluent-kafka-go/v2 v2.10.1
+	github.com/confluentinc/confluent-kafka-go/v2 v2.11.0
 	github.com/dlmiddlecote/sqlstats v1.0.2
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
@@ -29,8 +29,8 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/spf13/viper/remote v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/tecnickcom/farmhash64 v1.9.41
-	github.com/tecnickcom/statsd v1.0.40
+	github.com/tecnickcom/farmhash64 v1.9.43
+	github.com/tecnickcom/statsd v1.0.41
 	github.com/undefinedlabs/go-mpatch v1.0.7
 	github.com/valkey-io/valkey-go v1.0.62
 	github.com/valkey-io/valkey-go/mock v1.0.62
