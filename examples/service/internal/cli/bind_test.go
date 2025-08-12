@@ -92,7 +92,9 @@ func Test_bind(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.preBindAddr != "" {
-				l, err := net.Listen("tcp", tt.preBindAddr)
+				var lc net.ListenConfig
+
+				l, err := lc.Listen(t.Context(), "tcp", tt.preBindAddr)
 				require.NoError(t, err)
 
 				defer func() { _ = l.Close() }()

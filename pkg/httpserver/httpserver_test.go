@@ -418,7 +418,9 @@ YlAqGKDZ+A+l
 			}()
 
 			if tt.failListenPort != 0 {
-				l, err := net.Listen("tcp", fmt.Sprintf(":%d", tt.failListenPort))
+				var lc net.ListenConfig
+
+				l, err := lc.Listen(t.Context(), "tcp", fmt.Sprintf(":%d", tt.failListenPort))
 				require.NoError(t, err, "failed starting pre-listener")
 
 				defer func() { _ = l.Close() }()

@@ -82,7 +82,7 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 	cfg.setRouter(ctx)
 	loadRoutes(ctx, logger, binder, cfg)
 
-	listener, err := netListener(cfg.serverAddr, cfg.tlsConfig)
+	listener, err := netListener(ctx, cfg.serverAddr, cfg.tlsConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -161,14 +161,16 @@ func (h *HTTPServer) serve() {
 	h.logger.Error("unexpected http server failure", zap.Error(err))
 }
 
-func netListener(serverAddr string, tlsConfig *tls.Config) (net.Listener, error) {
+func netListener(ctx context.Context, serverAddr string, tlsConfig *tls.Config) (net.Listener, error) {
 	var (
 		ls  net.Listener
 		err error
 	)
 
 	if tlsConfig == nil {
-		ls, err = net.Listen("tcp", serverAddr)
+		var lc net.ListenConfig
+
+		ls, err = lc.Listen(ctx, "tcp", serverAddr)
 	} else {
 		ls, err = tls.Listen("tcp", serverAddr, tlsConfig)
 	}
