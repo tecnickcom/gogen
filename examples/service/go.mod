@@ -7,7 +7,7 @@ toolchain go1.24.6
 replace github.com/Vonage/gosrvlib => ../..
 
 require (
-	github.com/Vonage/gosrvlib v1.102.8
+	github.com/Vonage/gosrvlib v1.102.9
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/prometheus/client_golang v1.23.0
 	github.com/rakyll/gotest v0.0.6
