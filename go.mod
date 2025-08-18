@@ -4,10 +4,7 @@ go 1.25
 
 toolchain go1.25.0
 
-tool (
-	github.com/jstemmer/go-junit-report/v2
-	go.uber.org/mock/mockgen
-)
+tool go.uber.org/mock/mockgen
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -24,7 +21,6 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.23.0
 	github.com/redis/go-redis/v9 v9.12.1
@@ -33,8 +29,8 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/spf13/viper/remote v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/tecnickcom/farmhash64 v1.9.49
-	github.com/tecnickcom/statsd v1.0.48
+	github.com/tecnickcom/farmhash64 v1.9.50
+	github.com/tecnickcom/statsd v1.0.49
 	github.com/undefinedlabs/go-mpatch v1.0.7
 	github.com/valkey-io/valkey-go v1.0.64
 	github.com/valkey-io/valkey-go/mock v1.0.64

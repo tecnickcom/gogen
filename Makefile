@@ -245,8 +245,8 @@ test: ensuretarget
 # Get the go tools
 .PHONY: gotools
 gotools:
-	$(GO) get -tool github.com/jstemmer/go-junit-report/v2@latest
 	$(GO) get -tool go.uber.org/mock/mockgen@latest
+	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
 
 # Update everything
 .PHONY: updateall

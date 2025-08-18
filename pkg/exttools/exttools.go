@@ -8,6 +8,5 @@ be excluded from the binaries since the "exttools" tag is not used.
 package exttools
 
 import (
-	_ "github.com/jstemmer/go-junit-report/v2"
 	_ "go.uber.org/mock/mockgen"
 )
