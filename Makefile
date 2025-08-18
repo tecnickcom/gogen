@@ -58,10 +58,10 @@ endif
 GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
 GOVERSION=${shell go version | grep -Po '(go[0-9]+.[0-9]+)'}
 GOFMT=$(shell which gofmt)
-GOTEST=GOPATH=$(GOPATH) $(shell which gotest)
+GOTEST=$(GO) test
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v2.3.1
+GOLANGCILINTVERSION=v2.4.0
 
 # Directory containing the source code
 SRCDIR=./pkg
@@ -153,9 +153,6 @@ dbuild: dockerdev
 .PHONY: deps
 deps: ensuretarget
 	curl --silent --show-error --fail --location "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
-	$(GO) install github.com/rakyll/gotest
-	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
-	$(GO) install go.uber.org/mock/mockgen@latest
 
 # Build a base development Docker image
 .PHONY: dockerdev
@@ -196,7 +193,7 @@ linter:
 
 # Download dependencies
 .PHONY: mod
-mod:
+mod: gotools
 	$(GO) mod download all
 
 # Create a new project based on the example template
@@ -245,6 +242,12 @@ test: ensuretarget
 	-v $(GOPKGS) $(TESTEXTRACMD)
 	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
 
+# Get the go tools
+.PHONY: gotools
+gotools:
+	$(GO) get -tool github.com/jstemmer/go-junit-report/v2@latest
+	$(GO) get -tool go.uber.org/mock/mockgen@latest
+
 # Update everything
 .PHONY: updateall
 updateall: updatego updatelint updatemod
@@ -267,8 +270,9 @@ updatelint:
 
 # Update dependencies
 .PHONY: updatemod
-updatemod:
-	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
+updatemod: mod
+	$(GO) get -t -u ./... && \
+	$(GO) mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
 	cd examples/service && make updatemod
 
 # Set the gosrvlib version in the example go.mod

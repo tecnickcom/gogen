@@ -1,16 +1,20 @@
 module github.com/gosrvlibexampleowner/gosrvlibexample
 
-go 1.24
+go 1.25
 
-toolchain go1.24.6
+toolchain go1.25.0
 
 replace github.com/Vonage/gosrvlib => ../..
 
+tool (
+	github.com/jstemmer/go-junit-report/v2
+	go.uber.org/mock/mockgen
+)
+
 require (
-	github.com/Vonage/gosrvlib v1.102.9
+	github.com/Vonage/gosrvlib v1.102.10
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/prometheus/client_golang v1.23.0
-	github.com/rakyll/gotest v0.0.6
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
@@ -19,8 +23,8 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.121.4 // indirect
-	cloud.google.com/go/auth v0.16.4 // indirect
+	cloud.google.com/go v0.121.6 // indirect
+	cloud.google.com/go/auth v0.16.5 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.8.0 // indirect
 	cloud.google.com/go/firestore v1.18.0 // indirect
@@ -100,7 +104,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
-	golang.org/x/exp v0.0.0-20250811191247-51f88131bc50 // indirect
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
@@ -109,7 +113,7 @@ require (
 	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
-	google.golang.org/api v0.246.0 // indirect
+	google.golang.org/api v0.247.0 // indirect
 	google.golang.org/genproto v0.0.0-20250811230008-5f3141c8851a // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250811230008-5f3141c8851a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250811230008-5f3141c8851a // indirect

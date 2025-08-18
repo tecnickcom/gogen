@@ -1,8 +1,13 @@
 module github.com/Vonage/gosrvlib
 
-go 1.24
+go 1.25
 
-toolchain go1.24.6
+toolchain go1.25.0
+
+tool (
+	github.com/jstemmer/go-junit-report/v2
+	go.uber.org/mock/mockgen
+)
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -22,15 +27,14 @@ require (
 	github.com/jstemmer/go-junit-report/v2 v2.1.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/prometheus/client_golang v1.23.0
-	github.com/rakyll/gotest v0.0.6
 	github.com/redis/go-redis/v9 v9.12.1
 	github.com/segmentio/kafka-go v0.4.48
 	github.com/spf13/pflag v1.0.7
 	github.com/spf13/viper v1.20.1
 	github.com/spf13/viper/remote v1.20.1
 	github.com/stretchr/testify v1.10.0
-	github.com/tecnickcom/farmhash64 v1.9.46
-	github.com/tecnickcom/statsd v1.0.43
+	github.com/tecnickcom/farmhash64 v1.9.49
+	github.com/tecnickcom/statsd v1.0.48
 	github.com/undefinedlabs/go-mpatch v1.0.7
 	github.com/valkey-io/valkey-go v1.0.64
 	github.com/valkey-io/valkey-go/mock v1.0.64
@@ -43,8 +47,8 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.121.4 // indirect
-	cloud.google.com/go/auth v0.16.4 // indirect
+	cloud.google.com/go v0.121.6 // indirect
+	cloud.google.com/go/auth v0.16.5 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.8.0 // indirect
 	cloud.google.com/go/firestore v1.18.0 // indirect
@@ -99,7 +103,6 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -133,14 +136,14 @@ require (
 	go.opentelemetry.io/otel v1.37.0 // indirect
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
-	golang.org/x/exp v0.0.0-20250811191247-51f88131bc50 // indirect
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.36.0 // indirect
-	google.golang.org/api v0.246.0 // indirect
+	google.golang.org/api v0.247.0 // indirect
 	google.golang.org/genproto v0.0.0-20250811230008-5f3141c8851a // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250811230008-5f3141c8851a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250811230008-5f3141c8851a // indirect

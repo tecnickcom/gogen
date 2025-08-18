@@ -44,10 +44,10 @@ jobs:
       - name: unit tests
         run: make mod deps test GOPATH=$(go env GOPATH)
       - name: coverage report
-        continue-on-error: true
-        uses: shogo82148/actions-goveralls@v1
+        uses: coverallsapp/github-action@v2
         with:
-          path-to-profile: target/report/coverage.out
+          file: target/report/coverage.out
+          format: golang
       - name: hash go files
         id: go_hash
         run: echo "value=${{ hashFiles('**/*.go','!vendor/**','!examples/**') }}" >>"$GITHUB_OUTPUT"
