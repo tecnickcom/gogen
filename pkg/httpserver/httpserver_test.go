@@ -1,4 +1,4 @@
-//go:generate mockgen -package httpserver -destination ./mock_test.go . Binder
+//go:generate go tool mockgen -package httpserver -destination ./mock_test.go . Binder
 
 package httpserver
 

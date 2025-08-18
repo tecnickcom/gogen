@@ -1,4 +1,4 @@
-//go:generate mockgen -package logging -destination ./mock_test.go . Syncer
+//go:generate go tool mockgen -package logging -destination ./mock_test.go . Syncer
 
 package logging
 

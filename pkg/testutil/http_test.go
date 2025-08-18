@@ -1,5 +1,5 @@
-//go:generate mockgen -package httputil -destination ../httputil/testutil_mock_test.go . TestHTTPResponseWriter
-//go:generate mockgen -package jsendx -destination ../httputil/jsendx/testutil_mock_test.go . TestHTTPResponseWriter
+//go:generate go tool mockgen -package httputil -destination ../httputil/testutil_mock_test.go . TestHTTPResponseWriter
+//go:generate go tool mockgen -package jsendx -destination ../httputil/jsendx/testutil_mock_test.go . TestHTTPResponseWriter
 
 package testutil
 

@@ -1,4 +1,4 @@
-//go:generate mockgen -package sleuth -destination ./mock_test.go . HTTPClient
+//go:generate go tool mockgen -package sleuth -destination ./mock_test.go . HTTPClient
 package sleuth
 
 import (

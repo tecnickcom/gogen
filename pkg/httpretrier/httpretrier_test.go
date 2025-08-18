@@ -1,4 +1,4 @@
-//go:generate mockgen -package httpretrier -destination ./mock_test.go . HTTPClient
+//go:generate go tool mockgen -package httpretrier -destination ./mock_test.go . HTTPClient
 package httpretrier
 
 import (
