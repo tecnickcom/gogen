@@ -45,6 +45,7 @@ jobs:
         run: make mod deps test GOPATH=$(go env GOPATH)
       - name: coverage report
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         with:
           file: target/report/coverage.out
           format: golang

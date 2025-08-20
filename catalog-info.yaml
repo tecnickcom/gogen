@@ -10,5 +10,5 @@ metadata:
     sonarqube.org/project-key: Vonage_gosrvlib
 spec:
   type: library
-  owner: Vonage/api-ept
+  owner: orgdata/ept
   lifecycle: production
