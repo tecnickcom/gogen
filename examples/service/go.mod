@@ -9,7 +9,7 @@ replace github.com/Vonage/gosrvlib => ../..
 tool go.uber.org/mock/mockgen
 
 require (
-	github.com/Vonage/gosrvlib v1.102.16
+	github.com/Vonage/gosrvlib v1.102.17
 	github.com/prometheus/client_golang v1.23.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
@@ -28,7 +28,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
-	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
+	github.com/coreos/go-systemd/v22 v22.6.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dlmiddlecote/sqlstats v1.0.2 // indirect
 	github.com/fatih/color v1.18.0 // indirect
