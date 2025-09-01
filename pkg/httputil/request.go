@@ -18,9 +18,23 @@ type timeCtxKey string
 // ReqTimeCtxKey is the Context key to retrieve the request time.
 const ReqTimeCtxKey = timeCtxKey("request_time")
 
+const (
+	HeaderAuthorization = "Authorization"
+	HeaderAuthBasic     = "Basic "
+	HeaderAuthBearer    = "Bearer "
+	HeaderContentType   = "Content-Type"
+	HeaderAccept        = "Accept"
+	MimeTypeJSON        = "application/json"
+)
+
 // AddBasicAuth decorates the provided http.Request with Basic Authorization.
 func AddBasicAuth(apiKey, apiSecret string, r *http.Request) {
-	r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(apiKey+":"+apiSecret)))
+	r.Header.Add(HeaderAuthorization, HeaderAuthBasic+base64.StdEncoding.EncodeToString([]byte(apiKey+":"+apiSecret)))
+}
+
+// AddBearerToken decorates the provided http.Request with Bearer Authorization.
+func AddBearerToken(token string, r *http.Request) {
+	r.Header.Add(HeaderAuthorization, HeaderAuthBearer+token)
 }
 
 // PathParam returns the value from the named path segment.
@@ -31,22 +45,12 @@ func PathParam(r *http.Request, name string) string {
 
 // HeaderOrDefault returns the value of an HTTP header or a default value.
 func HeaderOrDefault(r *http.Request, key string, defaultValue string) string {
-	v := r.Header.Get(key)
-	if v != "" {
-		return v
-	}
-
-	return defaultValue
+	return StringValueOrDefault(r.Header.Get(key), defaultValue)
 }
 
 // QueryStringOrDefault returns the string value of the specified URL query parameter or a default value.
 func QueryStringOrDefault(q url.Values, key string, defaultValue string) string {
-	v := q.Get(key)
-	if v != "" {
-		return v
-	}
-
-	return defaultValue
+	return StringValueOrDefault(q.Get(key), defaultValue)
 }
 
 // QueryIntOrDefault returns the integer value of the specified URL query parameter or a default value.
@@ -85,4 +89,13 @@ func GetRequestTimeFromContext(ctx context.Context) (time.Time, bool) {
 // GetRequestTime returns the request time from the http request.
 func GetRequestTime(r *http.Request) (time.Time, bool) {
 	return GetRequestTimeFromContext(r.Context())
+}
+
+// StringValueOrDefault returns the string value or a default value.
+func StringValueOrDefault(v, def string) string {
+	if v != "" {
+		return v
+	}
+
+	return def
 }

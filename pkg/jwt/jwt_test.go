@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/Vonage/gosrvlib/pkg/testutil"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
@@ -189,7 +190,7 @@ func TestRenewHandler(t *testing.T) {
 			status:              http.StatusUnauthorized,
 			expirationTime:      1 * time.Second,
 			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        bearerHeader,
+			bearerHeader:        httputil.HeaderAuthBearer,
 			badToken:            true,
 		},
 		{
@@ -197,7 +198,7 @@ func TestRenewHandler(t *testing.T) {
 			status:              http.StatusUnauthorized,
 			expirationTime:      1 * time.Second,
 			authorizationHeader: "ERROR",
-			bearerHeader:        bearerHeader,
+			bearerHeader:        httputil.HeaderAuthBearer,
 		},
 		{
 			name:                "wrong authorization value",
@@ -211,14 +212,14 @@ func TestRenewHandler(t *testing.T) {
 			status:              http.StatusBadRequest,
 			expirationTime:      5 * time.Second,
 			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        bearerHeader,
+			bearerHeader:        httputil.HeaderAuthBearer,
 		},
 		{
 			name:                "success",
 			status:              http.StatusOK,
 			expirationTime:      1 * time.Second,
 			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        bearerHeader,
+			bearerHeader:        httputil.HeaderAuthBearer,
 		},
 	}
 
@@ -292,14 +293,14 @@ func TestIsAuthorized(t *testing.T) {
 			name:                "unauthorized",
 			status:              http.StatusUnauthorized,
 			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        bearerHeader,
+			bearerHeader:        httputil.HeaderAuthBearer,
 			badToken:            true,
 		},
 		{
 			name:                "wrong authorization header",
 			status:              http.StatusUnauthorized,
 			authorizationHeader: "ERROR",
-			bearerHeader:        bearerHeader,
+			bearerHeader:        httputil.HeaderAuthBearer,
 		},
 		{
 			name:                "wrong authorization value",
@@ -311,7 +312,7 @@ func TestIsAuthorized(t *testing.T) {
 			name:                "success",
 			status:              0,
 			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        bearerHeader,
+			bearerHeader:        httputil.HeaderAuthBearer,
 		},
 	}
 

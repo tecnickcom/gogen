@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/httpretrier"
+	"github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/Vonage/gosrvlib/pkg/validator"
 )
@@ -20,10 +21,6 @@ import (
 const (
 	defaultTimeout          = 1 * time.Minute
 	defaultPingTimeout      = 15 * time.Second
-	headerAuthorization     = "Authorization"
-	headerContentType       = "Content-Type"
-	headerAccept            = "Accept"
-	contentType             = "application/json"
 	regexPatternHealthcheck = "Deployment - Not Found"
 )
 
@@ -158,9 +155,9 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	r.Header.Set(headerAuthorization, "apikey "+apiKey)
-	r.Header.Set(headerContentType, contentType)
-	r.Header.Set(headerAccept, contentType)
+	r.Header.Set(httputil.HeaderAuthorization, "apikey "+apiKey)
+	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
+	r.Header.Set(httputil.HeaderAccept, httputil.MimeTypeJSON)
 
 	return r, nil
 }

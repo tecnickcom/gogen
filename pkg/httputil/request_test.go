@@ -25,6 +25,19 @@ func TestAddBasicAuth(t *testing.T) {
 	require.Equal(t, wanted, r)
 }
 
+func TestAddBearerToken(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	AddBearerToken("token", r)
+
+	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	wanted.Header.Set("Authorization", "Bearer token")
+	require.Equal(t, wanted, r)
+}
+
 func TestPathParam(t *testing.T) {
 	t.Parallel()
 
@@ -305,4 +318,49 @@ func TestGetRequestTime(t *testing.T) {
 
 	require.True(t, ok)
 	require.Equal(t, testTime, outTime)
+}
+
+func TestStringValueOrDefault(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		def      string
+		wantResp string
+	}{
+		{
+			name:     "empty input",
+			input:    "",
+			def:      "default",
+			wantResp: "default",
+		},
+		{
+			name:     "non-empty input",
+			input:    "input",
+			def:      "default",
+			wantResp: "input",
+		},
+		{
+			name:     "non-empty input and empty default",
+			input:    "input",
+			def:      "",
+			wantResp: "input",
+		},
+		{
+			name:     "empty",
+			input:    "",
+			def:      "",
+			wantResp: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := StringValueOrDefault(tt.input, tt.def)
+			require.Equal(t, tt.wantResp, got, "StringValueOrDefault() = %v, wantResp %v", got, tt.wantResp)
+		})
+	}
 }

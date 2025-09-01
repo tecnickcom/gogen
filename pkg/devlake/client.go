@@ -11,17 +11,14 @@ import (
 	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/httpretrier"
+	"github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/Vonage/gosrvlib/pkg/logging"
 	"github.com/Vonage/gosrvlib/pkg/validator"
 )
 
 const (
-	defaultTimeout      = 1 * time.Minute
-	defaultPingTimeout  = 15 * time.Second
-	headerAuthorization = "Authorization"
-	headerContentType   = "Content-Type"
-	headerAccept        = "Accept"
-	contentType         = "application/json"
+	defaultTimeout     = 1 * time.Minute
+	defaultPingTimeout = 15 * time.Second
 )
 
 // HTTPClient contains the function to perform the actual HTTP request.
@@ -98,8 +95,8 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 		return fmt.Errorf("create get request: %w", err)
 	}
 
-	req.Header.Set(headerAuthorization, "Bearer "+c.apiKey)
-	req.Header.Set(headerAccept, contentType)
+	httputil.AddBearerToken(c.apiKey, req)
+	req.Header.Set(httputil.HeaderAccept, httputil.MimeTypeJSON)
 
 	resp, err := c.httpClient.Do(req) //nolint:bodyclose
 	if err != nil {
@@ -129,9 +126,9 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	r.Header.Set(headerAuthorization, "Bearer "+apiKey)
-	r.Header.Set(headerContentType, contentType)
-	r.Header.Set(headerAccept, contentType)
+	httputil.AddBearerToken(apiKey, r)
+	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
+	r.Header.Set(httputil.HeaderAccept, httputil.MimeTypeJSON)
 
 	return r, nil
 }

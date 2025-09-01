@@ -10,12 +10,11 @@ import (
 	"time"
 
 	"github.com/Vonage/gosrvlib/pkg/httpretrier"
+	"github.com/Vonage/gosrvlib/pkg/httputil"
 	"github.com/Vonage/gosrvlib/pkg/logging"
 )
 
 const (
-	contentType        = "Content-Type"
-	mimeTypeJSON       = "application/json"
 	defaultPingURL     = "https://status.slack.com/api/v2.0.0/current"
 	defaultTimeout     = 1 * time.Second
 	defaultPingTimeout = 1 * time.Second
@@ -132,10 +131,10 @@ type message struct {
 func (c *Client) Send(ctx context.Context, text, username, iconEmoji, iconURL, channel string) error {
 	reqData := &message{
 		Text:      text,
-		Username:  stringValueOrDefault(username, c.username),
-		IconEmoji: stringValueOrDefault(iconEmoji, c.iconEmoji),
-		IconURL:   stringValueOrDefault(iconURL, c.iconURL),
-		Channel:   stringValueOrDefault(channel, c.channel),
+		Username:  httputil.StringValueOrDefault(username, c.username),
+		IconEmoji: httputil.StringValueOrDefault(iconEmoji, c.iconEmoji),
+		IconURL:   httputil.StringValueOrDefault(iconURL, c.iconURL),
+		Channel:   httputil.StringValueOrDefault(channel, c.channel),
 	}
 
 	return c.sendData(ctx, reqData)
@@ -150,7 +149,7 @@ func (c *Client) sendData(ctx context.Context, reqData *message) error {
 		return fmt.Errorf("create request: %w", err)
 	}
 
-	r.Header.Set(contentType, mimeTypeJSON)
+	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
 
 	hr, err := c.newWriteHTTPRetrier()
 	if err != nil {
@@ -178,12 +177,4 @@ func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
 		httpretrier.WithAttempts(c.retryAttempts),
 	)
-}
-
-func stringValueOrDefault(v, def string) string {
-	if v == "" {
-		return def
-	}
-
-	return v
 }

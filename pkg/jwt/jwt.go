@@ -32,9 +32,7 @@ const (
 	DefaultRenewTime = 30 * time.Second
 
 	// DefaultAuthorizationHeader is the default authorization header name.
-	DefaultAuthorizationHeader = "Authorization"
-
-	bearerHeader = "Bearer "
+	DefaultAuthorizationHeader = httputil.HeaderAuthorization
 )
 
 // SendResponseFn is the type of function used to send back the HTTP responses.
@@ -232,7 +230,7 @@ func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
 		return claims, errors.New("missing Authorization header")
 	}
 
-	authSplit := strings.Split(headAuth, bearerHeader)
+	authSplit := strings.Split(headAuth, httputil.HeaderAuthBearer)
 	if len(authSplit) != 2 {
 		return claims, errors.New("missing JWT token")
 	}
