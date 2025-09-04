@@ -24,7 +24,7 @@ jobs:
           git checkout -B ${{ env.BRANCH_NAME }}
           git reset origin/main --hard
       - name: setup go build environment
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
           check-latest: true
