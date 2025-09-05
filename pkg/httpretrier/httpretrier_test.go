@@ -268,6 +268,55 @@ func TestRetryIfForReadRequests(t *testing.T) {
 	}
 }
 
+func TestRetryIfFnByHTTPMethod(t *testing.T) {
+	t.Parallel()
+
+	testResp := &http.Response{}
+	testErr := errors.New("sample error")
+
+	tests := []struct {
+		name       string
+		httpMethod string
+		want       RetryIfFn
+	}{
+		{
+			name:       "GET method",
+			httpMethod: http.MethodGet,
+			want:       RetryIfForReadRequests,
+		},
+		{
+			name:       "POST method",
+			httpMethod: http.MethodPost,
+			want:       RetryIfForWriteRequests,
+		},
+		{
+			name:       "PUT method",
+			httpMethod: http.MethodPut,
+			want:       RetryIfForWriteRequests,
+		},
+		{
+			name:       "PATCH method",
+			httpMethod: http.MethodPatch,
+			want:       RetryIfForWriteRequests,
+		},
+		{
+			name:       "DELETE method",
+			httpMethod: http.MethodDelete,
+			want:       RetryIfForWriteRequests,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := RetryIfFnByHTTPMethod(tt.httpMethod)
+
+			require.Equal(t, tt.want(testResp, testErr), got(testResp, testErr))
+		})
+	}
+}
+
 //nolint:gocognit
 func TestHTTPRetrier_Do(t *testing.T) {
 	t.Parallel()

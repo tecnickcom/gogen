@@ -160,6 +160,15 @@ func RetryIfForReadRequests(r *http.Response, err error) bool {
 	return false
 }
 
+// RetryIfFnByHTTPMethod returns a RetryIfFn based on the HTTP method.
+func RetryIfFnByHTTPMethod(httpMethod string) RetryIfFn {
+	if httpMethod == http.MethodGet {
+		return RetryIfForReadRequests
+	}
+
+	return RetryIfForWriteRequests
+}
+
 func (c *HTTPRetrier) setTimer(d time.Duration) {
 	if !c.timer.Stop() {
 		// make sure to drain timer channel before reset
