@@ -1,0 +1,197 @@
+package jirasrv
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"time"
+
+	"github.com/Vonage/gosrvlib/pkg/httpretrier"
+	"github.com/Vonage/gosrvlib/pkg/httputil"
+	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/Vonage/gosrvlib/pkg/validator"
+)
+
+const (
+	defaultTimeout     = 1 * time.Minute
+	defaultPingTimeout = 15 * time.Second
+	apiBasePath        = "/rest/api/2" // https://docs.atlassian.com/software/jira/docs/api/REST/9.17.0/
+)
+
+// HTTPClient contains the function to perform the actual HTTP request.
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// Client represents the config options required by this client.
+type Client struct {
+	httpClient    HTTPClient
+	baseURL       *url.URL
+	apiURL        *url.URL
+	valid         *validator.Validator
+	timeout       time.Duration
+	pingTimeout   time.Duration
+	retryDelay    time.Duration
+	retryAttempts uint
+	token         string
+	pingAddr      string
+}
+
+// New creates a new client instance.
+func New(addr, token string, opts ...Option) (*Client, error) {
+	baseURL, err := url.Parse(addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse addr: %w", err)
+	}
+
+	if token == "" {
+		return nil, errors.New("token is empty")
+	}
+
+	valid, _ := validator.New(
+		validator.WithFieldNameTag("json"),
+		validator.WithCustomValidationTags(validator.CustomValidationTags()),
+		validator.WithErrorTemplates(validator.ErrorTemplates()),
+	)
+
+	apiURL := baseURL.JoinPath(apiBasePath)
+
+	c := &Client{
+		baseURL:       baseURL,
+		apiURL:        apiURL,
+		valid:         valid,
+		timeout:       defaultTimeout,
+		pingTimeout:   defaultPingTimeout,
+		retryDelay:    httpretrier.DefaultDelay,
+		retryAttempts: httpretrier.DefaultAttempts,
+		token:         token,
+		pingAddr:      apiURL.JoinPath("serverInfo").String() + "?doHealthCheck=true",
+	}
+
+	for _, applyOpt := range opts {
+		applyOpt(c)
+	}
+
+	if c.httpClient == nil {
+		c.httpClient = &http.Client{Timeout: c.timeout}
+	}
+
+	return c, nil
+}
+
+// HealthCheck performs a status check on this service.
+func (c *Client) HealthCheck(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
+	defer cancel()
+
+	req, err := c.httpRequest(ctx, http.MethodGet, c.pingAddr, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.httpClient.Do(req) //nolint:bodyclose
+	if err != nil {
+		return fmt.Errorf("healthcheck request: %w", err)
+	}
+
+	defer logging.Close(ctx, resp.Body, "error while closing HealthCheck response body")
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+// SendRequest sends an HTTP request to the Jira server and returns the response.
+// The caller must close the response body.
+func (c *Client) SendRequest(
+	ctx context.Context,
+	httpMethod string,
+	endpoint string,
+	query *url.Values,
+	request any,
+) (*http.Response, error) {
+	var buffer io.Reader
+
+	if request != nil {
+		err := c.valid.ValidateStructCtx(ctx, request)
+		if err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
+
+		buffer := &bytes.Buffer{}
+
+		err = json.NewEncoder(buffer).Encode(request)
+		if err != nil {
+			return nil, fmt.Errorf("json encoding: %w", err)
+		}
+	}
+
+	targetURL := c.apiURL.JoinPath(endpoint)
+	if query != nil {
+		targetURL.RawQuery = query.Encode()
+	}
+
+	r, err := c.httpRequest(ctx, httpMethod, targetURL.String(), buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	hr, err := c.newHTTPRetrier(httpMethod)
+	if err != nil {
+		return nil, fmt.Errorf("create retrier: %w", err)
+	}
+
+	resp, err := hr.Do(r)
+	if err != nil {
+		return nil, fmt.Errorf("execute request: %w", err)
+	}
+
+	// defer logging.Close(ctx, resp.Body, "error closing response body")
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("jira client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)
+	}
+
+	return resp, nil
+}
+
+// httpRequest prepares a generic HTTP request.
+func (c *Client) httpRequest(
+	ctx context.Context,
+	httpMethod string,
+	urlStr string,
+	request io.Reader,
+) (*http.Request, error) {
+	r, err := http.NewRequestWithContext(ctx, httpMethod, urlStr, request)
+	if err != nil {
+		return nil, fmt.Errorf("create http request: %w", err)
+	}
+
+	c.setRequestHeaders(r)
+
+	return r, nil
+}
+
+// setRequestHeaders sets the required headers on the request.
+func (c *Client) setRequestHeaders(r *http.Request) {
+	r.Header.Set(httputil.HeaderAccept, httputil.MimeTypeJSON)
+	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
+	httputil.AddBearerToken(c.token, r)
+}
+
+// newHTTPRetrier creates a new HTTP retrier instance.
+func (c *Client) newHTTPRetrier(httpMethod string) (*httpretrier.HTTPRetrier, error) {
+	//nolint:wrapcheck
+	return httpretrier.New(
+		c.httpClient,
+		httpretrier.WithRetryIfFn(httpretrier.RetryIfFnByHTTPMethod(httpMethod)),
+		httpretrier.WithAttempts(c.retryAttempts),
+	)
+}
