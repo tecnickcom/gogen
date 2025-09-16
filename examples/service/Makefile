@@ -689,8 +689,8 @@ updatelint:
 # Update dependencies
 .PHONY: updatemod
 updatemod: mod
-	# $(GO) get $(shell $(GO) list -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' -m all)
-	$(GO) get -t -u ./... && go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
+	$(GO) get -t -u ./... && \
+	go mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
 
 # Run venom tests (https://github.com/ovh/venom)
 .PHONY: venomtest

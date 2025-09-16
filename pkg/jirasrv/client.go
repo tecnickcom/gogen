@@ -109,7 +109,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 }
 
 // SendRequest sends an HTTP request to the Jira server and returns the response.
-// The caller must close the response body.
+// NOTE: The caller must close the response body.
 func (c *Client) SendRequest(
 	ctx context.Context,
 	httpMethod string,
@@ -148,18 +148,7 @@ func (c *Client) SendRequest(
 		return nil, fmt.Errorf("create retrier: %w", err)
 	}
 
-	resp, err := hr.Do(r)
-	if err != nil {
-		return nil, fmt.Errorf("execute request: %w", err)
-	}
-
-	// defer logging.Close(ctx, resp.Body, "error closing response body")
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("jira client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)
-	}
-
-	return resp, nil
+	return hr.Do(r) //nolint:wrapcheck
 }
 
 // httpRequest prepares a generic HTTP request.

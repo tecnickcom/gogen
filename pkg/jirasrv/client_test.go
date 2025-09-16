@@ -300,6 +300,7 @@ func TestSendRequest(t *testing.T) {
 		setupPatches      func() (*mpatch.Patch, error)
 		req               any
 		query             *url.Values
+		wantStatusCode    int
 		wantErr           bool
 	}{
 		{
@@ -344,10 +345,10 @@ func TestSendRequest(t *testing.T) {
 					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
 			},
-			wantErr: true,
+			wantStatusCode: http.StatusInternalServerError,
 		},
 		{
-			name: "invalid response status < 200",
+			name: "response status < 200",
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
 				t.Helper()
 
@@ -355,7 +356,18 @@ func TestSendRequest(t *testing.T) {
 					httputil.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
 				}
 			},
-			wantErr: true,
+			wantStatusCode: http.StatusSwitchingProtocols,
+		},
+		{
+			name: "response status >= 300",
+			createMockHandler: func(t *testing.T) http.HandlerFunc {
+				t.Helper()
+
+				return func(w http.ResponseWriter, r *http.Request) {
+					httputil.SendText(r.Context(), w, http.StatusMultipleChoices, "")
+				}
+			},
+			wantStatusCode: http.StatusMultipleChoices,
 		},
 		{
 			name:    "invalid request",
@@ -374,10 +386,11 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusOK, "Success")
+					httputil.SendText(r.Context(), w, http.StatusCreated, "Success")
 				}
 			},
-			wantErr: false,
+			wantStatusCode: http.StatusCreated,
+			wantErr:        false,
 		},
 	}
 
@@ -436,14 +449,16 @@ func TestSendRequest(t *testing.T) {
 			}
 
 			resp, err := c.SendRequest(testutil.Context(), http.MethodPost, endpoint, tt.query, tt.req)
-			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 
-			if !tt.wantErr {
-				require.NotNil(t, resp)
-				require.Equal(t, http.StatusOK, resp.StatusCode)
-
-				_ = resp.Body.Close()
+			if tt.wantErr {
+				require.Error(t, err, "error expected but got nil")
+				return
 			}
+
+			require.NotNil(t, resp)
+			require.Equal(t, tt.wantStatusCode, resp.StatusCode)
+
+			_ = resp.Body.Close()
 		})
 	}
 }
