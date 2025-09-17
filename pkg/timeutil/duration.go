@@ -40,7 +40,7 @@ func (d *Duration) UnmarshalJSON(data []byte) error {
 	case string:
 		aux, err := time.ParseDuration(value)
 		if err != nil {
-			return fmt.Errorf("unable to parse the time duration %s :%w", value, err)
+			return fmt.Errorf("unable to parse the time duration %s : %w", value, err)
 		}
 
 		*d = Duration(aux)
