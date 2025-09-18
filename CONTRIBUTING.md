@@ -18,7 +18,7 @@
 
 * Ensure the new code is following the existing conventions and the unit test coverage is 100%.
 
-* Before submitting, please run the following command locally to ensure the code is passing the automatic checks: `DEVMODE=LOCAL make format clean mod deps generate qa example`.
+* Before submitting, run `make x` locally to ensure your code passes all automated checks. Alternatively, you can use `make dbuild` to execute all tests inside a Docker container, which handles the required dependencies for you.
 
 
 ## Add a new feature or change an existing one
