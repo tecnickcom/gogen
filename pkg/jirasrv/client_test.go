@@ -1,4 +1,4 @@
-//go:generate go tool mockgen -package jirasrv -destination ./mock_test.go . HTTPClient
+//go:generate go tool mockgen -write_package_comment=false -package jirasrv -destination ./mock_test.go . HTTPClient
 package jirasrv
 
 import (
@@ -317,6 +317,7 @@ func TestSendRequest(t *testing.T) {
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
+
 				_ = patch.Patch()
 
 				return patch, nil
@@ -330,6 +331,7 @@ func TestSendRequest(t *testing.T) {
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
+
 				_ = patch.Patch()
 
 				return patch, nil

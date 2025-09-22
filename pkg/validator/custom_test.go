@@ -135,6 +135,7 @@ func TestCustomTags(t *testing.T) {
 			fobj: func(obj testCustomTagStruct) testCustomTagStruct {
 				obj.Country = "GB"
 				obj.StateC = "England"
+
 				return obj
 			},
 			wantErr:      false,
@@ -145,6 +146,7 @@ func TestCustomTags(t *testing.T) {
 			fobj: func(obj testCustomTagStruct) testCustomTagStruct {
 				obj.Country = "GB"
 				obj.StateC = "NY"
+
 				return obj
 			},
 			wantErr:      false,

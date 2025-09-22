@@ -118,7 +118,7 @@ type TTimeOnly struct{}
 // Format returns the TimeOnly format string.
 func (TTimeOnly) Format() string { return time.TimeOnly }
 
-// Jira time format.
+// TimeJiraFormat is the Jira date-time format string.
 const TimeJiraFormat = "2006-01-02T15:04:05.000-0700"
 
 // TJira represents the Jira time type.

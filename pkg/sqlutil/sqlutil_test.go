@@ -62,6 +62,7 @@ func Test_validate(t *testing.T) {
 			c: func() *SQLUtil {
 				c := defaultSQLUtil()
 				c.quoteIDFunc = nil
+
 				return c
 			}(),
 			wantErr: true,
@@ -71,6 +72,7 @@ func Test_validate(t *testing.T) {
 			c: func() *SQLUtil {
 				c := defaultSQLUtil()
 				c.quoteValueFunc = nil
+
 				return c
 			}(),
 			wantErr: true,

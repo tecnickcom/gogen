@@ -71,6 +71,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - mock_test.go$
 formatters:
   enable:
     - gci
@@ -88,3 +89,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+      - mock_test.go$

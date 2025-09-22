@@ -1,4 +1,4 @@
-//go:generate go tool mockgen -package passwordpwned -destination ./mock_test.go . HTTPClient
+//go:generate go tool mockgen -write_package_comment=false -package passwordpwned -destination ./mock_test.go . HTTPClient
 package passwordpwned
 
 import (
@@ -86,7 +86,9 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
+
 				_ = patch.Patch()
+
 				return patch, nil
 			},
 			wantErr: true,
@@ -98,7 +100,9 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
+
 				_ = patch.Patch()
+
 				return patch, nil
 			},
 			wantErr: true,
@@ -114,6 +118,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			name: "unexpected http error status code",
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
 				t.Helper()
+
 				return func(w http.ResponseWriter, r *http.Request) {
 					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
@@ -124,6 +129,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			name: "invalid response status < 200",
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
 				t.Helper()
+
 				return func(w http.ResponseWriter, r *http.Request) {
 					httputil.SendStatus(r.Context(), w, http.StatusSwitchingProtocols)
 				}

@@ -1,4 +1,4 @@
-//go:generate go tool mockgen -package httpretrier -destination ./mock_test.go . HTTPClient
+//go:generate go tool mockgen -write_package_comment=false -package httpretrier -destination ./mock_test.go . HTTPClient
 package httpretrier
 
 import (
@@ -368,6 +368,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 					StatusCode: http.StatusOK,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
+
 				mock.EXPECT().Do(gomock.Any()).Return(nil, errors.New("network error"))
 				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil)
 				mock.EXPECT().Do(gomock.Any()).Return(rOK, nil)
@@ -382,6 +383,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
+
 				mock.EXPECT().Do(gomock.Any()).Return(nil, errors.New("network error"))
 				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil).Times(3)
 			},

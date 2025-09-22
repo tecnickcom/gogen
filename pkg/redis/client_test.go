@@ -520,12 +520,14 @@ func TestReceive(t *testing.T) {
 			rPubSubMock: redisPubSubMock{
 				channelFn: func(_ ...libredis.ChannelOption) <-chan *libredis.Message {
 					ch := make(chan *libredis.Message)
+
 					go func() {
 						ch <- &libredis.Message{
 							Channel: "channel_4",
 							Payload: "message_4",
 						}
 					}()
+
 					return ch
 				},
 			},
@@ -536,9 +538,11 @@ func TestReceive(t *testing.T) {
 			rPubSubMock: redisPubSubMock{
 				channelFn: func(_ ...libredis.ChannelOption) <-chan *libredis.Message {
 					ch := make(chan *libredis.Message)
+
 					go func() {
 						close(ch)
 					}()
+
 					return ch
 				},
 			},
@@ -613,12 +617,14 @@ func TestReceiveData(t *testing.T) {
 			rPubSubMock: redisPubSubMock{
 				channelFn: func(_ ...libredis.ChannelOption) <-chan *libredis.Message {
 					ch := make(chan *libredis.Message)
+
 					go func() {
 						ch <- &libredis.Message{
 							Channel: "channel_5",
 							Payload: "Kf+BAwEBCFRlc3REYXRhAf+CAAECAQVBbHBoYQEMAAEEQmV0YQEEAAAAD/+CAQZhYmMxMjMB/gLtAA==",
 						}
 					}()
+
 					return ch
 				},
 			},
@@ -629,12 +635,14 @@ func TestReceiveData(t *testing.T) {
 			rPubSubMock: redisPubSubMock{
 				channelFn: func(_ ...libredis.ChannelOption) <-chan *libredis.Message {
 					ch := make(chan *libredis.Message)
+
 					go func() {
 						ch <- &libredis.Message{
 							Channel: "channel_5",
 							Payload: "INVALID",
 						}
 					}()
+
 					return ch
 				},
 			},
@@ -645,9 +653,11 @@ func TestReceiveData(t *testing.T) {
 			rPubSubMock: redisPubSubMock{
 				channelFn: func(_ ...libredis.ChannelOption) <-chan *libredis.Message {
 					ch := make(chan *libredis.Message)
+
 					go func() {
 						close(ch)
 					}()
+
 					return ch
 				},
 			},

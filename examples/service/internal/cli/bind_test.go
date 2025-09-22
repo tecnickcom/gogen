@@ -33,6 +33,7 @@ func Test_bind(t *testing.T) {
 				cfg.Enabled = false
 				cfg.Servers.Monitoring.Address = ":30044"
 				cfg.Servers.Public.Address = ":30045"
+
 				return cfg
 			},
 			preBindAddr:    ":30044",
@@ -45,6 +46,7 @@ func Test_bind(t *testing.T) {
 				cfg.Enabled = false
 				cfg.Servers.Monitoring.Address = ":30046"
 				cfg.Servers.Public.Address = ":30047"
+
 				return cfg
 			},
 			preBindAddr:    ":30047",
@@ -57,6 +59,7 @@ func Test_bind(t *testing.T) {
 				cfg.Enabled = false
 				cfg.Servers.Monitoring.Address = ":30043"
 				cfg.Servers.Public.Address = ":30043"
+
 				return cfg
 			},
 			wantErr: true,
@@ -76,6 +79,7 @@ func Test_bind(t *testing.T) {
 				cfg.Enabled = false
 				cfg.Servers.Monitoring.Address = ":30041"
 				cfg.Servers.Public.Address = ":30042"
+
 				return cfg
 			},
 			wantErr: false,

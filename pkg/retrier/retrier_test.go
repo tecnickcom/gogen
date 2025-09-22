@@ -83,7 +83,9 @@ func TestRetrier_Run(t *testing.T) {
 				if count == 2 {
 					return nil
 				}
+
 				count++
+
 				return errors.New("ERROR")
 			},
 			timeout:               1 * time.Second,

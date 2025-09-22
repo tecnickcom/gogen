@@ -29,6 +29,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.connectFunc = nil
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -38,6 +39,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.checkConnectionFunc = nil
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -47,6 +49,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.sqlOpenFunc = nil
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -56,6 +59,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.connMaxIdleCount = 0
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -65,6 +69,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.connMaxIdleTime = 0
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -74,6 +79,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.connMaxLifetime = 0
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -83,6 +89,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.connMaxOpenCount = 0
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -92,6 +99,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.pingTimeout = 0
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -101,6 +109,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.shutdownWaitGroup = nil
+
 				return cfg
 			}(),
 			wantErr: true,
@@ -110,6 +119,7 @@ func Test_config_validate(t *testing.T) {
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
 				cfg.shutdownSignalChan = nil
+
 				return cfg
 			}(),
 			wantErr: true,

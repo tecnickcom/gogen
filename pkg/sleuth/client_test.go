@@ -1,4 +1,4 @@
-//go:generate go tool mockgen -package sleuth -destination ./mock_test.go . HTTPClient
+//go:generate go tool mockgen -write_package_comment=false -package sleuth -destination ./mock_test.go . HTTPClient
 package sleuth
 
 import (
@@ -295,6 +295,7 @@ func Test_sendRequest(t *testing.T) {
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
+
 				_ = patch.Patch()
 
 				return patch, nil
@@ -308,6 +309,7 @@ func Test_sendRequest(t *testing.T) {
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
+
 				_ = patch.Patch()
 
 				return patch, nil

@@ -1,4 +1,4 @@
-//go:generate go tool mockgen -package config -destination ./mock_test.go . Viper
+//go:generate go tool mockgen -write_package_comment=false -package config -destination ./mock_test.go . Viper
 
 package config
 
@@ -145,6 +145,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			setupViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
 				mock.EXPECT().ReadInConfig().Return(errors.New("read config error"))
+
 				return mock
 			},
 			wantErr: true,
@@ -155,6 +156,7 @@ func Test_loadLocalConfig(t *testing.T) {
 				mock := mockViper(ctrl)
 				mock.EXPECT().ReadInConfig()
 				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))
+
 				return mock
 			},
 			wantErr: true,
@@ -165,6 +167,7 @@ func Test_loadLocalConfig(t *testing.T) {
 				mock := mockViper(ctrl)
 				mock.EXPECT().ReadInConfig()
 				mock.EXPECT().Unmarshal(gomock.Any())
+
 				return mock
 			},
 			want:    &remoteSourceConfig{},
@@ -277,6 +280,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 					keyLogLevel,
 				})
 				mock.EXPECT().Get(keyLogLevel).Return("DEBUG")
+
 				return mock
 			},
 			setupRemoteViper: func(ctrl *gomock.Controller) Viper {
@@ -284,6 +288,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
 				mock.EXPECT().Unmarshal(gomock.Any())
+
 				return mock
 			},
 		},
@@ -298,6 +303,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 					keyLogLevel,
 				})
 				mock.EXPECT().Get(keyLogLevel).Return("DEBUG")
+
 				return mock
 			},
 			setupRemoteViper: func(ctrl *gomock.Controller) Viper {
@@ -305,6 +311,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
 				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))
+
 				return mock
 			},
 			wantErr: true,
@@ -322,12 +329,14 @@ func Test_loadRemoteConfig(t *testing.T) {
 					keyLogLevel,
 				})
 				mock.EXPECT().Get(keyLogLevel).Return("DEBUG")
+
 				return mock
 			},
 			setupRemoteViper: func(ctrl *gomock.Controller) Viper {
 				mock := NewMockViper(ctrl)
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
+
 				return mock
 			},
 			wantErr: true,
@@ -345,12 +354,14 @@ func Test_loadRemoteConfig(t *testing.T) {
 					keyLogLevel,
 				})
 				mock.EXPECT().Get(keyLogLevel).Return("DEBUG")
+
 				return mock
 			},
 			setupRemoteViper: func(ctrl *gomock.Controller) Viper {
 				mock := NewMockViper(ctrl)
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
+
 				return mock
 			},
 			wantErr: true,
@@ -366,6 +377,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 					keyLogLevel,
 				})
 				mock.EXPECT().Get(keyLogLevel).Return("DEBUG")
+
 				return mock
 			},
 			setupRemoteViper: func(_ *gomock.Controller) Viper {
@@ -848,6 +860,7 @@ func Test_loadConfig(t *testing.T) {
 			setupLocalViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
 				mock.EXPECT().ReadInConfig().Return(errors.New("read config error"))
+
 				return mock
 			},
 			targetConfig: &testConfig{},
@@ -860,6 +873,7 @@ func Test_loadConfig(t *testing.T) {
 				mock.EXPECT().SetDefault(gomock.Any(), gomock.Any()).AnyTimes()
 				mock.EXPECT().SetConfigType(defaultConfigType)
 				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))
+
 				return mock
 			},
 			configContent: []byte(`

@@ -38,6 +38,7 @@ func Test_LookupHost(t *testing.T) {
 		lookupHost: func(_ context.Context, _ string) ([]string, error) {
 			i++
 			ip := fmt.Sprintf("192.0.2.%d", i)
+
 			return []string{ip}, nil
 		},
 	}
@@ -82,8 +83,10 @@ func Test_LookupHost_concurrent_slow(t *testing.T) {
 	resolver := &mockResolver{
 		lookupHost: func(_ context.Context, _ string) ([]string, error) {
 			time.Sleep(300 * time.Millisecond) // simulate slow lookup
+
 			i++
 			ip := fmt.Sprintf("192.0.2.%d", i)
+
 			return []string{ip}, nil
 		},
 	}
@@ -179,7 +182,9 @@ func Test_LookupHost_error(t *testing.T) {
 	resolver := &mockResolver{
 		lookupHost: func(_ context.Context, _ string) ([]string, error) {
 			time.Sleep(300 * time.Millisecond) // simulate slow lookup
+
 			i++
+
 			return nil, fmt.Errorf("mock error: %d", i)
 		},
 	}
