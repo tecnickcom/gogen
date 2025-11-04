@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/Vonage/gosrvlib/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/httputil"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/sfcache"
+	"github.com/tecnickcom/gogen/pkg/sfcache"
 )
 
 func ExampleCache_Lookup() {

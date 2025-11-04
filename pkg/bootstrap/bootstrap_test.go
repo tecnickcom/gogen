@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/logging"
-	"github.com/Vonage/gosrvlib/pkg/metrics"
-	"github.com/Vonage/gosrvlib/pkg/metrics/prometheus"
-	"github.com/Vonage/gosrvlib/pkg/testutil"
+	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/metrics"
+	"github.com/tecnickcom/gogen/pkg/metrics/prometheus"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )

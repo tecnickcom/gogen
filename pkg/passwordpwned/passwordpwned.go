@@ -19,7 +19,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	brotli "github.com/aperturerobotics/go-brotli-decoder"
 )
 

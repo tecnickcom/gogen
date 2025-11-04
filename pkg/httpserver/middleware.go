@@ -5,10 +5,10 @@ import (
 	"net/http/httputil"
 	"time"
 
-	libhttputil "github.com/Vonage/gosrvlib/pkg/httputil"
-	"github.com/Vonage/gosrvlib/pkg/logging"
-	"github.com/Vonage/gosrvlib/pkg/traceid"
-	"github.com/Vonage/gosrvlib/pkg/uidc"
+	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/traceid"
+	"github.com/tecnickcom/gogen/pkg/uidc"
 	"go.uber.org/zap"
 )
 

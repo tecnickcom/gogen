@@ -32,7 +32,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/sfcache"
+	"github.com/tecnickcom/gogen/pkg/sfcache"
 )
 
 // Resolver is a net.Resolver interface for DNS lookups.

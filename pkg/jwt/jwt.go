@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/httputil"
-	"github.com/Vonage/gosrvlib/pkg/logging"
-	"github.com/Vonage/gosrvlib/pkg/uidc"
+	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/uidc"
 	jwt "github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"

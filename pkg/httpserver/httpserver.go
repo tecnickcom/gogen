@@ -21,8 +21,8 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/Vonage/gosrvlib/pkg/httputil"
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"go.uber.org/zap"
 )
 

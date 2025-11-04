@@ -1,6 +1,6 @@
 package jirasrv
 
-import "github.com/Vonage/gosrvlib/pkg/timeutil"
+import "github.com/tecnickcom/gogen/pkg/timeutil"
 
 // Comment represents a comment on a Jira issue.
 // Ref.: https://docs.atlassian.com/software/jira/docs/api/REST/9.17.0

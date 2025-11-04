@@ -10,8 +10,8 @@ See also: github.com/Vonage/gosrvlib/pkg/threadsafe
 package tsmap
 
 import (
-	"github.com/Vonage/gosrvlib/pkg/maputil"
-	"github.com/Vonage/gosrvlib/pkg/threadsafe"
+	"github.com/tecnickcom/gogen/pkg/maputil"
+	"github.com/tecnickcom/gogen/pkg/threadsafe"
 )
 
 // Set is a thread-safe function to assign a value v to a key k in a map m.

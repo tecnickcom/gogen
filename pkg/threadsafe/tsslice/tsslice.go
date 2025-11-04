@@ -10,8 +10,8 @@ See also: github.com/Vonage/gosrvlib/pkg/threadsafe
 package tsslice
 
 import (
-	"github.com/Vonage/gosrvlib/pkg/sliceutil"
-	"github.com/Vonage/gosrvlib/pkg/threadsafe"
+	"github.com/tecnickcom/gogen/pkg/sliceutil"
+	"github.com/tecnickcom/gogen/pkg/threadsafe"
 )
 
 // Set is a thread-safe function to assign a value v to a key k in a slice s.

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
 // HTTPClient contains the function that performs the actual HTTP request.

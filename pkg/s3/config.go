@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/awsopt"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
 

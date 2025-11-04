@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Vonage/gosrvlib/pkg/encode"
+	"github.com/tecnickcom/gogen/pkg/encode"
 )
 
 //nolint:testableexamples

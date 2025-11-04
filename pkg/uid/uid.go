@@ -7,7 +7,7 @@ Deprecated: Use github.com/Vonage/gosrvlib/pkg/uidc instead.
 package uid
 
 import (
-	"github.com/Vonage/gosrvlib/pkg/uidc"
+	"github.com/tecnickcom/gogen/pkg/uidc"
 )
 
 // NewID64 generates and returns a new base-36-string-formatted 64 bit unique ID based on time (high 32 bit) and a random number (low 32 bit).

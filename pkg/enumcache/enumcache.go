@@ -11,7 +11,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/Vonage/gosrvlib/pkg/enumbitmap"
+	"github.com/tecnickcom/gogen/pkg/enumbitmap"
 )
 
 // IDByName type maps strings to integers IDs.

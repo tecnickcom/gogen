@@ -3,7 +3,7 @@ package sliceutil_test
 import (
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/sliceutil"
+	"github.com/tecnickcom/gogen/pkg/sliceutil"
 )
 
 func ExampleFilter() {

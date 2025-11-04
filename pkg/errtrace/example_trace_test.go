@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/errtrace"
+	"github.com/tecnickcom/gogen/pkg/errtrace"
 )
 
 //nolint:testableexamples

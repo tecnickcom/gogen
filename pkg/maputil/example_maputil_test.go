@@ -3,7 +3,7 @@ package maputil_test
 import (
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/maputil"
+	"github.com/tecnickcom/gogen/pkg/maputil"
 )
 
 func ExampleFilter() {

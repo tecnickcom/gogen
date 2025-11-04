@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/iotest"
 
-	"github.com/Vonage/gosrvlib/pkg/random"
+	"github.com/tecnickcom/gogen/pkg/random"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/argon2"
 )

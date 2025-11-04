@@ -6,8 +6,8 @@ It supports partial matches and alphabetical phone numbers.
 package numtrie
 
 import (
-	"github.com/Vonage/gosrvlib/pkg/phonekeypad"
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/tecnickcom/gogen/pkg/phonekeypad"
+	"github.com/tecnickcom/gogen/pkg/typeutil"
 )
 
 // Status codes to be returned when searching for a number in the trie.

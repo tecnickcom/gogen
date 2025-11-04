@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Vonage/gosrvlib/pkg/awsopt"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"

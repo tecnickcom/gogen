@@ -2,8 +2,8 @@
 package metrics
 
 import (
-	"github.com/Vonage/gosrvlib/pkg/metrics"
-	prom "github.com/Vonage/gosrvlib/pkg/metrics/prometheus"
+	"github.com/tecnickcom/gogen/pkg/metrics"
+	prom "github.com/tecnickcom/gogen/pkg/metrics/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

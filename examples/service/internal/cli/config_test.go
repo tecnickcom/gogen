@@ -3,7 +3,7 @@ package cli
 import (
 	"testing"
 
-	"github.com/Vonage/gosrvlib/pkg/config"
+	"github.com/tecnickcom/gogen/pkg/config"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )

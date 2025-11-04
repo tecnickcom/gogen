@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/Vonage/gosrvlib/pkg/threadsafe/tsslice"
+	"github.com/tecnickcom/gogen/pkg/threadsafe/tsslice"
 )
 
 func ExampleSet() {

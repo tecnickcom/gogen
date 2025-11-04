@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/ipify"
-	"github.com/Vonage/gosrvlib/pkg/logging"
-	"github.com/Vonage/gosrvlib/pkg/profiling"
-	"github.com/Vonage/gosrvlib/pkg/redact"
-	"github.com/Vonage/gosrvlib/pkg/traceid"
+	"github.com/tecnickcom/gogen/pkg/ipify"
+	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/profiling"
+	"github.com/tecnickcom/gogen/pkg/redact"
+	"github.com/tecnickcom/gogen/pkg/traceid"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )

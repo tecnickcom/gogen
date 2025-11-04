@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/bootstrap"
-	"github.com/Vonage/gosrvlib/pkg/httputil/jsendx"
-	"github.com/Vonage/gosrvlib/pkg/logging"
-	"github.com/Vonage/gosrvlib/pkg/testutil"
+	"github.com/tecnickcom/gogen/pkg/bootstrap"
+	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
+	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
 	"github.com/stretchr/testify/require"
 )

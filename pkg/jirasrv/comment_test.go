@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/timeutil"
+	"github.com/tecnickcom/gogen/pkg/timeutil"
 	"github.com/stretchr/testify/require"
 )
 

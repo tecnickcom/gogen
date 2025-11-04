@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/Vonage/gosrvlib/pkg/testutil"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/require"
 )

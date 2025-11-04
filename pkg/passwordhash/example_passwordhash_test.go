@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Vonage/gosrvlib/pkg/passwordhash"
+	"github.com/tecnickcom/gogen/pkg/passwordhash"
 )
 
 func ExampleParams_PasswordVerify() {

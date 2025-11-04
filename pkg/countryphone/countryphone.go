@@ -11,7 +11,7 @@ package countryphone
 import (
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/numtrie"
+	"github.com/tecnickcom/gogen/pkg/numtrie"
 )
 
 // InPrefixGroup stores the type and geographical information of a group of phone
@@ -122,7 +122,7 @@ func New(data InData) *Data {
 // NumberInfo returns the number type and geographical information for the given
 // phone number prefix.
 //
-// NOTE: see the "github.com/Vonage/gosrvlib/pkg/countrycode" package to get the
+// NOTE: see the "github.com/tecnickcom/gogen/pkg/countrycode" package to get the
 // country information from the Alpha2 code.
 func (d *Data) NumberInfo(num string) (*NumInfo, error) {
 	data, status := d.trie.Get(num)

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/logging"
-	"github.com/Vonage/gosrvlib/pkg/metrics"
+	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/metrics"
 	"go.uber.org/zap"
 )
 

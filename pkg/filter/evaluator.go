@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/tecnickcom/gogen/pkg/typeutil"
 )
 
 // Evaluator is the interface to provide functions for a filter type.

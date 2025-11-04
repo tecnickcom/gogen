@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Vonage/gosrvlib/pkg/httputil"
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )

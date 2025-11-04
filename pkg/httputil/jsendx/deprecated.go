@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/Vonage/gosrvlib/pkg/httpserver"
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/httpserver"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )

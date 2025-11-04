@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Vonage/gosrvlib/pkg/enumcache"
+	"github.com/tecnickcom/gogen/pkg/enumcache"
 )
 
 func ExampleNew() {

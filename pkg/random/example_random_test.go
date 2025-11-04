@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Vonage/gosrvlib/pkg/random"
+	"github.com/tecnickcom/gogen/pkg/random"
 )
 
 //nolint:testableexamples

@@ -3,7 +3,7 @@ package uid_test
 import (
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/uid"
+	"github.com/tecnickcom/gogen/pkg/uid"
 )
 
 //nolint:testableexamples

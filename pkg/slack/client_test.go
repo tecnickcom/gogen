@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/httputil"
-	"github.com/Vonage/gosrvlib/pkg/testutil"
+	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
 

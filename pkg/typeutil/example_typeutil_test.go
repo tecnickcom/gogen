@@ -3,7 +3,7 @@ package typeutil_test
 import (
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/tecnickcom/gogen/pkg/typeutil"
 )
 
 func ExampleIsNil() {

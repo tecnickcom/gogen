@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	libhttputil "github.com/Vonage/gosrvlib/pkg/httputil"
+	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/statsd"
 )
 

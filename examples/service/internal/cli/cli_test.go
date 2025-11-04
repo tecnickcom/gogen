@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Vonage/gosrvlib/pkg/bootstrap"
-	"github.com/Vonage/gosrvlib/pkg/testutil"
+	"github.com/tecnickcom/gogen/pkg/bootstrap"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
 )
 

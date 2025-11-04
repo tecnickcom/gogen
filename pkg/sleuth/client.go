@@ -12,10 +12,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/httpretrier"
-	"github.com/Vonage/gosrvlib/pkg/httputil"
-	"github.com/Vonage/gosrvlib/pkg/logging"
-	"github.com/Vonage/gosrvlib/pkg/validator"
+	"github.com/tecnickcom/gogen/pkg/httpretrier"
+	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/validator"
 )
 
 const (

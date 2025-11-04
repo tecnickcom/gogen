@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/metrics"
+	"github.com/tecnickcom/gogen/pkg/metrics"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )

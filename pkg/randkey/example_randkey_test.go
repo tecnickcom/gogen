@@ -3,7 +3,7 @@ package randkey_test
 import (
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/randkey"
+	"github.com/tecnickcom/gogen/pkg/randkey"
 )
 
 //nolint:testableexamples

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Vonage/gosrvlib/pkg/random"
+	"github.com/tecnickcom/gogen/pkg/random"
 )
 
 // RandKey stores the random key.

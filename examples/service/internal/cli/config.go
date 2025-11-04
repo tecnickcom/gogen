@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/Vonage/gosrvlib/pkg/config"
-	"github.com/Vonage/gosrvlib/pkg/validator"
+	"github.com/tecnickcom/gogen/pkg/config"
+	"github.com/tecnickcom/gogen/pkg/validator"
 )
 
 const (

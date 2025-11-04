@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Vonage/gosrvlib/pkg/random"
+	"github.com/tecnickcom/gogen/pkg/random"
 )
 
 // randReader is the default random number generator.

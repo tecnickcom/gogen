@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/encode"
+	"github.com/tecnickcom/gogen/pkg/encode"
 	libredis "github.com/redis/go-redis/v9"
 )
 

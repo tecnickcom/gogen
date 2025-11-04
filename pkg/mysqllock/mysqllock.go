@@ -40,7 +40,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"go.uber.org/zap"
 )
 

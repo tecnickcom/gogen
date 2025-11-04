@@ -90,9 +90,9 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/Vonage/gosrvlib/pkg/encode"
-	"github.com/Vonage/gosrvlib/pkg/encrypt"
-	"github.com/Vonage/gosrvlib/pkg/random"
+	"github.com/tecnickcom/gogen/pkg/encode"
+	"github.com/tecnickcom/gogen/pkg/encrypt"
+	"github.com/tecnickcom/gogen/pkg/random"
 	"golang.org/x/crypto/argon2"
 )
 

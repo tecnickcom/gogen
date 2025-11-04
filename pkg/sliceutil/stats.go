@@ -5,7 +5,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/Vonage/gosrvlib/pkg/typeutil"
+	"github.com/tecnickcom/gogen/pkg/typeutil"
 )
 
 // DescStats contains descriptive statistics items for a data set.

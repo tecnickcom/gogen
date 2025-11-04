@@ -6,7 +6,7 @@ Deprecated: Use the httpserver package instead.
 package route
 
 import (
-	"github.com/Vonage/gosrvlib/pkg/httpserver"
+	"github.com/tecnickcom/gogen/pkg/httpserver"
 )
 
 // Route is deprecated.

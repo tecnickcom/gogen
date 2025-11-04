@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/sfcache"
+	"github.com/tecnickcom/gogen/pkg/sfcache"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 )

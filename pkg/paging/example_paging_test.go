@@ -3,7 +3,7 @@ package paging_test
 import (
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/paging"
+	"github.com/tecnickcom/gogen/pkg/paging"
 )
 
 func ExampleNew() {

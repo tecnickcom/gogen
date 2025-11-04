@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Vonage/gosrvlib/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/stretchr/testify/require"
 )
 

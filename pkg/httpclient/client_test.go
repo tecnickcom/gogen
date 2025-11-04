@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )

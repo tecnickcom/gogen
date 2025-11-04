@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Vonage/gosrvlib/pkg/encode"
+	"github.com/tecnickcom/gogen/pkg/encode"
 	libvalkey "github.com/valkey-io/valkey-go"
 )
 

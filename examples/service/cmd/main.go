@@ -2,8 +2,8 @@
 package main
 
 import (
-	"github.com/Vonage/gosrvlib/pkg/bootstrap"
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/bootstrap"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/cli"
 	"go.uber.org/zap"
 )

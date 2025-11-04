@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Vonage/gosrvlib/pkg/countryphone"
+	"github.com/tecnickcom/gogen/pkg/countryphone"
 )
 
 func ExampleData_NumberType() {

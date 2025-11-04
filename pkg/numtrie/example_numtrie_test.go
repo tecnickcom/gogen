@@ -3,7 +3,7 @@ package numtrie_test
 import (
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/numtrie"
+	"github.com/tecnickcom/gogen/pkg/numtrie"
 )
 
 func ExampleNode_Get() {

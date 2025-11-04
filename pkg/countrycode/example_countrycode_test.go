@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Vonage/gosrvlib/pkg/countrycode"
+	"github.com/tecnickcom/gogen/pkg/countrycode"
 )
 
 func ExampleData_CountryByAlpha2Code() {

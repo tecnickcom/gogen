@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Vonage/gosrvlib/pkg/enumbitmap"
+	"github.com/tecnickcom/gogen/pkg/enumbitmap"
 )
 
 func ExampleBitMapToStrings() {

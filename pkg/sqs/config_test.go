@@ -3,7 +3,7 @@ package sqs
 import (
 	"testing"
 
-	"github.com/Vonage/gosrvlib/pkg/awsopt"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/stretchr/testify/require"
 )
 

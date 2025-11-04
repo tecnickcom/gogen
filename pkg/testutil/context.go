@@ -3,7 +3,7 @@ package testutil
 import (
 	"context"
 
-	"github.com/Vonage/gosrvlib/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

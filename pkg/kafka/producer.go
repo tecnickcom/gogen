@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Vonage/gosrvlib/pkg/encode"
+	"github.com/tecnickcom/gogen/pkg/encode"
 	"github.com/segmentio/kafka-go"
 )
 

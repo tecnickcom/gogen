@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Vonage/gosrvlib/pkg/awsopt"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	awssrv "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/require"
