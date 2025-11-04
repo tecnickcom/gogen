@@ -1,0 +1,26 @@
+{
+  "clients": {
+    "ipify": {
+      "address": "http://gosrvlibexample_smocker_ipify:8080",
+      "timeout": 2
+    }
+  },
+  "enabled": true,
+  "log": {
+    "address": "",
+    "format": "JSON",
+    "level": "DEBUG",
+    "network": ""
+  },
+  "servers": {
+    "monitoring": {
+      "address": ":8072",
+      "timeout": 2
+    },
+    "public": {
+      "address": ":8071",
+      "timeout": 2
+    }
+  },
+  "shutdown_timeout": 2
+}

@@ -1,0 +1,91 @@
+name: check
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v5
+      - name: setup go build environment
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+      - name: linter
+        run: make mod deps linter GOPATH=$(go env GOPATH)
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v5
+      - name: setup go build environment
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+      - name: dependency cache
+        uses: actions/cache@v4
+        with:
+          path: $(go env GOPATH)/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+      - name: unit tests
+        run: make mod deps test GOPATH=$(go env GOPATH)
+      - name: coverage report
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        with:
+          file: target/report/coverage.out
+          format: golang
+      - name: hash go files
+        id: go_hash
+        run: echo "value=${{ hashFiles('**/*.go','!vendor/**','!examples/**') }}" >>"$GITHUB_OUTPUT"
+      - name: cache coverage
+        id: cover_cache
+        uses: actions/cache@v4
+        with:
+          path: target/report/coverage.out
+          key: go_cover_profile_${{ steps.go_hash.outputs.value }}
+
+  sonar:
+    if: github.repository == 'Vonage/gosrvlib'
+    runs-on: ubuntu-latest
+    needs: test
+    continue-on-error: true
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: hash go files
+        id: go_hash
+        run: echo "value=${{ hashFiles('**/*.go','!vendor/**','!examples/**') }}" >>"$GITHUB_OUTPUT"
+      - name: Get coverage from cache
+        id: cover_cache
+        uses: actions/cache@v4
+        with:
+          path: target/report/coverage.out
+          key: go_cover_profile_${{ steps.go_hash.outputs.value }}
+      - name: Read version
+        id: read_version
+        run: echo "value=$(cat VERSION)" >>"$GITHUB_OUTPUT"
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectVersion=${{ steps.read_version.outputs.value }}

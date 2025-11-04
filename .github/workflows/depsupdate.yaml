@@ -1,0 +1,49 @@
+name: Dependencies Update
+
+on:
+  workflow_dispatch:
+# schedule:
+#   - cron: "17 5 * * 1"
+
+permissions: read-all
+
+env:
+  BRANCH_NAME: autopr/dependencies_update
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v5
+      - name: update branch
+        run: |
+          git checkout -B ${{ env.BRANCH_NAME }}
+          git reset origin/main --hard
+      - name: setup go build environment
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+      - name: dependency cache
+        uses: actions/cache@v4
+        with:
+          path: $(go env GOPATH)/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+      - name: update dependencies
+        run: make updateall x GOPATH=$(go env GOPATH)
+      - name: commit changes
+        run: | 
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            if $(git status | grep -q '"git add"'); then
+                make versionup
+                git add . -A
+                git commit -m 'Automatic dependencies update'
+                git push origin ${{ env.BRANCH_NAME }}    
+            fi
+        shell: bash

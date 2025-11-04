@@ -1,0 +1,30 @@
+{
+  "clients": {
+    "ipify": {
+      "address": "",
+      "timeout": 1
+    }
+  },
+  "enabled": true,
+  "log": {
+    "address": "",
+    "format": "JSON",
+    "level": "INFO",
+    "network": ""
+  },
+  "remoteConfigEndpoint": "",
+  "remoteConfigPath": "",
+  "remoteConfigProvider": "",
+  "remoteConfigSecretKeyring": "",
+  "servers": {
+    "monitoring": {
+      "address": "",
+      "timeout": 60
+    },
+    "public": {
+      "address": "",
+      "timeout": 60
+    }
+  },
+  "shutdown_timeout": 60
+}

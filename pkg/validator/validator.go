@@ -1,0 +1,122 @@
+/*
+Package validator provides a simple and extensible field validation mechanism
+for structs and individual fields based on tags.
+
+It wraps the https://github.com/go-playground/validator package and includes new
+custom validation rules and a simpler error translation mechanism.
+*/
+package validator
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"html/template"
+	"strings"
+
+	vt "github.com/go-playground/validator/v10"
+	"go.uber.org/multierr"
+)
+
+// Validator contains the validator object fields.
+type Validator struct {
+	// V is the validate object.
+	v *vt.Validate
+
+	// tpl contains the map of basic translation templates indexed by tag.
+	tpl map[string]*template.Template
+}
+
+// New returns a new validator with the specified options.
+func New(opts ...Option) (*Validator, error) {
+	v := &Validator{v: vt.New()}
+
+	for _, applyOpt := range opts {
+		err := applyOpt(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return v, nil
+}
+
+// ValidateStruct validates the structure fields tagged with "validate" and returns a multierror.
+func (v *Validator) ValidateStruct(obj any) error {
+	return v.ValidateStructCtx(context.Background(), obj)
+}
+
+// ValidateStructCtx validates the structure fields tagged with "validate" and returns a multierror.
+func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
+	vErr := v.v.StructCtx(ctx, obj)
+
+	var (
+		valErr vt.ValidationErrors
+		err    error
+	)
+	if errors.As(vErr, &valErr) {
+		for _, fe := range valErr {
+			// separate tags grouped by OR
+			tags := strings.Split(fe.Tag(), "|")
+			for _, tag := range tags {
+				if strings.HasPrefix(tag, "falseif") {
+					// the "falseif" tag only works in combination with other tags
+					continue
+				}
+
+				err = multierr.Append(err, v.tagError(fe, tag))
+			}
+		}
+	}
+
+	//nolint:wrapcheck
+	return err
+}
+
+// tagError set the error message associated with the validation tag.
+func (v *Validator) tagError(fe vt.FieldError, tag string) error {
+	tagParts := strings.SplitN(tag, "=", 2)
+	tagKey := tagParts[0]
+	tagParam := fe.Param()
+
+	if len(tagParts) == 2 {
+		tagParam = tagParts[1]
+	}
+
+	namespace := fe.Namespace()
+
+	if idx := strings.Index(namespace, "."); idx != -1 {
+		namespace = namespace[idx+1:] // remove root struct name
+	}
+
+	ve := &Error{
+		Tag:             tagKey,
+		Param:           tagParam,
+		FullTag:         tag,
+		Namespace:       namespace,
+		StructNamespace: fe.StructNamespace(),
+		Field:           fe.Field(),
+		StructField:     fe.StructField(),
+		Kind:            fe.Kind().String(),
+		Value:           fe.Value(),
+	}
+
+	ve.Err = v.translate(ve)
+
+	return ve
+}
+
+// translate returns the error message associated with the tag.
+func (v *Validator) translate(ve *Error) string {
+	if t, ok := v.tpl[ve.Tag]; ok {
+		var out bytes.Buffer
+
+		err := t.Execute(&out, ve)
+		if err == nil {
+			return out.String()
+		}
+	}
+
+	return fmt.Sprintf("%s is invalid because fails the rule: '%s'", ve.Namespace, ve.FullTag)
+}

@@ -1,0 +1,5 @@
+FROM scratch
+COPY ./ /
+USER nonroot
+ENTRYPOINT ["/usr/bin/gosrvlibexample"]
+HEALTHCHECK NONE

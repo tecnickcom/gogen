@@ -1,0 +1,238 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "JSON schema for gosrvlibexample configuration",
+  "properties": {
+    "clients": {
+      "additionalProperties": false,
+      "description": "Configuration for external service clients",
+      "properties": {
+        "ipify": {
+          "additionalProperties": false,
+          "description": "Configuration for the ipify service client",
+          "examples": [
+            {
+              "address": "https://api.ipify.org",
+              "timeout": 15
+            }
+          ],
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "Base URL of the service",
+              "examples": [
+                "https://api.ipify.org"
+              ],
+              "title": "Address",
+              "type": "string"
+            },
+            "timeout": {
+              "default": 15,
+              "description": "HTTP client timeout [seconds]",
+              "examples": [
+                15
+              ],
+              "title": "Timeout",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "address",
+            "timeout"
+          ],
+          "title": "ipify service client",
+          "type": "object"
+        }
+      },
+      "required": [
+        "ipify"
+      ],
+      "title": "Clients",
+      "type": "object"
+    },
+    "enabled": {
+      "default": true,
+      "description": "Enable or disable the service",
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "log": {
+      "additionalProperties": false,
+      "description": "Logger settings",
+      "properties": {
+        "address": {
+          "default": "",
+          "description": "(OPTIONAL) Network address of the (r)Syslog daemon (ip:port) or just (:port)",
+          "type": "string"
+        },
+        "format": {
+          "default": "JSON",
+          "description": "Defines the default log format",
+          "enum": [
+            "CONSOLE",
+            "JSON"
+          ],
+          "type": "string"
+        },
+        "level": {
+          "default": "DEBUG",
+          "description": "Defines the default log level",
+          "enum": [
+            "EMERGENCY",
+            "ALERT",
+            "CRITICAL",
+            "ERROR",
+            "WARNING",
+            "NOTICE",
+            "INFO",
+            "DEBUG"
+          ],
+          "type": "string"
+        },
+        "network": {
+          "default": "",
+          "description": "(OPTIONAL) Network type used by the (r)Syslog",
+          "enum": [
+            "",
+            "udp",
+            "tcp"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "address",
+        "level",
+        "network"
+      ],
+      "title": "Logger",
+      "type": "object"
+    },
+    "remoteConfigEndpoint": {
+      "default": "",
+      "description": "Remote configuration URL (ip:port)",
+      "title": "Remote Configuration Endpoint",
+      "type": "string"
+    },
+    "remoteConfigPath": {
+      "default": "",
+      "description": "Remote configuration path in which to search for the configuration file (e.g. '/config/gosrvlibexample')",
+      "title": "Remote Configuration Path",
+      "type": "string"
+    },
+    "remoteConfigProvider": {
+      "default": "",
+      "description": "Remote configuration source type (if any)",
+      "enum": [
+        "",
+        "consul",
+        "etcd",
+        "envvar"
+      ],
+      "title": "Remote Configuration Provider",
+      "type": "string"
+    },
+    "remoteConfigSecretKeyring": {
+      "default": "",
+      "description": "Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. '/etc/gosrvlibexample/configkey.gpg'); if empty a non secure connection will be used instead",
+      "title": "Remote Configuration Secret Keyring",
+      "type": "string"
+    },
+    "servers": {
+      "additionalProperties": false,
+      "description": "Configuration for exposed servers",
+      "properties": {
+        "monitoring": {
+          "additionalProperties": false,
+          "description": "Configuration for the monitoring server",
+          "examples": [
+            {
+              "address": ":8072",
+              "timeout": 60
+            }
+          ],
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "HTTP address (ip:port) or just (:port)",
+              "examples": [
+                ":8072"
+              ],
+              "title": "Address",
+              "type": "string"
+            },
+            "timeout": {
+              "description": "HTTP request timeout [seconds]",
+              "examples": [
+                60
+              ],
+              "title": "Timeout",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "address",
+            "timeout"
+          ],
+          "title": "Monitoring HTTP server",
+          "type": "object"
+        },
+        "public": {
+          "additionalProperties": false,
+          "description": "Configuration for the public server",
+          "examples": [
+            {
+              "address": ":8071",
+              "timeout": 60
+            }
+          ],
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "HTTP address (ip:port) or just (:port)",
+              "examples": [
+                ":8071"
+              ],
+              "title": "Address",
+              "type": "string"
+            },
+            "timeout": {
+              "description": "HTTP request timeout [seconds]",
+              "examples": [
+                60
+              ],
+              "title": "Timeout",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "address",
+            "timeout"
+          ],
+          "title": "Public HTTP server",
+          "type": "object"
+        }
+      },
+      "required": [
+        "monitoring",
+        "public"
+      ],
+      "title": "Servers",
+      "type": "object"
+    },
+    "shutdown_timeout": {
+      "default": 30,
+      "description": "Time in seconds to wait on exit for a graceful shutdown.",
+      "title": "ShutDown Timeout",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "clients",
+    "enabled",
+    "log",
+    "servers"
+  ],
+  "title": "Configuration for gosrvlibexample",
+  "type": "object"
+}

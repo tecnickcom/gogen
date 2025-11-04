@@ -1,30 +1,88 @@
 # MAKEFILE
 #
-# @author      Nicola Asuni <info@tecnick.com>
+# @author      Nicola Asuni
 # @link        https://github.com/tecnickcom/gogen
-#
-# This file is intended to be executed in a Linux-compatible system.
 # ------------------------------------------------------------------------------
+
+SHELL=/bin/bash
+.SHELLFLAGS=-o pipefail -c
+
+# Project owner
+OWNER=tecnickcom
+
+# Project vendor
+VENDOR=${OWNER}
+
+# Lowercase VENDOR name for Docker
+LCVENDOR=$(shell echo "${VENDOR}" | tr '[:upper:]' '[:lower:]')
+
+# CVS path (path to the parent dir containing the project)
+CVSPATH=github.com/${VENDOR}
+
+# Project name
+PROJECT=gogen
+
+# Project version
+VERSION=$(shell cat VERSION)
+
+# Project release number (packaging build number)
+RELEASE=$(shell cat RELEASE)
 
 # Current directory
 CURRENTDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
-# Set default project type
-ifeq ($(TYPE),)
-	TYPE=app
+# Target directory
+TARGETDIR=$(CURRENTDIR)target
+
+# Directory where to store binary utility tools
+BINUTIL=$(TARGETDIR)/binutil
+
+# GO lang path
+ifeq ($(GOPATH),)
+	# extract the GOPATH
+	GOPATH=$(firstword $(subst /src/, ,$(CURRENTDIR)))
 endif
 
-# Set default project configuration file
+# Add the GO binary dir in the PATH
+export PATH := $(GOPATH)/bin:$(PATH)
+
+# Docker tag
+DOCKERTAG=$(VERSION)-$(RELEASE)
+
+# Docker command
+ifeq ($(DOCKER),)
+	DOCKER=$(shell which docker)
+endif
+
+# Common commands
+GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
+GOVERSION=${shell go version | grep -Po '(go[0-9]+.[0-9]+)'}
+GOFMT=$(shell which gofmt)
+GOTEST=$(GO) test
+GODOC=GOPATH=$(GOPATH) $(shell which godoc)
+GOLANGCILINT=$(BINUTIL)/golangci-lint
+GOLANGCILINTVERSION=v2.5.0
+
+# Directory containing the source code
+SRCDIR=./pkg
+
+# List of packages
+GOPKGS=$(shell $(GO) list $(SRCDIR)/...)
+
+# Enable junit report when not in LOCAL mode
+ifeq ($(strip $(DEVMODE)),LOCAL)
+	TESTEXTRACMD=&& $(GO) tool cover -func=$(TARGETDIR)/report/coverage.out
+else
+	TESTEXTRACMD=2>&1 | tee >(PATH=$(GOPATH)/bin:$(PATH) go-junit-report > $(TARGETDIR)/test/report.xml); test $${PIPESTATUS[0]} -eq 0
+endif
+
+# Set default configuration file to generate a new project from the example service
 ifeq ($(CONFIG),)
-	CONFIG=default.cfg
+	CONFIG=project.cfg
 endif
 
 # Include the configuration file
 include $(CONFIG)
-
-# Generate a prefix for environmental variables
-UPROJECT=$(shell echo $(PROJECT) | tr a-z A-Z | tr - _)
-
 
 # --- MAKE TARGETS ---
 
@@ -32,89 +90,198 @@ UPROJECT=$(shell echo $(PROJECT) | tr a-z A-Z | tr - _)
 .PHONY: help
 help:
 	@echo ""
-	@echo "gogen Makefile."
+	@echo "$(PROJECT) Makefile."
+	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
-	@echo "    make new TYPE=app CONFIG=myproject.cfg  :  Generate a new go project"
-	@echo "    make clean                              :  Remove all generated projects"
+	@echo "  make clean      : Remove any build artifact"
+	@echo "  make coverage   : Generate the coverage report"
+	@echo "  make dbuild     : Build everything inside a Docker container"
+	@echo "  make deps       : Get dependencies"
+	@echo "  make example    : Build and test the service example"
+	@echo "  make format     : Format the source code"
+	@echo "  make generate   : Generate go code automatically"
+	@echo "  make linter     : Check code against multiple linters"
+	@echo "  make mod        : Download dependencies"
+	@echo "  make project    : Generate a new project from the example using the data set via CONFIG=project.cfg"
+	@echo "  make qa         : Run all tests and static analysis tools"
+	@echo "  make tag        : Tag the Git repository"
+	@echo "  make test       : Run unit tests"
+	@echo "  make updateall  : Update everything"
+	@echo "  make updatego   : Update Go version"
+	@echo "  make updatelint : Update golangci-lint version"
+	@echo "  make updatemod  : Update dependencies"
+	@echo "  make version    : Update this library version in the examples"
+	@echo "  make versionup  : Increase the patch number in the VERSION file"
 	@echo ""
-	@echo "    * TYPE is the project type:"
-	@echo "        lib : library"
-	@echo "        app : command-line application"
-	@echo "        srv : HTTP API service"
+	@echo "Use DEVMODE=LOCAL for human friendly output."
 	@echo ""
-	@echo "    * CONFIG is the configuration file containing the project settings."
+	@echo "To test and build everything from scratch:"
+	@echo "    DEVMODE=LOCAL make format clean mod deps generate qa example"
+	@echo "or use the shortcut:"
+	@echo "    make x"
 	@echo ""
 
 # Alias for help target
 all: help
 
-# Generate a new go project
-.PHONY: new
-new: newproject rename$(TYPE) template confirm
+# Alias to test and build everything from scratch
+.PHONY: x
+x:
+	DEVMODE=LOCAL $(MAKE) version format clean mod deps generate qa example
 
-# Copy the project template in the output folder
-.PHONY: newproject
-newproject:
-	@mkdir -p ./target/$(CVSPATH)/$(PROJECT)
-	@rm -rf ./target/$(CVSPATH)/$(PROJECT)/*
-	@cp -rf ./src/$(TYPE)/. ./target/$(CVSPATH)/$(PROJECT)/
-
-# Rename some application files
-.PHONY: renameapp
-renameapp:
-	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/usr/share/man/man1/project.1 ./target/$(CVSPATH)/$(PROJECT)/resources/usr/share/man/man1/$(PROJECT).1
-	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/$(PROJECT)
-	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/test/etc/project ./target/$(CVSPATH)/$(PROJECT)/resources/test/etc/$(PROJECT)
-
-# Rename some service files
-.PHONY: renamesrv
-renamesrv: renameapp
-	@mv ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/project ./target/$(CVSPATH)/$(PROJECT)/resources/etc/init.d/$(PROJECT)
-	@mv ./target/$(CVSPATH)/$(PROJECT)/project.test.Dockerfile ./target/$(CVSPATH)/$(PROJECT)/$(PROJECT).test.Dockerfile
-	
-# Rename some service files
-.PHONY: renamesrvnosql
-renamesrvnosql: renamesrv
-
-# Rename some lib files
-.PHONY: renamelib
-renamelib:
-	@mv ./target/$(CVSPATH)/$(PROJECT)/project.go ./target/$(CVSPATH)/$(PROJECT)/$(LIBPACKAGE).go
-	@mv ./target/$(CVSPATH)/$(PROJECT)/project_test.go ./target/$(CVSPATH)/$(PROJECT)/$(LIBPACKAGE)_test.go
-
-# Replace text templates in the code
-.PHONY: template
-template:
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#PROJECT#~/$(PROJECT)/g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#UPROJECT#~/$(UPROJECT)/g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#SHORTDESCRIPTION#~/$(SHORTDESCRIPTION)/g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s|~#CVSPATH#~|$(CVSPATH)|g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s|~#PROJECTLINK#~|$(PROJECTLINK)|g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#VENDOR#~/$(VENDOR)/g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#OWNER#~/$(OWNER)/g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#OWNEREMAIL#~/$(OWNEREMAIL)/g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#CURRENTYEAR#~/$(CURRENTYEAR)/g" {} \;
-	@find ./target/$(CVSPATH)/$(PROJECT)/ -type f -exec sed -i "s/~#LIBPACKAGE#~/$(LIBPACKAGE)/g" {} \;
-
-# Print confirmation message
-.PHONY: confirm
-confirm:
-	@echo "A new "$(TYPE)" project has been created: "target/$(CVSPATH)/$(PROJECT)
-
-# Remove all generated projects
+# Remove any build artifact
 .PHONY: clean
 clean:
-	@rm -rf ./target
+	rm -rf $(TARGETDIR)
 
+# Generate the coverage report
+.PHONY: coverage
+coverage: ensuretarget
+	$(GO) tool cover -html=$(TARGETDIR)/report/coverage.out -o $(TARGETDIR)/report/coverage.html
+
+# Build everything inside a Docker container
+.PHONY: dbuild
+dbuild: dockerdev
+	@mkdir -p $(TARGETDIR)
+	@rm -rf $(TARGETDIR)/*
+	@echo 0 > $(TARGETDIR)/make.exit
+	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' DOCKERTAG='$(DOCKERTAG)' $(CURRENTDIR)dockerbuild.sh
+	@exit `cat $(TARGETDIR)/make.exit`
+
+# Get the test dependencies
+.PHONY: deps
+deps: ensuretarget
+	curl --silent --show-error --fail --location "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
+
+# Build a base development Docker image
+.PHONY: dockerdev
+dockerdev:
+	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+
+# Create the trget directories if missing
+.PHONY: ensuretarget
+ensuretarget:
+	@mkdir -p $(TARGETDIR)/test
+	@mkdir -p $(TARGETDIR)/report
+	@mkdir -p $(TARGETDIR)/binutil
+
+# Build and test the example
+.PHONY: example
+example:
+	cd examples/service && \
+	make clean mod deps gendoc generate qa build
+
+# Format the source code
+.PHONY: format
+format:
+	@find $(SRCDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
+	cd examples/service && make format
+
+# Generate test mocks
+.PHONY: generate
+generate:
+	@find $(SRCDIR) -type f -name "*mock_test.go" -exec rm {} \;
+	$(GO) generate $(GOPKGS)
+
+# Execute multiple linter tools
+.PHONY: linter
+linter:
+	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
+	$(GOLANGCILINT) run --max-issues-per-linter 0 --max-same-issues 0 $(SRCDIR)/...
+	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
+
+# Download dependencies
+.PHONY: mod
+mod: gotools
+	$(GO) mod download all
+
+# Create a new project based on the example template
+.PHONY: project
+project:
+	cd examples/service && make clean
+	@mkdir -p ./target/$(gogenexamplecvspath)/$(gogenexample)
+	@rm -rf ./target/$(gogenexamplecvspath)/$(gogenexample)/*
+	@cp -rf examples/service/. ./target/$(gogenexamplecvspath)/$(gogenexample)/
+	sed -i '/^replace /d' ./target/$(gogenexamplecvspath)/$(gogenexample)/go.mod
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -regextype sed -regex '.*gogenexample.*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/gogenexample/$(gogenexample)/)"' \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -regextype sed -regex '.*GOGENEXAMPLE.*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/GOGENEXAMPLE/$(GOGENEXAMPLE)/)"' \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexampleshortdesc|$(gogenexampleshortdesc)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexamplelongdesc|$(gogenexamplelongdesc)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexampleauthor|$(gogenexampleauthor)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexampleemail|$(gogenexampleemail)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexamplecvspath|$(gogenexamplecvspath)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexampleprojectlink|$(gogenexampleprojectlink)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexampleowner|$(gogenexampleowner)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexamplevcsgit|$(gogenexamplevcsgit)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|gogenexample|$(gogenexample)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed -i "s|GOGENEXAMPLE|$(GOGENEXAMPLE)|g" {} \;
+
+# Run all tests and static analysis tools
+.PHONY: qa
+qa: linter test coverage
+
+# Tag the Git repository
+.PHONY: tag
+tag:
+	git tag -a "v$(VERSION)" -m "Version $(VERSION)" && \
+	git push origin --tags
+
+# Run the unit tests
 .PHONY: test
-test:
-	@echo "*** SRV ***"
-	make clean new TYPE=srv
-	cd target/github.com/dummyvendor/dummy && make buildall
-	@echo "*** APP ***"
-	make clean new TYPE=app
-	cd target/github.com/dummyvendor/dummy && make buildall
-	@echo "*** LIB ***"
-	make clean new TYPE=lib
-	cd target/github.com/dummyvendor/dummy && make buildall
+test: ensuretarget
+	@echo -e "\n\n>>> START: Unit Tests <<<\n\n"
+	$(GOTEST) \
+	-shuffle=on \
+	-tags=unit,benchmark \
+	-covermode=atomic \
+	-bench=. \
+	-race \
+	-failfast \
+	-coverprofile=$(TARGETDIR)/report/coverage.out \
+	-v $(GOPKGS) $(TESTEXTRACMD)
+	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
+
+# Get the go tools
+.PHONY: gotools
+gotools:
+	$(GO) get -tool go.uber.org/mock/mockgen@latest
+	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
+
+# Update everything
+.PHONY: updateall
+updateall: updatego updatelint updatemod
+
+# Update go version
+.PHONY: updatego
+updatego:
+	$(eval LAST_GO_TOOLCHAIN=$(shell curl -s https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64\.tar\.gz' | head -n 1 | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+'))
+	$(eval LAST_GO_VERSION=$(shell echo ${LAST_GO_TOOLCHAIN} | grep -oP '[0-9]+\.[0-9]+'))
+	sed -i "s|^go [0-9]*\.[0-9]*$$|go ${LAST_GO_VERSION}|g" go.mod
+	sed -i "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod
+	cd examples/service && make updatego
+
+# Update linter version
+.PHONY: updatelint
+updatelint:
+	$(eval LAST_GOLANGCILINT_VERSION=$(shell curl -sL https://github.com/golangci/golangci-lint/releases/latest | grep -oP '<title>Release \Kv[0-9]+\.[0-9]+\.[0-9]+'))
+	sed -i "s|^GOLANGCILINTVERSION=v[0-9]*\.[0-9]*\.[0-9]*$$|GOLANGCILINTVERSION=${LAST_GOLANGCILINT_VERSION}|g" Makefile
+	cd examples/service && make updatelint
+
+# Update dependencies
+.PHONY: updatemod
+updatemod: mod
+	$(GO) get -t -u ./... && \
+	$(GO) mod tidy -compat=$(shell grep -oP 'go \K[0-9]+\.[0-9]+' go.mod)
+	cd examples/service && make updatemod
+
+# Set the gogen version in the example go.mod
+.PHONY: version
+version:
+	sed -i "s|github.com/tecnickcom/gogen v.*$$|github.com/tecnickcom/gogen v$(VERSION)|" examples/service/go.mod
+
+# Increase the patch number in the VERSION file
+.PHONY: versionup
+versionup:
+	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION
+	$(MAKE) version

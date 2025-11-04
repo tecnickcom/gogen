@@ -1,0 +1,10 @@
+# Default response
+- request:
+    method: GET
+    path: /
+  response:
+    status: 200
+    headers:
+      Content-Type: text/plain
+    body: >
+      0.0.0.0

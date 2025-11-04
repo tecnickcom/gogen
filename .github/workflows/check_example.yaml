@@ -1,0 +1,72 @@
+name: check_example
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+permissions:
+  contents: read
+
+jobs:
+  example-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v5
+      - name: setup go build environment
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+      - name: dependency cache
+        uses: actions/cache@v4
+        with:
+          path: $(go env GOPATH)/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+      - name: linter
+        run: cd examples/service && make mod deps linter GOPATH=$(go env GOPATH)
+
+  example-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v5
+      - name: setup go build environment
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+      - name: dependency cache
+        uses: actions/cache@v4
+        with:
+          path: $(go env GOPATH)/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+      - name: unit tests
+        run: cd examples/service && make mod deps gendoc generate confcheck test GOPATH=$(go env GOPATH)
+
+  example-integration-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v5
+      - name: setup go build environment
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+      - name: dependency cache
+        uses: actions/cache@v4
+        with:
+          path: $(go env GOPATH)/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+      - name: set RELEASE number
+        run: cd examples/service && echo ${GITHUB_RUN_NUMBER} > RELEASE
+      - name: integration tests
+        run: cd examples/service && make mod deps generate build docker dockertest GOPATH=$(go env GOPATH)

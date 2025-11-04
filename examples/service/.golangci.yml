@@ -1,0 +1,89 @@
+version: "2"
+run:
+  issues-exit-code: 1
+  tests: true
+output:
+  formats:
+    text:
+      path: stdout
+linters:
+  default: all
+  disable:
+    - depguard
+    - err113
+    - exhaustruct
+    - gomoddirectives
+    - ireturn
+    - lll
+    - mnd
+    - musttag
+    - nlreturn
+    - promlinter
+    - tagliatelle
+    - testpackage
+    - varnamelen
+    - wsl
+  settings:
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+            - '!$test'
+          allow:
+            - $gostd
+            - github.com/Vonage
+        test:
+          files:
+            - $test
+          allow:
+            - $gostd
+            - github.com/stretchr
+    funlen:
+      lines: 100
+      statements: 50
+      ignore-comments: true
+    gocognit:
+      min-complexity: 10
+    gocyclo:
+      min-complexity: 10
+    misspell:
+      locale: US
+    whitespace:
+      multi-if: false
+      multi-func: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - funlen
+        path: _test.go
+    paths:
+      - .github
+      - .githook
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+  exclusions:
+    generated: lax
+    paths:
+      - .github
+      - .githook
+      - third_party$
+      - builtin$
+      - examples$

@@ -1,0 +1,10 @@
+#!/bin/sh
+# postinst script for gosrvlibexample
+
+set -e
+
+update-rc.d -f gosrvlibexample defaults
+
+#DEBHELPER#
+
+exit 0

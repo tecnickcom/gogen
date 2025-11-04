@@ -1,0 +1,30 @@
+{
+  "clients": {
+    "ipify": {
+      "address": "https://test.ipify.url.invalid",
+      "timeout": 1
+    }
+  },
+  "enabled": true,
+  "log": {
+    "address": "",
+    "format": "JSON",
+    "level": "DEBUG",
+    "network": ""
+  },
+  "remoteConfigEndpoint": "",
+  "remoteConfigPath": "",
+  "remoteConfigProvider": "",
+  "remoteConfigSecretKeyring": "",
+  "servers": {
+    "monitoring": {
+      "address": ":8072",
+      "timeout": 60
+    },
+    "public": {
+      "address": ":8071",
+      "timeout": 60
+    }
+  },
+  "shutdown_timeout": 3
+}

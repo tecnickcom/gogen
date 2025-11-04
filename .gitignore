@@ -1,6 +1,9 @@
-target
-/Dockerfile
-*.cfg
-!default.cfg
-**/target
+*.bak
+*.temp
 *.test
+*.tmp
+.idea
+/Dockerfile
+golangci-lint
+target
+vendor

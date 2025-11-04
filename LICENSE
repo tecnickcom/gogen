@@ -1,6 +1,11 @@
-The MIT License (MIT)
+MIT LICENSE
 
-Copyright (c) 2014-2020 Nicola Asuni - Tecnick.com LTD
+Copyright (c) 2025-2025 Nicola Asuni - Tecnick.com LTD :
+    - changes after merging gosrvlib back into https://github.com/tecnickcom/gogen
+Copyright (c) 2020-2025 Vonage :
+    - gogen refactored and extended into https://github.com/Vonage/gosrvlib
+Copyright (c) 2014-2020 Nicola Asuni - Tecnick.com LTD :
+    - original gogen project https://github.com/tecnickcom/gogen
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

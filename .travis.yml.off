@@ -1,0 +1,46 @@
+language: go
+
+dist: bionic
+
+sudo: true
+
+branches:
+  only:
+    - main
+
+go:
+  - '1.25'
+
+services:
+  - docker
+
+before_install:
+  - sudo apt-get update || true
+  - if [ -n "$GH_USER" ]; then git config --global github.user ${GH_USER}; fi;
+  - if [ -n "$GH_TOKEN" ]; then git config --global github.token ${GH_TOKEN}; fi;
+  - go get github.com/mattn/goveralls
+
+addons:
+  apt:
+    packages:
+    - devscripts
+    - fakeroot
+    - debhelper
+    - pkg-config
+    - alien
+    - rpm
+    - dh-make
+    - dh-golang
+    - upx-ucl
+    - python
+    - python-pip
+
+script:
+  - echo "$TRAVIS_BUILD_NUMBER" > RELEASE
+  - make mod deps qa example
+
+after_failure:
+  - cat ./target/test/report.xml
+
+after_success:
+  - $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci
