@@ -3,8 +3,8 @@ package sqs
 import (
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
 func Test_loadConfig(t *testing.T) {
@@ -16,7 +16,6 @@ func Test_loadConfig(t *testing.T) {
 
 	o := awsopt.Options{}
 	o.WithRegion(region)
-	// o.WithEndpoint("https://test.endpoint.invalid", true) // deprecated
 
 	got, err := loadConfig(
 		t.Context(),

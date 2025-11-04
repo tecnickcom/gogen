@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/httputil"
 )
 
 func TestRouterWithHandler(t *testing.T) {

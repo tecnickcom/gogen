@@ -9,9 +9,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpserver"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 

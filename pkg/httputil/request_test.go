@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func TestAddBasicAuth(t *testing.T) {

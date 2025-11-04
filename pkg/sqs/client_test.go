@@ -5,11 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
 func TestNew(t *testing.T) {
@@ -20,7 +20,6 @@ func TestNew(t *testing.T) {
 
 	o := awsopt.Options{}
 	o.WithRegion("eu-west-1")
-	// o.WithEndpoint("https://test.endpoint.invalid", true) // deprecated
 
 	got, err := New(
 		t.Context(),

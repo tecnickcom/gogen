@@ -3,8 +3,8 @@ package testutil
 import (
 	"context"
 
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/julienschmidt/httprouter"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"

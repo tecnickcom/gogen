@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/encode"
 	libredis "github.com/redis/go-redis/v9"
+	"github.com/tecnickcom/gogen/pkg/encode"
 )
 
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().

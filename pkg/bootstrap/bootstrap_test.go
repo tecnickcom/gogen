@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 	"github.com/tecnickcom/gogen/pkg/metrics/prometheus"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 

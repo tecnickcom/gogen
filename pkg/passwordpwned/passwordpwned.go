@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/tecnickcom/gogen/pkg/logging"
 	brotli "github.com/aperturerobotics/go-brotli-decoder"
+	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
 // IsPwnedPassword returns true if the password has been found pwned.

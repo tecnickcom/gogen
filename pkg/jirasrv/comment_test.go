@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/timeutil"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/timeutil"
 )
 
 func TestComment_MarshalJSON(t *testing.T) {

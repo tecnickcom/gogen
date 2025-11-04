@@ -4,10 +4,10 @@ import (
 	"context"
 	"net/url"
 
-	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sep "github.com/aws/smithy-go/endpoints"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
 // SrvOptionFunc is an alias for this service option function.

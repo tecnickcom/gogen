@@ -15,8 +15,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/jmoiron/sqlx"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"go.uber.org/zap"
 )
 

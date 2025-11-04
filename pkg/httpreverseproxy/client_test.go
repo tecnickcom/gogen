@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/zap"
 )
 

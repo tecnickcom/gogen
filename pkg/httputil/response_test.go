@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/mock/gomock"
 )
 

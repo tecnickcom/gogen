@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogenexampleowner/gogenexample/internal/metrics"
+	"github.com/spf13/cobra"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/config"
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
 	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/gogenexampleowner/gogenexample/internal/metrics"
-	"github.com/spf13/cobra"
 )
 
 type bootstrapFunc func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error

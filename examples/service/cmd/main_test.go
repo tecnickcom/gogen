@@ -5,10 +5,10 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/gogenexampleowner/gogenexample/internal/cli"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/zap"
 )
 

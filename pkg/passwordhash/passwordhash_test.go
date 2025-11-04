@@ -5,8 +5,8 @@ import (
 	"testing"
 	"testing/iotest"
 
-	"github.com/tecnickcom/gogen/pkg/random"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/random"
 	"golang.org/x/crypto/argon2"
 )
 

@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	awssrv "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
 func Test_WithAWSOptions(t *testing.T) {

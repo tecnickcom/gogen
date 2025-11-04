@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"github.com/stretchr/testify/require"
 )
 
 //nolint:gocognit,paralleltest,tparallel

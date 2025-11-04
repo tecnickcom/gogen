@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/mock/gomock"
 )
 
@@ -397,6 +397,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 					StatusCode: http.StatusInternalServerError,
 					Body:       io.NopCloser(bytes.NewReader([]byte{})),
 				}
+
 				mock.EXPECT().Do(gomock.Any()).DoAndReturn(func(_ *http.Request) (*http.Response, error) {
 					time.Sleep(500 * time.Millisecond)
 					return rErr, nil

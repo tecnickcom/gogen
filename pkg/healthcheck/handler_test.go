@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewHandler(t *testing.T) {

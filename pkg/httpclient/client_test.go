@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/logging"
 	"go.uber.org/zap"
 )
 

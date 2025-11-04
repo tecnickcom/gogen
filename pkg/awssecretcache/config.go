@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/awsopt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
 // SecretsManagerClient represents the mockable functions in the AWS SDK SecretsManagerClient client.

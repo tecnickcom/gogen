@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/awsopt"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
 type mockSecretsManagerClient struct {

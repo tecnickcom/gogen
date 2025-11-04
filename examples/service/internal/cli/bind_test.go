@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogenexampleowner/gogenexample/internal/metrics"
+	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
 	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"github.com/gogenexampleowner/gogenexample/internal/metrics"
-	"github.com/stretchr/testify/require"
 )
 
 //nolint:gocognit,paralleltest,tparallel

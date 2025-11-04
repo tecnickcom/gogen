@@ -2,9 +2,9 @@
 package main
 
 import (
+	"github.com/gogenexampleowner/gogenexample/internal/cli"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/gogenexampleowner/gogenexample/internal/cli"
 	"go.uber.org/zap"
 )
 

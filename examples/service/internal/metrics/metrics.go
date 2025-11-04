@@ -2,9 +2,9 @@
 package metrics
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 	prom "github.com/tecnickcom/gogen/pkg/metrics/prometheus"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (

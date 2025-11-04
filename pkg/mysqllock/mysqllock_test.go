@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func TestDB_Acquire(t *testing.T) {

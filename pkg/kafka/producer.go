@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/encode"
 	"github.com/segmentio/kafka-go"
+	"github.com/tecnickcom/gogen/pkg/encode"
 )
 
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().

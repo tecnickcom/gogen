@@ -3,8 +3,8 @@ package passwordpwned
 import (
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func TestNew(t *testing.T) {

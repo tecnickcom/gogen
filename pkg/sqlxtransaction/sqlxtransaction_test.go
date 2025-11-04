@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func Test_Exec(t *testing.T) {

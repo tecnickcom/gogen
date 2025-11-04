@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogenexampleowner/gogenexample/internal/httphandler"
+	instr "github.com/gogenexampleowner/gogenexample/internal/metrics"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/healthcheck"
 	"github.com/tecnickcom/gogen/pkg/httpclient"
@@ -15,8 +17,6 @@ import (
 	"github.com/tecnickcom/gogen/pkg/ipify"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 	"github.com/tecnickcom/gogen/pkg/traceid"
-	"github.com/gogenexampleowner/gogenexample/internal/httphandler"
-	instr "github.com/gogenexampleowner/gogenexample/internal/metrics"
 	"go.uber.org/zap"
 )
 

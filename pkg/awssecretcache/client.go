@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/sfcache"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/tecnickcom/gogen/pkg/sfcache"
 )
 
 // Cache is a wrapper for the SecretsManager client in the AWS SDK.
