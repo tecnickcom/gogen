@@ -7,9 +7,7 @@ import (
 func BenchmarkPasswordHash(b *testing.B) {
 	p := New()
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_, _ = p.PasswordHash("Benchmark-Password-Hash-Test")
 	}
 }
@@ -19,9 +17,7 @@ func BenchmarkPasswordVerify(b *testing.B) {
 
 	hash := "eyJQIjp7IkEiOiJhcmdvbjJpZCIsIlYiOjE5LCJLIjozMiwiUyI6MTYsIlQiOjMsIk0iOjY1NTM2LCJQIjoxNn0sIlMiOiJ3UVltNGJma3RiSHEyb21Jd0Z1KzRRPT0iLCJLIjoiYVU4aE85MDBPZHE2YUt0V2lXejNSVzl5Z243MzRsaUphUHRNNnludmtZST0ifQo="
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_, _ = p.PasswordVerify("Test-Password-01234", hash)
 	}
 }
@@ -32,9 +28,7 @@ func Benchmark_EncryptPasswordHash(b *testing.B) {
 	key := []byte("abcdefghijklmnopqrstuvwxyz012345")
 	secret := "Benchmark-Password-Encrypt-Hash-Test"
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_, _ = p.EncryptPasswordHash(key, secret)
 	}
 }

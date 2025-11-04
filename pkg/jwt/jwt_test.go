@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -385,11 +385,11 @@ func testUserHash(username string) ([]byte, error) {
 
 type testSigningMethodError struct{}
 
-func (c *testSigningMethodError) Verify(_ string, _ []byte, _ interface{}) error {
+func (c *testSigningMethodError) Verify(_ string, _ []byte, _ any) error {
 	return errors.New("VERIFY ERROR")
 }
 
-func (c *testSigningMethodError) Sign(_ string, _ interface{}) ([]byte, error) {
+func (c *testSigningMethodError) Sign(_ string, _ any) ([]byte, error) {
 	return nil, errors.New("SIGN ERROR")
 }
 

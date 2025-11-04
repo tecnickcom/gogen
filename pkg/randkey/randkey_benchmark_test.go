@@ -5,9 +5,7 @@ import (
 )
 
 func BenchmarkNew(b *testing.B) {
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = New()
 	}
 }

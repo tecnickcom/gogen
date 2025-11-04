@@ -62,7 +62,7 @@ func convertStringValue(v any) (string, bool) {
 
 	// Convert string aliases back to string
 	vv := reflect.ValueOf(v)
-	st := reflect.TypeOf("")
+	st := reflect.TypeFor[string]()
 
 	if !vv.CanConvert(st) {
 		return "", false

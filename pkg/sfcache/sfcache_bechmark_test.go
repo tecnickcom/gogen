@@ -39,9 +39,7 @@ func BenchmarkLookup_cache_hit(b *testing.B) {
 
 	var j int
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		j++
 		if j > size {
 			j = 0

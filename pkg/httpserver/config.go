@@ -7,17 +7,18 @@ import (
 	"math"
 	"net/http"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/tecnickcom/gogen/pkg/ipify"
 	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/profiling"
 	"github.com/tecnickcom/gogen/pkg/redact"
 	"github.com/tecnickcom/gogen/pkg/traceid"
-	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )
 
@@ -94,13 +95,7 @@ func defaultConfig() *config {
 }
 
 func (c *config) isIndexRouteEnabled() bool {
-	for _, r := range c.defaultEnabledRoutes {
-		if r == IndexRoute {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(c.defaultEnabledRoutes, IndexRoute)
 }
 
 // validateAddr checks if a http server bind address is valid.

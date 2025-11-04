@@ -270,11 +270,7 @@ func Test_Lookup_concurrent_slow(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range nlookup {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			val, err := c.Lookup(t.Context(), "example.org")
 
 			v, ok := val.([]string)
@@ -284,7 +280,7 @@ func Test_Lookup_concurrent_slow(t *testing.T) {
 			}
 
 			ret <- retval{err, v}
-		}()
+		})
 	}
 
 	go func() {
@@ -323,11 +319,7 @@ func Test_Lookup_concurrent_fast(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range nlookup {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			val, err := c.Lookup(t.Context(), "example.org")
 
 			v, ok := val.([]string)
@@ -337,7 +329,7 @@ func Test_Lookup_concurrent_fast(t *testing.T) {
 			}
 
 			ret <- retval{err, v}
-		}()
+		})
 	}
 
 	go func() {
@@ -385,11 +377,7 @@ func Test_Lookup_error(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range nlookup {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			val, err := c.Lookup(t.Context(), "example.net")
 
 			v, ok := val.([]string)
@@ -399,7 +387,7 @@ func Test_Lookup_error(t *testing.T) {
 			}
 
 			ret <- retval{err, v}
-		}()
+		})
 	}
 
 	go func() {
@@ -434,11 +422,7 @@ func Test_Lookup_error_concurrent_fast(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range nlookup {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			val, err := c.Lookup(t.Context(), "example.net")
 
 			v, ok := val.([]string)
@@ -448,7 +432,7 @@ func Test_Lookup_error_concurrent_fast(t *testing.T) {
 			}
 
 			ret <- retval{err, v}
-		}()
+		})
 	}
 
 	go func() {

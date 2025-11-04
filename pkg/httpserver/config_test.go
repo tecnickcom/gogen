@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func Test_defaultConfig(t *testing.T) {
@@ -124,7 +124,6 @@ func Test_config_isIndexRouteEnabled(t *testing.T) {
 }
 
 func Test_setRouter(t *testing.T) {
-	//nolint:iface
 	type testRouter interface {
 		http.Handler
 

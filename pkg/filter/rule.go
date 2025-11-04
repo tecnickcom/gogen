@@ -83,8 +83,8 @@ func (r *Rule) Evaluate(value any) (bool, error) {
 func (r *Rule) getEvaluator() (Evaluator, error) {
 	t := strings.ToLower(r.Type)
 
-	if strings.HasPrefix(t, TypePrefixNot) {
-		e, err := r.getBaseTypeEvaluator(strings.TrimPrefix(t, TypePrefixNot))
+	if after, ok := strings.CutPrefix(t, TypePrefixNot); ok {
+		e, err := r.getBaseTypeEvaluator(after)
 		if err != nil {
 			return nil, err
 		}

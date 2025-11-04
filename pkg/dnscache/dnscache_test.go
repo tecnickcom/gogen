@@ -96,14 +96,10 @@ func Test_LookupHost_concurrent_slow(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range nlookup {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			addrs, err := c.LookupHost(t.Context(), "example.org")
 			ret <- retval{err, addrs}
-		}()
+		})
 	}
 
 	go func() {
@@ -144,14 +140,10 @@ func Test_LookupHost_concurrent_fast(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range nlookup {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			addrs, err := c.LookupHost(t.Context(), "example.org")
 			ret <- retval{err, addrs}
-		}()
+		})
 	}
 
 	go func() {
@@ -201,14 +193,10 @@ func Test_LookupHost_error(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range nlookup {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			addrs, err := c.LookupHost(t.Context(), "example.net")
 			ret <- retval{err, addrs}
-		}()
+		})
 	}
 
 	go func() {
@@ -245,14 +233,10 @@ func Test_LookupHost_error_concurrent_fast(t *testing.T) {
 	wg := &sync.WaitGroup{}
 
 	for range nlookup {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+		wg.Go(func() {
 			addrs, err := c.LookupHost(t.Context(), "example.net")
 			ret <- retval{err, addrs}
-		}()
+		})
 	}
 
 	go func() {
