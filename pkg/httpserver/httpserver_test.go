@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
@@ -324,7 +324,7 @@ func TestStart(t *testing.T) {
 				WithRequestTimeout(1 * time.Minute),
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithEnableAllDefaultRoutes(),
-				WithInstrumentHandler(func(_ string, handler http.HandlerFunc) http.Handler { return handler }),
+				WithMiddlewareFn(func(_ MiddlewareArgs, next http.Handler) http.Handler { return next }),
 				WithShutdownTimeout(1 * time.Second),
 			},
 			setupBinder: func(b *MockBinder) {
