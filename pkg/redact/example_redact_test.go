@@ -14,7 +14,7 @@ Host: test.redact.invalid
 User-Agent: Go-http-client/1.1
 Authorization: Basic SECRET_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789=
 authorization : ApiKey=SECRET OtherData=SECRET
-X-Nexmo-Trace-Id: abcdef0123456789
+X-GOGEN-Trace-Id: abcdef0123456789
 Accept-Encoding: gzip
 
 password=SECRET
@@ -50,7 +50,7 @@ alpha=beta&password=SECRET&key=SECRET&gamma=delta
 	// User-Agent: Go-http-client/1.1
 	// Authorization: @~REDACTED~@
 	// authorization : @~REDACTED~@
-	// X-Nexmo-Trace-Id: abcdef0123456789
+	// X-GOGEN-Trace-Id: abcdef0123456789
 	// Accept-Encoding: gzip
 	//
 	// password=@~REDACTED~@
