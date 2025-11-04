@@ -149,7 +149,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=$(GO) test
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v2.5.0
+GOLANGCILINTVERSION=v2.6.1
 DOCKERIZEVERSION=v0.9.2
 
 # Current operating system and architecture as one string.
