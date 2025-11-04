@@ -1,18 +1,18 @@
 ---
 # yamllint disable rule:line-length
 project:
-  name: gosrvlibexample
-  title: gosrvlibexample
+  name: gogenexample
+  title: gogenexample
   category: Application
   copyright_start_year: "2020"
-  copyright_owner: gosrvlibexampleowner
-  license_url: https://github.com/gosrvlibexampleowner/gosrvlibexample/blob/main/LICENSE
-  cvs: https://github.com/gosrvlibexampleowner/gosrvlibexample
-  tagline: gosrvlibexampleshortdesc
+  copyright_owner: gogenexampleowner
+  license_url: https://github.com/gogenexampleowner/gogenexample/blob/main/LICENSE
+  cvs: https://github.com/gogenexampleowner/gogenexample
+  tagline: gogenexampleshortdesc
   logo: doc/images/logo.png
 team:
-  name: gosrvlibexampleowner
-  title: gosrvlibexampleowner
+  name: gogenexampleowner
+  title: gogenexampleowner
   info:
   slack:
   escalation:
@@ -25,7 +25,7 @@ doclinks:
       links:
         github:
           name: GitHup project page
-          url: gosrvlibexampleprojectlink
+          url: gogenexampleprojectlink
 slack:
 dependencies:
 environment:

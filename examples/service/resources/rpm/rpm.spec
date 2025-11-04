@@ -8,7 +8,7 @@
 Name:      %{_package}
 Version:   %{_version}
 Release:   %{_release}%{?dist}
-Summary:   gosrvlibexampleshortdesc
+Summary:   gogenexampleshortdesc
 
 Group:     Applications/Services
 License:   %{_docpath}/LICENSE
@@ -19,7 +19,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-%(%{__id_u} -n)
 Provides:  %{gh_project} = %{version}
 
 %description
-gosrvlibexampleshortdesc
+gogenexampleshortdesc
 
 %build
 #(cd %{_current_directory} && make build)
@@ -41,6 +41,6 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{_configpath}*
 
 %changelog
-* Wed Jan 01 2025 gosrvlibexampleauthor <gosrvlibexampleemail> 1.0.0-1
+* Wed Jan 01 2025 gogenexampleauthor <gogenexampleemail> 1.0.0-1
 - Initial Commit
 

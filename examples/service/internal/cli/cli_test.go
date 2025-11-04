@@ -64,12 +64,12 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name:    "fails with valid config and invalid override of log format",
-			osArgs:  []string{AppName, "-c", "../../resources/test/etc/gosrvlibexample/", "--logFormat", "invalid"},
+			osArgs:  []string{AppName, "-c", "../../resources/test/etc/gogenexample/", "--logFormat", "invalid"},
 			wantErr: true,
 		},
 		{
 			name:    "fails with valid config and invalid override of log level",
-			osArgs:  []string{AppName, "-c", "../../resources/test/etc/gosrvlibexample/", "--logLevel", "invalid"},
+			osArgs:  []string{AppName, "-c", "../../resources/test/etc/gogenexample/", "--logLevel", "invalid"},
 			wantErr: true,
 		},
 		{
@@ -79,7 +79,7 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name:   "bootstrap with valid configuration",
-			osArgs: []string{AppName, "-c", "../../resources/test/etc/gosrvlibexample/"},
+			osArgs: []string{AppName, "-c", "../../resources/test/etc/gogenexample/"},
 			boostrapFunc: func(_ bootstrap.BindFunc, _ ...bootstrap.Option) error {
 				return nil
 			},

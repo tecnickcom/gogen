@@ -1,15 +1,15 @@
 openapi: 3.0.3
 info:
-  title: gosrvlibexample
+  title: gogenexample
   description: Monitoring API
   contact:
     email: dev@example.com
   license:
     name: Internal use only. All rights reserved.
-    url: https://github.com/gosrvlibexampleowner/gosrvlibexample/blob/main/LICENSE
+    url: https://github.com/gogenexampleowner/gogenexample/blob/main/LICENSE
   version: 1.0.0
 servers:
-  - url: https://gosrvlibexample:8072/
+  - url: https://gogenexample:8072/
 security:
   - {}
 tags:
@@ -152,7 +152,7 @@ components:
       properties:
         program:
           type: string
-          description: program name (i.e. gosrvlibexample)
+          description: program name (i.e. gogenexample)
         version:
           type: string
           description: service version number (e.g. "1.2.3")

@@ -1,9 +1,9 @@
 #!/bin/sh
-# postinst script for gosrvlibexample
+# postinst script for gogenexample
 
 set -e
 
-update-rc.d -f gosrvlibexample defaults
+update-rc.d -f gogenexample defaults
 
 #DEBHELPER#
 

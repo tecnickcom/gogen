@@ -1,21 +1,21 @@
-<!-- Space: gosrvlibexampleowner -->
+<!-- Space: gogenexampleowner -->
 <!-- Parent: Projects -->
-<!-- Title: gosrvlibexample -->
+<!-- Title: gogenexample -->
 <!-- Attachment: doc/images/logo.png -->
 
-# gosrvlibexample
+# gogenexample
 
-*gosrvlibexampleshortdesc*
+*gogenexampleshortdesc*
 
-![gosrvlibexample logo](doc/images/logo.png)
+![gogenexample logo](doc/images/logo.png)
 
 * **category:**    Application
-* **copyright:**   2020-2025 gosrvlibexampleowner
-* **license:**     [LICENSE](https://github.com/gosrvlibexampleowner/gosrvlibexample/blob/main/LICENSE)
-* **cvs:**         https://github.com/gosrvlibexampleowner/gosrvlibexample
-* **team:**        [gosrvlibexampleowner](<no value>) ([<no value>](https://gosrvlibexampleowner.slack.com/channels/<no value>)) [escalation](<no value>)
+* **copyright:**   2020-2025 gogenexampleowner
+* **license:**     [LICENSE](https://github.com/gogenexampleowner/gogenexample/blob/main/LICENSE)
+* **cvs:**         https://github.com/gogenexampleowner/gogenexample
+* **team:**        [gogenexampleowner](<no value>) ([<no value>](https://gogenexampleowner.slack.com/channels/<no value>)) [escalation](<no value>)
 
-[![check](https://github.com/gosrvlibexampleowner/gosrvlibexample/actions/workflows/check.yaml/badge.svg)](https://github.com/gosrvlibexampleowner/gosrvlibexample/actions/workflows/check.yaml)
+[![check](https://github.com/gogenexampleowner/gogenexample/actions/workflows/check.yaml/badge.svg)](https://github.com/gogenexampleowner/gogenexample/actions/workflows/check.yaml)
 
 ----------
 
@@ -31,7 +31,7 @@
 
 <a name="description"></a>
 ## Description
-gosrvlibexamplelongdesc
+gogenexamplelongdesc
 
 
 ----------
@@ -45,7 +45,7 @@ gosrvlibexamplelongdesc
 	<a name="documentation_public_general"></a>
 	* General  
 	_General project documentation_
-		* [GitHup project page](gosrvlibexampleprojectlink)
+		* [GitHup project page](gogenexampleprojectlink)
 
 
 ----------
@@ -85,11 +85,11 @@ https://github.com/uber-go/guide/blob/master/style.md
 To quickly get started with this project, follow these steps:
 
 1. Ensure you have installed the latest Go version and Python3 for some extra tests.
-1. Clone the repository: `git clone https://github.com/gosrvlibexampleowner/gosrvlibexample.git`.
-2. Change into the project directory: `cd gosrvlibexample`.
+1. Clone the repository: `git clone https://github.com/gogenexampleowner/gogenexample.git`.
+2. Change into the project directory: `cd gogenexample`.
 3. Install the required dependencies and test everything: `DEVMODE=LOCAL make x`.
 
-Now you are ready to start developing with /gosrvlibexample!
+Now you are ready to start developing with /gogenexample!
 
 
 This project includes a *Makefile* that allows you to test and build the project in a Linux-compatible system with simple commands.  
@@ -131,7 +131,7 @@ make gendoc
 ## Usage
 
 ```bash
-gosrvlibexample [flags]
+gogenexample [flags]
 
 Flags:
 
@@ -146,7 +146,7 @@ Flags:
 Once the application has being compiled with `make build`, it can be quickly tested:
 
 ```bash
-target/usr/bin/gosrvlibexample -c resources/test/etc/gosrvlibexample
+target/usr/bin/gogenexample -c resources/test/etc/gogenexample
 ```
 
 
@@ -160,7 +160,7 @@ This program logs the log messages in JSON format:
 	"level": "info",
 	"timestamp": 1595942715776382171,
 	"msg": "Request",
-	"program": "gosrvlibexample",
+	"program": "gogenexample",
 	"version": "0.0.0",
 	"release": "0",
     "hostname":"myserver",
@@ -210,7 +210,7 @@ pprof -seconds 10 -http=localhost:8182 http://INSTANCE_URL:PORT/pprof/profile
 <a name="openapi"></a>
 ## OpenAPI
 
-The gosrvlibexample API is specified via the [OpenAPI 3](https://www.openapis.org/) file: `openapi.yaml`.
+The gogenexample API is specified via the [OpenAPI 3](https://www.openapis.org/) file: `openapi.yaml`.
 
 The openapi file can be edited using the Swagger Editor:
 
@@ -225,7 +225,7 @@ and pointing the Web browser to http://localhost:8056
 <a name="docker"></a>
 ## Docker
 
-To build a Docker scratch container for the gosrvlibexample executable binary execute the following command:
+To build a Docker scratch container for the gogenexample executable binary execute the following command:
 ```
 make docker
 ```
@@ -234,17 +234,17 @@ make docker
 
 To manually create the container you can execute:
 ```
-docker build --tag="gosrvlibexampleowner/gosrvlibexampledev" .
+docker build --tag="gogenexampleowner/gogenexampledev" .
 ```
 
 To log into the newly created container:
 ```
-docker run -t -i gosrvlibexampleowner/gosrvlibexampledev /bin/bash
+docker run -t -i gogenexampleowner/gogenexampledev /bin/bash
 ```
 
 To get the container ID:
 ```
-CONTAINER_ID=`docker ps -a | grep gosrvlibexampleowner/gosrvlibexampledev | cut -c1-12`
+CONTAINER_ID=`docker ps -a | grep gogenexampleowner/gogenexampledev | cut -c1-12`
 ```
 
 To delete the newly created docker container:
@@ -254,7 +254,7 @@ docker rm -f $CONTAINER_ID
 
 To delete the docker image:
 ```
-docker rmi -f gosrvlibexampleowner/gosrvlibexampledev
+docker rmi -f gogenexampleowner/gogenexampledev
 ```
 
 To delete all containers

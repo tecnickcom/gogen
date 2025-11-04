@@ -15,8 +15,8 @@ import (
 	"github.com/tecnickcom/gogen/pkg/ipify"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 	"github.com/tecnickcom/gogen/pkg/traceid"
-	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/httphandler"
-	instr "github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
+	"github.com/gogenexampleowner/gogenexample/internal/httphandler"
+	instr "github.com/gogenexampleowner/gogenexample/internal/metrics"
 	"go.uber.org/zap"
 )
 

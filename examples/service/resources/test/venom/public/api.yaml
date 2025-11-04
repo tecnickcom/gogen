@@ -1,7 +1,7 @@
 version: "2"
-name: gosrvlibexample Public API tests
+name: gogenexample Public API tests
 vars:
-  gosrvlibexample.url: 'http://gosrvlibexample:8071'
+  gogenexample.url: 'http://gogenexample:8071'
 
 testcases:
 
@@ -10,7 +10,7 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gosrvlibexample.url}}/error'
+    url: '{{.gogenexample.url}}/error'
     assertions:
     - result.statuscode ShouldEqual 404
 
@@ -19,7 +19,7 @@ testcases:
     - type: http
       ignore_verify_ssl optional: true
       method: GET
-      url: '{{.gosrvlibexample.url}}/ping'
+      url: '{{.gogenexample.url}}/ping'
       assertions:
         - result.statuscode ShouldEqual 200
 
@@ -28,7 +28,7 @@ testcases:
     - type: http
       ignore_verify_ssl optional: true
       method: GET
-      url: '{{.gosrvlibexample.url}}/uid'
+      url: '{{.gogenexample.url}}/uid'
       assertions:
         - result.statuscode ShouldEqual 200
         - result.body ShouldNotBeEmpty

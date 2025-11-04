@@ -11,7 +11,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/config"
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
 	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/metrics"
+	"github.com/gogenexampleowner/gogenexample/internal/metrics"
 	"github.com/spf13/cobra"
 )
 

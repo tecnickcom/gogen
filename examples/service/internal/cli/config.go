@@ -7,16 +7,16 @@ import (
 
 const (
 	// AppName is the name of the application executable.
-	AppName = "gosrvlibexample"
+	AppName = "gogenexample"
 
 	// appEnvPrefix is the prefix of the configuration environment variables.
-	appEnvPrefix = "GOSRVLIBEXAMPLE"
+	appEnvPrefix = "GOGENEXAMPLE"
 
 	// appShortDesc is the short description of the application.
-	appShortDesc = "gosrvlibexampleshortdesc"
+	appShortDesc = "gogenexampleshortdesc"
 
 	// appLongDesc is the long description of the application.
-	appLongDesc = "gosrvlibexamplelongdesc"
+	appLongDesc = "gogenexamplelongdesc"
 
 	// fieldTagName is the name of the tag containing the original JSON field name.
 	fieldTagName = "mapstructure"

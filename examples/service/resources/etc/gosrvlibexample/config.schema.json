@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
-  "description": "JSON schema for gosrvlibexample configuration",
+  "description": "JSON schema for gogenexample configuration",
   "properties": {
     "clients": {
       "additionalProperties": false,
@@ -116,7 +116,7 @@
     },
     "remoteConfigPath": {
       "default": "",
-      "description": "Remote configuration path in which to search for the configuration file (e.g. '/config/gosrvlibexample')",
+      "description": "Remote configuration path in which to search for the configuration file (e.g. '/config/gogenexample')",
       "title": "Remote Configuration Path",
       "type": "string"
     },
@@ -134,7 +134,7 @@
     },
     "remoteConfigSecretKeyring": {
       "default": "",
-      "description": "Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. '/etc/gosrvlibexample/configkey.gpg'); if empty a non secure connection will be used instead",
+      "description": "Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. '/etc/gogenexample/configkey.gpg'); if empty a non secure connection will be used instead",
       "title": "Remote Configuration Secret Keyring",
       "type": "string"
     },
@@ -233,6 +233,6 @@
     "log",
     "servers"
   ],
-  "title": "Configuration for gosrvlibexample",
+  "title": "Configuration for gogenexample",
   "type": "object"
 }

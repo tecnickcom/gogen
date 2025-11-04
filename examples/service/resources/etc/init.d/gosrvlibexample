@@ -1,22 +1,22 @@
 #!/bin/bash
 #
 #chkconfig: 235 99 01
-#description: Starts and stops gosrvlibexample service
+#description: Starts and stops gogenexample service
 #author: Nicola Asuni
 
 ### BEGIN INIT INFO
-# Provides:          gosrvlibexample
+# Provides:          gogenexample
 # Required-Start:    $remote_fs
 # Required-Stop:     $remote_fs
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start gosrvlibexample
-# Description:       gosrvlibexampleshortdesc
+# Short-Description: Start gogenexample
+# Description:       gogenexampleshortdesc
 ### END INIT INFO
 
-CMD="/usr/bin/gosrvlibexample"
-LOGFILE="/var/log/gosrvlibexample.log"
-LOCKFILE="/var/lock/gosrvlibexample"
+CMD="/usr/bin/gogenexample"
+LOGFILE="/var/log/gogenexample.log"
+LOCKFILE="/var/lock/gogenexample"
 PID=`ps ax | grep -v grep | grep "$CMD" | awk '{print $1;}'`
 RETVAL=0
 
@@ -33,7 +33,7 @@ fi
 
 # Start the service
 start() {
-	echo -n "Starting gosrvlibexample: "
+	echo -n "Starting gogenexample: "
 	if test -f $LOCKFILE ; then
 		# check if the process is running
 		if [ ! -z "$PID" ]; then
@@ -53,7 +53,7 @@ start() {
 
 # Restart the service
 stop() {
-	echo -n "Stopping gosrvlibexample: "
+	echo -n "Stopping gogenexample: "
 	# check if the process is running
 	if [ ! -z "$PID" ]; then
 		# kill the process
@@ -77,7 +77,7 @@ case "$1" in
 		stop
 		;;
 	status)
-		echo -n "gosrvlibexample status: "
+		echo -n "gogenexample status: "
 		if [ ! -z "$PID" ]; then
 			RETVAL=0
 			echo "Service is running."

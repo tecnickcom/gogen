@@ -1,4 +1,4 @@
-module github.com/gosrvlibexampleowner/gosrvlibexample
+module github.com/gogenexampleowner/gogenexample
 
 go 1.25.0
 

@@ -78,10 +78,10 @@ highest):
     package as they are common to all programs.
 
   - The configuration file format of the example service is defined by
-    examples/service/resources/etc/gosrvlibexample/config.schema.json
+    examples/service/resources/etc/gogenexample/config.schema.json
 
   - The default configuration file of the example service is defined by
-    examples/service/resources/etc/gosrvlibexample/config.json
+    examples/service/resources/etc/gogenexample/config.json
 */
 package config
 

@@ -1,9 +1,9 @@
 #!/bin/sh
-# postrm script for gosrvlibexample
+# postrm script for gogenexample
 
 set -e
 
-update-rc.d -f gosrvlibexample remove
+update-rc.d -f gogenexample remove
 
 #DEBHELPER#
 

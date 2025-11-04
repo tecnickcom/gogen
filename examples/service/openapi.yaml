@@ -1,15 +1,15 @@
 openapi: 3.0.3
 info:
-  title: gosrvlibexample
+  title: gogenexample
   description: Public API
   contact:
     email: dev@example.com
   license:
     name: Internal use only. All rights reserved.
-    url: https://github.com/gosrvlibexampleowner/gosrvlibexample/blob/main/LICENSE
+    url: https://github.com/gogenexampleowner/gogenexample/blob/main/LICENSE
   version: 1.0.0
 servers:
-  - url: https://gosrvlibexample:8071/
+  - url: https://gogenexample:8071/
 security:
   - {}
 tags:

@@ -1,15 +1,15 @@
 Source: ~#PKGNAME#~
-Maintainer: gosrvlibexampleowner <gosrvlibexampleemail>
+Maintainer: gogenexampleowner <gogenexampleemail>
 Section: utils
 Priority: optional
 Build-Depends: debhelper (>= 9), dh-golang
 Standards-Version: 3.9.7
-Homepage: gosrvlibexampleprojectlink
-Vcs-Git: gosrvlibexamplevcsgit
+Homepage: gogenexampleprojectlink
+Vcs-Git: gogenexamplevcsgit
 
 Package: ~#PKGNAME#~
-Provides: gosrvlibexample
+Provides: gogenexample
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: gosrvlibexampleshortdesc
- gosrvlibexample : gosrvlibexampleshortdesc
+Description: gogenexampleshortdesc
+ gogenexample : gogenexampleshortdesc

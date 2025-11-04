@@ -1,14 +1,14 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni
-# @link        https://github.com/gosrvlibexampleowner/gosrvlibexample
+# @link        https://github.com/gogenexampleowner/gogenexample
 # ------------------------------------------------------------------------------
 
 SHELL=/bin/bash
 .SHELLFLAGS=-o pipefail -c
 
 # Project owner
-OWNER=gosrvlibexampleowner
+OWNER=gogenexampleowner
 
 # Project vendor
 VENDOR=${OWNER}
@@ -20,7 +20,7 @@ LCVENDOR=$(shell echo "${VENDOR}" | tr '[:upper:]' '[:lower:]')
 CVSPATH=github.com/${VENDOR}
 
 # Project name
-PROJECT=gosrvlibexample
+PROJECT=gogenexample
 
 # Project version
 VERSION=$(shell cat VERSION)
@@ -229,8 +229,8 @@ ifeq ($(DEPLOY_ENV), int)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
 	#DOCKER_REGISTRY_PULL=
 	#DOCKER_REGISTRY_PUSH=
-	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
-	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
+	GOGENEXAMPLE_URL=http://gogenexample:8071
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8072
 	API_TEST_FILE=*.yaml
 endif
 
@@ -241,8 +241,8 @@ ifeq ($(DEPLOY_ENV), dev)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
 	#DOCKER_REGISTRY_PULL=
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_DEV}
-	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
-	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
+	GOGENEXAMPLE_URL=http://gogenexample:8071
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8072
 	API_TEST_FILE=*.yaml
 endif
 
@@ -253,8 +253,8 @@ ifeq ($(DEPLOY_ENV), qa)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_QA}
 	DOCKER_REGISTRY_PULL=${DOCKER_REGISTRY_DEV}
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_QA}
-	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
-	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
+	GOGENEXAMPLE_URL=http://gogenexample:8071
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8072
 endif
 
 # Production environment
@@ -264,8 +264,8 @@ ifeq ($(DEPLOY_ENV), prod)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_PROD}
 	DOCKER_REGISTRY_PULL=${DOCKER_REGISTRY_QA}
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_PROD}
-	GOSRVLIBEXAMPLE_URL=http://gosrvlibexample:8071
-	GOSRVLIBEXAMPLE_MONITORING_URL=http://gosrvlibexample:8072
+	GOGENEXAMPLE_URL=http://gogenexample:8071
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8072
 	API_TEST_FILE=*.yaml
 endif
 
@@ -325,8 +325,8 @@ x:
 # Run venom tests (https://github.com/ovh/venom)
 .PHONY: apitest
 apitest:
-	$(MAKE) venomtest API_TEST_DIR=monitoring API_TEST_URL=${GOSRVLIBEXAMPLE_MONITORING_URL} API_TEST_FILE=api.yaml
-	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${GOSRVLIBEXAMPLE_URL} API_TEST_FILE=${API_TEST_FILE}
+	$(MAKE) venomtest API_TEST_DIR=monitoring API_TEST_URL=${GOGENEXAMPLE_MONITORING_URL} API_TEST_FILE=api.yaml
+	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${GOGENEXAMPLE_URL} API_TEST_FILE=${API_TEST_FILE}
 
 # Full build and test sequence
 # You may want to change this and remove the options you don't need
@@ -487,8 +487,8 @@ dockertest: dockertestenv dockerdev
 # Run the integration tests; locally we need to execute 'build' and 'docker' targets first
 .PHONY: dockertestenv
 dockertestenv: ensuretarget
-	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gosrvlibexample.integration.env
-	@echo "GOSRVLIBEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/integration/gosrvlibexample/config.json | base64 | tr -d \\n)" >> $(TARGETDIR)/gosrvlibexample.integration.env
+	@echo "GOGENEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gogenexample.integration.env
+	@echo "GOGENEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/integration/gogenexample/config.json | base64 | tr -d \\n)" >> $(TARGETDIR)/gogenexample.integration.env
 
 # Create the trget directories if missing
 .PHONY: ensuretarget
@@ -591,13 +591,13 @@ mod: gotools
 # Test the OpenAPI specification against the real deployed service
 .PHONY: openapitest
 openapitest:
-	$(MAKE) schemathesistest API_TEST_URL=${GOSRVLIBEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
-	$(MAKE) schemathesistest API_TEST_URL=${GOSRVLIBEXAMPLE_URL} OPENAPI_FILE=openapi.yaml
+	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
+	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_URL} OPENAPI_FILE=openapi.yaml
 
 # Ping the deployed service to check if the correct deployed container is alive
 .PHONY: ping
 ping:
-	if [ "200_$(VERSION)_$(RELEASE)_" != "$(shell curl --silent --insecure '$(GOSRVLIBEXAMPLE_MONITORING_URL)/ping' | jq -r '.code,.version,.release' | tr '\n' '_')" ]; then exit 1; fi
+	if [ "200_$(VERSION)_$(RELEASE)_" != "$(shell curl --silent --insecure '$(GOGENEXAMPLE_MONITORING_URL)/ping' | jq -r '.code,.version,.release' | tr '\n' '_')" ]; then exit 1; fi
 
 # Run all tests and static analysis tools
 .PHONY: qa
@@ -697,9 +697,9 @@ updatemod: mod
 venomtest:
 	@mkdir -p $(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR)
 	venom run \
-		--var gosrvlibexample.url="${API_TEST_URL}" \
-		--var gosrvlibexample.version="${VERSION}" \
-		--var gosrvlibexample.release="${RELEASE}" \
+		--var gogenexample.url="${API_TEST_URL}" \
+		--var gogenexample.version="${VERSION}" \
+		--var gogenexample.release="${RELEASE}" \
 		-vv \
 		--output-dir=$(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR) \
 		resources/test/venom/$(API_TEST_DIR)/$(API_TEST_FILE)

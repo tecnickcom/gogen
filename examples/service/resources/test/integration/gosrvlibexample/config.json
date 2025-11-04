@@ -1,7 +1,7 @@
 {
   "clients": {
     "ipify": {
-      "address": "http://gosrvlibexample_smocker_ipify:8080",
+      "address": "http://gogenexample_smocker_ipify:8080",
       "timeout": 2
     }
   },

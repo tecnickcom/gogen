@@ -1,19 +1,19 @@
 # Configuration Guide
 
-The gosrvlibexample service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/coreos/etcd) or a single Environmental Variable.
+The gogenexample service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/coreos/etcd) or a single Environmental Variable.
 
 The local configuration file is always loaded before the remote configuration, the latter always overwrites any local setting.
 
 If the *configDir* parameter is not specified, then the program searches for a **config.json** file in the following directories (in order of precedence):
 
 * ./
-* $HOME/gosrvlibexample/
-* /etc/gosrvlibexample/
+* $HOME/gogenexample/
+* /etc/gogenexample/
 
 
 ## Default Configuration
 
-The default configuration file is installed in the **/etc/gosrvlibexample/** folder (**config.json**) along with the JSON schema **config.schema.json**.
+The default configuration file is installed in the **/etc/gogenexample/** folder (**config.json**) along with the JSON schema **config.schema.json**.
 
 
 ## Remote Configuration
@@ -25,17 +25,17 @@ The configuration fields are:
 
 * **remoteConfigProvider**      : Remote configuration source ("consul", "etcd", "envvar")
 * **remoteConfigEndpoint**      : Remote configuration URL (ip:port)
-* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/gosrvlibexample")
-* **remoteConfigSecretKeyring** : Path to the [OpenPGP](http://openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/gosrvlibexample/configkey.gpg"); if empty a non secure connection will be used instead
+* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/gogenexample")
+* **remoteConfigSecretKeyring** : Path to the [OpenPGP](http://openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/gogenexample/configkey.gpg"); if empty a non secure connection will be used instead
 * **remoteConfigData**          : Base64 encoded JSON configuration data to be used with the "envvar" provider
 
 The equivalent environment variables are:
 
-* GOSRVLIBEXAMPLE_REMOTECONFIGPROVIDER
-* GOSRVLIBEXAMPLE_REMOTECONFIGENDPOINT
-* GOSRVLIBEXAMPLE_REMOTECONFIGPATH
-* GOSRVLIBEXAMPLE_REMOTECONFIGSECRETKEYRING
-* GOSRVLIBEXAMPLE_REMOTECONFIGDATA
+* GOGENEXAMPLE_REMOTECONFIGPROVIDER
+* GOGENEXAMPLE_REMOTECONFIGENDPOINT
+* GOGENEXAMPLE_REMOTECONFIGPATH
+* GOGENEXAMPLE_REMOTECONFIGSECRETKEYRING
+* GOGENEXAMPLE_REMOTECONFIGDATA
 
 
 ## Configuration Format
@@ -44,8 +44,8 @@ The configuration format is a single JSON structure with the following fields:
 
 * **remoteConfigProvider**      : Remote configuration source ("consul", "etcd", "envvar")
 * **remoteConfigEndpoint**      : Remote configuration URL (ip:port)
-* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/gosrvlibexample")
-* **remoteConfigSecretKeyring** : Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. "/etc/gosrvlibexample/configkey.gpg"); if empty a non secure connection will be used instead
+* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/gogenexample")
+* **remoteConfigSecretKeyring** : Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. "/etc/gogenexample/configkey.gpg"); if empty a non secure connection will be used instead
 
 * **enabled**: Enable or disable the service
 
@@ -76,7 +76,7 @@ The configuration format is a single JSON structure with the following fields:
 All configuration files are formatted and ordered by key using the [jq](https://github.com/stedolan/jq) tool.
 For example:
 
-```cat 'resources/etc/gosrvlibexample/config.schema.json' | jq -S .```
+```cat 'resources/etc/gogenexample/config.schema.json' | jq -S .```
 
 
 ## Validating Configuration
@@ -90,5 +90,5 @@ go install github.com/santhosh-tekuri/jsonschema/cmd/jv@latest
 Example usage:
 
 ```
-jv resources/etc/gosrvlibexample/config.schema.json resources/etc/gosrvlibexample/config.json
+jv resources/etc/gogenexample/config.schema.json resources/etc/gogenexample/config.json
 ```

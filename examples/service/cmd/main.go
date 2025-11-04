@@ -1,10 +1,10 @@
-// Package main is an example gosrvlib service.
+// Package main is an example gogen service.
 package main
 
 import (
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/cli"
+	"github.com/gogenexampleowner/gogenexample/internal/cli"
 	"go.uber.org/zap"
 )
 

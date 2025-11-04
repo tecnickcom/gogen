@@ -1,5 +1,5 @@
 FROM scratch
 COPY ./ /
 USER nonroot
-ENTRYPOINT ["/usr/bin/gosrvlibexample"]
+ENTRYPOINT ["/usr/bin/gogenexample"]
 HEALTHCHECK NONE

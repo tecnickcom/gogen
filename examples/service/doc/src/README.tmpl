@@ -14,7 +14,7 @@
 * **copyright:**   {{ (datasource "config").project.copyright_start_year }}-{{ time.Now.UTC.Year }} {{ (datasource "config").project.copyright_owner }}
 * **license:**     [LICENSE]({{ (datasource "config").project.license_url }})
 * **cvs:**         {{ (datasource "config").project.cvs }}
-{{ if (datasource "config").team }}* **team:**        [{{ (datasource "config").team.name }}]({{ (datasource "config").team.info }}) ([{{ (datasource "config").team.slack }}](https://gosrvlibexampleowner.slack.com/channels/{{ (datasource "config").team.slack }})) [escalation]({{ (datasource "config").team.escalation }}){{ end }}
+{{ if (datasource "config").team }}* **team:**        [{{ (datasource "config").team.name }}]({{ (datasource "config").team.info }}) ([{{ (datasource "config").team.slack }}](https://gogenexampleowner.slack.com/channels/{{ (datasource "config").team.slack }})) [escalation]({{ (datasource "config").team.escalation }}){{ end }}
 
 [![check]({{ (datasource "config").project.cvs }}/actions/workflows/check.yaml/badge.svg)]({{ (datasource "config").project.cvs }}/actions/workflows/check.yaml)
 
@@ -75,7 +75,7 @@
 <a name="slack_{{ $group }}"></a>
 ### {{ $group }}{{ range $chkey, $ch := $channels }}
 
-* [#{{ $ch.channel }}](https://gosrvlibexampleowner.slack.com/channels/{{ $ch.channel }}){{ if $ch.description }} {{ $ch.description }}{{ end }}{{ end }}
+* [#{{ $ch.channel }}](https://gogenexampleowner.slack.com/channels/{{ $ch.channel }}){{ if $ch.description }} {{ $ch.description }}{{ end }}{{ end }}
 {{ end }}
 
 ----------

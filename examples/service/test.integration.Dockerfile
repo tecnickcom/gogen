@@ -1,4 +1,4 @@
-FROM gosrvlibexampleowner/dev_gosrvlibexample:dev
+FROM gogenexampleowner/dev_gogenexample:dev
 
 ARG HOST_USER="root"
 ARG HOST_GROUP="root"

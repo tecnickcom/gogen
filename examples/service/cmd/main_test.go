@@ -7,7 +7,7 @@ import (
 
 	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"github.com/gosrvlibexampleowner/gosrvlibexample/internal/cli"
+	"github.com/gogenexampleowner/gogenexample/internal/cli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )

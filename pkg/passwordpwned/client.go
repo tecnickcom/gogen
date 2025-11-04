@@ -16,7 +16,7 @@ const (
 	defaultTimeout   = 30 * time.Second
 	defaultAPIURL    = "https://api.pwnedpasswords.com"
 	rangePath        = "range"
-	defaultUserAgent = "gosrvlib.passwordpwned/1"
+	defaultUserAgent = "gogen.passwordpwned/1"
 )
 
 // HTTPClient contains the function to perform the actual HTTP request.
