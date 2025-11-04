@@ -5,7 +5,7 @@ Exec function.
 
 For a similar functionality using the standard database/sql package instead of
 the github.com/jmoiron/sqlx one, see the
-github.com/Vonage/gosrvlib/pkg/sqltransaction package.
+github.com/tecnickcom/gogen/pkg/sqltransaction package.
 */
 package sqlxtransaction
 

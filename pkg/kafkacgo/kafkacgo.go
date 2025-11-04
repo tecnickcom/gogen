@@ -11,6 +11,6 @@ serialization and encryption.
 
 NOTE: This package depends on a C implementation, CGO must be enabled to use
 this package. For a non-CGO implementation see the
-github.com/Vonage/gosrvlib/pkg/kafka package.
+github.com/tecnickcom/gogen/pkg/kafka package.
 */
 package kafkacgo

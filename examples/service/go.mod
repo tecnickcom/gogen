@@ -4,12 +4,12 @@ go 1.25.0
 
 toolchain go1.25.1
 
-replace github.com/Vonage/gosrvlib => ../..
+replace github.com/tecnickcom/gogen => ../..
 
 tool go.uber.org/mock/mockgen
 
 require (
-	github.com/Vonage/gosrvlib v1.107.4
+	github.com/tecnickcom/gogen v1.107.4
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0

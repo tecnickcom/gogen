@@ -3,8 +3,8 @@ Package metrics defines a common interface for instrumenting applications and
 components to collect metrics.
 
 See also:
-  - github.com/Vonage/gosrvlib/pkg/metrics/statsd
-  - github.com/Vonage/gosrvlib/pkg/metrics/prometheus
+  - github.com/tecnickcom/gogen/pkg/metrics/statsd
+  - github.com/tecnickcom/gogen/pkg/metrics/prometheus
 */
 package metrics
 

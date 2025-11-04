@@ -1,6 +1,6 @@
 /*
 Package enumdb allows loading enumeration sets
-(github.com/Vonage/gosrvlib/pkg/enumcache) from multiple database tables.
+(github.com/tecnickcom/gogen/pkg/enumcache) from multiple database tables.
 
 Each enumeration has a numerical ID ("id" on the database table as the primary
 key) and a string name ("name" on the database table as a unique string).

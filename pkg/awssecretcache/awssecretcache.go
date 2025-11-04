@@ -4,7 +4,7 @@ secrets from AWS Secrets Manager.
 
 This package is based on the official aws-sdk-go-v2 library
 (https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/secretsmanager) and
-implements github.com/Vonage/gosrvlib/pkg/sfcache to provide a simple, local,
+implements github.com/tecnickcom/gogen/pkg/sfcache to provide a simple, local,
 thread-safe, fixed-size, and single-flight cache for AWS Secrets lookup calls.
 
 By caching previous values, awssecretcache improves the performance of secrets

@@ -2,8 +2,8 @@
 Package threadsafe provides an interface for thread-safe functions that can be
 safely used across multiple goroutines.
 
-See the examples in the github.com/Vonage/gosrvlib/pkg/tsmap and
-github.com/Vonage/gosrvlib/pkg/tsslice packages for usage of this interface.
+See the examples in the github.com/tecnickcom/gogen/pkg/tsmap and
+github.com/tecnickcom/gogen/pkg/tsslice packages for usage of this interface.
 */
 package threadsafe
 

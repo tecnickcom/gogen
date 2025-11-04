@@ -25,8 +25,8 @@ The sfcache package is ideal for any Go application that heavily relies on
 expensive or slow lookups.
 
 Example applications that can benefit from this package include:
-  - github.com/Vonage/gosrvlib/pkg/awssecretcache
-  - github.com/Vonage/gosrvlib/pkg/dnscache
+  - github.com/tecnickcom/gogen/pkg/awssecretcache
+  - github.com/tecnickcom/gogen/pkg/dnscache
 */
 package sfcache
 

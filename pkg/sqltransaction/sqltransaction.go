@@ -5,7 +5,7 @@ function.
 
 For a similar functionality using the github.com/jmoiron/sqlx package instead of
 the standard database/sql one, see the
-github.com/Vonage/gosrvlib/pkg/sqlxtransaction package.
+github.com/tecnickcom/gogen/pkg/sqlxtransaction package.
 */
 package sqltransaction
 

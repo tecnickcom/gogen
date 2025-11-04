@@ -5,7 +5,7 @@ functions that can be safely used between multiple goroutines.
 The provided functions are intended to simplify the process of working with maps
 in a thread-safe manner.
 
-See also: github.com/Vonage/gosrvlib/pkg/threadsafe
+See also: github.com/tecnickcom/gogen/pkg/threadsafe
 */
 package tsmap
 

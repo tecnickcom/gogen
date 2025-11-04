@@ -1,4 +1,4 @@
-module github.com/Vonage/gosrvlib
+module github.com/tecnickcom/gogen
 
 go 1.25.0
 

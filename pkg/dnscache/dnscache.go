@@ -1,5 +1,5 @@
 /*
-Package dnscache implements github.com/Vonage/gosrvlib/pkg/sfcache to provide a
+Package dnscache implements github.com/tecnickcom/gogen/pkg/sfcache to provide a
 simple, local, thread-safe, fixed-size, and single-flight cache for DNS lookup
 calls.
 
