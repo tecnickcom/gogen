@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
+// evalHasSuffix is an Evaluator that checks if a string ends with a reference suffix.
 type evalHasSuffix struct {
 	ref string
 }
 
+// newHasSuffix returns an Evaluator that checks if a string ends with the reference suffix.
 func newHasSuffix(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {

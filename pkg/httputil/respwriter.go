@@ -22,6 +22,7 @@ type ResponseWriterWrapper interface {
 	Tee(w io.Writer)
 }
 
+// responseWriterWrapper implements the ResponseWriterWrapper interface.
 type responseWriterWrapper struct {
 	http.ResponseWriter
 
@@ -36,10 +37,12 @@ func NewResponseWriterWrapper(w http.ResponseWriter) ResponseWriterWrapper {
 	return &responseWriterWrapper{ResponseWriter: w}
 }
 
+// Size returns the total number of bytes sent to the client.
 func (b *responseWriterWrapper) Size() int {
 	return b.size
 }
 
+// Flush implements the http.Flusher interface.
 func (b *responseWriterWrapper) Flush() {
 	b.headerWritten = true
 
@@ -49,6 +52,8 @@ func (b *responseWriterWrapper) Flush() {
 	}
 }
 
+// Hijack implements the http.Hijacker interface.
+//
 //nolint:wrapcheck
 func (b *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	hj, ok := b.ResponseWriter.(http.Hijacker)
@@ -59,6 +64,8 @@ func (b *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return hj.Hijack()
 }
 
+// Push implements the http.Pusher interface.
+//
 //nolint:wrapcheck
 func (b *responseWriterWrapper) Push(target string, opts *http.PushOptions) error {
 	pusher, ok := b.ResponseWriter.(http.Pusher)
@@ -69,6 +76,8 @@ func (b *responseWriterWrapper) Push(target string, opts *http.PushOptions) erro
 	return pusher.Push(target, opts)
 }
 
+// ReadFrom implements the io.ReaderFrom interface.
+//
 //nolint:wrapcheck
 func (b *responseWriterWrapper) ReadFrom(r io.Reader) (int64, error) {
 	if b.tee != nil {
@@ -92,14 +101,17 @@ func (b *responseWriterWrapper) ReadFrom(r io.Reader) (int64, error) {
 	return n, err
 }
 
+// Status returns the HTTP status of the request.
 func (b *responseWriterWrapper) Status() int {
 	return b.status
 }
 
+// Tee sets a writer that will contain a copy of the bytes written to the response writer.
 func (b *responseWriterWrapper) Tee(w io.Writer) {
 	b.tee = w
 }
 
+// Write writes data to the connection as part of an HTTP reply.
 func (b *responseWriterWrapper) Write(buf []byte) (int, error) {
 	b.maybeWriteHeader()
 	n, err := b.ResponseWriter.Write(buf)
@@ -117,6 +129,7 @@ func (b *responseWriterWrapper) Write(buf []byte) (int, error) {
 	return n, err
 }
 
+// WriteHeader sends an HTTP response header with the provided status code.
 func (b *responseWriterWrapper) WriteHeader(code int) {
 	if !b.headerWritten {
 		b.status = code
@@ -125,6 +138,7 @@ func (b *responseWriterWrapper) WriteHeader(code int) {
 	}
 }
 
+// maybeWriteHeader writes the header if it has not been written yet.
 func (b *responseWriterWrapper) maybeWriteHeader() {
 	if !b.headerWritten {
 		b.WriteHeader(http.StatusOK)

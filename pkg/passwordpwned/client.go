@@ -21,6 +21,7 @@ const (
 
 // HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
+	// Do sends an HTTP request and returns an HTTP response.
 	Do(req *http.Request) (*http.Response, error)
 }
 
@@ -35,6 +36,7 @@ type Client struct {
 	userAgent     string
 }
 
+// defaultClient creates a client with default settings.
 func defaultClient() *Client {
 	return &Client{
 		timeout:       defaultTimeout,
@@ -71,6 +73,7 @@ func (c *Client) HealthCheck(_ context.Context) error {
 	return nil
 }
 
+// newHTTPRetrier creates a new HTTP retrier instance.
 func (c *Client) newHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 	//nolint:wrapcheck
 	return httpretrier.New(

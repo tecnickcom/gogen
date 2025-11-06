@@ -13,6 +13,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/encode"
 )
 
+// constants used in the SQS client.
 const (
 	fifoSuffix          = ".fifo"
 	regexMessageGroupID = `^[[:graph:]]{1,128}$`

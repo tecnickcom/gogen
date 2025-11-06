@@ -8,6 +8,7 @@ import (
 // IncrementLogMetricsFunc is a type alias for the logging metric function.
 type IncrementLogMetricsFunc func(string)
 
+// config holds the configuration for the logger.
 type config struct {
 	fields            []zap.Field
 	format            Format
@@ -17,6 +18,7 @@ type config struct {
 	incMetricLogLevel IncrementLogMetricsFunc
 }
 
+// defaultConfig returns a config instance with default settings.
 func defaultConfig() *config {
 	return &config{
 		fields:           make([]zap.Field, 0, 3),

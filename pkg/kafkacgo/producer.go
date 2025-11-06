@@ -13,6 +13,7 @@ import (
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
 type TEncodeFunc func(ctx context.Context, topic string, data any) ([]byte, error)
 
+// producerClient defines the minimal interface we need from kafka.Producer.
 type producerClient interface {
 	Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error
 	Close()

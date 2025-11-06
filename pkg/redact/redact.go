@@ -10,6 +10,7 @@ import (
 	"regexp"
 )
 
+// Redaction patterns and replacements.
 const (
 	redacted = `@~REDACTED~@`
 
@@ -23,6 +24,7 @@ const (
 	redactURLEncodedKey       = `$1$2$3=` + redacted
 )
 
+// Compiled regular expressions.
 var (
 	regexAuthorizationHeader = regexp.MustCompile(regexPatternAuthorizationHeader)
 	regexJSONKey             = regexp.MustCompile(regexPatternJSONKey)

@@ -77,6 +77,7 @@ func (p *Periodic) Stop() {
 	}
 }
 
+// loop runs the main periodic execution loop.
 func (p *Periodic) loop(ctx context.Context) {
 	defer p.cancel()
 
@@ -94,6 +95,7 @@ func (p *Periodic) loop(ctx context.Context) {
 	}
 }
 
+// setTimer sets the timer to the given duration.
 func (p *Periodic) setTimer(d time.Duration) {
 	if !p.timer.Stop() {
 		// make sure to drain timer channel before reset
@@ -106,6 +108,7 @@ func (p *Periodic) setTimer(d time.Duration) {
 	p.timer.Reset(d)
 }
 
+// run executes the task function with a timeout context and resets the timer.
 func (p *Periodic) run(ctx context.Context) {
 	tctx, cancel := context.WithTimeout(ctx, p.timeout)
 	p.task(tctx)

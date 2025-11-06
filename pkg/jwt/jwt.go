@@ -72,6 +72,7 @@ type JWT struct {
 	audience            []string // the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
 }
 
+// defaultJWT creates a JWT instance with default values.
 func defaultJWT() *JWT {
 	return &JWT{
 		expirationTime:      DefaultExpirationTime,
@@ -82,10 +83,12 @@ func defaultJWT() *JWT {
 	}
 }
 
+// defaultSendResponse is the default function used to send back the HTTP responses.
 func defaultSendResponse(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
 	httputil.SendText(ctx, w, statusCode, data)
 }
 
+// defaultSigningMethod returns the default JWT signing method.
 func defaultSigningMethod() SigningMethod {
 	return jwt.SigningMethodHS256
 }

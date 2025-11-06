@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	// okMessage is the default message for successful responses.
 	okMessage = "OK"
 )
 

@@ -15,12 +15,20 @@ type SecretsManagerClient interface {
 }
 
 type cfg struct {
-	awsOpts   awsopt.Options
+	// awsOpts holds the AWS SDK configuration options.
+	awsOpts awsopt.Options
+
+	// awsConfig holds the loaded AWS SDK configuration.
 	awsConfig aws.Config
+
+	// srvOptFns holds the options for the Secrets Manager client.
 	srvOptFns []SrvOptionFunc
-	smclient  SecretsManagerClient
+
+	// smclient is the AWS SDK Secrets Manager client.
+	smclient SecretsManagerClient
 }
 
+// loadConfig loads the configuration for the AWS Secret Cache.
 func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 	c := &cfg{}
 

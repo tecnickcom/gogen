@@ -32,6 +32,7 @@ const (
 	StatusError   = "error"
 )
 
+// log keys for response logging.
 const (
 	logKeyResponseDataText   = "response_txt"
 	logKeyResponseDataObject = "response_data"

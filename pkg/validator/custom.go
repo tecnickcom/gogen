@@ -11,12 +11,14 @@ import (
 	vt "github.com/go-playground/validator/v10"
 )
 
+// Regular expression patterns for custom validations.
 const (
 	regexPatternE164NoPlus = `^[1-9][0-9]{7,14}$`
 	regexPatternEIN        = `^[0-9]{2}-?[0-9]{7}$`
 	regexPatternUSZIPCode  = `^[0-9]{5}(?:-[0-9]{4})?$`
 )
 
+// Precompiled regular expressions for performance.
 var (
 	regexE164NoPlus = regexp.MustCompile(regexPatternE164NoPlus)
 	regexEIN        = regexp.MustCompile(regexPatternEIN)
@@ -112,8 +114,6 @@ func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 }
 
 // hasDefaultvalue returns true if the field has a default value (nil/zero) or if is unset/invalid.
-//
-
 func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool {
 	switch kind { //nolint:exhaustive
 	case reflect.Invalid:

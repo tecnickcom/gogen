@@ -33,6 +33,7 @@ const (
 	statusHandlerPath string       = "/status"
 )
 
+// allDefaultRoutes returns a slice with all the default routes.
 func allDefaultRoutes() []DefaultRoute {
 	return []DefaultRoute{
 		IndexRoute,
@@ -44,6 +45,7 @@ func allDefaultRoutes() []DefaultRoute {
 	}
 }
 
+// newDefaultRoutes creates the default routes based on the configuration.
 func newDefaultRoutes(cfg *config) []Route {
 	routes := make([]Route, 0, len(cfg.defaultEnabledRoutes)+1)
 

@@ -13,11 +13,13 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// timeCtxKey is the type used for the context key to store request time.
 type timeCtxKey string
 
 // ReqTimeCtxKey is the Context key to retrieve the request time.
 const ReqTimeCtxKey = timeCtxKey("request_time")
 
+// Common HTTP headers and MIME types.
 const (
 	HeaderAuthorization = "Authorization"
 	HeaderAuthBasic     = "Basic "

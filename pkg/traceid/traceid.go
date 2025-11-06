@@ -32,8 +32,10 @@ const (
 	DefaultLogKey = "traceid"
 )
 
+// regexPatternValidID is the regex pattern for a valid trace ID.
 const regexPatternValidID = `^[0-9A-Za-z\-\_\.]{1,64}$`
 
+// regexValidID is the compiled regex for a valid trace ID.
 var regexValidID = regexp.MustCompile(regexPatternValidID)
 
 // ctxKey is used to store the trace ID in the context.

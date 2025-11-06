@@ -175,6 +175,7 @@ func (d *Data) loadEnums() {
 	}
 }
 
+// insertPrefix inserts a phone number prefix and its information into the trie.
 func (d *Data) insertPrefix(prefix string, info *NumInfo) {
 	v, status := d.trie.Get(prefix)
 
@@ -189,6 +190,7 @@ func (d *Data) insertPrefix(prefix string, info *NumInfo) {
 	d.trie.Add(prefix, info)
 }
 
+// insertGroups inserts all phone number prefix groups for a country into the trie.
 func (d *Data) insertGroups(a2 string, cdata *InCountryData) {
 	for _, g := range cdata.Groups {
 		groupInfo := &NumInfo{

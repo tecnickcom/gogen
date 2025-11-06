@@ -69,6 +69,7 @@ type HTTPRetrier struct {
 	doError           error
 }
 
+// defaultHTTPRetrier creates a retrier instance with default values.
 func defaultHTTPRetrier() *HTTPRetrier {
 	return &HTTPRetrier{
 		attempts:    DefaultAttempts,
@@ -181,6 +182,7 @@ func (c *HTTPRetrier) setTimer(d time.Duration) {
 	c.timer.Reset(d)
 }
 
+// retry performs the retry logic.
 func (c *HTTPRetrier) retry(r *http.Request) {
 	defer c.cancel()
 
@@ -201,6 +203,7 @@ func (c *HTTPRetrier) retry(r *http.Request) {
 	}
 }
 
+// run performs a single attempt to execute the HTTP request.
 func (c *HTTPRetrier) run(r *http.Request) bool {
 	var (
 		bodyRC io.ReadCloser

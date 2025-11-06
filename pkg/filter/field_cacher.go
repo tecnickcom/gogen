@@ -28,6 +28,7 @@ func (c *fieldCache) Set(t reflect.Type, fieldPath string, path reflectPath) {
 	fields[fieldPath] = path
 }
 
+// getFieldsMap retrieves or initializes the pathByField map for the given type.
 func (c *fieldCache) getFieldsMap(t reflect.Type) pathByField {
 	if c.cache == nil {
 		c.cache = make(fieldByType)

@@ -6,12 +6,15 @@ import (
 	"regexp"
 )
 
+// Regular expression patterns for configuration validation.
 const (
 	regexPatternHostPort = `^[^\:]*:[0-9]{2,5}$`
 )
 
+// Precompiled regular expressions for performance.
 var regexHostPort = regexp.MustCompile(regexPatternHostPort)
 
+// cfg holds the configuration for the valkey client.
 type cfg struct {
 	messageEncodeFunc TEncodeFunc
 	messageDecodeFunc TDecodeFunc
@@ -20,6 +23,7 @@ type cfg struct {
 	vkclient          VKClient
 }
 
+// loadConfig loads and validates the configuration for the valkey client.
 func loadConfig(_ context.Context, srvOpts SrvOptions, opts ...Option) (*cfg, error) {
 	c := &cfg{
 		messageEncodeFunc: DefaultMessageEncodeFunc,

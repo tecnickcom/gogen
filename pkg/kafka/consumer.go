@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	// network is the network type used to connect to Kafka brokers.
 	network = "tcp"
 )
 

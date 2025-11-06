@@ -15,10 +15,12 @@ import (
 	"strings"
 )
 
+// base64Encoder wraps an io.Writer with a base64 encoder.
 func base64Encoder(w io.Writer) io.WriteCloser {
 	return base64.NewEncoder(base64.StdEncoding, w)
 }
 
+// gobEncode encodes data using gob encoding and writes it to the provided io.WriteCloser.
 func gobEncode(enc io.WriteCloser, data any) error {
 	err := gob.NewEncoder(enc).Encode(data)
 	if err != nil {
@@ -28,6 +30,7 @@ func gobEncode(enc io.WriteCloser, data any) error {
 	return enc.Close() //nolint:wrapcheck
 }
 
+// jsonEncode encodes data using JSON encoding and writes it to the provided io.WriteCloser.
 func jsonEncode(enc io.WriteCloser, data any) error {
 	err := json.NewEncoder(enc).Encode(data)
 	if err != nil {
@@ -37,6 +40,7 @@ func jsonEncode(enc io.WriteCloser, data any) error {
 	return enc.Close() //nolint:wrapcheck
 }
 
+// bufferEncode encodes the input data to gob+base64 and returns it as a bytes.Buffer.
 func bufferEncode(data any) (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
 
@@ -68,6 +72,7 @@ func Encode(data any) (string, error) {
 	return buf.String(), nil
 }
 
+// bufferDecode decodes gob+base64 data from the provided io.Reader into the provided data object.
 func bufferDecode(reader io.Reader, data any) error {
 	decoder := base64.NewDecoder(base64.StdEncoding, reader)
 
@@ -91,6 +96,7 @@ func Decode(msg string, data any) error {
 	return bufferDecode(strings.NewReader(msg), data)
 }
 
+// bufferSerialize encodes the input data to JSON+base64 and returns it as a bytes.Buffer.
 func bufferSerialize(data any) (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
 
@@ -122,6 +128,7 @@ func Serialize(data any) (string, error) {
 	return buf.String(), nil
 }
 
+// bufferDeserialize decodes JSON+base64 data from the provided io.Reader into the provided data object.
 func bufferDeserialize(reader io.Reader, data any) error {
 	decoder := base64.NewDecoder(base64.StdEncoding, reader)
 

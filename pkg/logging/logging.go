@@ -40,6 +40,7 @@ import (
 //nolint:gochecknoglobals
 var LogFatal = zap.L().Fatal
 
+// ctxKey is the type used for the context key.
 type ctxKey struct{}
 
 // Syncer is an interface to allow the testing of log syncing.

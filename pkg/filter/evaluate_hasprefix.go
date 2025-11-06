@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
+// evalHasPrefix is an Evaluator that checks if a string begins with a reference prefix.
 type evalHasPrefix struct {
 	ref string
 }
 
+// newHasPrefix returns an Evaluator that checks if a string begins with the reference prefix.
 func newHasPrefix(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {

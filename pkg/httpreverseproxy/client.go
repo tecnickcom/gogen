@@ -26,6 +26,7 @@ type Client struct {
 	logger     *zap.Logger
 }
 
+// errHandler defines the function signature for error handlers.
 type errHandler = func(w http.ResponseWriter, r *http.Request, err error)
 
 // New returns a new instance of the Client.
@@ -92,6 +93,7 @@ func (c *Client) ForwardRequest(w http.ResponseWriter, r *http.Request) {
 	c.proxy.ServeHTTP(w, r)
 }
 
+// httpWrapper wraps an HTTPClient to implement the RoundTripper interface.
 type httpWrapper struct {
 	client HTTPClient
 }
@@ -105,6 +107,7 @@ func (c *httpWrapper) RoundTrip(r *http.Request) (*http.Response, error) {
 	return c.client.Do(r) //nolint:wrapcheck
 }
 
+// defaultErrorHandler returns the default error handler for the reverse proxy.
 func defaultErrorHandler(logger *zap.Logger) errHandler {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		resTime := time.Now().UTC()

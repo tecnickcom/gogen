@@ -13,10 +13,13 @@ type Evaluator interface {
 	Evaluate(value any) bool
 }
 
+// isNil checks if the given value is nil.
 func isNil(v any) bool {
 	return typeutil.IsNil(v)
 }
 
+// convertValue converts integer and float types to float64, and leaves other types unchanged.
+//
 //nolint:gocyclo,cyclop
 func convertValue(v any) any {
 	switch v := v.(type) {
@@ -51,6 +54,7 @@ func convertValue(v any) any {
 	return v
 }
 
+// convertStringValue attempts to convert the given value to a string.
 func convertStringValue(v any) (string, bool) {
 	if v == nil {
 		return "", false
@@ -71,6 +75,7 @@ func convertStringValue(v any) (string, bool) {
 	return vv.Convert(st).String(), true
 }
 
+// convertFloatValue attempts to convert the given value to a float64.
 func convertFloatValue(v any) (float64, error) {
 	v = convertValue(v)
 

@@ -18,6 +18,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/validator"
 )
 
+// Constants for default timeouts and regex patterns.
 const (
 	defaultTimeout          = 1 * time.Minute
 	defaultPingTimeout      = 15 * time.Second
@@ -26,6 +27,7 @@ const (
 
 // HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
+	// Do sends an HTTP request and returns an HTTP response.
 	Do(req *http.Request) (*http.Response, error)
 }
 
@@ -222,6 +224,7 @@ func (c *Client) SendCustomMetricImpactRegistration(ctx context.Context, request
 	return sendRequest[CustomMetricImpactRegistrationRequest](ctx, c, urlStr, request)
 }
 
+// newWriteHTTPRetrier creates a new HTTP retrier for write requests.
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 	//nolint:wrapcheck
 	return httpretrier.New(

@@ -251,6 +251,8 @@ func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length in
 	return n, m, nil
 }
 
+// evaluateRules evaluates the set of rules over an object.
+//
 //nolint:gocognit
 func (p *Processor) evaluateRules(rules [][]Rule, obj any) (bool, error) {
 	for i := range rules {
@@ -277,7 +279,6 @@ func (p *Processor) evaluateRules(rules [][]Rule, obj any) (bool, error) {
 }
 
 // evaluateRule evaluates a specific rule over an object.
-//
 // It needs a pointer to let the Rule reuse its state (e.g. precompiled regexp).
 func (p *Processor) evaluateRule(rule *Rule, obj any) (bool, error) {
 	value, err := p.fields.GetFieldValue(obj, rule.Field)

@@ -1,9 +1,11 @@
 package filter
 
+// equal is an Evaluator that checks for equality.
 type equal struct {
 	ref any
 }
 
+// newEqual returns an Evaluator that checks for equality.
 func newEqual(r any) Evaluator {
 	return &equal{ref: convertValue(r)}
 }

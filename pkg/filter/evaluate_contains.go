@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
+// evalContains is an Evaluator that checks if a string contains a reference substring.
 type evalContains struct {
 	ref string
 }
 
+// newContains returns an Evaluator that checks if a string contains the reference substring.
 func newContains(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {

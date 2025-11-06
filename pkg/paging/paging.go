@@ -55,6 +55,7 @@ func ComputeOffsetAndLimit(currentPage, pageSize uint) (uint, uint) {
 	return computeOffset(currentPage, pageSize), pageSize
 }
 
+// minCurrentPage ensures that the current page is at least 1.
 func minCurrentPage(currentPage uint) uint {
 	if currentPage < 1 {
 		return 1
@@ -63,6 +64,7 @@ func minCurrentPage(currentPage uint) uint {
 	return currentPage
 }
 
+// maxCurrentPage ensures that the current page does not exceed the total number of pages.
 func maxCurrentPage(currentPage, totalPages uint) uint {
 	if currentPage > totalPages {
 		return totalPages
@@ -71,6 +73,7 @@ func maxCurrentPage(currentPage, totalPages uint) uint {
 	return currentPage
 }
 
+// minPageSize ensures that the page size is at least 1.
 func minPageSize(pageSize uint) uint {
 	if pageSize < 1 {
 		return 1
@@ -79,10 +82,12 @@ func minPageSize(pageSize uint) uint {
 	return pageSize
 }
 
+// computeOffset computes the zero-based offset for the given current page and page size.
 func computeOffset(currentPage, pageSize uint) uint {
 	return pageSize * (currentPage - 1)
 }
 
+// computeTotalPages computes the total number of pages required to contain all items.
 func computeTotalPages(totalItems, pageSize uint) uint {
 	if totalItems <= pageSize {
 		return 1
@@ -91,6 +96,7 @@ func computeTotalPages(totalItems, pageSize uint) uint {
 	return (totalItems + pageSize - 1) / pageSize
 }
 
+// computePreviousPage computes the previous page number.
 func computePreviousPage(currentPage uint) uint {
 	if currentPage <= 1 {
 		return 1
@@ -99,6 +105,7 @@ func computePreviousPage(currentPage uint) uint {
 	return currentPage - 1
 }
 
+// computeNextPage computes the next page number.
 func computeNextPage(currentPage, totalPages uint) uint {
 	if currentPage >= totalPages {
 		return totalPages

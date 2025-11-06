@@ -10,6 +10,7 @@ const (
 	defaultSessionTimeout = time.Second * 10
 )
 
+// config holds configuration options for the Kafka client.
 type config struct {
 	sessionTimeout    time.Duration
 	startOffset       int64
@@ -17,6 +18,7 @@ type config struct {
 	messageDecodeFunc TDecodeFunc
 }
 
+// defaultConfig returns a config struct populated with default values.
 func defaultConfig() *config {
 	return &config{
 		sessionTimeout:    defaultSessionTimeout,

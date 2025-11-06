@@ -4,10 +4,12 @@ import (
 	"reflect"
 )
 
+// gt is an Evaluator that checks if a value is greater than a reference.
 type gt struct {
 	ref float64
 }
 
+// newGT returns an Evaluator that checks if a value is greater than the reference.
 func newGT(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {

@@ -34,6 +34,7 @@ func New(opts ...Option) (*SQLUtil, error) {
 	return c, nil
 }
 
+// defaultSQLUtil creates a SQLUtil instance with default settings.
 func defaultSQLUtil() *SQLUtil {
 	return &SQLUtil{
 		quoteIDFunc:    defaultQuoteID,
@@ -52,6 +53,7 @@ func (c *SQLUtil) QuoteValue(s string) string {
 	return c.quoteValueFunc(s)
 }
 
+// validate checks if the SQLUtil instance is properly configured.
 func (c *SQLUtil) validate() error {
 	if c.quoteIDFunc == nil {
 		return errors.New("the QuoteID function must be set")
@@ -88,6 +90,7 @@ func defaultQuoteValue(s string) string {
 	return "'" + strings.ReplaceAll(escape(s), "'", "''") + "'"
 }
 
+// escape escapes special characters in a string for safe SQL inclusion.
 func escape(s string) string {
 	dest := make([]byte, 0, 2*len(s))
 

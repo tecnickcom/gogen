@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// Default configuration values.
 const (
 	defaultConnMaxIdleCount = 2               // Maximum number of idle connections (0 = unlimited)
 	defaultConnMaxIdleTime  = 1 * time.Minute // Maximum amount of time a connection may be idle before being closed
@@ -16,6 +17,7 @@ const (
 	defaultPingTimeout      = 5 * time.Second // Healthcheck ping timeout
 )
 
+// config holds configuration settings for the SQL connection.
 type config struct {
 	checkConnectionFunc CheckConnectionFunc
 	sqlOpenFunc         SQLOpenFunc
@@ -31,6 +33,7 @@ type config struct {
 	shutdownSignalChan  chan struct{}
 }
 
+// defaultConfig returns a config struct initialized with default values.
 func defaultConfig(driver, dsn string) *config {
 	return &config{
 		checkConnectionFunc: checkConnection,
@@ -48,6 +51,8 @@ func defaultConfig(driver, dsn string) *config {
 	}
 }
 
+// validate checks the configuration for required fields and valid values.
+//
 //nolint:gocyclo,cyclop,gocognit
 func (c *config) validate() error {
 	if strings.TrimSpace(c.driver) == "" {

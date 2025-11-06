@@ -4,10 +4,12 @@ import (
 	"reflect"
 )
 
+// gte is an Evaluator that checks if a value is greater than or equal to a reference.
 type gte struct {
 	ref float64
 }
 
+// newGTE returns an Evaluator that checks if a value is greater than or equal to the reference.
 func newGTE(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {

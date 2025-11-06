@@ -170,6 +170,7 @@ func (d *Data) CountryByNumericCode(num string) (*CountryData, error) {
 	return d.countryByAlpha2ID(a2)
 }
 
+// countriesByAlpha2IDs returns a list of countries for the given list of alpha-2 internal IDs.
 func (d *Data) countriesByAlpha2IDs(a2s []uint16) ([]*CountryData, error) {
 	cds := make([]*CountryData, 0, len(a2s))
 

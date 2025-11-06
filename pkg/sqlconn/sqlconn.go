@@ -129,6 +129,7 @@ func (c *SQLConn) Shutdown(_ context.Context) error {
 	return err //nolint:wrapcheck
 }
 
+// checkConnection performs a simple ping and query to verify the database connection is alive.
 func checkConnection(ctx context.Context, db *sql.DB) error {
 	err := db.PingContext(ctx)
 	if err != nil {
@@ -146,6 +147,7 @@ func checkConnection(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
+// connectWithBackoff attempts to open a database connection and perform a health check.
 func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
 	db, err := cfg.sqlOpenFunc(cfg.driver, cfg.dsn)
 	if err != nil {

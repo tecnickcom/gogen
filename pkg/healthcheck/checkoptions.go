@@ -4,6 +4,7 @@ import (
 	"net/http"
 )
 
+// checkConfig holds configuration options for healthchecks.
 type checkConfig struct {
 	configureRequest func(r *http.Request)
 }

@@ -5,10 +5,12 @@ import (
 	"strings"
 )
 
+// equalFold is an Evaluator that checks for equality under Unicode case-folding.
 type equalFold struct {
 	ref any
 }
 
+// newEqualFold returns an Evaluator that checks for equality under Unicode case-folding.
 func newEqualFold(r any) Evaluator {
 	return &equalFold{ref: convertValue(r)}
 }

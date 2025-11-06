@@ -20,15 +20,28 @@ type CreateMetricsClientFunc func() (metrics.Client, error)
 // BindFunc represents the function responsible to wire up all components of the application.
 type BindFunc func(context.Context, *zap.Logger, metrics.Client) error
 
+// config represents the bootstrap configuration.
 type config struct {
-	context                 context.Context //nolint:containedctx
-	createLoggerFunc        CreateLoggerFunc
+	// context is the application context.
+	context context.Context //nolint:containedctx
+
+	// createLoggerFunc is the function used to create a new logger.
+	createLoggerFunc CreateLoggerFunc
+
+	// createMetricsClientFunc  is the function used to create a new metrics client.
 	createMetricsClientFunc CreateMetricsClientFunc
-	shutdownTimeout         time.Duration
-	shutdownWaitGroup       *sync.WaitGroup
-	shutdownSignalChan      chan struct{}
+
+	// shutdownTimeout is the maximum duration to wait for shutdown.
+	shutdownTimeout time.Duration
+
+	// shutdownWaitGroup is used to wait for all goroutines to finish during shutdown.
+	shutdownWaitGroup *sync.WaitGroup
+
+	// shutdownSignalChan is used to signal the shutdown event.
+	shutdownSignalChan chan struct{}
 }
 
+// defaultConfig returns the default configuration.
 func defaultConfig() *config {
 	return &config{
 		context:                 context.Background(),
@@ -40,10 +53,12 @@ func defaultConfig() *config {
 	}
 }
 
+// defaultCreateLogger creates a default logger.
 func defaultCreateLogger() (*zap.Logger, error) {
 	return logging.NewLogger() //nolint:wrapcheck
 }
 
+// defaultCreateMetricsClient creates a default metrics client.
 func defaultCreateMetricsClientFunc() (metrics.Client, error) {
 	return &metrics.Default{}, nil
 }

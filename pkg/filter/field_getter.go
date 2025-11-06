@@ -12,11 +12,13 @@ const (
 	FieldNameSeparator = "."
 )
 
+// errFieldNotFound is returned when a specified field is not found in a struct.
 var errFieldNotFound = errors.New("field not found")
 
 // reflectPath represents a field path (e.g. address.country) as the indices of the fields (e.g. [2,1]) that can be used with reflect.Value.Field(i int).
 type reflectPath []int
 
+// fieldGetter retrieves field values from objects based on their field paths.
 type fieldGetter struct {
 	fieldTag string
 	cache    fieldCache
@@ -62,6 +64,7 @@ func (r *fieldGetter) GetFieldValue(obj any, path string) (any, error) {
 	return value.Interface(), nil
 }
 
+// getFieldPath constructs the reflectPath for the given type and field names.
 func (r *fieldGetter) getFieldPath(t reflect.Type, fieldNames []string) (reflectPath, error) {
 	fieldPath := make(reflectPath, 0, len(fieldNames))
 
@@ -88,6 +91,7 @@ func (r *fieldGetter) getFieldPath(t reflect.Type, fieldNames []string) (reflect
 	return fieldPath, nil
 }
 
+// getStructField retrieves the struct field by name or tag.
 func (r *fieldGetter) getStructField(t reflect.Type, name string) (reflect.StructField, error) {
 	if r.fieldTag == "" {
 		field, ok := t.FieldByName(name)
@@ -106,6 +110,7 @@ func (r *fieldGetter) getStructField(t reflect.Type, name string) (reflect.Struc
 	return field, nil
 }
 
+// lookupFieldByTag looks up a struct field by its tag value.
 func (r *fieldGetter) lookupFieldByTag(t reflect.Type, tagValue string) (reflect.StructField, bool) {
 	for _, field := range reflect.VisibleFields(t) {
 		actualValue := field.Tag.Get(r.fieldTag)

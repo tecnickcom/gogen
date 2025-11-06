@@ -89,6 +89,7 @@ func New(opts ...Option) (*Client, error) {
 	return c, nil
 }
 
+// initClient returns a Client instance with default values.
 func initClient() *Client {
 	return &Client{
 		registry:                       prometheus.NewRegistry(),

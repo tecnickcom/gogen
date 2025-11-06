@@ -72,6 +72,7 @@ func New(opts ...Option) (*Client, error) {
 	return c, nil
 }
 
+// defaultClient returns a Client instance with default values.
 func defaultClient() *Client {
 	return &Client{
 		prefix:      defaultStatsPrefix,

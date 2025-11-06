@@ -4,10 +4,12 @@ import (
 	"reflect"
 )
 
+// lte is an Evaluator that checks if a value is less than or equal to a reference.
 type lte struct {
 	ref float64
 }
 
+// newLTE returns an Evaluator that checks if a value is less than or equal to the reference.
 func newLTE(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {

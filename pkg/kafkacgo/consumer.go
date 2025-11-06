@@ -14,6 +14,7 @@ import (
 // TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
 type TDecodeFunc func(ctx context.Context, msg []byte, data any) error
 
+// consumerClient defines the minimal interface we need from kafka.Consumer.
 type consumerClient interface {
 	ReadMessage(duration time.Duration) (*kafka.Message, error)
 	Close() error

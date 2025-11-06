@@ -22,6 +22,7 @@ import (
 // randReader is the default random number generator.
 var randReader io.Reader //nolint:gochecknoglobals
 
+// newAESGCM creates a new AES-GCM cipher.AEAD instance with the specified key.
 func newAESGCM(key []byte) (cipher.AEAD, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -64,6 +65,8 @@ func Decrypt(key, msg []byte) ([]byte, error) {
 	return aesgcm.Open(nil, msg[:ns], msg[ns:], nil) //nolint:wrapcheck
 }
 
+// byteEncryptEncoded encrypts the input data with the specified key and returns a base64 byte slice.
+// The key argument must be either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
 func byteEncryptEncoded(key []byte, data []byte) ([]byte, error) {
 	msg, err := Encrypt(key, data)
 	if err != nil {
@@ -76,6 +79,9 @@ func byteEncryptEncoded(key []byte, data []byte) ([]byte, error) {
 	return dst, nil
 }
 
+// byteDecryptEncoded decrypts a byte-slice message produced with the byteEncryptEncoded function.
+// The key argument must be the same used to encrypt the data:
+// either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
 func byteDecryptEncoded(key, msg []byte) ([]byte, error) {
 	dst := make([]byte, base64.StdEncoding.DecodedLen(len(msg)))
 

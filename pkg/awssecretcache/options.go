@@ -55,10 +55,12 @@ func WithEndpointImmutable(url string) Option {
 	)
 }
 
+// endpointResolver is a custom endpoint resolver.
 type endpointResolver struct {
 	url string
 }
 
+// ResolveEndpoint resolves the endpoint.
 func (r *endpointResolver) ResolveEndpoint(_ context.Context, _ secretsmanager.EndpointParameters) (
 	sep.Endpoint,
 	error,

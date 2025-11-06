@@ -14,6 +14,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
+// Default configuration values.
 const (
 	defaultPingURL     = "https://status.slack.com/api/v2.0.0/current"
 	defaultTimeout     = 1 * time.Second
@@ -73,6 +74,7 @@ func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*C
 	return c, nil
 }
 
+// status represents the response from the health check endpoint.
 type status struct {
 	Status   string         `json:"status"`
 	Services map[int]string `json:"services,omitempty"`
@@ -170,6 +172,7 @@ func (c *Client) sendData(ctx context.Context, reqData *message) error {
 	return nil
 }
 
+// newWriteHTTPRetrier creates a new HTTP retrier for write requests.
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 	//nolint:wrapcheck
 	return httpretrier.New(

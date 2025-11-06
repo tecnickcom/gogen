@@ -75,6 +75,8 @@ func New(cdata []*CountryData) (*Data, error) {
 	return d, nil
 }
 
+// loadData loads the country data from the given CountryData slice.
+//
 //nolint:gocognit
 func (d *Data) loadData(cdata []*CountryData) error {
 	dCountryNamesByAlpha2ID := make(map[uint16]*Names, len(cdata))
@@ -144,6 +146,7 @@ func (d *Data) loadData(cdata []*CountryData) error {
 	return nil
 }
 
+// statusMap initializes the status maps.
 func (d *Data) statusMap() {
 	d.dStatusByID = [...]*enumData{
 		{"0", "Unassigned"},
@@ -161,6 +164,7 @@ func (d *Data) statusMap() {
 	}
 }
 
+// genIndexes generates various indexes for fast lookups.
 func (d *Data) genIndexes() {
 	d.dRegionIDByCode = make(map[string]uint8, len(d.dRegionByID))
 	d.dRegionIDByName = make(map[string]uint8, len(d.dRegionByID))
@@ -212,6 +216,7 @@ func (d *Data) genIndexes() {
 	delete(d.dAlpha2IDByNumericID, 0)
 }
 
+// statusByID returns the status enumData for the given ID.
 func (d *Data) statusByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dStatusByID) {
 		return nil, errInvalidKey
@@ -220,6 +225,7 @@ func (d *Data) statusByID(id int) (*enumData, error) {
 	return d.dStatusByID[id], nil
 }
 
+// statusIDByName returns the status ID for the given name.
 func (d *Data) statusIDByName(name string) (uint8, error) {
 	v, ok := d.dStatusIDByName[strings.ToUpper(name)]
 	if !ok {
@@ -229,6 +235,7 @@ func (d *Data) statusIDByName(name string) (uint8, error) {
 	return v, nil
 }
 
+// regionByID returns the region enumData for the given ID.
 func (d *Data) regionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dRegionByID) {
 		return nil, errInvalidKey
@@ -237,6 +244,7 @@ func (d *Data) regionByID(id int) (*enumData, error) {
 	return d.dRegionByID[id], nil
 }
 
+// regionIDByCode returns the region ID for the given code.
 func (d *Data) regionIDByCode(code string) (uint8, error) {
 	v, ok := d.dRegionIDByCode[code]
 	if !ok {
@@ -246,6 +254,7 @@ func (d *Data) regionIDByCode(code string) (uint8, error) {
 	return v, nil
 }
 
+// regionIDByName returns the region ID for the given name.
 func (d *Data) regionIDByName(name string) (uint8, error) {
 	v, ok := d.dRegionIDByName[strings.ToUpper(name)]
 	if !ok {
@@ -255,6 +264,7 @@ func (d *Data) regionIDByName(name string) (uint8, error) {
 	return v, nil
 }
 
+// subRegionByID returns the sub-region enumData for the given ID.
 func (d *Data) subRegionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dSubRegionByID) {
 		return nil, errInvalidKey
@@ -263,6 +273,7 @@ func (d *Data) subRegionByID(id int) (*enumData, error) {
 	return d.dSubRegionByID[id], nil
 }
 
+// subRegionIDByCode returns the sub-region ID for the given code.
 func (d *Data) subRegionIDByCode(code string) (uint8, error) {
 	v, ok := d.dSubRegionIDByCode[code]
 	if !ok {
@@ -272,6 +283,7 @@ func (d *Data) subRegionIDByCode(code string) (uint8, error) {
 	return v, nil
 }
 
+// subRegionIDByName returns the sub-region ID for the given name.
 func (d *Data) subRegionIDByName(name string) (uint8, error) {
 	v, ok := d.dSubRegionIDByName[strings.ToUpper(name)]
 	if !ok {
@@ -281,6 +293,7 @@ func (d *Data) subRegionIDByName(name string) (uint8, error) {
 	return v, nil
 }
 
+// intermediateRegionByID returns the intermediate-region enumData for the given ID.
 func (d *Data) intermediateRegionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dIntermediateRegionByID) {
 		return nil, errInvalidKey
@@ -289,6 +302,7 @@ func (d *Data) intermediateRegionByID(id int) (*enumData, error) {
 	return d.dIntermediateRegionByID[id], nil
 }
 
+// intermediateRegionIDByCode returns the intermediate-region ID for the given code.
 func (d *Data) intermediateRegionIDByCode(code string) (uint8, error) {
 	v, ok := d.dIntermediateRegionIDByCode[code]
 	if !ok {
@@ -298,6 +312,7 @@ func (d *Data) intermediateRegionIDByCode(code string) (uint8, error) {
 	return v, nil
 }
 
+// intermediateRegionIDByName returns the intermediate-region ID for the given name.
 func (d *Data) intermediateRegionIDByName(name string) (uint8, error) {
 	v, ok := d.dIntermediateRegionIDByName[strings.ToUpper(name)]
 	if !ok {
@@ -307,6 +322,7 @@ func (d *Data) intermediateRegionIDByName(name string) (uint8, error) {
 	return v, nil
 }
 
+// countryNamesByAlpha2ID returns the country Names for the given alpha-2 ID.
 func (d *Data) countryNamesByAlpha2ID(id uint16) (*Names, error) {
 	v, ok := d.dCountryNamesByAlpha2ID[id]
 	if !ok {
@@ -316,6 +332,7 @@ func (d *Data) countryNamesByAlpha2ID(id uint16) (*Names, error) {
 	return v, nil
 }
 
+// countryKeyByAlpha2ID returns the country key for the given alpha-2 ID.
 func (d *Data) countryKeyByAlpha2ID(id uint16) (uint64, error) {
 	v, ok := d.dCountryKeyByAlpha2ID[id]
 	if !ok {
@@ -325,6 +342,7 @@ func (d *Data) countryKeyByAlpha2ID(id uint16) (uint64, error) {
 	return v, nil
 }
 
+// alpha2IDByAlpha3ID returns the alpha-2 ID for the given alpha-3 ID.
 func (d *Data) alpha2IDByAlpha3ID(id uint16) (uint16, error) {
 	v, ok := d.dAlpha2IDByAlpha3ID[id]
 	if !ok {
@@ -334,6 +352,7 @@ func (d *Data) alpha2IDByAlpha3ID(id uint16) (uint16, error) {
 	return v, nil
 }
 
+// alpha2IDByNumericID returns the alpha-2 ID for the given numeric ID.
 func (d *Data) alpha2IDByNumericID(id uint16) (uint16, error) {
 	v, ok := d.dAlpha2IDByNumericID[id]
 	if !ok {
@@ -343,6 +362,7 @@ func (d *Data) alpha2IDByNumericID(id uint16) (uint16, error) {
 	return v, nil
 }
 
+// alpha2IDsByRegionID returns the alpha-2 IDs for the given region ID.
 func (d *Data) alpha2IDsByRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByRegionID[id]
 	if !ok {
@@ -352,6 +372,7 @@ func (d *Data) alpha2IDsByRegionID(id uint8) ([]uint16, error) {
 	return v, nil
 }
 
+// alpha2IDsBySubRegionID returns the alpha-2 IDs for the given sub-region ID.
 func (d *Data) alpha2IDsBySubRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsBySubRegionID[id]
 	if !ok {
@@ -361,6 +382,7 @@ func (d *Data) alpha2IDsBySubRegionID(id uint8) ([]uint16, error) {
 	return v, nil
 }
 
+// alpha2IDsByIntermediateRegionID returns the alpha-2 IDs for the given intermediate-region ID.
 func (d *Data) alpha2IDsByIntermediateRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByIntermediateRegionID[id]
 	if !ok {
@@ -370,6 +392,7 @@ func (d *Data) alpha2IDsByIntermediateRegionID(id uint8) ([]uint16, error) {
 	return v, nil
 }
 
+// alpha2IDsByStatusID returns the alpha-2 IDs for the given status ID.
 func (d *Data) alpha2IDsByStatusID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByStatusID[id]
 	if !ok {
@@ -379,6 +402,7 @@ func (d *Data) alpha2IDsByStatusID(id uint8) ([]uint16, error) {
 	return v, nil
 }
 
+// alpha2IDsByTLD returns the alpha-2 IDs for the given TLD ID.
 func (d *Data) alpha2IDsByTLD(id uint16) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByTLD[id]
 	if !ok {

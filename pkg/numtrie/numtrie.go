@@ -38,6 +38,7 @@ const (
 	StatusMatchPartialPrefix int8 = 3 // 0b00000011
 )
 
+// indexSize is the number of possible children for each trie node.
 const indexSize = 10 // digits from 0 to 9
 
 // Node is a numerical-indexed trie node that stores a value of any type.

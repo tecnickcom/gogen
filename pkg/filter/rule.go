@@ -80,6 +80,7 @@ func (r *Rule) Evaluate(value any) (bool, error) {
 	return r.eval.Evaluate(value), nil
 }
 
+// getEvaluator initializes and returns the evaluator for the rule.
 func (r *Rule) getEvaluator() (Evaluator, error) {
 	t := strings.ToLower(r.Type)
 

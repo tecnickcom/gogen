@@ -127,6 +127,7 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 	return releaseFunc, nil
 }
 
+// keepConnectionAlive periodically executes a simple query to keep the connection alive.
 func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Duration) {
 	for {
 		select {
@@ -145,6 +146,7 @@ func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Dura
 	}
 }
 
+// closeConnection closes the given SQL connection and logs any error.
 func closeConnection(ctx context.Context, conn *sql.Conn) {
 	logging.Close(ctx, conn, "error closing mysql lock connection")
 }

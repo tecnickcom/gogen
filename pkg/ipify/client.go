@@ -11,6 +11,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
+// Default configuration values.
 const (
 	defaultTimeout = 4 * time.Second         // default timeout in seconds
 	defaultAPIURL  = "https://api.ipify.org" // use "https://api64.ipify.org" for IPv6 support
@@ -30,6 +31,7 @@ type Client struct {
 	errorIP    string
 }
 
+// defaultClient creates a client with default values.
 func defaultClient() *Client {
 	return &Client{
 		timeout: defaultTimeout,

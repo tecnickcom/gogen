@@ -48,10 +48,12 @@ func WithEndpointImmutable(url string) Option {
 	)
 }
 
+// endpointResolver is a custom endpoint resolver.
 type endpointResolver struct {
 	url string
 }
 
+// ResolveEndpoint resolves the endpoint to the specified URL.
 func (r *endpointResolver) ResolveEndpoint(_ context.Context, _ s3.EndpointParameters) (
 	sep.Endpoint,
 	error,

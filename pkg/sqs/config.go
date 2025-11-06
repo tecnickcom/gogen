@@ -18,6 +18,7 @@ const (
 	DefaultVisibilityTimeout = 600
 )
 
+// cfg holds the configuration for the SQS client.
 type cfg struct {
 	awsOpts           awsopt.Options
 	awsConfig         aws.Config
@@ -28,6 +29,7 @@ type cfg struct {
 	messageDecodeFunc TDecodeFunc
 }
 
+// loadConfig processes the provided options and returns a configured cfg instance.
 func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 	c := &cfg{
 		waitTimeSeconds:   DefaultWaitTimeSeconds,

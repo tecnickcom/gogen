@@ -6,12 +6,15 @@ import (
 	"regexp"
 )
 
+// Regular expression patterns.
 const (
 	regexPatternHostPort = `^[^\:]*:[0-9]{2,5}$`
 )
 
+// Compiled regular expressions.
 var regexHostPort = regexp.MustCompile(regexPatternHostPort)
 
+// cfg defines the redis client configuration.
 type cfg struct {
 	messageEncodeFunc TEncodeFunc
 	messageDecodeFunc TDecodeFunc
@@ -20,6 +23,7 @@ type cfg struct {
 	subChannelOpts    []ChannelOption
 }
 
+// loadConfig loads and validates the redis client configuration.
 func loadConfig(_ context.Context, srvOpts *SrvOptions, opts ...Option) (*cfg, error) {
 	c := &cfg{
 		messageEncodeFunc: DefaultMessageEncodeFunc,

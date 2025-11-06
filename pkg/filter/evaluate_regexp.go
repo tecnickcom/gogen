@@ -6,10 +6,12 @@ import (
 	"regexp"
 )
 
+// evalRegexp is an evaluator that checks if a string matches a regular expression.
 type evalRegexp struct {
 	rxp *regexp.Regexp
 }
 
+// newRegexp creates a new regexp evaluator from the given rule value.
 func newRegexp(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {

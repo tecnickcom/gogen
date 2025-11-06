@@ -19,6 +19,7 @@ import (
 	mrand "math/rand/v2"
 )
 
+// Character sets for random string generation.
 const (
 	chrDigits     = "0123456789"
 	chrUppercase  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

@@ -41,6 +41,7 @@ func (c *SQLUtil) BuildNotInClauseUint(field string, values []uint64) string {
 	return c.composeInClause(sqlConditionNotIn, field, formatUints(values))
 }
 
+// composeInClause constructs the final IN or NOT IN clause string.
 func (c *SQLUtil) composeInClause(condition string, field string, values []string) string {
 	if len(values) == 0 {
 		return ""
@@ -49,6 +50,7 @@ func (c *SQLUtil) composeInClause(condition string, field string, values []strin
 	return fmt.Sprintf("%s %s (%s)", c.QuoteID(field), condition, strings.Join(values, ","))
 }
 
+// formatStrings quotes each string value for safe SQL inclusion.
 func (c *SQLUtil) formatStrings(values []string) []string {
 	items := make([]string, len(values))
 
@@ -59,6 +61,7 @@ func (c *SQLUtil) formatStrings(values []string) []string {
 	return items
 }
 
+// formatInts converts each integer value to its string representation.
 func formatInts(values []int) []string {
 	items := make([]string, len(values))
 
@@ -69,6 +72,7 @@ func formatInts(values []int) []string {
 	return items
 }
 
+// formatUints converts each unsigned integer value to its string representation.
 func formatUints(values []uint64) []string {
 	items := make([]string, len(values))
 

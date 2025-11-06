@@ -28,8 +28,10 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+// regexPatternEmptySpaces matches one or more consecutive whitespace characters.
 const regexPatternEmptySpaces = `\s{1,}`
 
+// regexEmptySpaces is the compiled regular expression for matching multiple spaces.
 var regexEmptySpaces = regexp.MustCompile(regexPatternEmptySpaces)
 
 // StringKey stores the encoded key.

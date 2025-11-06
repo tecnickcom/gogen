@@ -37,8 +37,10 @@ func NopBinder() Binder {
 	return &nopBinder{}
 }
 
+// nopBinder is a no-operation binder implementation.
 type nopBinder struct{}
 
+// BindHTTP implements the Binder interface.
 func (b *nopBinder) BindHTTP(_ context.Context) []Route { return nil }
 
 // HTTPServer defines the HTTP Server object.
@@ -151,6 +153,7 @@ func (h *HTTPServer) Shutdown(ctx context.Context) error {
 	return err //nolint:wrapcheck
 }
 
+// serve starts serving HTTP requests.
 func (h *HTTPServer) serve() {
 	err := h.httpServer.Serve(h.listener)
 	if err == http.ErrServerClosed {
@@ -161,6 +164,7 @@ func (h *HTTPServer) serve() {
 	h.logger.Error("unexpected http server failure", zap.Error(err))
 }
 
+// netListener creates a network listener for the given server address and TLS configuration.
 func netListener(ctx context.Context, serverAddr string, tlsConfig *tls.Config) (net.Listener, error) {
 	var (
 		ls  net.Listener
@@ -182,6 +186,7 @@ func netListener(ctx context.Context, serverAddr string, tlsConfig *tls.Config) 
 	return ls, nil
 }
 
+// loadRoutes loads and binds the routes to the HTTP server router.
 func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) {
 	l.Debug("loading default routes")
 
@@ -238,6 +243,7 @@ func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) 
 	}
 }
 
+// defaultIndexHandler returns the default index handler.
 func defaultIndexHandler(routes []Route) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := &Index{Routes: routes}
@@ -245,6 +251,7 @@ func defaultIndexHandler(routes []Route) http.HandlerFunc {
 	}
 }
 
+// defaultIPHandler returns the default /ip handler.
 func defaultIPHandler(fn GetPublicIPFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
@@ -258,26 +265,32 @@ func defaultIPHandler(fn GetPublicIPFunc) http.HandlerFunc {
 	}
 }
 
+// defaultPingHandler returns the default /ping handler.
 func defaultPingHandler(w http.ResponseWriter, r *http.Request) {
 	httputil.SendStatus(r.Context(), w, http.StatusOK)
 }
 
+// defaultStatusHandler returns the default /status handler.
 func defaultStatusHandler(w http.ResponseWriter, r *http.Request) {
 	httputil.SendStatus(r.Context(), w, http.StatusOK)
 }
 
+// notImplementedHandler returns a 501 Not Implemented response.
 func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	httputil.SendStatus(r.Context(), w, http.StatusNotImplemented)
 }
 
+// defaultNotFoundHandlerFunc returns the default 404 Not Found handler function.
 func defaultNotFoundHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	httputil.SendStatus(r.Context(), w, http.StatusNotFound)
 }
 
+// defaultMethodNotAllowedHandlerFunc returns the default 405 Method Not Allowed handler function.
 func defaultMethodNotAllowedHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
 }
 
+// defaultPanicHandlerFunc returns the default panic handler function.
 func defaultPanicHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
 }

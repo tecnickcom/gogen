@@ -4,10 +4,12 @@ import (
 	"reflect"
 )
 
+// lt is an Evaluator that checks if a value is less than a reference.
 type lt struct {
 	ref float64
 }
 
+// newLT returns an Evaluator that checks if a value is less than the reference.
 func newLT(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {

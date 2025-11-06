@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// timeoutMessage is the message used for timeout responses.
 const timeoutMessage = "TIMEOUT"
 
 // RedactFn is an alias for a redact function.
@@ -39,6 +40,7 @@ func GetPublicIPDefaultFunc() GetPublicIPFunc {
 	return c.GetPublicIP
 }
 
+// config contains the configuration for the HTTP server.
 type config struct {
 	router                      *httprouter.Router
 	serverAddr                  string
@@ -67,6 +69,7 @@ type config struct {
 	shutdownSignalChan          chan struct{}
 }
 
+// defaultConfig returns the default configuration for the HTTP server.
 func defaultConfig() *config {
 	return &config{
 		router:                      httprouter.New(),
@@ -94,6 +97,7 @@ func defaultConfig() *config {
 	}
 }
 
+// isIndexRouteEnabled checks if the index route is enabled in the configuration.
 func (c *config) isIndexRouteEnabled() bool {
 	return slices.Contains(c.defaultEnabledRoutes, IndexRoute)
 }
@@ -128,6 +132,7 @@ func validateAddr(addr string) error {
 	return nil
 }
 
+// commonMiddleware returns the common middleware for all routes.
 func (c *config) commonMiddleware(noRouteLogger bool, rTimeout time.Duration) []MiddlewareFn {
 	middleware := []MiddlewareFn{}
 
@@ -151,6 +156,7 @@ func (c *config) commonMiddleware(noRouteLogger bool, rTimeout time.Duration) []
 	return append(middleware, c.middleware...)
 }
 
+// setRouter sets the router's default handlers if they are not already set.
 func (c *config) setRouter(ctx context.Context) {
 	l := logging.FromContext(ctx)
 	middleware := c.commonMiddleware(false, 0)
