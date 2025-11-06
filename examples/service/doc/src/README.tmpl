@@ -1,9 +1,3 @@
-<!-- Space: {{ (datasource "config").team.title }} -->
-<!-- Parent: Projects -->
-<!-- Title: {{ (datasource "config").project.title }} -->
-{{ range (datasource "config").attachments }}<!-- Attachment: {{ . }} -->
-{{ end }}{{ if (datasource "config").project.logo }}<!-- Attachment: {{ (datasource "config").project.logo }} -->{{ end}}
-
 # {{ (datasource "config").project.name }}
 
 *{{ (datasource "config").project.tagline }}*
@@ -14,17 +8,17 @@
 * **copyright:**   {{ (datasource "config").project.copyright_start_year }}-{{ time.Now.UTC.Year }} {{ (datasource "config").project.copyright_owner }}
 * **license:**     [LICENSE]({{ (datasource "config").project.license_url }})
 * **cvs:**         {{ (datasource "config").project.cvs }}
-{{ if (datasource "config").team }}* **team:**        [{{ (datasource "config").team.name }}]({{ (datasource "config").team.info }}) ([{{ (datasource "config").team.slack }}](https://gogenexampleowner.slack.com/channels/{{ (datasource "config").team.slack }})) [escalation]({{ (datasource "config").team.escalation }}){{ end }}
 
 [![check]({{ (datasource "config").project.cvs }}/actions/workflows/check.yaml/badge.svg)]({{ (datasource "config").project.cvs }}/actions/workflows/check.yaml)
 
 ----------
 
 ## TOC
+
 * [Description](#description){{ if (datasource "config").dependencies }}
 * [Dependencies](#dependencies){{ end }}
 * [Documentation](#documentation){{ range $visibility, $groups := (datasource "config").doclinks }}
-	* [{{ $visibility }}](#documentation_{{ $visibility }}){{ range $groupkey, $group := $groups }}
+  * [{{ $visibility }}](#documentation_{{ $visibility }}){{ range $groupkey, $group := $groups }}
 		* [{{ $group.name }}](#documentation_{{ $visibility }}_{{ $groupkey }}){{ end }}{{ end }}{{ if (datasource "config").slack }}
 * [Slack](#slack){{ end }}
 * [Development](#development)
@@ -36,20 +30,26 @@
 ----------
 
 <a name="description"></a>
+
 ## Description
+
 {{ template "description" }}
 
 ----------
 
 {{ if (datasource "config").dependencies }}
 <a name="dependencies"></a>
+
 ## Dependencies{{ range $visibility, $services := (datasource "config").dependencies }}
 
 <a name="dependencies_{{ $visibility }}"></a>
+
 ### {{ $visibility }}{{ range $srvkey, $service := $services }}
 
 <a name="dependencies_{{ $visibility }}_{{ $srvkey }}"></a>
-#### {{ $service.name }} 
+
+#### {{ $service.name }}
+
 {{ if $service.description }}{{ $service.description }}{{ end }}{{ end }}
 {{ end }}
 
@@ -57,22 +57,27 @@
 {{ end}}
 
 <a name="documentation"></a>
+
 ## Documentation{{ range $visibility, $groups := (datasource "config").doclinks }}
+
 <a name="documentation_{{ $visibility }}"></a>
+
 * {{ $visibility }}{{ range $groupkey, $group := $groups }}
-	<a name="documentation_{{ $visibility }}_{{ $groupkey }}"></a>
-	* {{ $group.name }}  
+  <a name="documentation_{{ $visibility }}_{{ $groupkey }}"></a>
+  * {{ $group.name }}  
 	_{{ $group.description }}_{{ range $link := $group.links }}
-		* [{{ $link.name }}]({{ $link.url }}){{ end }}{{ end }}
+    * [{{ $link.name }}]({{ $link.url }}){{ end }}{{ end }}
 {{ end }}
 
 ----------
 
 {{ if (datasource "config").slack }}
 <a name="slack"></a>
+
 ## Slack{{ range $group, $channels := (datasource "config").slack }}
 
 <a name="slack_{{ $group }}"></a>
+
 ### {{ $group }}{{ range $chkey, $ch := $channels }}
 
 * [#{{ $ch.channel }}](https://gogenexampleowner.slack.com/channels/{{ $ch.channel }}){{ if $ch.description }} {{ $ch.description }}{{ end }}{{ end }}
@@ -82,30 +87,40 @@
 {{ end }}
 
 <a name="development"></a>
+
 ## Development
+
 {{ template "development" }}
 
 ----------
 
 <a name="deployment"></a>
+
 ## Deployment
+
 {{ template "deployment" }}
 
 ----------
 
 {{ if (datasource "config").environment }}
 <a name="environments"></a>
+
 ## Environments{{ range $envkey, $env := (datasource "config").environment }}
+
 <a name="{{ $envkey }}"></a>
-### {{ $env.name }}  
+
+### {{ $env.name }}
+
 _({{ $env.account }}) {{ $env.description }}_
 
 #### Quick Selection Table
+
 {{ $cols := 3 }}| Resource | Visibility | Group | {{ range $geo, $reg := $env.regions }}{{ $cols = math.Add $cols 1 }} **{{ $geo }}** |{{ range $reg }}{{ $cols = math.Add $cols 1 }} **{{ . }}** |{{ end }}{{ end }}
 | {{ $cols = conv.ToInt $cols }}{{ strings.Repeat $cols  ":-: |" }}{{ range $reskey, $resource := $env.resource }}{{ range $visibility, $data := $resource.visibility }}{{ range $group := $data }}
 | **{{ $resource.name }}** | {{ $visibility }} | {{ $group.name }} |{{ range $geo, $data := $group.geos }}{{ if $data.geo | strings.HasPrefix "http" }} [▶]({{ $data.geo }}) |{{ else }}{{ if test.IsKind "invalid" $data.geo }} |{{ else }} `{{ $data.geo }}`|{{ end }}{{ end }}{{ range $region, $info := $data.regions }}{{ if $info | strings.HasPrefix "http" }} [▶]({{ $info }}) |{{ else }} {{ if test.IsKind "invalid" $info }}{{ else }}`{{ $info }}`{{ end }} |{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}
 
 #### Data
+
 {{ if $env.configuration_template }}* [configuration template]({{ $env.configuration_template }}){{ end }}
 {{ if $env.configuration }}* [configuration]({{ $env.configuration }}){{ end }}
 {{ if $env.logs }}* [logs]({{ $env.logs }}){{ end }}
@@ -115,17 +130,17 @@ _({{ $env.account }}) {{ $env.description }}_
 {{ if $env.alerts }}* [alerts]({{ $env.alerts }}){{ end }}
 {{ if $env.alerts_config }}* [alerts_config]({{ $env.alerts_config }}){{ end }}
 * regions:{{ range $geo, $reg := $env.regions }}
-	* {{ $geo }}:{{ range $reg }}
-		* {{ . }}{{ end }}{{ end }}
+  * {{ $geo }}:{{ range $reg }}
+    * {{ . }}{{ end }}{{ end }}
 {{ range $reskey, $resource := $env.resource }}
 <a name="environment_{{ $envkey }}_{{ $reskey }}"></a>
 * **{{ $resource.name }}**  
 {{ $resource.description }}{{ range $visibility, $data := $resource.visibility }}
-	* {{ $visibility }}{{ range $group := $data }}
-		* **{{ $group.name }}**  
+  * {{ $visibility }}{{ range $group := $data }}
+    * **{{ $group.name }}**  
 _{{ $group.description }}_{{ range $geo, $data := $group.geos }}
-			* {{ if $data.geo | strings.HasPrefix "http" }}[{{ $geo }}]({{ $data.geo }}){{ else }}{{ $geo }}: {{ if test.IsKind "invalid" $data.geo }}{{ else }} `{{ $data.geo }}`{{ end }}{{ end }}{{ range $region, $info := $data.regions }}
-				* {{ if $info | strings.HasPrefix "http" }}[{{ $region }}]({{ $info }}){{ else }}{{ $region }}: {{ if test.IsKind "invalid" $info }}{{ else }}`{{ $info }}`{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}
+      * {{ if $data.geo | strings.HasPrefix "http" }}[{{ $geo }}]({{ $data.geo }}){{ else }}{{ $geo }}: {{ if test.IsKind "invalid" $data.geo }}{{ else }} `{{ $data.geo }}`{{ end }}{{ end }}{{ range $region, $info := $data.regions }}
+      * {{ if $info | strings.HasPrefix "http" }}[{{ $region }}]({{ $info }}){{ else }}{{ $region }}: {{ if test.IsKind "invalid" $info }}{{ else }}`{{ $info }}`{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}{{ end }}
 {{ end }}
 
 ----------

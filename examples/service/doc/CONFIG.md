@@ -10,11 +10,9 @@ If the *configDir* parameter is not specified, then the program searches for a *
 * $HOME/gogenexample/
 * /etc/gogenexample/
 
-
 ## Default Configuration
 
 The default configuration file is installed in the **/etc/gogenexample/** folder (**config.json**) along with the JSON schema **config.schema.json**.
-
 
 ## Remote Configuration
 
@@ -37,7 +35,6 @@ The equivalent environment variables are:
 * GOGENEXAMPLE_REMOTECONFIGSECRETKEYRING
 * GOGENEXAMPLE_REMOTECONFIGDATA
 
-
 ## Configuration Format
 
 The configuration format is a single JSON structure with the following fields:
@@ -50,45 +47,45 @@ The configuration format is a single JSON structure with the following fields:
 * **enabled**: Enable or disable the service
 
 * **log**:  Logging settings
-    * **format**:  Logging format: CONSOLE, JSON
-    * **level**:   Defines the default log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
-    * **network**: (OPTIONAL) Network type used by the Syslog (i.e. udp or tcp)
-    * **address**: (OPTIONAL) Network address of the Syslog daemon (ip:port) or just (:port)
+  * **format**:  Logging format: CONSOLE, JSON
+  * **level**:   Defines the default log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
+  * **network**: (OPTIONAL) Network type used by the Syslog (i.e. udp or tcp)
+  * **address**: (OPTIONAL) Network address of the Syslog daemon (ip:port) or just (:port)
 
 * **shutdown_timeout**: Time to wait on exit for a graceful shutdown [seconds]
 
 * **servers**: Configuration for exposed servers
-    * **monitoring**: Monitoring HTTP server
-        * **address**: HTTP address (ip:port) or just (:port)
-        * **timeout**: HTTP request timeout [seconds]
-    * **public**: *Public HTTP server*
-        * **address**: HTTP address (ip:port) or just (:port)
-        * **timeout**: HTTP request timeout [seconds]
+  * **monitoring**: Monitoring HTTP server
+    * **address**: HTTP address (ip:port) or just (:port)
+    * **timeout**: HTTP request timeout [seconds]
+  * **public**: *Public HTTP server*
+    * **address**: HTTP address (ip:port) or just (:port)
+    * **timeout**: HTTP request timeout [seconds]
 
 * **clients**: Configuration for external service clients
-    * **ipify**:  ipify service client
-        * **address**:  Base URL of the service
-        * **timeout**:  HTTP client timeout [seconds]
-
+  * **ipify**:  ipify service client
+    * **address**:  Base URL of the service
+    * **timeout**:  HTTP client timeout [seconds]
 
 ## Formatting Configuration
 
 All configuration files are formatted and ordered by key using the [jq](https://github.com/stedolan/jq) tool.
 For example:
 
-```cat 'resources/etc/gogenexample/config.schema.json' | jq -S .```
-
+```bash
+cat 'resources/etc/gogenexample/config.schema.json' | jq -S .
+```
 
 ## Validating Configuration
 
 The [jv](https://github.com/santhosh-tekuri/jsonschema) program can be used to check the validity of the configuration file against the JSON schema. It can be installed via:
 
-```
+```bash
 go install github.com/santhosh-tekuri/jsonschema/cmd/jv@latest
 ```
 
 Example usage:
 
-```
+```bash
 jv resources/etc/gogenexample/config.schema.json resources/etc/gogenexample/config.json
 ```
