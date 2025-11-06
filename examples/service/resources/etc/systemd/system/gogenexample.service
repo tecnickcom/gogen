@@ -1,0 +1,22 @@
+[Unit]
+Description=gogenexample service
+Documentation=https://github.com/tecnickcom/gogen
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/gogenexample
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/gogenexample.log
+StandardError=append:/var/log/gogenexample.log
+
+# Security hardening options
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
