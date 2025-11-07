@@ -3,10 +3,10 @@
 [![Donate via PayPal](https://img.shields.io/badge/donate-paypal-87ceeb.svg)](https://www.paypal.com/donate/?hosted_button_id=NZUEC5XS8MFBJ)
 *Please consider supporting this project by making a donation via [PayPal](https://www.paypal.com/donate/?hosted_button_id=NZUEC5XS8MFBJ)*
 
-This open-source project provides a collection of high-quality [Go](https://go.dev/) (Golang) [packages](#packages).
+![gogen logo](gogen_logo.png)
 
-Each package adheres to common conventions and can be imported individually into any project.
-
+**This open-source project provides a collection of high-quality [Go](https://go.dev/) (Golang) [packages](#packages).**  
+Each package adheres to common conventions and can be imported individually into any project.  
 These packages serve as a solid foundation for building fully-featured, production-ready web services.
 
 You can generate a new web service by running `make project CONFIG=project.cfg`. The project's name, description, and other settings can be customized in the configuration file specified by the CONFIG parameter.
@@ -37,7 +37,7 @@ The package documentation is available at: [https://pkg.go.dev/github.com/tecnic
 
 ## Packages
 
-gogen offers a comprehensive collection of well-tested Go packages.
+**gogen** offers a comprehensive collection of well-tested Go packages.
 Each package adheres to common conventions and coding standards, making them easy to integrate into your projects.
 
 * [awsopt](pkg/awsopt) – Utilities for configuring common AWS options with the aws-sdk-go-v2 library.

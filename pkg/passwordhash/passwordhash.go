@@ -32,17 +32,17 @@ Example:
 	Password: "Test-Password-01234"
 
 	{
-	"P": { < Argon2id parameters.
-	"A": "argon2id", < Name of the hashing algorithm (always "argon2id").
-	"V": 19,         < Argon2id algorithm version (0x13).
-	"K": 32,         < Length of the returned byte-slice that can be used as a cryptographic key.
-	"S": 16,         < Length of the random password salt.
-	"T": 3,          < Number of passes over the memory.
-	"M": 65536,      < Size of the memory in KiB.
-	"P": 16          < Number of threads used by the hashing algorithm.
-	},
-	"S": "wQYm4bfktbHq2omIwFu+4Q==", < base64-encoded random salt of "P.S" length.
-	"K": "aU8hO900Odq6aKtWiWz3RW9ygn734liJaPtM6ynvkYI=" < base64-encoded Argon2id password hash.
+	  "P": { < Argon2id parameters.
+	    "A": "argon2id", < Name of the hashing algorithm (always "argon2id").
+	    "V": 19,         < Argon2id algorithm version (0x13).
+	    "K": 32,         < Length of the returned byte-slice that can be used as a cryptographic key.
+	    "S": 16,         < Length of the random password salt.
+	    "T": 3,          < Number of passes over the memory.
+	    "M": 65536,      < Size of the memory in KiB.
+	    "P": 16          < Number of threads used by the hashing algorithm.
+	  },
+	  "S": "wQYm4bfktbHq2omIwFu+4Q==", < base64-encoded random salt of "P.S" length.
+	  "K": "aU8hO900Odq6aKtWiWz3RW9ygn734liJaPtM6ynvkYI=" < base64-encoded Argon2id password hash.
 	}
 
 While other serialization methods are available, JSON and base64 have been
