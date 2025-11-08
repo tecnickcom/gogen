@@ -2,6 +2,8 @@ package jwt
 
 import (
 	"time"
+
+	"github.com/tecnickcom/gogen/pkg/slogx"
 )
 
 // Option is the interface that allows to set the options.
@@ -63,5 +65,12 @@ func WithClaimSubject(subject string) Option {
 func WithClaimAudience(audience []string) Option {
 	return func(c *JWT) {
 		c.audience = audience
+	}
+}
+
+// WithLogger sets the logger to use for logging within the sqlconn package.
+func WithLogger(logger slogx.Logger) Option {
+	return func(c *JWT) {
+		c.logger = logger
 	}
 }

@@ -18,9 +18,8 @@ import (
 
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/slogx"
 	"github.com/tecnickcom/gogen/pkg/uidc"
-	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -58,7 +57,7 @@ type Claims struct {
 	Username string `json:"username"`
 }
 
-// JWT represents an instance of the HTTP retrier.
+// JWT represents an instance of the JWT object.
 type JWT struct {
 	key                 []byte         // JWT signing key.
 	expirationTime      time.Duration  // JWT expiration time.
@@ -70,6 +69,7 @@ type JWT struct {
 	issuer              string   // the `iss` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1
 	subject             string   // the `sub` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2
 	audience            []string // the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
+	logger              slogx.Logger
 }
 
 // defaultJWT creates a JWT instance with default values.
@@ -80,6 +80,7 @@ func defaultJWT() *JWT {
 		sendResponseFn:      defaultSendResponse,
 		authorizationHeader: DefaultAuthorizationHeader,
 		signingMethod:       defaultSigningMethod(),
+		logger:              slogx.NewNop(),
 	}
 }
 
@@ -118,19 +119,17 @@ func New(key []byte, userHashFn UserHashFn, opts ...Option) (*JWT, error) {
 func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
 
-	logger := logging.FromContext(r.Context())
-
 	defer func() {
 		cerr := r.Body.Close()
 		if cerr != nil {
-			logger.Error("error closing request body", zap.Error(cerr))
+			c.logger.With("error", cerr).Error("error closing request body")
 		}
 	}()
 
 	err := json.NewDecoder(r.Body).Decode(&creds)
 	if err != nil {
 		c.sendResponseFn(r.Context(), w, http.StatusBadRequest, err.Error())
-		logger.Error("invalid JWT body", zap.Error(err))
+		c.logger.With("error", err).Error("invalid JWT body")
 
 		return
 	}
@@ -139,9 +138,7 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// invalid user
 		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, "invalid authentication credentials")
-		logger.With(
-			zap.String("username", creds.Username),
-		).Error("invalid JWT username", zap.Error(err))
+		c.logger.With("username", creds.Username).With("error", err).Error("invalid JWT username")
 
 		return
 	}
@@ -150,9 +147,7 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// invalid password
 		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, "invalid authentication credentials")
-		logger.With(
-			zap.String("username", creds.Username),
-		).Error("invalid JWT password", zap.Error(err))
+		c.logger.With("username", creds.Username).With("error", err).Error("invalid JWT password")
 
 		return
 	}
@@ -179,18 +174,14 @@ func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
 	claims, err := c.checkToken(r)
 	if err != nil {
 		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, err.Error())
-		logging.FromContext(r.Context()).With(
-			zap.String("username", claims.Username),
-		).Error("invalid JWT token", zap.Error(err))
+		c.logger.With("username", claims.Username).With("error", err).Error("invalid JWT token")
 
 		return
 	}
 
 	if time.Until(claims.ExpiresAt.Time) > c.renewTime {
 		c.sendResponseFn(r.Context(), w, http.StatusBadRequest, "the JWT token can be renewed only when it is close to expiration")
-		logging.FromContext(r.Context()).With(
-			zap.String("username", claims.Username),
-		).Error("invalid JWT renewal time", zap.Error(err))
+		c.logger.With("username", claims.Username).With("error", err).Error("invalid JWT renewal time")
 
 		return
 	}
@@ -203,9 +194,7 @@ func (c *JWT) IsAuthorized(w http.ResponseWriter, r *http.Request) bool {
 	claims, err := c.checkToken(r)
 	if err != nil {
 		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, err.Error())
-		logging.FromContext(r.Context()).With(
-			zap.String("username", claims.Username),
-		).Error("unauthorized JWT user", zap.Error(err))
+		c.logger.With("username", claims.Username).With("error", err).Error("unauthorized JWT user")
 
 		return false
 	}
@@ -220,9 +209,7 @@ func (c *JWT) sendTokenResponse(w http.ResponseWriter, r *http.Request, claims *
 	signedToken, err := token.SignedString(c.key)
 	if err != nil {
 		c.sendResponseFn(r.Context(), w, http.StatusInternalServerError, "unable to sign the JWT token")
-		logging.FromContext(r.Context()).With(
-			zap.String("username", claims.Username),
-		).Error("unable to sign the JWT token", zap.Error(err))
+		c.logger.With("username", claims.Username).With("error", err).Error("unable to sign the JWT token")
 
 		return
 	}

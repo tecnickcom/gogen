@@ -8,6 +8,7 @@ import (
 
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/slogx"
 )
 
 func TestWithExpirationTime(t *testing.T) {
@@ -88,4 +89,14 @@ func TestWithClaimAudience(t *testing.T) {
 	want := []string{"Audience_01", "Audience_02"}
 	WithClaimAudience(want)(c)
 	require.Equal(t, want, c.audience)
+}
+
+func TestWithLogger(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+
+	want := slogx.NewNop()
+	WithLogger(want)(c)
+	require.Equal(t, want, c.logger)
 }
