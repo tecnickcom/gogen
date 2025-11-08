@@ -14,7 +14,6 @@ import (
 
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/validator"
 )
 
@@ -102,11 +101,11 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 // Note: sleuth.io API currently does not provide a ping endpoint,
 // so we check if we are getting the right error using the
 // correct API Key and inexistent deployment ID.
-func (c *Client) HealthCheck(ctx context.Context) error {
+func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
 
-	req, err := httpPostRequest(
+	req, nerr := httpPostRequest(
 		ctx,
 		c.pingURL,
 		c.apiKey,
@@ -116,24 +115,26 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 			IgnoreIfDuplicate: true,
 		},
 	)
-	if err != nil {
-		return err
+	if nerr != nil {
+		return nerr
 	}
 
-	resp, err := c.httpClient.Do(req) //nolint:bodyclose
-	if err != nil {
-		return fmt.Errorf("healthcheck request: %w", err)
+	resp, derr := c.httpClient.Do(req)
+	if derr != nil {
+		return fmt.Errorf("healthcheck request: %w", derr)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error while closing HealthCheck response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusNotFound {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed reading response body: %w", err)
+	body, rerr := io.ReadAll(resp.Body)
+	if rerr != nil {
+		return fmt.Errorf("failed reading response body: %w", rerr)
 	}
 
 	if !c.regexHealthcheck.MatchString(string(body)) {
@@ -165,28 +166,30 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 }
 
 // sendRequest sends a request to the Sleuth API.
-func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) error {
-	err := c.valid.ValidateStructCtx(ctx, request)
-	if err != nil {
-		return fmt.Errorf("invalid request: %w", err)
+func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) (err error) {
+	verr := c.valid.ValidateStructCtx(ctx, request)
+	if verr != nil {
+		return fmt.Errorf("invalid request: %w", verr)
 	}
 
-	r, err := httpPostRequest(ctx, urlStr, c.apiKey, request)
-	if err != nil {
-		return err
+	r, rerr := httpPostRequest(ctx, urlStr, c.apiKey, request)
+	if rerr != nil {
+		return rerr
 	}
 
-	hr, err := c.newWriteHTTPRetrier()
-	if err != nil {
-		return fmt.Errorf("create retrier: %w", err)
+	hr, herr := c.newWriteHTTPRetrier()
+	if herr != nil {
+		return fmt.Errorf("create retrier: %w", herr)
 	}
 
-	resp, err := hr.Do(r) //nolint:bodyclose
-	if err != nil {
-		return fmt.Errorf("execute request: %w", err)
+	resp, derr := hr.Do(r)
+	if derr != nil {
+		return fmt.Errorf("execute request: %w", derr)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error closing response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("sleuth client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)

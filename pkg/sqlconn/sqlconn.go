@@ -130,19 +130,21 @@ func (c *SQLConn) Shutdown(_ context.Context) error {
 }
 
 // checkConnection performs a simple ping and query to verify the database connection is alive.
-func checkConnection(ctx context.Context, db *sql.DB) error {
-	err := db.PingContext(ctx)
-	if err != nil {
-		return fmt.Errorf("failed ping on database: %w", err)
+func checkConnection(ctx context.Context, db *sql.DB) (err error) {
+	perr := db.PingContext(ctx)
+	if perr != nil {
+		return fmt.Errorf("failed ping on database: %w", perr)
 	}
 
 	//nolint:rowserrcheck
-	rows, err := db.QueryContext(ctx, "SELECT 1")
-	if err != nil {
-		return fmt.Errorf("failed running check query on database: %w", err)
+	rows, rerr := db.QueryContext(ctx, "SELECT 1")
+	if rerr != nil {
+		return fmt.Errorf("failed running check query on database: %w", rerr)
 	}
 
-	defer logging.Close(ctx, rows, "failed closing SQL rows")
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 
 	return nil
 }

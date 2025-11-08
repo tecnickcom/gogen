@@ -1,9 +1,4 @@
-/*
-Package errtrace provides a function to automatically trace Go errors. Each
-error is annotated with the filename, line number, and function name where it
-was created.
-*/
-package errtrace
+package errutil
 
 import (
 	"fmt"

@@ -73,6 +73,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
+//nolint:gocognit
 func TestLoginHandler(t *testing.T) {
 	t.Parallel()
 
@@ -83,6 +84,7 @@ func TestLoginHandler(t *testing.T) {
 		key           []byte
 		status        int
 		signingMethod SigningMethod
+		closeError    bool
 	}{
 		{
 			name:   "fails with empty body",
@@ -133,6 +135,14 @@ func TestLoginHandler(t *testing.T) {
 			want:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QtbmFtZSIsImV4cCI6MTYxNzE5MjY1OX0.PfE7ulkdDhCDkQrj3NwqF4bw7K4f2QbTs4rcLvaJrtM",
 			status: http.StatusOK,
 		},
+		{
+			name:       "close error",
+			key:        []byte("signing-key"),
+			body:       `{"username":"test-name", "password":"test-name"}`,
+			want:       "EOF",
+			status:     http.StatusBadRequest,
+			closeError: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -151,6 +161,11 @@ func TestLoginHandler(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", strings.NewReader(tt.body))
+
+			if tt.closeError {
+				req.Body = testutil.NewErrorCloser("close error")
+			}
+
 			c.LoginHandler(rr, req)
 
 			resp := rr.Result()

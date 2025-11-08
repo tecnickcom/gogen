@@ -26,8 +26,6 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
-
-	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
 const (
@@ -49,6 +47,7 @@ type RetryIfFn func(r *http.Response, err error) bool
 
 // HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
+	// Do performs the HTTP request.
 	Do(req *http.Request) (*http.Response, error)
 }
 
@@ -226,8 +225,12 @@ func (c *HTTPRetrier) run(r *http.Request) bool {
 	}
 
 	if c.doError == nil {
-		// we only close the body between attempts
-		logging.Close(r.Context(), c.doResponse.Body, "error while closing response body")
+		// we only close the body between attempts if there was no error
+		cerr := c.doResponse.Body.Close()
+		if cerr != nil {
+			c.doError = fmt.Errorf("error while closing response body: %w", cerr)
+			return true
+		}
 	}
 
 	// set the original body for the next request

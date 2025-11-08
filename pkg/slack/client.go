@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
 // Default configuration values.
@@ -81,21 +81,23 @@ type status struct {
 }
 
 // HealthCheck performs a status check on this service.
-func (c *Client) HealthCheck(ctx context.Context) error {
+func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.pingURL, nil)
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
+	req, nerr := http.NewRequestWithContext(ctx, http.MethodGet, c.pingURL, nil)
+	if nerr != nil {
+		return fmt.Errorf("build request: %w", nerr)
 	}
 
-	resp, err := c.httpClient.Do(req) //nolint:bodyclose
-	if err != nil {
-		return fmt.Errorf("healthcheck request: %w", err)
+	resp, derr := c.httpClient.Do(req)
+	if derr != nil {
+		return fmt.Errorf("healthcheck request: %w", derr)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error while closing HealthCheck response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
@@ -103,9 +105,9 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 
 	respBody := &status{}
 
-	err = json.NewDecoder(resp.Body).Decode(respBody)
-	if err != nil {
-		return fmt.Errorf("failed decoding response body: %w", err)
+	rerr := json.NewDecoder(resp.Body).Decode(respBody)
+	if rerr != nil {
+		return fmt.Errorf("failed decoding response body: %w", rerr)
 	}
 
 	if respBody.Status == failStatus {
@@ -143,27 +145,29 @@ func (c *Client) Send(ctx context.Context, text, username, iconEmoji, iconURL, c
 }
 
 // sendData sends the specified data.
-func (c *Client) sendData(ctx context.Context, reqData *message) error {
+func (c *Client) sendData(ctx context.Context, reqData *message) (err error) {
 	reqBody, _ := json.Marshal(reqData) //nolint:errchkjson
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, c.address, bytes.NewReader(reqBody))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
+	r, nerr := http.NewRequestWithContext(ctx, http.MethodPost, c.address, bytes.NewReader(reqBody))
+	if nerr != nil {
+		return fmt.Errorf("create request: %w", nerr)
 	}
 
 	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
 
-	hr, err := c.newWriteHTTPRetrier()
-	if err != nil {
-		return fmt.Errorf("create retrier: %w", err)
+	hr, werr := c.newWriteHTTPRetrier()
+	if werr != nil {
+		return fmt.Errorf("create retrier: %w", werr)
 	}
 
-	resp, err := hr.Do(r) //nolint:bodyclose
-	if err != nil {
-		return fmt.Errorf("execute request: %w", err)
+	resp, derr := hr.Do(r)
+	if derr != nil {
+		return fmt.Errorf("execute request: %w", derr)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error closing response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unable to send the message- Code: %v, Status: %v", resp.StatusCode, resp.Status)

@@ -107,6 +107,7 @@ func TestNew(t *testing.T) {
 			if tt.wantErr {
 				require.Error(t, err, "an error was expected")
 			} else {
+				require.NoError(t, err)
 				require.NotNil(t, cache, "the cache should not be nil")
 				id, err := cache[table].ID("bravo")
 				require.NoError(t, err)
