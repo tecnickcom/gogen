@@ -54,7 +54,7 @@ Each package adheres to common conventions and coding standards, making them eas
 * [enumbitmap](pkg/enumbitmap) – Encode and decode slices of enumeration strings as integer bitmap values.
 * [enumcache](pkg/enumcache) – Caching for enumeration values with bitmap support.
 * [enumdb](pkg/enumdb) – Helpers for storing and retrieving enumeration sets in databases.
-* [errtrace](pkg/errtrace) – Error tracing and context propagation.
+* [errutil](pkg/errutil) – Error utility functions, including error tracing.
 * [filter](pkg/filter) – Generic rule-based filtering for struct slices.
 * [healthcheck](pkg/healthcheck) – Health check endpoints and logic.
 * [httpclient](pkg/httpclient) – HTTP client with enhanced features.
