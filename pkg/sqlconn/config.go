@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/slog"
+	"github.com/tecnickcom/gogen/pkg/slogx"
 )
 
 // Default configuration values.
@@ -31,7 +31,7 @@ type config struct {
 	driver              string
 	dsn                 string
 	pingTimeout         time.Duration
-	logger              slog.Logger
+	logger              slogx.Logger
 	shutdownWaitGroup   *sync.WaitGroup
 	shutdownSignalChan  chan struct{}
 }
@@ -49,7 +49,7 @@ func defaultConfig(driver, dsn string) *config {
 		driver:              driver,
 		dsn:                 dsn,
 		pingTimeout:         defaultPingTimeout,
-		logger:              slog.NewNop(),
+		logger:              slogx.NewNop(),
 		shutdownWaitGroup:   &sync.WaitGroup{},
 		shutdownSignalChan:  make(chan struct{}),
 	}

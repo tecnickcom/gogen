@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/slog"
+	"github.com/tecnickcom/gogen/pkg/slogx"
 )
 
 func TestWithConnectFunc(t *testing.T) {
@@ -116,9 +116,9 @@ func TestWithLogger(t *testing.T) {
 
 	cfg := &config{}
 
-	v := slog.NewNop()
+	v := slogx.NewNop()
 	WithLogger(v)(cfg)
-	require.NotNil(t, cfg.logger)
+	require.Equal(t, v, cfg.logger)
 }
 
 func TestWithShutdownWaitGroup(t *testing.T) {

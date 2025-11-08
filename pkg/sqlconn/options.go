@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/slog"
+	"github.com/tecnickcom/gogen/pkg/slogx"
 )
 
 // Option is a type alias for a function that configures the DB connector.
@@ -76,7 +76,7 @@ func WithPingTimeout(t time.Duration) Option {
 }
 
 // WithLogger sets the logger to use for logging within the sqlconn package.
-func WithLogger(logger slog.Logger) Option {
+func WithLogger(logger slogx.Logger) Option {
 	return func(cfg *config) {
 		cfg.logger = logger
 	}

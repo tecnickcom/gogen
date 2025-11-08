@@ -117,7 +117,7 @@ func (c *SQLConn) Shutdown(_ context.Context) error {
 	c.db = nil
 	c.cfg.shutdownWaitGroup.Add(-1)
 
-	c.cfg.logger.Debug("sql connection shutdown complete", err)
+	c.cfg.logger.With("error", err).Debug("sql connection shutdown complete")
 
 	return err //nolint:wrapcheck
 }
