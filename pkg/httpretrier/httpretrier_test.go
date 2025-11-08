@@ -414,6 +414,19 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			wantRemainingAttempts: DefaultAttempts,
 			wantErr:               true,
 		},
+		{
+			name: "close error",
+			setupMocks: func(mock *MockHTTPClient) {
+				rErr := &http.Response{
+					Status:     http.StatusText(http.StatusInternalServerError),
+					StatusCode: http.StatusInternalServerError,
+					Body:       testutil.NewErrorCloser("close error"),
+				}
+				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil)
+			},
+			wantRemainingAttempts: 3,
+			wantErr:               true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -442,7 +455,9 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.requestBodyError {
-				r.GetBody = func() (io.ReadCloser, error) { return nil, errors.New("ERROR") }
+				r.GetBody = func() (io.ReadCloser, error) {
+					return nil, errors.New("ERROR")
+				}
 			}
 
 			opts := []Option{
