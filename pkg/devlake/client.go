@@ -12,10 +12,10 @@ import (
 
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/validator"
 )
 
+// Default configuration values.
 const (
 	defaultTimeout     = 1 * time.Minute
 	defaultPingTimeout = 15 * time.Second
@@ -23,6 +23,7 @@ const (
 
 // HTTPClient contains the function to perform the actual HTTP request.
 type HTTPClient interface {
+	// Do executes the HTTP request.
 	Do(req *http.Request) (*http.Response, error)
 }
 
@@ -86,24 +87,26 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 }
 
 // HealthCheck performs a status check on this service.
-func (c *Client) HealthCheck(ctx context.Context) error {
+func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.pingURL, nil)
-	if err != nil {
-		return fmt.Errorf("create get request: %w", err)
+	req, nerr := http.NewRequestWithContext(ctx, http.MethodGet, c.pingURL, nil)
+	if nerr != nil {
+		return fmt.Errorf("create get request: %w", nerr)
 	}
 
 	httputil.AddBearerToken(c.apiKey, req)
 	req.Header.Set(httputil.HeaderAccept, httputil.MimeTypeJSON)
 
-	resp, err := c.httpClient.Do(req) //nolint:bodyclose
-	if err != nil {
-		return fmt.Errorf("healthcheck request: %w", err)
+	resp, derr := c.httpClient.Do(req)
+	if derr != nil {
+		return fmt.Errorf("healthcheck request: %w", derr)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error while closing HealthCheck response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
@@ -134,28 +137,36 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 }
 
 // sendRequest sends a request to the DevLake API.
-func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) error {
-	err := c.valid.ValidateStructCtx(ctx, request)
+func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) (err error) {
+	err = c.valid.ValidateStructCtx(ctx, request)
 	if err != nil {
 		return fmt.Errorf("invalid request: %w", err)
 	}
 
-	r, err := httpPostRequest(ctx, urlStr, c.apiKey, request)
+	var r *http.Request
+
+	r, err = httpPostRequest(ctx, urlStr, c.apiKey, request)
 	if err != nil {
 		return err
 	}
 
-	hr, err := c.newWriteHTTPRetrier()
+	var hr *httpretrier.HTTPRetrier
+
+	hr, err = c.newWriteHTTPRetrier()
 	if err != nil {
 		return fmt.Errorf("create retrier: %w", err)
 	}
 
-	resp, err := hr.Do(r) //nolint:bodyclose
+	var resp *http.Response
+
+	resp, err = hr.Do(r)
 	if err != nil {
 		return fmt.Errorf("execute request: %w", err)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error closing response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("devlake client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)

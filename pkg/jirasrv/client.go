@@ -13,7 +13,6 @@ import (
 
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/validator"
 )
 
@@ -87,21 +86,23 @@ func New(addr, token string, opts ...Option) (*Client, error) {
 }
 
 // HealthCheck performs a status check on this service.
-func (c *Client) HealthCheck(ctx context.Context) error {
+func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
 
-	req, err := c.httpRequest(ctx, http.MethodGet, c.pingAddr, nil)
-	if err != nil {
-		return err
+	req, rerr := c.httpRequest(ctx, http.MethodGet, c.pingAddr, nil)
+	if rerr != nil {
+		return rerr
 	}
 
-	resp, err := c.httpClient.Do(req) //nolint:bodyclose
-	if err != nil {
-		return fmt.Errorf("healthcheck request: %w", err)
+	resp, derr := c.httpClient.Do(req)
+	if derr != nil {
+		return fmt.Errorf("healthcheck request: %w", derr)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error while closing HealthCheck response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)

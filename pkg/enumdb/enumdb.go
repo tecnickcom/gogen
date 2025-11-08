@@ -54,22 +54,18 @@ func New(ctx context.Context, db *sql.DB, queries EnumTableQuery) (EnumDB, error
 //
 //nolint:nonamedreturns
 func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (cache *enumcache.EnumCache, err error) {
-	var stmt *sql.Stmt
-
-	stmt, err = db.PrepareContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed preparing statement: %w", err)
+	stmt, perr := db.PrepareContext(ctx, query)
+	if perr != nil {
+		return nil, fmt.Errorf("failed preparing statement: %w", perr)
 	}
 
 	defer func() {
 		err = errors.Join(err, stmt.Close())
 	}()
 
-	var rows *sql.Rows
-
-	rows, err = stmt.QueryContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed executing query: %w", err)
+	rows, qerr := stmt.QueryContext(ctx)
+	if qerr != nil {
+		return nil, fmt.Errorf("failed executing query: %w", qerr)
 	}
 
 	defer func() {
@@ -84,17 +80,17 @@ func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (cache *e
 	)
 
 	for rows.Next() {
-		err = rows.Scan(&id, &name)
-		if err != nil {
-			return nil, fmt.Errorf("unable to scan row: %w", err)
+		serr := rows.Scan(&id, &name)
+		if serr != nil {
+			return nil, fmt.Errorf("unable to scan row: %w", serr)
 		}
 
 		cache.Set(id, name)
 	}
 
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("failed reading the rows: %w", err)
+	rerr := rows.Err()
+	if rerr != nil {
+		return nil, fmt.Errorf("failed reading the rows: %w", rerr)
 	}
 
 	return cache, nil

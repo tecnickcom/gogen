@@ -14,46 +14,50 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	brotli "github.com/aperturerobotics/go-brotli-decoder"
-	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
 // IsPwnedPassword returns true if the password has been found pwned.
-func (c *Client) IsPwnedPassword(ctx context.Context, password string) (bool, error) {
+//
+//nolint:nonamedreturns
+func (c *Client) IsPwnedPassword(ctx context.Context, password string) (pwned bool, err error) {
 	c.hashObj.Reset()
 
-	_, err := io.WriteString(c.hashObj, password)
-	if err != nil {
-		return false, fmt.Errorf("unable to hash password: %w", err)
+	_, werr := io.WriteString(c.hashObj, password)
+	if werr != nil {
+		return false, fmt.Errorf("unable to hash password: %w", werr)
 	}
 
 	hash := strings.ToUpper(hex.EncodeToString(c.hashObj.Sum(nil)))
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL+"/"+rangePath+"/"+hash[:5], nil)
-	if err != nil {
-		return false, fmt.Errorf("create request: %w", err)
+	r, nerr := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL+"/"+rangePath+"/"+hash[:5], nil)
+	if nerr != nil {
+		return false, fmt.Errorf("create request: %w", nerr)
 	}
 
 	r.Header.Set("User-Agent", c.userAgent)
 	r.Header.Set("Accept-Encoding", "br") // Responses are brotli-encoded.
 	r.Header.Set("Add-Padding", "true")   // All responses will contain between 800 and 1,000 results regardless of the number of hash suffixes returned by the service.
 
-	hr, err := c.newHTTPRetrier()
-	if err != nil {
-		return false, fmt.Errorf("create retrier: %w", err)
+	hr, herr := c.newHTTPRetrier()
+	if herr != nil {
+		return false, fmt.Errorf("create retrier: %w", herr)
 	}
 
-	resp, err := hr.Do(r) //nolint:bodyclose
-	if err != nil {
-		return false, fmt.Errorf("execute request: %w", err)
+	resp, derr := hr.Do(r)
+	if derr != nil {
+		return false, fmt.Errorf("execute request: %w", derr)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error closing response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return false, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -61,9 +65,9 @@ func (c *Client) IsPwnedPassword(ctx context.Context, password string) (bool, er
 
 	reader := brotli.NewReader(resp.Body)
 
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return false, fmt.Errorf("error decoding brotli response: %w", err)
+	data, rerr := io.ReadAll(reader)
+	if rerr != nil {
+		return false, fmt.Errorf("error decoding brotli response: %w", rerr)
 	}
 
 	idx := bytes.Index(data, []byte(hash[5:]))

@@ -2,13 +2,12 @@ package ipify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
 // Default configuration values.
@@ -61,29 +60,33 @@ func New(opts ...Option) (*Client, error) {
 }
 
 // GetPublicIP retrieves the public IP of this service instance via ipify.com API.
-func (c *Client) GetPublicIP(ctx context.Context) (string, error) {
+//
+//nolint:nonamedreturns
+func (c *Client) GetPublicIP(ctx context.Context) (ip string, err error) {
 	ctx, cancelTimeout := context.WithTimeout(ctx, c.timeout)
 	defer cancelTimeout()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL, nil)
-	if err != nil {
-		return c.errorIP, fmt.Errorf("build request: %w", err)
+	req, nerr := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL, nil)
+	if nerr != nil {
+		return c.errorIP, fmt.Errorf("build request: %w", nerr)
 	}
 
-	resp, err := c.httpClient.Do(req) //nolint:bodyclose
-	if err != nil {
-		return c.errorIP, fmt.Errorf("failed performing ipify request: %w", err)
+	resp, derr := c.httpClient.Do(req)
+	if derr != nil {
+		return c.errorIP, fmt.Errorf("failed performing ipify request: %w", derr)
 	}
 
-	defer logging.Close(ctx, resp.Body, "error while closing GetPublicIP response body")
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return c.errorIP, fmt.Errorf("unexpected ipify status code: %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return c.errorIP, fmt.Errorf("failed reading response body: %w", err)
+	body, berr := io.ReadAll(resp.Body)
+	if berr != nil {
+		return c.errorIP, fmt.Errorf("failed reading response body: %w", berr)
 	}
 
 	return string(body), nil
