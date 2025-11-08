@@ -1,7 +1,7 @@
 /*
-Package slog provides a generic log/slog compatible interface for structured logging capabilities.
+Package slogx provides a generic log/slog compatible interface for structured logging capabilities.
 */
-package slog
+package slogx
 
 // Logger defines the minimal interface used by this package for structured logging.
 type Logger interface {
@@ -9,6 +9,7 @@ type Logger interface {
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
 	Error(msg string, args ...any)
+	With(args ...any) Logger
 }
 
 // NewNop returns a no-op Logger.
@@ -30,3 +31,8 @@ func (*NopLogger) Warn(_ string, _ ...any) {}
 
 // Error is a no-op.
 func (*NopLogger) Error(_ string, _ ...any) {}
+
+// With is a no-op.
+func (l *NopLogger) With(_ ...any) Logger {
+	return l
+}

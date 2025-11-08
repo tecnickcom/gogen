@@ -1,4 +1,4 @@
-package slog
+package slogx
 
 import (
 	"testing"
@@ -16,4 +16,7 @@ func Test_NewNop(t *testing.T) {
 	logger.Info("info message", "key2", "value2")
 	logger.Warn("warn message", "key3", "value3")
 	logger.Error("error message", "key4", "value4")
+
+	withLogger := logger.With("key5", "value5")
+	require.NotNil(t, withLogger)
 }
