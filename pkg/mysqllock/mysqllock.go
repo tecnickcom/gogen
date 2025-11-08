@@ -39,9 +39,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"go.uber.org/zap"
 )
 
 // ReleaseFunc is an alias for a release lock function.
@@ -55,6 +52,7 @@ var (
 	ErrFailed = errors.New("failed to acquire a lock")
 )
 
+// MySQL lock result constants and SQL queries.
 const (
 	resLockError    = -1
 	resLockTimeout  = 0
@@ -79,25 +77,25 @@ func New(db *sql.DB) *MySQLLock {
 
 // Acquire attempts to acquire a database lock.
 //
-//nolint:contextcheck
-func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Duration) (ReleaseFunc, error) {
-	conn, err := l.db.Conn(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get mysql connection: %w", err)
+//nolint:contextcheck,nonamedreturns
+func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Duration) (rf ReleaseFunc, err error) {
+	conn, cerr := l.db.Conn(ctx)
+	if cerr != nil {
+		return nil, fmt.Errorf("unable to get mysql connection: %w", cerr)
 	}
 
 	row := conn.QueryRowContext(ctx, sqlGetLock, key, int(timeout.Seconds()), resLockError)
 
 	var res int
 
-	err = row.Scan(&res)
-	if err != nil {
-		closeConnection(ctx, conn)
-		return nil, fmt.Errorf("unable to scan mysql lock: %w", err)
+	serr := row.Scan(&res)
+	if serr != nil {
+		closeConnection(conn, &err)
+		return nil, fmt.Errorf("unable to scan mysql lock: %w", serr)
 	}
 
 	if res != resLockAcquired {
-		closeConnection(ctx, conn)
+		closeConnection(conn, &err)
 
 		if res == resLockTimeout {
 			return nil, ErrTimeout
@@ -108,38 +106,42 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 
 	// The release context is independent from the parent context.
 	releaseCtx, cancelReleaseCtx := context.WithCancel(context.Background())
-	releaseCtx = logging.WithLogger(releaseCtx, logging.FromContext(ctx))
 
 	releaseFunc := func() error {
-		defer closeConnection(releaseCtx, conn)
+		defer closeConnection(conn, &err)
 		defer cancelReleaseCtx()
 
-		_, err := conn.ExecContext(releaseCtx, sqlReleaseLock, key)
-		if err != nil {
-			return fmt.Errorf("unable to release mysql lock: %w", err)
+		_, xerr := conn.ExecContext(releaseCtx, sqlReleaseLock, key)
+		if xerr != nil {
+			return fmt.Errorf("unable to release mysql lock: %w", xerr)
 		}
 
 		return nil
 	}
 
-	go keepConnectionAlive(releaseCtx, conn, keepAliveInterval) //nolint:contextcheck
+	go keepConnectionAlive(releaseCtx, conn, keepAliveInterval, &err) //nolint:contextcheck
 
 	return releaseFunc, nil
 }
 
 // keepConnectionAlive periodically executes a simple query to keep the connection alive.
-func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Duration) {
+func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Duration, err *error) {
 	for {
 		select {
 		case <-time.After(interval):
 			//nolint:rowserrcheck
-			rows, err := conn.QueryContext(ctx, keepAliveSQLQuery)
-			if err != nil {
-				logging.FromContext(ctx).Error("error while keeping mysqllock connection alive", zap.Error(err))
+			rows, qerr := conn.QueryContext(ctx, keepAliveSQLQuery)
+			if qerr != nil {
+				*err = errors.Join(*err, fmt.Errorf("error while keeping mysqllock connection alive: %w", qerr))
 				return
 			}
 
-			logging.Close(ctx, rows, "failed closing SQL rows")
+			defer func() {
+				rerr := rows.Close()
+				if rerr != nil {
+					*err = errors.Join(*err, fmt.Errorf("unable to close mysql rows: %w", rerr))
+				}
+			}()
 		case <-ctx.Done():
 			return
 		}
@@ -147,6 +149,9 @@ func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Dura
 }
 
 // closeConnection closes the given SQL connection and logs any error.
-func closeConnection(ctx context.Context, conn *sql.Conn) {
-	logging.Close(ctx, conn, "error closing mysql lock connection")
+func closeConnection(conn *sql.Conn, err *error) {
+	cerr := conn.Close()
+	if cerr != nil {
+		*err = errors.Join(*err, fmt.Errorf("unable to close mysql lock connection: %w", cerr))
+	}
 }

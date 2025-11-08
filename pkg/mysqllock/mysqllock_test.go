@@ -126,8 +126,8 @@ func Test_keepConnectionAlive(t *testing.T) {
 	t.Parallel()
 
 	const (
-		intervalFullTime = 20 * time.Millisecond
-		intervalHalfTime = 10 * time.Millisecond
+		intervalFullTime = 40 * time.Millisecond
+		intervalHalfTime = 20 * time.Millisecond
 	)
 
 	tests := []keepConnectionAliveTest{
@@ -175,6 +175,17 @@ func Test_keepConnectionAlive(t *testing.T) {
 			},
 			interval: intervalHalfTime,
 		},
+		{
+			name: "close rows error",
+			setupMocks: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(keepAliveSQLQuery).
+					WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1).CloseError(errors.New("close error")))
+			},
+			ctxFunc: func() (context.Context, context.CancelFunc) {
+				return context.WithTimeout(t.Context(), intervalFullTime)
+			},
+			interval: intervalHalfTime,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -202,5 +213,29 @@ func runKeepConnectionAlive(t *testing.T, tt keepConnectionAliveTest) {
 	conn, err := mockDB.Conn(ctx)
 	require.NoError(t, err)
 
-	keepConnectionAlive(ctx, conn, tt.interval)
+	keepConnectionAlive(ctx, conn, tt.interval, &err)
+}
+
+func Test_closeConnection(t *testing.T) {
+	t.Parallel()
+
+	mockDB, _, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+
+	defer func() { _ = mockDB.Close() }()
+
+	conn, err := mockDB.Conn(t.Context())
+	require.NoError(t, err)
+
+	var closeErr error
+
+	closeConnection(conn, &closeErr)
+
+	require.NoError(t, closeErr)
+
+	// Close the connection to simulate an error on close.
+	conn.Close()
+
+	closeConnection(conn, &closeErr)
+
+	require.Error(t, closeErr)
 }
