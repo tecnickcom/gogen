@@ -22,10 +22,10 @@ package enumdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/tecnickcom/gogen/pkg/enumcache"
-	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
 // EnumDB maps each enumeration table name with the corresponding enumeration cache.
@@ -51,22 +51,32 @@ func New(ctx context.Context, db *sql.DB, queries EnumTableQuery) (EnumDB, error
 }
 
 // loadTableEnumCache load the cache using the specified SQL query.
-func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (*enumcache.EnumCache, error) {
-	stmt, err := db.PrepareContext(ctx, query) //nolint:sqlclosecheck
+//
+//nolint:nonamedreturns
+func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (cache *enumcache.EnumCache, err error) {
+	var stmt *sql.Stmt
+
+	stmt, err = db.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed preparing statement: %w", err)
 	}
 
-	defer logging.Close(ctx, stmt, "error closing statement")
+	defer func() {
+		err = errors.Join(err, stmt.Close())
+	}()
 
-	rows, err := stmt.QueryContext(ctx) //nolint:sqlclosecheck
+	var rows *sql.Rows
+
+	rows, err = stmt.QueryContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed executing query: %w", err)
 	}
 
-	defer logging.Close(ctx, rows, "error closing query")
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 
-	cache := enumcache.New()
+	cache = enumcache.New()
 
 	var (
 		id   int
@@ -74,7 +84,7 @@ func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (*enumcac
 	)
 
 	for rows.Next() {
-		err := rows.Scan(&id, &name)
+		err = rows.Scan(&id, &name)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan row: %w", err)
 		}
