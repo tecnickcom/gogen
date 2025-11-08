@@ -118,12 +118,19 @@ func New(key []byte, userHashFn UserHashFn, opts ...Option) (*JWT, error) {
 func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
 
-	defer logging.Close(r.Context(), r.Body, "error closing request body")
+	logger := logging.FromContext(r.Context())
+
+	defer func() {
+		cerr := r.Body.Close()
+		if cerr != nil {
+			logger.Error("error closing request body", zap.Error(cerr))
+		}
+	}()
 
 	err := json.NewDecoder(r.Body).Decode(&creds)
 	if err != nil {
 		c.sendResponseFn(r.Context(), w, http.StatusBadRequest, err.Error())
-		logging.FromContext(r.Context()).Error("invalid JWT body", zap.Error(err))
+		logger.Error("invalid JWT body", zap.Error(err))
 
 		return
 	}
@@ -132,7 +139,7 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// invalid user
 		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, "invalid authentication credentials")
-		logging.FromContext(r.Context()).With(
+		logger.With(
 			zap.String("username", creds.Username),
 		).Error("invalid JWT username", zap.Error(err))
 
@@ -143,7 +150,7 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// invalid password
 		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, "invalid authentication credentials")
-		logging.FromContext(r.Context()).With(
+		logger.With(
 			zap.String("username", creds.Username),
 		).Error("invalid JWT password", zap.Error(err))
 
