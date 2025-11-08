@@ -14,9 +14,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"go.uber.org/zap"
 )
 
 // ExecFunc is the type of the function to be executed inside a SQL Transaction.
@@ -33,12 +30,12 @@ func Exec(ctx context.Context, db DB, run ExecFunc) error {
 }
 
 // ExecWithOptions executes the specified function inside a SQL transaction.
-func ExecWithOptions(ctx context.Context, db DB, run ExecFunc, opts *sql.TxOptions) error {
+func ExecWithOptions(ctx context.Context, db DB, run ExecFunc, opts *sql.TxOptions) (err error) {
 	var committed bool
 
-	tx, err := db.BeginTx(ctx, opts)
-	if err != nil {
-		return fmt.Errorf("unable to start SQL transaction: %w", err)
+	tx, berr := db.BeginTx(ctx, opts)
+	if berr != nil {
+		return fmt.Errorf("unable to start SQL transaction: %w", berr)
 	}
 
 	defer func() {
@@ -46,20 +43,20 @@ func ExecWithOptions(ctx context.Context, db DB, run ExecFunc, opts *sql.TxOptio
 			return
 		}
 
-		err := tx.Rollback()
-		if err != nil && !errors.Is(err, sql.ErrTxDone) {
-			logging.FromContext(ctx).Error("failed rolling back SQL transaction", zap.Error(err))
+		kerr := tx.Rollback()
+		if kerr != nil && !errors.Is(kerr, sql.ErrTxDone) {
+			err = errors.Join(err, fmt.Errorf("failed rolling back SQL transaction: %w", kerr))
 		}
 	}()
 
-	err = run(ctx, tx)
-	if err != nil {
-		return fmt.Errorf("failed executing a function inside SQL transaction: %w", err)
+	rerr := run(ctx, tx)
+	if rerr != nil {
+		return fmt.Errorf("failed executing a function inside SQL transaction: %w", rerr)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("unable to commit SQL transaction: %w", err)
+	cerr := tx.Commit()
+	if cerr != nil {
+		return fmt.Errorf("unable to commit SQL transaction: %w", cerr)
 	}
 
 	committed = true
