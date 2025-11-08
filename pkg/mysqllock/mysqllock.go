@@ -137,11 +137,9 @@ func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Dura
 			}
 
 			defer func() {
-				rerr := rows.Close()
-				if rerr != nil {
-					*err = errors.Join(*err, fmt.Errorf("unable to close mysql rows: %w", rerr))
-				}
+				*err = errors.Join(*err, rows.Close())
 			}()
+
 		case <-ctx.Done():
 			return
 		}
@@ -150,8 +148,5 @@ func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Dura
 
 // closeConnection closes the given SQL connection and logs any error.
 func closeConnection(conn *sql.Conn, err *error) {
-	cerr := conn.Close()
-	if cerr != nil {
-		*err = errors.Join(*err, fmt.Errorf("unable to close mysql lock connection: %w", cerr))
-	}
+	*err = errors.Join(*err, conn.Close())
 }
