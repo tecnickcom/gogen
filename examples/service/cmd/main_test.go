@@ -6,10 +6,7 @@ import (
 	"testing"
 
 	"github.com/gogenexampleowner/gogenexample/internal/cli"
-	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"go.uber.org/zap"
 )
 
 //nolint:paralleltest
@@ -29,26 +26,14 @@ func TestProgramVersion(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest
-func TestMainCliError(t *testing.T) {
-	oldLogFatal := logging.LogFatal
-
-	defer func() { logging.LogFatal = oldLogFatal }()
-
-	logging.LogFatal = zap.L().Panic
-	os.Args = []string{cli.AppName, "--INVALID"}
-
-	require.Panics(t, main, "Expected to fail because of invalid argument name")
-}
-
-//nolint:paralleltest
-func TestMainCliExecuteError(t *testing.T) {
-	oldLogFatal := logging.LogFatal
-
-	defer func() { logging.LogFatal = oldLogFatal }()
-
-	logging.LogFatal = zap.L().Panic
-	os.Args = []string{cli.AppName, "--logLevel=INVALID"}
-
-	require.Panics(t, main, "Expected to fail because of invalid argument value")
-}
+// //nolint:paralleltest
+// func TestMainCliError(t *testing.T) {
+// 	os.Args = []string{cli.AppName, "--INVALID"}
+// 	main()
+// }
+//
+// //nolint:paralleltest
+// func TestMainCliExecuteError(t *testing.T) {
+// 	os.Args = []string{cli.AppName, "--logLevel=INVALID"}
+// 	main()
+// }

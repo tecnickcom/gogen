@@ -12,7 +12,7 @@ import (
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	hh := New(nil)
+	hh := New(nil, nil)
 	require.NotNil(t, hh)
 }
 
@@ -30,7 +30,10 @@ func TestHTTPHandler_handleGenUID(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
-	(&HTTPHandler{}).handleGenUID(rr, req)
+	hh := New(nil, nil)
+	require.NotNil(t, hh)
+
+	hh.handleGenUID(rr, req)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)

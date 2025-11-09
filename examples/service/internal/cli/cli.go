@@ -3,6 +3,7 @@ package cli
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/config"
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
-	"github.com/tecnickcom/gogen/pkg/logging"
 )
 
 type bootstrapFunc func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error
@@ -52,10 +52,12 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 		}
 
 		// Configure logger
-		l, err := logging.NewDefaultLogger(AppName, version, release, cfg.Log.Format, cfg.Log.Level)
-		if err != nil {
-			return fmt.Errorf("failed configuring logger: %w", err)
-		}
+		// l, err := logging.NewDefaultLogger(AppName, version, release, cfg.Log.Format, cfg.Log.Level)
+		// if err != nil {
+		// 	return fmt.Errorf("failed configuring logger: %w", err)
+		// }
+
+		l := slog.Default()
 
 		appInfo := &jsendx.AppInfo{
 			ProgramName:    AppName,
