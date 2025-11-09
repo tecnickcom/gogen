@@ -1,9 +1,8 @@
 package httpreverseproxy
 
 import (
+	"log/slog"
 	"net/http/httputil"
-
-	"go.uber.org/zap"
 )
 
 // Option is the interface that allows to set client options.
@@ -28,7 +27,7 @@ func WithHTTPClient(h HTTPClient) Option {
 }
 
 // WithLogger overrides the default logger.
-func WithLogger(l *zap.Logger) Option {
+func WithLogger(l *slog.Logger) Option {
 	return func(c *Client) {
 		c.logger = l
 	}

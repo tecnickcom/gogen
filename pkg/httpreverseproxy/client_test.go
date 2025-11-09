@@ -1,6 +1,7 @@
 package httpreverseproxy
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -12,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"go.uber.org/zap"
 )
 
 func TestNew(t *testing.T) {
@@ -49,7 +49,7 @@ func TestNew(t *testing.T) {
 		{
 			name:        "succeeds with custom logger",
 			serviceAddr: "http://service.domain.invalid:1237/",
-			opts:        []Option{WithLogger(zap.NewNop())},
+			opts:        []Option{WithLogger(slog.Default())},
 			wantErr:     false,
 		},
 	}
@@ -154,7 +154,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 
 			opts := []Option{}
 			if tt.withLogger {
-				opts = append(opts, WithLogger(zap.NewNop()))
+				opts = append(opts, WithLogger(slog.Default()))
 			}
 
 			// setup proxy test server
