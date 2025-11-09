@@ -74,7 +74,7 @@ func WithPingTimeout(t time.Duration) Option {
 	}
 }
 
-// WithLogger sets the logger.
+// WithLogger overrides the default logger.
 func WithLogger(logger *slog.Logger) Option {
 	return func(cfg *config) {
 		cfg.logger = logger

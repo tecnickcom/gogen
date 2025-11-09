@@ -67,7 +67,7 @@ func WithClaimAudience(audience []string) Option {
 	}
 }
 
-// WithLogger sets the logger to use for logging within the sqlconn package.
+// WithLogger overrides the default logger.
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *JWT) {
 		c.logger = logger

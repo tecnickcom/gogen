@@ -74,7 +74,7 @@ func WithDialContext(fn DialContextFunc) Option {
 	}
 }
 
-// WithLogger sets the logger.
+// WithLogger overrides the default logger.
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *Client) {
 		c.logger = logger
