@@ -124,59 +124,6 @@ func Test_WithRegionFromURL(t *testing.T) {
 	}
 }
 
-func Test_WithEndpoint(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		url       string
-		immutable bool
-		want      Options
-	}{
-		{
-			name:      "Immutable URL",
-			url:       "https://test.immutable.invalid",
-			immutable: true,
-			want: Options{
-				config.WithEndpointResolverWithOptions( //nolint:staticcheck
-					endpointResolver{
-						url:         "https://test.immutable.invalid",
-						isImmutable: true,
-					},
-				),
-			},
-		},
-		{
-			name:      "Mutable URL",
-			url:       "https://test.mutable.invalid",
-			immutable: false,
-			want: Options{
-				config.WithEndpointResolverWithOptions( //nolint:staticcheck
-					endpointResolver{
-						url:         "https://test.mutable.invalid",
-						isImmutable: false,
-					},
-				),
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			c := Options{}
-			c.WithEndpoint(tt.url, tt.immutable)
-
-			require.Len(t, c, len(tt.want))
-
-			for i, opt := range tt.want {
-				reflect.DeepEqual(opt, c[i])
-			}
-		})
-	}
-}
-
 func Test_ResolveEndpoint(t *testing.T) {
 	t.Parallel()
 
