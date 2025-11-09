@@ -3,13 +3,13 @@ package sqlconn
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/slogx"
 )
 
 func TestWithConnectFunc(t *testing.T) {
@@ -116,7 +116,7 @@ func TestWithLogger(t *testing.T) {
 
 	cfg := &config{}
 
-	v := slogx.NewNop()
+	v := slog.Default()
 	WithLogger(v)(cfg)
 	require.Equal(t, v, cfg.logger)
 }

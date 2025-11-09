@@ -3,11 +3,10 @@ package sqlconn
 import (
 	"database/sql"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/tecnickcom/gogen/pkg/slogx"
 )
 
 // Default configuration values.
@@ -31,7 +30,7 @@ type config struct {
 	driver              string
 	dsn                 string
 	pingTimeout         time.Duration
-	logger              slogx.Logger
+	logger              *slog.Logger
 	shutdownWaitGroup   *sync.WaitGroup
 	shutdownSignalChan  chan struct{}
 }
@@ -49,7 +48,7 @@ func defaultConfig(driver, dsn string) *config {
 		driver:              driver,
 		dsn:                 dsn,
 		pingTimeout:         defaultPingTimeout,
-		logger:              slogx.NewNop(),
+		logger:              slog.Default(),
 		shutdownWaitGroup:   &sync.WaitGroup{},
 		shutdownSignalChan:  make(chan struct{}),
 	}

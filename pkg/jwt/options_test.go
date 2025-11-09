@@ -2,13 +2,13 @@ package jwt
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"testing"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/slogx"
 )
 
 func TestWithExpirationTime(t *testing.T) {
@@ -96,7 +96,7 @@ func TestWithLogger(t *testing.T) {
 
 	c := &JWT{}
 
-	want := slogx.NewNop()
+	want := slog.Default()
 	WithLogger(want)(c)
 	require.Equal(t, want, c.logger)
 }
