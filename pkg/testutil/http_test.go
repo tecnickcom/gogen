@@ -17,7 +17,7 @@ func TestRouterWithHandler(t *testing.T) {
 	t.Parallel()
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(Context(), http.MethodGet, "/test", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 
 	router := RouterWithHandler(http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
 		httputil.SendStatus(r.Context(), w, http.StatusOK)

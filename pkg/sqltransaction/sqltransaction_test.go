@@ -8,7 +8,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func Test_Exec(t *testing.T) {
@@ -89,7 +88,7 @@ func Test_Exec(t *testing.T) {
 				tt.setupMocks(mock)
 			}
 
-			err = Exec(testutil.Context(), mockDB, tt.run)
+			err = Exec(t.Context(), mockDB, tt.run)
 			require.Equal(t, tt.wantErr, err != nil, "Exec() error = %v, wantErr %v", err, tt.wantErr)
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
@@ -145,7 +144,7 @@ func Test_ExecWithOptions(t *testing.T) {
 			mock.ExpectCommit()
 
 			db := &dbMock{DB: mockDB}
-			err = ExecWithOptions(testutil.Context(), db, func(_ context.Context, _ *sql.Tx) error { return nil }, tt.options)
+			err = ExecWithOptions(t.Context(), db, func(_ context.Context, _ *sql.Tx) error { return nil }, tt.options)
 			require.NoError(t, err)
 			require.Equal(t, tt.options, db.givenOptions)
 		})

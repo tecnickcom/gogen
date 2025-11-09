@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func TestNew(t *testing.T) {
@@ -52,6 +51,6 @@ func TestClient_HealthCheck(t *testing.T) {
 	c, err := New()
 	require.NoError(t, err)
 
-	err = c.HealthCheck(testutil.Context())
+	err = c.HealthCheck(t.Context())
 	require.NoError(t, err)
 }

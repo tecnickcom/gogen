@@ -12,7 +12,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func TestNewHandler(t *testing.T) {
@@ -94,7 +93,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			t.Parallel()
 
 			rr := httptest.NewRecorder()
-			req, err := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 			require.NoError(t, err, "no error expected reading body data")
 
 			h := NewHandler(tt.checks, tt.opts...)

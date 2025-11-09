@@ -8,7 +8,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func TestDB_Acquire(t *testing.T) {
@@ -99,7 +98,7 @@ func TestDB_Acquire(t *testing.T) {
 				tt.setupMocks(mock)
 			}
 
-			release, err := locker.Acquire(testutil.Context(), "key", 2*time.Second)
+			release, err := locker.Acquire(t.Context(), "key", 2*time.Second)
 
 			var releaseErr error
 

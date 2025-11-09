@@ -83,7 +83,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 		{
 			name: "fails because status not OK",
 			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(testutil.Context(), w, http.StatusInternalServerError)
+				httputil.SendStatus(t.Context(), w, http.StatusInternalServerError)
 			},
 			wantIP:  "",
 			wantErr: true,
@@ -92,7 +92,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 			name: "fails because of timeout",
 			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
 				time.Sleep(5 * time.Second)
-				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
+				httputil.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			wantErr: true,
 		},
@@ -129,7 +129,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 
 			require.NoError(t, err, "Client.GetPublicIP() create client unexpected error = %v", err)
 
-			ip, err := c.GetPublicIP(testutil.Context())
+			ip, err := c.GetPublicIP(t.Context())
 
 			if tt.wantErr {
 				require.Error(t, err, "Client.GetPublicIP() error = %v, wantErr %v", err, tt.wantErr)
@@ -149,6 +149,6 @@ func TestClient_GetPublicIP_URLError(t *testing.T) {
 
 	c.apiURL = "\x007"
 
-	_, err = c.GetPublicIP(testutil.Context())
+	_, err = c.GetPublicIP(t.Context())
 	require.Error(t, err, "Client.GetPublicIP() error = %v", err)
 }

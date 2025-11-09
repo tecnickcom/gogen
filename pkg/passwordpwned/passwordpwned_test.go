@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
 )
@@ -219,7 +218,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 				}()
 			}
 
-			got, err := c.IsPwnedPassword(testutil.Context(), tt.password)
+			got, err := c.IsPwnedPassword(t.Context(), tt.password)
 
 			require.Equal(t, tt.wantErr, err != nil, err)
 			require.Equal(t, tt.pwned, got)

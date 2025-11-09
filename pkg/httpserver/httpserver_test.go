@@ -17,7 +17,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
@@ -50,7 +49,7 @@ func Test_defaultIndexHandler(t *testing.T) {
 		},
 	}
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	defaultIndexHandler(routes).ServeHTTP(rr, req)
 
 	resp := rr.Result()
@@ -100,7 +99,7 @@ func Test_defaultIPHandler(t *testing.T) {
 			t.Parallel()
 
 			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 			defaultIPHandler(tt.ipFunc).ServeHTTP(rr, req)
 
 			resp := rr.Result()
@@ -131,7 +130,7 @@ func Test_defaultPingHandler(t *testing.T) {
 	t.Parallel()
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	defaultPingHandler(rr, req)
 
 	resp := rr.Result()
@@ -153,7 +152,7 @@ func Test_defaultStatusHandler(t *testing.T) {
 	t.Parallel()
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	defaultStatusHandler(rr, req)
 
 	resp := rr.Result()
@@ -175,7 +174,7 @@ func Test_notImplementedHandler(t *testing.T) {
 	t.Parallel()
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	notImplementedHandler(rr, req)
 
 	resp := rr.Result()
@@ -406,7 +405,7 @@ YlAqGKDZ+A+l
 			opts = append(opts, WithShutdownWaitGroup(shutdownWG))
 			opts = append(opts, WithShutdownSignalChan(shutdownSG))
 
-			ctx, cancelCtx := context.WithCancel(testutil.Context())
+			ctx, cancelCtx := context.WithCancel(t.Context())
 
 			defer func() {
 				if tt.shutdownSig {

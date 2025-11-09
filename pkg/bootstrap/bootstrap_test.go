@@ -8,11 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 	"github.com/tecnickcom/gogen/pkg/metrics/prometheus"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/zap"
 )
 
@@ -29,7 +27,6 @@ func TestBootstrap(t *testing.T) {
 		createMetricsClientFunc CreateMetricsClientFunc
 		stopAfter               time.Duration
 		sigterm                 bool
-		checkLogs               bool
 		wantErr                 bool
 	}{
 		{
@@ -99,9 +96,7 @@ func TestBootstrap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// cannot run in parallel because signals are received by all parallel tests
-			var ctx context.Context
-
-			ctx, logs := testutil.ContextWithLogObserver(zap.DebugLevel)
+			ctx := t.Context()
 
 			if tt.stopAfter != 0 {
 				if tt.sigterm {
@@ -143,12 +138,6 @@ func TestBootstrap(t *testing.T) {
 			err := Bootstrap(tt.bindFunc, opts...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Bootstrap() error = %v, wantErr %v", err, tt.wantErr)
-			}
-
-			if tt.checkLogs {
-				entries := logs.All()
-				require.Equal(t, "application started", entries[0].Message)
-				require.Equal(t, "application stopped", entries[1].Message)
 			}
 		})
 	}

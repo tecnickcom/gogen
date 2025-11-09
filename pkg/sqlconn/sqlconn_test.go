@@ -10,7 +10,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func newMockConnectFunc(db *sql.DB, err error) ConnectFunc {
@@ -89,7 +88,7 @@ func TestConnect(t *testing.T) {
 			shutdownWG := &sync.WaitGroup{}
 			shutdownSG := make(chan struct{})
 
-			ctx, cancel := context.WithCancel(testutil.Context())
+			ctx, cancel := context.WithCancel(t.Context())
 
 			defer func() {
 				if tt.shutdownSig {
@@ -137,7 +136,7 @@ func TestSQLConn_DB(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(testutil.Context())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	mockConnectFunc := newMockConnectFunc(db, nil)
@@ -193,7 +192,7 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 			db, _, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithCancel(testutil.Context())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 
 			mockConnectFunc := newMockConnectFunc(db, nil)
@@ -215,7 +214,7 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 				time.Sleep(100 * time.Millisecond)
 			}
 
-			err = conn.HealthCheck(testutil.Context())
+			err = conn.HealthCheck(t.Context())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -267,7 +266,7 @@ func Test_checkConnection(t *testing.T) {
 				tt.configMockFunc(mock)
 			}
 
-			err = checkConnection(testutil.Context(), db)
+			err = checkConnection(t.Context(), db)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("checkConnection() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -339,7 +338,7 @@ func Test_connectWithBackoff(t *testing.T) {
 				tt.setupConfig(cfg, db)
 			}
 
-			got, err := connectWithBackoff(testutil.Context(), cfg)
+			got, err := connectWithBackoff(t.Context(), cfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("connectWithBackoff() error = %v, wantErr %v", err, tt.wantErr)
 				return

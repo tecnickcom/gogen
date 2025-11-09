@@ -12,7 +12,6 @@ import (
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
 	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 //nolint:gocognit,paralleltest,tparallel
@@ -121,7 +120,7 @@ func Test_bind(t *testing.T) {
 				sc,
 			)
 
-			testCtx, cancel := context.WithTimeout(testutil.Context(), 1*time.Second)
+			testCtx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 
 			testBootstrapOpts := []bootstrap.Option{

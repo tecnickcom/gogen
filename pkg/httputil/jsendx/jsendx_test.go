@@ -25,7 +25,7 @@ func TestSend(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	Send(testutil.Context(), rr, http.StatusOK, params, "hello test")
+	Send(t.Context(), rr, http.StatusOK, params, "hello test")
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -55,7 +55,7 @@ func TestSend(t *testing.T) {
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
-	Send(testutil.Context(), mockWriter, http.StatusOK, params, "message")
+	Send(t.Context(), mockWriter, http.StatusOK, params, "message")
 }
 
 func TestDefaultNotFoundHandlerFunc(t *testing.T) {
@@ -68,7 +68,7 @@ func TestDefaultNotFoundHandlerFunc(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	DefaultNotFoundHandlerFunc(appInfo)(rr, req)
 
 	resp := rr.Result()
@@ -100,7 +100,7 @@ func TestDefaultMethodNotAllowedHandlerFunc(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	DefaultMethodNotAllowedHandlerFunc(appInfo)(rr, req)
 
 	resp := rr.Result()
@@ -132,7 +132,7 @@ func TestDefaultPanicHandlerFunc(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	DefaultPanicHandlerFunc(appInfo)(rr, req)
 
 	resp := rr.Result()
@@ -178,7 +178,7 @@ func TestDefaultIndexHandler(t *testing.T) {
 		},
 	}
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	DefaultIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
 
 	resp := rr.Result()
@@ -233,7 +233,7 @@ func TestDefaultIPHandler(t *testing.T) {
 			t.Parallel()
 
 			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 			DefaultIPHandler(appInfo, tt.ipFunc).ServeHTTP(rr, req)
 
 			resp := rr.Result()
@@ -272,7 +272,7 @@ func TestDefaultPingHandler(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	DefaultPingHandler(appInfo)(rr, req)
 
 	resp := rr.Result()
@@ -304,7 +304,7 @@ func TestDefaultStatusHandler(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	DefaultStatusHandler(appInfo)(rr, req)
 
 	resp := rr.Result()
@@ -336,7 +336,7 @@ func TestHealthCheckResultWriter(t *testing.T) {
 	}
 
 	rr := httptest.NewRecorder()
-	HealthCheckResultWriter(appInfo)(testutil.Context(), rr, http.StatusOK, "test body")
+	HealthCheckResultWriter(appInfo)(t.Context(), rr, http.StatusOK, "test body")
 
 	resp := rr.Result()
 	require.NotNil(t, resp)

@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/undefinedlabs/go-mpatch"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -96,7 +95,7 @@ func TestClient_setRequestHeaders(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, err := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "https://test.invalid", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://test.invalid", nil)
 	require.NoError(t, err)
 
 	c.setRequestHeaders(req)
@@ -185,7 +184,7 @@ func Test_httpRequest(t *testing.T) {
 			)
 			require.NoError(t, err, "Client.HealthCheck() create client unexpected error = %v", err)
 
-			r, err := c.httpRequest(testutil.Context(), http.MethodPost, tt.urlStr, tt.request)
+			r, err := c.httpRequest(t.Context(), http.MethodPost, tt.urlStr, tt.request)
 
 			if !tt.wantErr {
 				require.NoError(t, err)
@@ -265,7 +264,7 @@ func TestClient_HealthCheck(t *testing.T) {
 				c.pingAddr = tt.pingAddr
 			}
 
-			err = c.HealthCheck(testutil.Context())
+			err = c.HealthCheck(t.Context())
 			if tt.wantErr {
 				require.Error(t, err, "Client.HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
@@ -450,7 +449,7 @@ func TestSendRequest(t *testing.T) {
 				tt.query.Set("queryparam", "value")
 			}
 
-			resp, err := c.SendRequest(testutil.Context(), http.MethodPost, endpoint, tt.query, tt.req)
+			resp, err := c.SendRequest(t.Context(), http.MethodPost, endpoint, tt.query, tt.req)
 
 			if tt.wantErr {
 				require.Error(t, err, "error expected but got nil")

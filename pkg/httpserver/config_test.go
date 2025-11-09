@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func Test_defaultConfig(t *testing.T) {
@@ -178,7 +177,7 @@ func Test_setRouter(t *testing.T) {
 
 			cfg := defaultConfig()
 
-			cfg.setRouter(testutil.Context())
+			cfg.setRouter(t.Context())
 
 			if tt.setupRouter != nil {
 				tt.setupRouter(cfg.router)

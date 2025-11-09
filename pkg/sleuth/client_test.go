@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
 )
@@ -188,7 +187,7 @@ func TestClient_HealthCheck(t *testing.T) {
 				c.pingURL = tt.pingURL
 			}
 
-			err = c.HealthCheck(testutil.Context())
+			err = c.HealthCheck(t.Context())
 			if tt.wantErr {
 				require.Error(t, err, "Client.HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
@@ -248,7 +247,7 @@ func Test_httpRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			r, err := httpPostRequest(testutil.Context(), tt.urlStr, "0123456789abcdef", tt.req)
+			r, err := httpPostRequest(t.Context(), tt.urlStr, "0123456789abcdef", tt.req)
 
 			if !tt.wantErr {
 				require.NoError(t, err)
@@ -405,7 +404,7 @@ func Test_sendRequest(t *testing.T) {
 				}
 			}
 
-			err = sendRequest(testutil.Context(), c, ts.URL+urlTestPath, tt.req)
+			err = sendRequest(t.Context(), c, ts.URL+urlTestPath, tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -499,7 +498,7 @@ func TestClient_SendDeployRegistration(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendDeployRegistration(testutil.Context(), tt.req)
+			err = c.SendDeployRegistration(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -571,7 +570,7 @@ func TestClient_SendManualChange(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendManualChange(testutil.Context(), tt.req)
+			err = c.SendManualChange(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -642,7 +641,7 @@ func TestClient_SendCustomIncidentImpactRegistration(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendCustomIncidentImpactRegistration(testutil.Context(), tt.req)
+			err = c.SendCustomIncidentImpactRegistration(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -704,7 +703,7 @@ func TestClient_SendCustomMetricImpactRegistration(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendCustomMetricImpactRegistration(testutil.Context(), tt.req)
+			err = c.SendCustomMetricImpactRegistration(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}

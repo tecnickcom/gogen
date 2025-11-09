@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 //nolint:gocognit
@@ -118,7 +117,7 @@ func TestCheckHttpStatus(t *testing.T) {
 
 			testHTTPClient := &http.Client{Timeout: 2 * time.Second}
 
-			err := CheckHTTPStatus(testutil.Context(), testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
+			err := CheckHTTPStatus(t.Context(), testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
 
 			t.Logf("check error: %v", err)
 

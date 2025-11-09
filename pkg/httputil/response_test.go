@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/mock/gomock"
 )
 
@@ -60,7 +59,7 @@ func TestSendStatus(t *testing.T) {
 	t.Parallel()
 
 	rr := httptest.NewRecorder()
-	SendStatus(testutil.Context(), rr, http.StatusUnauthorized)
+	SendStatus(t.Context(), rr, http.StatusUnauthorized)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -82,7 +81,7 @@ func TestSendText(t *testing.T) {
 	data := "text_data"
 
 	rr := httptest.NewRecorder()
-	SendText(testutil.Context(), rr, http.StatusOK, data)
+	SendText(t.Context(), rr, http.StatusOK, data)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -103,7 +102,7 @@ func TestSendText(t *testing.T) {
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
-	SendText(testutil.Context(), mockWriter, http.StatusOK, data)
+	SendText(t.Context(), mockWriter, http.StatusOK, data)
 }
 
 func TestSendJSON(t *testing.T) {
@@ -112,7 +111,7 @@ func TestSendJSON(t *testing.T) {
 	data := "json_data"
 
 	rr := httptest.NewRecorder()
-	SendJSON(testutil.Context(), rr, http.StatusOK, data)
+	SendJSON(t.Context(), rr, http.StatusOK, data)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -133,7 +132,7 @@ func TestSendJSON(t *testing.T) {
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
-	SendJSON(testutil.Context(), mockWriter, http.StatusOK, data)
+	SendJSON(t.Context(), mockWriter, http.StatusOK, data)
 }
 
 func TestSendXML(t *testing.T) {
@@ -142,7 +141,7 @@ func TestSendXML(t *testing.T) {
 	data := "xml_data"
 
 	rr := httptest.NewRecorder()
-	SendXML(testutil.Context(), rr, http.StatusOK, XMLHeader, data)
+	SendXML(t.Context(), rr, http.StatusOK, XMLHeader, data)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -164,5 +163,5 @@ func TestSendXML(t *testing.T) {
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
-	SendXML(testutil.Context(), mockWriter, http.StatusOK, XMLHeader, data)
+	SendXML(t.Context(), mockWriter, http.StatusOK, XMLHeader, data)
 }

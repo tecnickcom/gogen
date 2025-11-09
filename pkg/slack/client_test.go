@@ -174,7 +174,7 @@ func TestClient_HealthCheck(t *testing.T) {
 				c.pingURL = tt.pingURL
 			}
 
-			err = c.HealthCheck(testutil.Context())
+			err = c.HealthCheck(t.Context())
 			if tt.wantErr {
 				require.Error(t, err, "Client.HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
@@ -204,7 +204,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "fails because status not OK",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(testutil.Context(), w, http.StatusInternalServerError)
+				httputil.SendStatus(t.Context(), w, http.StatusInternalServerError)
 			},
 			text:      "text 1",
 			username:  "",
@@ -217,7 +217,7 @@ func TestClient_Send(t *testing.T) {
 			name: "fails because of timeout",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
 				time.Sleep(timeout + 1)
-				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
+				httputil.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:      "text TIMEOUT",
 			username:  "timeout-username",
@@ -229,7 +229,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "fails because bad address",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
+				httputil.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:       "text address",
 			clientFunc: func(c *Client) *Client { c.address = "*&^%-ERROR-"; return c },
@@ -238,7 +238,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "fails because WriteHTTPRetrier error",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
+				httputil.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:       "text retrier",
 			clientFunc: func(c *Client) *Client { c.retryAttempts = 0; return c },
@@ -247,7 +247,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "succeed with valid response",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(testutil.Context(), w, http.StatusOK)
+				httputil.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:      "text OK",
 			username:  "ok-username",
@@ -283,7 +283,7 @@ func TestClient_Send(t *testing.T) {
 				c = tt.clientFunc(c)
 			}
 
-			err = c.Send(testutil.Context(), tt.text, tt.username, tt.iconEmoji, tt.iconURL, tt.channel)
+			err = c.Send(t.Context(), tt.text, tt.username, tt.iconEmoji, tt.iconURL, tt.channel)
 			if tt.wantErr {
 				require.Error(t, err, "error = %v, wantErr %v", err, tt.wantErr)
 			} else {

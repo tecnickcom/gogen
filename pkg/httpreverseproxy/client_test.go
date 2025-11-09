@@ -171,7 +171,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 				},
 			)
 
-			ctx := testutil.Context()
+			ctx := t.Context()
 
 			// perform test
 			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+tt.path, nil)
