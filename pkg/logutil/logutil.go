@@ -1,5 +1,5 @@
 /*
-Package logutil provides genaral log utilities for log/slog integration.
+Package logutil provides general log utilities for log/slog integration.
 */
 package logutil
 
