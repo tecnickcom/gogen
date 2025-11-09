@@ -86,20 +86,3 @@ func awsRegionFromURL(url, defaultRegion string) string {
 
 	return awsDefaultRegion
 }
-
-type endpointResolver struct {
-	url         string
-	isImmutable bool
-}
-
-// ResolveEndpoint returns an aws.Endpoint.
-//
-// Deprecated: Use instead the WithEndpointMutable or WithEndpointImmutable in the gogen aws service packages.
-// Ref.: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/config#WithEndpointResolver
-func (r endpointResolver) ResolveEndpoint(_, region string, _ ...any) (aws.Endpoint, error) {
-	return aws.Endpoint{
-		SigningRegion:     region,
-		URL:               r.url,
-		HostnameImmutable: r.isImmutable,
-	}, nil
-}

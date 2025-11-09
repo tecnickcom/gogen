@@ -123,17 +123,3 @@ func Test_WithRegionFromURL(t *testing.T) {
 		})
 	}
 }
-
-func Test_ResolveEndpoint(t *testing.T) {
-	t.Parallel()
-
-	er := &endpointResolver{
-		url:         "http://test.url.invalid",
-		isImmutable: true,
-	}
-
-	ep, err := er.ResolveEndpoint("", "", nil)
-	require.NoError(t, err)
-	require.Equal(t, er.url, ep.URL)
-	require.Equal(t, er.isImmutable, ep.HostnameImmutable)
-}
