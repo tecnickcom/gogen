@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"log/slog"
 	"net/http"
 	"time"
-
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"go.uber.org/zap"
 )
 
 const (
@@ -56,51 +54,67 @@ func (sc Status) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s) //nolint:wrapcheck
 }
 
+// HTTPResp holds the configuration for the HTTP response methods.
+type HTTPResp struct {
+	logger *slog.Logger
+}
+
+// NewHTTPResp returns a new Response object.
+func NewHTTPResp(l *slog.Logger) *HTTPResp {
+	if l == nil {
+		l = slog.Default()
+	}
+
+	return &HTTPResp{
+		logger: l,
+	}
+}
+
 // SendStatus sends write a HTTP status code to the response.
-func SendStatus(ctx context.Context, w http.ResponseWriter, statusCode int) {
-	defer logResponse(ctx, statusCode, logKeyResponseDataText, "")
+func (hr *HTTPResp) SendStatus(ctx context.Context, w http.ResponseWriter, statusCode int) {
+	defer hr.logResponse(ctx, statusCode, logKeyResponseDataText, "")
 
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
 // SendText sends text to the response.
-func SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
-	defer logResponse(ctx, statusCode, logKeyResponseDataText, data)
+func (hr *HTTPResp) SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
+	defer hr.logResponse(ctx, statusCode, logKeyResponseDataText, data)
 
 	writeHeaders(w, statusCode, MimeTextPlain)
 
 	_, err := w.Write([]byte(data))
 	if err != nil {
-		logging.FromContext(ctx).Error("httputil.SendText()", zap.Error(err))
+		hr.logger.With(slog.Any("error", err)).Error("httputil.SendText()")
 	}
 }
 
 // SendJSON sends a JSON object to the response.
-func SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {
-	defer logResponse(ctx, statusCode, logKeyResponseDataObject, data)
+func (hr *HTTPResp) SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {
+	defer hr.logResponse(ctx, statusCode, logKeyResponseDataObject, data)
 
 	writeHeaders(w, statusCode, MimeApplicationJSON)
 
 	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logging.FromContext(ctx).Error("httputil.SendJSON()", zap.Error(err))
+		hr.logger.With(slog.Any("error", err)).Error("httputil.SendJSON()")
 	}
 }
 
 // SendXML sends an XML object to the response.
-func SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, xmlHeader string, data any) {
-	defer logResponse(ctx, statusCode, logKeyResponseDataObject, data)
+func (hr *HTTPResp) SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, xmlHeader string, data any) {
+	defer hr.logResponse(ctx, statusCode, logKeyResponseDataObject, data)
 
 	writeHeaders(w, statusCode, MimeApplicationXML)
 
 	_, err := w.Write([]byte(xmlHeader))
 	if err != nil {
-		logging.FromContext(ctx).Error("httputil.SendXML() unable to send XML Declaration Header", zap.Error(err))
+		hr.logger.With(slog.Any("error", err)).Error("httputil.SendXML() unable to send XML Declaration Header")
 	}
 
 	err = xml.NewEncoder(w).Encode(data)
 	if err != nil {
-		logging.FromContext(ctx).Error("httputil.SendXML()", zap.Error(err))
+		hr.logger.With(slog.Any("error", err)).Error("httputil.SendXML()")
 	}
 }
 
@@ -114,7 +128,7 @@ func writeHeaders(w http.ResponseWriter, statusCode int, contentType string) {
 }
 
 // logResponse logs the response.
-func logResponse(ctx context.Context, statusCode int, dataKey string, data any) {
+func (hr *HTTPResp) logResponse(ctx context.Context, statusCode int, dataKey string, data any) {
 	resTime := time.Now().UTC()
 
 	reqTime, ok := GetRequestTimeFromContext(ctx)
@@ -122,14 +136,13 @@ func logResponse(ctx context.Context, statusCode int, dataKey string, data any) 
 		reqTime = resTime
 	}
 
-	l := logging.FromContext(ctx)
-	resLog := l.With(
-		zap.Int("response_code", statusCode),
-		zap.String("response_message", http.StatusText(statusCode)),
-		zap.Any("response_status", Status(statusCode)),
-		zap.Time("response_time", resTime),
-		zap.Duration("response_duration", resTime.Sub(reqTime)),
-		zap.Any(dataKey, data),
+	resLog := hr.logger.With(
+		slog.Int("response_code", statusCode),
+		slog.String("response_message", http.StatusText(statusCode)),
+		slog.Any("response_status", Status(statusCode)),
+		slog.Time("response_time", resTime),
+		slog.Duration("response_duration", resTime.Sub(reqTime)),
+		slog.Any(dataKey, data),
 	)
 
 	if statusCode >= http.StatusBadRequest { // 400+

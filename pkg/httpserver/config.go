@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/http"
 	"runtime/debug"
@@ -14,12 +15,11 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/ipify"
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/profiling"
 	"github.com/tecnickcom/gogen/pkg/redact"
 	"github.com/tecnickcom/gogen/pkg/traceid"
-	"go.uber.org/zap"
 )
 
 // timeoutMessage is the message used for timeout responses.
@@ -65,36 +65,45 @@ type config struct {
 	middleware                  []MiddlewareFn
 	disableDefaultRouteLogger   map[DefaultRoute]bool
 	disableRouteLogger          bool
+	logger                      *slog.Logger
 	shutdownWaitGroup           *sync.WaitGroup
 	shutdownSignalChan          chan struct{}
+	httpresp                    *httputil.HTTPResp
 }
 
 // defaultConfig returns the default configuration for the HTTP server.
 func defaultConfig() *config {
-	return &config{
-		router:                      httprouter.New(),
-		serverAddr:                  ":8017",
-		traceIDHeaderName:           traceid.DefaultHeader,
-		serverReadHeaderTimeout:     1 * time.Minute,
-		serverReadTimeout:           1 * time.Minute,
-		serverWriteTimeout:          1 * time.Minute,
-		shutdownTimeout:             30 * time.Second,
-		defaultEnabledRoutes:        nil,
-		indexHandlerFunc:            defaultIndexHandler,
-		ipHandlerFunc:               defaultIPHandler(GetPublicIPDefaultFunc()),
-		metricsHandlerFunc:          notImplementedHandler,
-		pingHandlerFunc:             defaultPingHandler,
-		pprofHandlerFunc:            profiling.PProfHandler,
-		statusHandlerFunc:           defaultStatusHandler,
-		notFoundHandlerFunc:         defaultNotFoundHandlerFunc,
-		methodNotAllowedHandlerFunc: defaultMethodNotAllowedHandlerFunc,
-		panicHandlerFunc:            defaultPanicHandlerFunc,
-		redactFn:                    redact.HTTPData,
-		middleware:                  []MiddlewareFn{},
-		disableDefaultRouteLogger:   make(map[DefaultRoute]bool, len(allDefaultRoutes())),
-		shutdownWaitGroup:           &sync.WaitGroup{},
-		shutdownSignalChan:          make(chan struct{}),
+	logger := slog.Default()
+
+	cfg := &config{
+		router:                    httprouter.New(),
+		serverAddr:                ":8017",
+		traceIDHeaderName:         traceid.DefaultHeader,
+		serverReadHeaderTimeout:   1 * time.Minute,
+		serverReadTimeout:         1 * time.Minute,
+		serverWriteTimeout:        1 * time.Minute,
+		shutdownTimeout:           30 * time.Second,
+		defaultEnabledRoutes:      nil,
+		redactFn:                  redact.HTTPData,
+		middleware:                []MiddlewareFn{},
+		disableDefaultRouteLogger: make(map[DefaultRoute]bool, len(allDefaultRoutes())),
+		logger:                    logger,
+		shutdownWaitGroup:         &sync.WaitGroup{},
+		shutdownSignalChan:        make(chan struct{}),
+		httpresp:                  httputil.NewHTTPResp(logger),
 	}
+
+	cfg.pprofHandlerFunc = profiling.PProfHandler
+	cfg.indexHandlerFunc = cfg.defaultIndexHandler
+	cfg.ipHandlerFunc = cfg.defaultIPHandler(GetPublicIPDefaultFunc())
+	cfg.metricsHandlerFunc = cfg.notImplementedHandler()
+	cfg.pingHandlerFunc = cfg.defaultPingHandler()
+	cfg.statusHandlerFunc = cfg.defaultStatusHandler()
+	cfg.notFoundHandlerFunc = cfg.defaultNotFoundHandlerFunc()
+	cfg.methodNotAllowedHandlerFunc = cfg.defaultMethodNotAllowedHandlerFunc()
+	cfg.panicHandlerFunc = cfg.defaultPanicHandlerFunc()
+
+	return cfg
 }
 
 // isIndexRouteEnabled checks if the index route is enabled in the configuration.
@@ -157,8 +166,8 @@ func (c *config) commonMiddleware(noRouteLogger bool, rTimeout time.Duration) []
 }
 
 // setRouter sets the router's default handlers if they are not already set.
-func (c *config) setRouter(ctx context.Context) {
-	l := logging.FromContext(ctx)
+func (c *config) setRouter(_ context.Context) {
+	l := c.logger
 	middleware := c.commonMiddleware(false, 0)
 
 	if c.router.NotFound == nil {
@@ -191,11 +200,10 @@ func (c *config) setRouter(ctx context.Context) {
 
 	if c.router.PanicHandler == nil {
 		c.router.PanicHandler = func(w http.ResponseWriter, r *http.Request, p any) {
-			logging.FromContext(r.Context()).Error(
-				"panic",
-				zap.Any("err", p),
-				zap.String("stacktrace", string(debug.Stack())),
-			)
+			c.logger.With(
+				slog.Any("error", p),
+				slog.String("stacktrace", string(debug.Stack())),
+			).Error("panic")
 			ApplyMiddleware(
 				MiddlewareArgs{
 					Path:              "500",
@@ -209,4 +217,84 @@ func (c *config) setRouter(ctx context.Context) {
 			).ServeHTTP(w, r)
 		}
 	}
+}
+
+// defaultIndexHandler returns the default index handler.
+func (c *config) defaultIndexHandler(routes []Route) http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			data := &Index{Routes: routes}
+			c.httpresp.SendJSON(r.Context(), w, http.StatusOK, data)
+		},
+	)
+}
+
+// defaultIPHandler returns the default /ip handler.
+func (c *config) defaultIPHandler(fn GetPublicIPFunc) http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			status := http.StatusOK
+
+			ip, err := fn(r.Context())
+			if err != nil {
+				status = http.StatusFailedDependency
+			}
+
+			c.httpresp.SendText(r.Context(), w, status, ip)
+		},
+	)
+}
+
+// defaultPingHandler returns the default /ping handler.
+func (c *config) defaultPingHandler() http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			c.httpresp.SendStatus(r.Context(), w, http.StatusOK)
+		},
+	)
+}
+
+// defaultStatusHandler returns the default /status handler.
+func (c *config) defaultStatusHandler() http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			c.httpresp.SendStatus(r.Context(), w, http.StatusOK)
+		},
+	)
+}
+
+// notImplementedHandler returns a 501 Not Implemented response.
+func (c *config) notImplementedHandler() http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			c.httpresp.SendStatus(r.Context(), w, http.StatusNotImplemented)
+		},
+	)
+}
+
+// defaultNotFoundHandlerFunc returns the default 404 Not Found handler function.
+func (c *config) defaultNotFoundHandlerFunc() http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			c.httpresp.SendStatus(r.Context(), w, http.StatusNotFound)
+		},
+	)
+}
+
+// defaultMethodNotAllowedHandlerFunc returns the default 405 Method Not Allowed handler function.
+func (c *config) defaultMethodNotAllowedHandlerFunc() http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			c.httpresp.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
+		},
+	)
+}
+
+// defaultPanicHandlerFunc returns the default panic handler function.
+func (c *config) defaultPanicHandlerFunc() http.HandlerFunc {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			c.httpresp.SendStatus(r.Context(), w, http.StatusInternalServerError)
+		},
+	)
 }

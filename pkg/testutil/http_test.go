@@ -5,6 +5,7 @@ package testutil
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,8 +20,10 @@ func TestRouterWithHandler(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 
+	hres := httputil.NewHTTPResp(slog.Default())
+
 	router := RouterWithHandler(http.MethodGet, "/test", func(w http.ResponseWriter, r *http.Request) {
-		httputil.SendStatus(r.Context(), w, http.StatusOK)
+		hres.SendStatus(r.Context(), w, http.StatusOK)
 	})
 	router.ServeHTTP(rr, req)
 

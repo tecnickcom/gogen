@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -238,6 +239,7 @@ func TestClient_HealthCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			hres := httputil.NewHTTPResp(slog.Default())
 			mux := http.NewServeMux()
 
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -245,7 +247,7 @@ func TestClient_HealthCheck(t *testing.T) {
 					time.Sleep(tt.pingHandlerDelay)
 				}
 
-				httputil.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"test":"OK"}`)
+				hres.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"test":"OK"}`)
 			})
 
 			ts := httptest.NewServer(mux)
@@ -287,6 +289,8 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 //nolint:gocognit,tparallel
 func TestSendRequest(t *testing.T) {
 	t.Parallel()
+
+	hres := httputil.NewHTTPResp(slog.Default())
 
 	type testReqData struct {
 		TestField int `mapstructure:"testfield" validate:"required,min=1"`
@@ -343,7 +347,7 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+					hres.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
 			},
 			wantStatusCode: http.StatusInternalServerError,
@@ -354,7 +358,7 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
+					hres.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
 				}
 			},
 			wantStatusCode: http.StatusSwitchingProtocols,
@@ -365,7 +369,7 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusMultipleChoices, "")
+					hres.SendText(r.Context(), w, http.StatusMultipleChoices, "")
 				}
 			},
 			wantStatusCode: http.StatusMultipleChoices,
@@ -387,7 +391,7 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusCreated, "Success")
+					hres.SendText(r.Context(), w, http.StatusCreated, "Success")
 				}
 			},
 			wantStatusCode: http.StatusCreated,

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -126,6 +127,7 @@ func TestClient_HealthCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			hres := httputil.NewHTTPResp(slog.Default())
 			mux := http.NewServeMux()
 
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +135,7 @@ func TestClient_HealthCheck(t *testing.T) {
 					time.Sleep(tt.pingHandlerDelay)
 				}
 
-				httputil.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"version":"v1.0.2-beta1@2e768b5"}`)
+				hres.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"version":"v1.0.2-beta1@2e768b5"}`)
 			})
 
 			ts := httptest.NewServer(mux)
@@ -269,6 +271,8 @@ func getValidDeploymentReq() *DeploymentRequest {
 
 //nolint:gocognit,paralleltest
 func Test_sendRequest(t *testing.T) {
+	hres := httputil.NewHTTPResp(slog.Default())
+
 	tests := []struct {
 		name              string
 		req               *DeploymentRequest
@@ -318,7 +322,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+					hres.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
 			},
 			wantErr: true,
@@ -329,7 +333,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
+					hres.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
 				}
 			},
 			wantErr: true,
@@ -347,7 +351,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusOK, "Success")
+					hres.SendText(r.Context(), w, http.StatusOK, "Success")
 				}
 			},
 			wantErr: false,
@@ -406,13 +410,14 @@ func Test_sendRequest(t *testing.T) {
 func getTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
+	hres := httputil.NewHTTPResp(slog.Default())
 	mux := http.NewServeMux()
 
 	createMockHandler := func(t *testing.T) http.HandlerFunc {
 		t.Helper()
 
 		return func(w http.ResponseWriter, r *http.Request) {
-			httputil.SendText(r.Context(), w, http.StatusOK, "Success")
+			hres.SendText(r.Context(), w, http.StatusOK, "Success")
 		}
 	}
 

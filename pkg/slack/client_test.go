@@ -1,6 +1,7 @@
 package slack
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -140,10 +141,12 @@ func TestClient_HealthCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			hres := httputil.NewHTTPResp(slog.Default())
 			mux := http.NewServeMux()
+
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodGet {
-					httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
+					hres.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
 					return
 				}
 
@@ -151,7 +154,7 @@ func TestClient_HealthCheck(t *testing.T) {
 					time.Sleep(tt.pingHandlerDelay)
 				}
 
-				httputil.SendJSON(r.Context(), w, tt.pingHandlerStatusCode, tt.pingBody)
+				hres.SendJSON(r.Context(), w, tt.pingHandlerStatusCode, tt.pingBody)
 			})
 
 			ts := httptest.NewServer(mux)
@@ -188,6 +191,8 @@ func TestClient_HealthCheck(t *testing.T) {
 func TestClient_Send(t *testing.T) {
 	t.Parallel()
 
+	hres := httputil.NewHTTPResp(slog.Default())
+
 	timeout := 100 * time.Millisecond
 
 	tests := []struct {
@@ -204,7 +209,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "fails because status not OK",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(t.Context(), w, http.StatusInternalServerError)
+				hres.SendStatus(t.Context(), w, http.StatusInternalServerError)
 			},
 			text:      "text 1",
 			username:  "",
@@ -217,7 +222,7 @@ func TestClient_Send(t *testing.T) {
 			name: "fails because of timeout",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
 				time.Sleep(timeout + 1)
-				httputil.SendStatus(t.Context(), w, http.StatusOK)
+				hres.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:      "text TIMEOUT",
 			username:  "timeout-username",
@@ -229,7 +234,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "fails because bad address",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(t.Context(), w, http.StatusOK)
+				hres.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:       "text address",
 			clientFunc: func(c *Client) *Client { c.address = "*&^%-ERROR-"; return c },
@@ -238,7 +243,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "fails because WriteHTTPRetrier error",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(t.Context(), w, http.StatusOK)
+				hres.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:       "text retrier",
 			clientFunc: func(c *Client) *Client { c.retryAttempts = 0; return c },
@@ -247,7 +252,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "succeed with valid response",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(t.Context(), w, http.StatusOK)
+				hres.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:      "text OK",
 			username:  "ok-username",

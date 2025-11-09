@@ -18,12 +18,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"go.uber.org/zap"
 )
 
 // Binder is an interface to allow configuring the HTTP router.
@@ -49,7 +48,6 @@ type HTTPServer struct {
 	ctx        context.Context //nolint:containedctx
 	httpServer *http.Server
 	listener   net.Listener
-	logger     *zap.Logger
 }
 
 // New configures new HTTP server.
@@ -63,12 +61,15 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 		}
 	}
 
-	logger := logging.WithComponent(ctx, "httpserver").With(
-		zap.String("addr", cfg.serverAddr),
+	cfg.logger = cfg.logger.With(
+		slog.String("component", "httpserver"),
+		slog.String("addr", cfg.serverAddr),
 	)
 
+	cfg.httpresp = httputil.NewHTTPResp(cfg.logger)
+
 	cfg.setRouter(ctx)
-	loadRoutes(ctx, logger, binder, cfg)
+	loadRoutes(ctx, binder, cfg)
 
 	listener, err := netListener(ctx, cfg.serverAddr, cfg.tlsConfig)
 	if err != nil {
@@ -87,7 +88,6 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 				WriteTimeout:      cfg.serverWriteTimeout,
 			},
 			listener: listener,
-			logger:   logger,
 		},
 		nil
 }
@@ -99,9 +99,9 @@ func (h *HTTPServer) StartServerCtx(ctx context.Context) {
 	go func() {
 		select {
 		case <-h.cfg.shutdownSignalChan:
-			h.logger.Debug("shutdown notification received")
+			h.cfg.logger.Debug("shutdown notification received")
 		case <-ctx.Done():
-			h.logger.Warn("context canceled")
+			h.cfg.logger.Warn("context canceled")
 		}
 
 		// The shutdown context is independent from the parent context.
@@ -118,7 +118,7 @@ func (h *HTTPServer) StartServerCtx(ctx context.Context) {
 
 	h.cfg.shutdownWaitGroup.Add(1)
 
-	h.logger.Info("listening for http requests")
+	h.cfg.logger.Info("listening for http requests")
 }
 
 // StartServer starts the current server and return without blocking.
@@ -129,12 +129,12 @@ func (h *HTTPServer) StartServer() {
 // Shutdown gracefully shuts down the server without interrupting any active connections.
 // Wraps the standard net/http/Server_Shutdown method.
 func (h *HTTPServer) Shutdown(ctx context.Context) error {
-	h.logger.Debug("shutting down http server")
+	h.cfg.logger.Debug("shutting down http server")
 
 	err := h.httpServer.Shutdown(ctx)
 	h.cfg.shutdownWaitGroup.Add(-1)
 
-	h.logger.Debug("http server shutdown complete", zap.Error(err))
+	h.cfg.logger.With(slog.Any("error", err)).Debug("http server shutdown complete")
 
 	return err //nolint:wrapcheck
 }
@@ -143,11 +143,11 @@ func (h *HTTPServer) Shutdown(ctx context.Context) error {
 func (h *HTTPServer) serve() {
 	err := h.httpServer.Serve(h.listener)
 	if err == http.ErrServerClosed {
-		h.logger.Debug("closed http server")
+		h.cfg.logger.Debug("closed http server")
 		return
 	}
 
-	h.logger.Error("unexpected http server failure", zap.Error(err))
+	h.cfg.logger.With(slog.Any("error", err)).Error("unexpected http server failure")
 }
 
 // netListener creates a network listener for the given server address and TLS configuration.
@@ -173,21 +173,21 @@ func netListener(ctx context.Context, serverAddr string, tlsConfig *tls.Config) 
 }
 
 // loadRoutes loads and binds the routes to the HTTP server router.
-func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) {
-	l.Debug("loading default routes")
+func loadRoutes(ctx context.Context, binder Binder, cfg *config) {
+	cfg.logger.Debug("loading default routes")
 
 	routes := newDefaultRoutes(cfg)
 
-	l.Debug("loading service routes")
+	cfg.logger.Debug("loading service routes")
 
 	customRoutes := binder.BindHTTP(ctx)
 
 	routes = append(routes, customRoutes...)
 
-	l.Debug("applying routes")
+	cfg.logger.Debug("applying routes")
 
 	for _, r := range routes {
-		l.Debug("binding route", zap.String("path", r.Path))
+		cfg.logger.With(slog.String("path", r.Path)).Debug("binding route")
 
 		// Add default and custom middleware functions
 		middleware := cfg.commonMiddleware(r.DisableLogger, r.Timeout)
@@ -199,7 +199,7 @@ func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) 
 			Description:       r.Description,
 			TraceIDHeaderName: cfg.traceIDHeaderName,
 			RedactFunc:        cfg.redactFn,
-			Logger:            l,
+			Logger:            cfg.logger,
 		}
 
 		handler := ApplyMiddleware(args, r.Handler, middleware...)
@@ -209,7 +209,7 @@ func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) 
 
 	// attach route index if enabled
 	if cfg.isIndexRouteEnabled() {
-		l.Debug("enabling route index handler")
+		cfg.logger.Debug("enabling route index handler")
 
 		_, disableLogger := cfg.disableDefaultRouteLogger[IndexRoute]
 		middleware := cfg.commonMiddleware(disableLogger, 0)
@@ -220,63 +220,11 @@ func loadRoutes(ctx context.Context, l *zap.Logger, binder Binder, cfg *config) 
 			Description:       "Index",
 			TraceIDHeaderName: cfg.traceIDHeaderName,
 			RedactFunc:        cfg.redactFn,
-			Logger:            l,
+			Logger:            cfg.logger,
 		}
 
 		handler := ApplyMiddleware(args, cfg.indexHandlerFunc(routes), middleware...)
 
 		cfg.router.Handler(args.Method, args.Path, handler)
 	}
-}
-
-// defaultIndexHandler returns the default index handler.
-func defaultIndexHandler(routes []Route) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		data := &Index{Routes: routes}
-		httputil.SendJSON(r.Context(), w, http.StatusOK, data)
-	}
-}
-
-// defaultIPHandler returns the default /ip handler.
-func defaultIPHandler(fn GetPublicIPFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		status := http.StatusOK
-
-		ip, err := fn(r.Context())
-		if err != nil {
-			status = http.StatusFailedDependency
-		}
-
-		httputil.SendText(r.Context(), w, status, ip)
-	}
-}
-
-// defaultPingHandler returns the default /ping handler.
-func defaultPingHandler(w http.ResponseWriter, r *http.Request) {
-	httputil.SendStatus(r.Context(), w, http.StatusOK)
-}
-
-// defaultStatusHandler returns the default /status handler.
-func defaultStatusHandler(w http.ResponseWriter, r *http.Request) {
-	httputil.SendStatus(r.Context(), w, http.StatusOK)
-}
-
-// notImplementedHandler returns a 501 Not Implemented response.
-func notImplementedHandler(w http.ResponseWriter, r *http.Request) {
-	httputil.SendStatus(r.Context(), w, http.StatusNotImplemented)
-}
-
-// defaultNotFoundHandlerFunc returns the default 404 Not Found handler function.
-func defaultNotFoundHandlerFunc(w http.ResponseWriter, r *http.Request) {
-	httputil.SendStatus(r.Context(), w, http.StatusNotFound)
-}
-
-// defaultMethodNotAllowedHandlerFunc returns the default 405 Method Not Allowed handler function.
-func defaultMethodNotAllowedHandlerFunc(w http.ResponseWriter, r *http.Request) {
-	httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
-}
-
-// defaultPanicHandlerFunc returns the default panic handler function.
-func defaultPanicHandlerFunc(w http.ResponseWriter, r *http.Request) {
-	httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
 }

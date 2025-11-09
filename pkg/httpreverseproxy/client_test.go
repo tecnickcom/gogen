@@ -89,9 +89,11 @@ func TestClient_ForwardRequest(t *testing.T) {
 		},
 	)
 
+	hres := libhttputil.NewHTTPResp(slog.Default())
+
 	targetMux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			libhttputil.SendStatus(r.Context(), w, http.StatusOK)
+			hres.SendStatus(r.Context(), w, http.StatusOK)
 		}()
 
 		rd, err := httputil.DumpRequest(r, false)
@@ -106,7 +108,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 	})
 
 	targetMux.HandleFunc("/badrequest", func(w http.ResponseWriter, r *http.Request) {
-		libhttputil.SendStatus(r.Context(), w, http.StatusBadRequest)
+		hres.SendStatus(r.Context(), w, http.StatusBadRequest)
 	})
 
 	targetMux.HandleFunc("/error", func(_ http.ResponseWriter, _ *http.Request) {

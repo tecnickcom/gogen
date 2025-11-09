@@ -2,6 +2,7 @@ package httputil
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -67,9 +68,11 @@ func TestPathParam(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			res := NewHTTPResp(slog.Default())
+
 			r := testutil.RouterWithHandler(http.MethodGet, tt.mappedPath, func(w http.ResponseWriter, r *http.Request) {
 				val := PathParam(r, tt.paramName)
-				SendText(r.Context(), w, http.StatusOK, val)
+				res.SendText(r.Context(), w, http.StatusOK, val)
 			})
 
 			ctx := t.Context()

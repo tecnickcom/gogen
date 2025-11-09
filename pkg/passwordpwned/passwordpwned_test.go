@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -60,6 +61,8 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
+
+	hres := httputil.NewHTTPResp(slog.Default())
 
 	tests := []struct {
 		name              string
@@ -119,7 +122,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+					hres.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
 			},
 			wantErr: true,
@@ -130,7 +133,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusSwitchingProtocols)
+					hres.SendStatus(r.Context(), w, http.StatusSwitchingProtocols)
 				}
 			},
 			wantErr: true,

@@ -70,23 +70,23 @@ type JWT struct {
 	subject             string   // the `sub` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2
 	audience            []string // the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
 	logger              *slog.Logger
+	httpresp            *httputil.HTTPResp
 }
 
 // defaultJWT creates a JWT instance with default values.
 func defaultJWT() *JWT {
-	return &JWT{
+	cfg := &JWT{
 		expirationTime:      DefaultExpirationTime,
 		renewTime:           DefaultRenewTime,
-		sendResponseFn:      defaultSendResponse,
 		authorizationHeader: DefaultAuthorizationHeader,
 		signingMethod:       defaultSigningMethod(),
 		logger:              slog.Default(),
 	}
-}
 
-// defaultSendResponse is the default function used to send back the HTTP responses.
-func defaultSendResponse(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
-	httputil.SendText(ctx, w, statusCode, data)
+	cfg.httpresp = httputil.NewHTTPResp(cfg.logger)
+	cfg.sendResponseFn = cfg.defaultSendResponse
+
+	return cfg
 }
 
 // defaultSigningMethod returns the default JWT signing method.
@@ -111,6 +111,8 @@ func New(key []byte, userHashFn UserHashFn, opts ...Option) (*JWT, error) {
 	for _, applyOpt := range opts {
 		applyOpt(c)
 	}
+
+	c.httpresp = httputil.NewHTTPResp(c.logger)
 
 	return c, nil
 }
@@ -261,4 +263,9 @@ func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
 	)
 
 	return claims, err //nolint:wrapcheck
+}
+
+// defaultSendResponse is the default function used to send back the HTTP responses.
+func (c *JWT) defaultSendResponse(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
+	c.httpresp.SendText(ctx, w, statusCode, data)
 }

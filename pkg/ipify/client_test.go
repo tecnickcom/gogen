@@ -1,6 +1,7 @@
 package ipify
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -74,6 +75,8 @@ func TestNew(t *testing.T) {
 func TestClient_GetPublicIP(t *testing.T) {
 	t.Parallel()
 
+	hres := httputil.NewHTTPResp(slog.Default())
+
 	tests := []struct {
 		name         string
 		getIPHandler http.HandlerFunc
@@ -83,7 +86,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 		{
 			name: "fails because status not OK",
 			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
-				httputil.SendStatus(t.Context(), w, http.StatusInternalServerError)
+				hres.SendStatus(t.Context(), w, http.StatusInternalServerError)
 			},
 			wantIP:  "",
 			wantErr: true,
@@ -92,7 +95,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 			name: "fails because of timeout",
 			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
 				time.Sleep(5 * time.Second)
-				httputil.SendStatus(t.Context(), w, http.StatusOK)
+				hres.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			wantErr: true,
 		},

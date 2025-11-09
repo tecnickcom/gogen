@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -26,7 +27,7 @@ func TestNewHandler(t *testing.T) {
 	h1 := NewHandler(testChecks)
 	require.Len(t, h1.checks, 2)
 	require.Equal(t, 2, h1.checksCount)
-	require.Equal(t, reflect.ValueOf(httputil.SendJSON).Pointer(), reflect.ValueOf(h1.writeResult).Pointer())
+	require.Equal(t, reflect.ValueOf(httputil.NewHTTPResp(h1.logger).SendJSON).Pointer(), reflect.ValueOf(h1.writeResult).Pointer())
 
 	// With options
 	rw := func(_ context.Context, _ http.ResponseWriter, _ int, _ any) {}
@@ -68,7 +69,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 					type wrapper struct {
 						Data any `json:"data"`
 					}
-					httputil.SendJSON(ctx, w, statusCode, &wrapper{
+					httputil.NewHTTPResp(slog.Default()).SendJSON(ctx, w, statusCode, &wrapper{
 						Data: data,
 					})
 				}),

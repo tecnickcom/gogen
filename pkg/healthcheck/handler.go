@@ -2,6 +2,7 @@ package healthcheck
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"sync"
 
@@ -21,6 +22,7 @@ type Handler struct {
 	checks      []HealthCheck
 	checksCount int
 	writeResult ResultWriter
+	logger      *slog.Logger
 }
 
 // NewHandler creates a new instance of the healthcheck handler.
@@ -28,8 +30,10 @@ func NewHandler(checks []HealthCheck, opts ...HandlerOption) *Handler {
 	h := &Handler{
 		checks:      checks,
 		checksCount: len(checks),
-		writeResult: httputil.SendJSON,
+		logger:      slog.Default(),
 	}
+
+	h.writeResult = httputil.NewHTTPResp(h.logger).SendJSON
 
 	for _, apply := range opts {
 		apply(h)

@@ -1,6 +1,10 @@
 package httpserver
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -197,4 +201,174 @@ func Test_setRouter(t *testing.T) {
 			require.Equal(t, tt.wantStatus, resp.StatusCode, "status code got = %d, want = %d", resp.StatusCode, tt.wantStatus)
 		})
 	}
+}
+
+func Test_defaultIndexHandler(t *testing.T) {
+	t.Parallel()
+
+	routes := []Route{
+		{
+			Method:      http.MethodGet,
+			Path:        "/get",
+			Handler:     nil,
+			Description: "Get endpoint",
+		},
+		{
+			Method:      http.MethodPost,
+			Path:        "/post",
+			Handler:     nil,
+			Description: "Post endpoint",
+		},
+	}
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+
+	cfg := defaultConfig()
+	cfg.defaultIndexHandler(routes).ServeHTTP(rr, req)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	expBody, err := json.Marshal(&Index{Routes: routes})
+	require.NoError(t, err)
+
+	require.Equal(t, string(expBody)+"\n", string(body))
+}
+
+func Test_defaultIPHandler(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		ipFunc  GetPublicIPFunc
+		wantIP  string
+		wantErr bool
+	}{
+		{
+			name:    "success response",
+			ipFunc:  func(_ context.Context) (string, error) { return "0.0.0.0", nil },
+			wantIP:  "0.0.0.0",
+			wantErr: false,
+		},
+		{
+			name:    "error response",
+			ipFunc:  func(_ context.Context) (string, error) { return "ERROR", errors.New("ERROR") },
+			wantIP:  "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rr := httptest.NewRecorder()
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+
+			cfg := defaultConfig()
+			cfg.defaultIPHandler(tt.ipFunc).ServeHTTP(rr, req)
+
+			resp := rr.Result()
+			require.NotNil(t, resp)
+
+			defer func() {
+				err := resp.Body.Close()
+				require.NoError(t, err, "error closing resp.Body")
+			}()
+
+			bodyData, _ := io.ReadAll(resp.Body)
+			body := string(bodyData)
+
+			require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
+
+			if tt.wantErr {
+				require.Equal(t, http.StatusFailedDependency, resp.StatusCode)
+				require.Equal(t, "ERROR", body)
+			} else {
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				require.Equal(t, "0.0.0.0", body)
+			}
+		})
+	}
+}
+
+func Test_defaultPingHandler(t *testing.T) {
+	t.Parallel()
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+
+	cfg := defaultConfig()
+	handler := cfg.defaultPingHandler()
+	handler(rr, req)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "OK\n", string(body))
+}
+
+func Test_defaultStatusHandler(t *testing.T) {
+	t.Parallel()
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+
+	cfg := defaultConfig()
+	handler := cfg.defaultStatusHandler()
+	handler(rr, req)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
+	require.Equal(t, "OK\n", string(body))
+}
+
+func Test_notImplementedHandler(t *testing.T) {
+	t.Parallel()
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+
+	cfg := defaultConfig()
+	handler := cfg.notImplementedHandler()
+	handler(rr, req)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
 }

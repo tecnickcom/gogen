@@ -1,6 +1,7 @@
 package healthcheck
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -96,10 +97,12 @@ func TestCheckHttpStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			hres := httputil.NewHTTPResp(slog.Default())
 			mux := http.NewServeMux()
+
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if tt.handlerMethod != r.Method {
-					httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
+					hres.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
 					return
 				}
 
@@ -108,7 +111,7 @@ func TestCheckHttpStatus(t *testing.T) {
 						time.Sleep(tt.handlerDelay)
 					}
 
-					httputil.SendStatus(r.Context(), w, tt.handlerStatusCode)
+					hres.SendStatus(r.Context(), w, tt.handlerStatusCode)
 				}
 			})
 

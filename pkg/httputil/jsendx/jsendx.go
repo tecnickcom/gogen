@@ -14,6 +14,7 @@ package jsendx
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -90,50 +91,66 @@ func Wrap(statusCode int, info *AppInfo, data any) *Response {
 	}
 }
 
+// JSXResp holds the configuration for the HTTP response methods.
+type JSXResp struct {
+	httpResp *httputil.HTTPResp
+}
+
+// NewJSXResp returns a new Response object.
+func NewJSXResp(h *httputil.HTTPResp) *JSXResp {
+	if h == nil {
+		h = httputil.NewHTTPResp(slog.Default())
+	}
+
+	return &JSXResp{
+		httpResp: h,
+	}
+}
+
 // Send sends a JSON respoonse wrapped in a JSendX container.
-func Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppInfo, data any) {
-	httputil.SendJSON(ctx, w, statusCode, Wrap(statusCode, info, data))
+func (jr *JSXResp) Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppInfo, data any) {
+	jr.httpResp.SendJSON(ctx, w, statusCode, Wrap(statusCode, info, data))
 }
 
 // DefaultNotFoundHandlerFunc http handler called when no matching route is found.
-func DefaultNotFoundHandlerFunc(info *AppInfo) http.HandlerFunc {
+func (jr *JSXResp) DefaultNotFoundHandlerFunc(info *AppInfo) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			Send(r.Context(), w, http.StatusNotFound, info, "invalid endpoint")
+			jr.Send(r.Context(), w, http.StatusNotFound, info, "invalid endpoint")
 		},
 	)
 }
 
 // DefaultMethodNotAllowedHandlerFunc http handler called when a request cannot be routed.
-func DefaultMethodNotAllowedHandlerFunc(info *AppInfo) http.HandlerFunc {
+func (jr *JSXResp) DefaultMethodNotAllowedHandlerFunc(info *AppInfo) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			Send(r.Context(), w, http.StatusMethodNotAllowed, info, "the request cannot be routed")
+			jr.Send(r.Context(), w, http.StatusMethodNotAllowed, info, "the request cannot be routed")
 		},
 	)
 }
 
 // DefaultPanicHandlerFunc http handler to handle panics recovered from http handlers.
-func DefaultPanicHandlerFunc(info *AppInfo) http.HandlerFunc {
+func (jr *JSXResp) DefaultPanicHandlerFunc(info *AppInfo) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			Send(r.Context(), w, http.StatusInternalServerError, info, "internal error")
+			jr.Send(r.Context(), w, http.StatusInternalServerError, info, "internal error")
 		},
 	)
 }
 
 // DefaultIndexHandler returns the route index in JSendX format.
-func DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFunc {
+func (jr *JSXResp) DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFunc {
 	return func(routes []httpserver.Route) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			data := &httpserver.Index{Routes: routes}
-			Send(r.Context(), w, http.StatusOK, info, data)
+			jr.Send(r.Context(), w, http.StatusOK, info, data)
 		}
 	}
 }
 
 // DefaultIPHandler returns the route ip in JSendX format.
-func DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.HandlerFunc {
+func (jr *JSXResp) DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
 
@@ -142,27 +159,27 @@ func DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.Handler
 			status = http.StatusFailedDependency
 		}
 
-		Send(r.Context(), w, status, info, ip)
+		jr.Send(r.Context(), w, status, info, ip)
 	}
 }
 
 // DefaultPingHandler returns a ping request in JSendX format.
-func DefaultPingHandler(info *AppInfo) http.HandlerFunc {
+func (jr *JSXResp) DefaultPingHandler(info *AppInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		Send(r.Context(), w, http.StatusOK, info, okMessage)
+		jr.Send(r.Context(), w, http.StatusOK, info, okMessage)
 	}
 }
 
 // DefaultStatusHandler returns the server status in JSendX format.
-func DefaultStatusHandler(info *AppInfo) http.HandlerFunc {
+func (jr *JSXResp) DefaultStatusHandler(info *AppInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		Send(r.Context(), w, http.StatusOK, info, okMessage)
+		jr.Send(r.Context(), w, http.StatusOK, info, okMessage)
 	}
 }
 
 // HealthCheckResultWriter returns a new healthcheck result writer.
-func HealthCheckResultWriter(info *AppInfo) healthcheck.ResultWriter {
+func (jr *JSXResp) HealthCheckResultWriter(info *AppInfo) healthcheck.ResultWriter {
 	return func(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {
-		Send(ctx, w, statusCode, info, data)
+		jr.Send(ctx, w, statusCode, info, data)
 	}
 }

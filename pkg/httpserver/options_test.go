@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sync"
@@ -430,4 +431,15 @@ func TestWithoutDefaultRouteLogger(t *testing.T) {
 	v, ok = cfg.disableDefaultRouteLogger[PprofRoute]
 	require.True(t, ok)
 	require.True(t, v)
+}
+
+func TestWithLogger(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultConfig()
+	v := slog.Default()
+
+	err := WithLogger(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, v, cfg.logger)
 }
