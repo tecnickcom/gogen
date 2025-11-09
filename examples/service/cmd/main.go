@@ -17,6 +17,9 @@ var (
 	programRelease = "0" //nolint:gochecknoglobals
 )
 
+// exitFn define tha exit function and can be overwritten for testing.
+var exitFn = os.Exit //nolint:gochecknoglobals
+
 func main() {
 	// _, _ = logging.NewDefaultLogger(cli.AppName, programVersion, programRelease, "json", "debug")
 	l := slog.Default()
@@ -24,13 +27,13 @@ func main() {
 	rootCmd, err := cli.New(programVersion, programRelease, bootstrap.Bootstrap)
 	if err != nil {
 		l.With(slog.Any("error", err)).Error("UNABLE TO START THE PROGRAM")
-		os.Exit(1)
+		exitFn(1)
 	}
 
 	// execute the root command and log errors (if any)
 	err = rootCmd.Execute()
 	if err != nil {
 		l.With(slog.Any("error", err)).Error("UNABLE TO RUN THE COMMAND")
-		os.Exit(2)
+		exitFn(2)
 	}
 }
