@@ -280,7 +280,7 @@ func Test_customMiddlewares(t *testing.T) {
 }
 
 //nolint:gocognit
-func TestStart(t *testing.T) {
+func TestStartServer(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -426,11 +426,17 @@ YlAqGKDZ+A+l
 				defer func() { _ = l.Close() }()
 			}
 
-			err := Start(ctx, mockBinder, opts...)
+			h, err := New(ctx, mockBinder, opts...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewLogger() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
+			if err != nil || h == nil {
+				return
+			}
+
+			h.StartServer()
 		})
 	}
 }

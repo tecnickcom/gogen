@@ -52,20 +52,6 @@ type HTTPServer struct {
 	logger     *zap.Logger
 }
 
-// Start configures and start a new HTTP server.
-//
-// Deprecated: Use New() and StartServerCtx() instead.
-func Start(ctx context.Context, binder Binder, opts ...Option) error {
-	h, err := New(ctx, binder, opts...)
-	if err != nil {
-		return err
-	}
-
-	h.StartServer()
-
-	return nil
-}
-
 // New configures new HTTP server.
 func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error) {
 	cfg := defaultConfig()
