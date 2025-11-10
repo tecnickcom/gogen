@@ -111,6 +111,10 @@ func TestParseLevel(t *testing.T) {
 			value: "DEBUG",
 			want:  LevelDebug,
 		},
+		{
+			value: "trace",
+			want:  LevelTrace,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.value, func(t *testing.T) {
@@ -177,6 +181,11 @@ func TestValidLevel(t *testing.T) {
 		{
 			name:  "debug",
 			value: LevelDebug,
+			want:  true,
+		},
+		{
+			name:  "trace",
+			value: LevelTrace,
 			want:  true,
 		},
 	}

@@ -19,6 +19,7 @@ const (
 	LevelNotice    LogLevel = 2  // (+) 5 - Notice - Normal but noteworthy events.
 	LevelInfo      LogLevel = 0  // (=) 6 - Informational - General informational messages.
 	LevelDebug     LogLevel = -4 // (=) 7 - Debug - Detailed debugging information.
+	LevelTrace     LogLevel = -8 // (+) Additional Trace level when supported.
 )
 
 // ParseLevel converts syslog standard level strings to log/slog levels.
@@ -50,6 +51,9 @@ func ParseLevel(l string) (LogLevel, error) {
 	// 7 - Debug - Detailed debugging information
 	case "7", "debug":
 		return LevelDebug, nil
+	// Additional Trace level
+	case "trace":
+		return LevelTrace, nil
 	}
 
 	return LevelDebug, fmt.Errorf("invalid log level %q", l)
@@ -58,7 +62,7 @@ func ParseLevel(l string) (LogLevel, error) {
 // ValidLevel returns true if the log level is valid.
 func ValidLevel(l LogLevel) bool {
 	switch l {
-	case LevelEmergency, LevelAlert, LevelCritical, LevelError, LevelWarning, LevelNotice, LevelInfo, LevelDebug:
+	case LevelEmergency, LevelAlert, LevelCritical, LevelError, LevelWarning, LevelNotice, LevelInfo, LevelDebug, LevelTrace:
 		return true
 	default:
 		return false
