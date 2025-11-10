@@ -20,18 +20,7 @@ import (
 
 // NewLogger configures a new slog logger with a zerolog backend.
 func NewLogger(cfg *logutil.Config) *slog.Logger {
-	var w io.Writer
-
-	switch cfg.Format {
-	case logutil.FormatJSON:
-		w = cfg.Out
-	case logutil.FormatConsole:
-		w = zerolog.ConsoleWriter{Out: cfg.Out}
-	case logutil.FormatNone:
-		w = io.Discard
-	default:
-		w = cfg.Out
-	}
+	w := writerByFormat(cfg.Format, cfg.Out)
 
 	szlog.LogLevels = map[logutil.LogLevel]zerolog.Level{
 		logutil.LevelEmergency: zerolog.PanicLevel,
@@ -64,4 +53,18 @@ func NewLogger(cfg *logutil.Config) *slog.Logger {
 	slog.SetDefault(sl)
 
 	return sl
+}
+
+// writerByFormat returns the io.Writer for the selected log format.
+func writerByFormat(f logutil.LogFormat, w io.Writer) io.Writer {
+	switch f {
+	case logutil.FormatJSON:
+		return w
+	case logutil.FormatConsole:
+		return zerolog.ConsoleWriter{Out: w}
+	case logutil.FormatNone:
+		return io.Discard
+	default:
+		return w
+	}
 }
