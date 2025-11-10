@@ -137,7 +137,7 @@ func TestSlogHandler(t *testing.T) {
 			require.NoError(t, err)
 
 			if tt.name == "default" {
-				cfg.Format = -16 // force invalid vaule to trigger the default option
+				cfg.Format = -16 // force invalid value to trigger the default option
 			}
 
 			sh := cfg.SlogHandler()
