@@ -32,3 +32,17 @@ func DefaultConfig() *Config {
 		LevelHookFn: nil,
 	}
 }
+
+// NewConfig returns a new configuration with the applied options.
+func NewConfig(opts ...Option) (*Config, error) {
+	cfg := DefaultConfig()
+
+	for _, applyOpt := range opts {
+		err := applyOpt(cfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return cfg, nil
+}
