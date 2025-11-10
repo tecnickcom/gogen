@@ -1,18 +1,17 @@
 package logutil
 
 import (
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestSyslogToSlogLevel(t *testing.T) {
+func TestParseLevel(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		value   string
-		want    slog.Level
+		want    LogLevel
 		wantErr bool
 	}{
 		{
@@ -117,10 +116,75 @@ func TestSyslogToSlogLevel(t *testing.T) {
 		t.Run(tt.value, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := LevelStrToSlog(tt.value)
+			got, err := ParseLevel(tt.value)
 			if tt.wantErr {
 				require.Error(t, err)
 			}
+
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestValidLevel(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value LogLevel
+		want  bool
+	}{
+		{
+			name:  "invalid",
+			value: -128,
+			want:  false,
+		},
+		{
+			name:  "emergency",
+			value: LevelEmergency,
+			want:  true,
+		},
+		{
+			name:  "alert",
+			value: LevelAlert,
+			want:  true,
+		},
+		{
+			name:  "critical",
+			value: LevelCritical,
+			want:  true,
+		},
+		{
+			name:  "error",
+			value: LevelError,
+			want:  true,
+		},
+		{
+			name:  "warning",
+			value: LevelWarning,
+			want:  true,
+		},
+		{
+			name:  "notice",
+			value: LevelNotice,
+			want:  true,
+		},
+		{
+			name:  "info",
+			value: LevelInfo,
+			want:  true,
+		},
+		{
+			name:  "debug",
+			value: LevelDebug,
+			want:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := ValidLevel(tt.value)
 
 			require.Equal(t, tt.want, got)
 		})
