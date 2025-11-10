@@ -13,11 +13,15 @@ import (
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/config"
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
+	"github.com/tecnickcom/gogen/pkg/logsrv"
+	"github.com/tecnickcom/gogen/pkg/logutil"
 )
 
 type bootstrapFunc func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error
 
 // New creates an new CLI instance.
+//
+//nolint:gocognit
 func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, error) {
 	var (
 		argConfigDir string
@@ -47,17 +51,38 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 			cfg.Log.Format = argLogFormat
 		}
 
+		logFormat, err := logutil.ParseFormat(cfg.Log.Format)
+		if err != nil {
+			return fmt.Errorf("log config error: %w", err)
+		}
+
 		if argLogLevel != "" {
 			cfg.Log.Level = argLogLevel
 		}
 
+		logLevel, err := logutil.ParseLevel(cfg.Log.Level)
+		if err != nil {
+			return fmt.Errorf("log config error: %w", err)
+		}
+
 		// Configure logger
-		// l, err := logging.NewDefaultLogger(AppName, version, release, cfg.Log.Format, cfg.Log.Level)
+		logattr := []logutil.Attr{
+			slog.String("program", AppName),
+			slog.String("version", version),
+			slog.String("release", release),
+		}
+
+		logcfg, _ := logutil.NewConfig(
+			logutil.WithOutWriter(os.Stderr),
+			logutil.WithFormat(logFormat),
+			logutil.WithLevel(logLevel),
+			logutil.WithCommonAttr(logattr...),
+		)
 		// if err != nil {
 		// 	return fmt.Errorf("failed configuring logger: %w", err)
 		// }
 
-		l := slog.Default()
+		l := logsrv.NewLogger(logcfg)
 
 		appInfo := &jsendx.AppInfo{
 			ProgramName:    AppName,
