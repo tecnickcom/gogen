@@ -17,12 +17,12 @@ const (
 // ParseFormat converts a string to a log format.
 func ParseFormat(f string) (LogFormat, error) {
 	switch strings.ToLower(f) {
-	case "none", "discard", "noop":
-		return FormatNone, nil
 	case "json":
 		return FormatJSON, nil
 	case "console":
 		return FormatConsole, nil
+	case "none", "discard", "noop":
+		return FormatNone, nil
 	}
 
 	return FormatNone, fmt.Errorf("invalid log format %q", f)

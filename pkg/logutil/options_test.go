@@ -170,14 +170,15 @@ func TestWithCommonAttr(t *testing.T) {
 	require.Equal(t, v, cfg.CommonAttr)
 }
 
-func TestWithLevelHookFn(t *testing.T) {
+func TestWithHookFn(t *testing.T) {
 	t.Parallel()
 
-	v := func(_ string) {
-		// mock function
+	v := func(_ LogLevel, _ string) {
+		// void
 	}
+
 	cfg := &Config{}
-	err := WithLevelHookFn(v)(cfg)
+	err := WithHookFn(v)(cfg)
 	require.NoError(t, err)
-	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.LevelHookFn).Pointer())
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.HookFn).Pointer())
 }

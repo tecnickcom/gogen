@@ -78,9 +78,10 @@ func WithCommonAttr(a ...Attr) Option {
 	}
 }
 
-func WithLevelHookFn(f LevelHookFunc) Option {
+// WithHookFn adds a function to intercept the log message before passing it to the underlying handler.
+func WithHookFn(f HookFunc) Option {
 	return func(cfg *Config) error {
-		cfg.LevelHookFn = f
+		cfg.HookFn = f
 		return nil
 	}
 }

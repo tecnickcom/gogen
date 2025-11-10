@@ -17,7 +17,7 @@ func Test_DefaultConfig(t *testing.T) {
 	require.Equal(t, FormatJSON, cfg.Format)
 	require.Equal(t, LevelInfo, cfg.Level)
 	require.Empty(t, cfg.CommonAttr)
-	require.Nil(t, cfg.LevelHookFn)
+	require.Nil(t, cfg.HookFn)
 }
 
 func TestNewConfig(t *testing.T) {
