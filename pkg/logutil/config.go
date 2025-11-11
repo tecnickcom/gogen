@@ -1,7 +1,6 @@
 package logutil
 
 import (
-	"context"
 	"io"
 	"log/slog"
 	"os"
@@ -9,12 +8,6 @@ import (
 
 // Attr is a type alias for slog.Attr.
 type Attr = slog.Attr
-
-// HookFunc is an adaptor to allow the use of an ordinary function as a Hook.
-// The argument is the log level.
-
-// HookFunc is used to intercept the log message before passing it to the underlying handler.
-type HookFunc func(level LogLevel, message string)
 
 // Config holds common logger parameters.
 type Config struct {
@@ -83,26 +76,11 @@ func (c *Config) SlogHandler() slog.Handler {
 		h = slog.NewJSONHandler(os.Stderr, nil)
 	}
 
+	h = h.WithAttrs(c.CommonAttr)
+
 	if c.HookFn != nil {
-		h = &SlogHookHandler{
-			Handler: h,
-			hookFn:  c.HookFn,
-		}
+		h = NewSlogHookHandler(h, c.HookFn)
 	}
 
-	return h.WithAttrs(c.CommonAttr)
-}
-
-// SlogHookHandler is a slog.Handler that wraps another handler to add custom logic.
-type SlogHookHandler struct {
-	slog.Handler
-
-	hookFn HookFunc
-}
-
-// Handle intercepts the log record, modifies the message, and then passes
-// it to the underlying handler.
-func (h SlogHookHandler) Handle(ctx context.Context, record slog.Record) error {
-	h.hookFn(record.Level, record.Message)
-	return h.Handler.Handle(ctx, record) //nolint:wrapcheck
+	return h
 }

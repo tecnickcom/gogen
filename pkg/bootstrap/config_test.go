@@ -12,6 +12,7 @@ func Test_defaultConfig(t *testing.T) {
 	cfg := defaultConfig()
 	require.NotNil(t, cfg)
 	require.NotNil(t, cfg.context)
+	require.Nil(t, cfg.logConfig)
 	require.NotNil(t, cfg.createLoggerFunc)
 	require.NotNil(t, cfg.createMetricsClientFunc)
 }
