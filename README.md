@@ -68,7 +68,8 @@ Each package adheres to common conventions and coding standards, making them eas
 * [jwt](pkg/jwt) - JSON Web Token creation and validation.
 * [kafka](pkg/kafka) - Kafka producer and consumer utilities.
 * [kafkacgo](pkg/kafkacgo) - Kafka integration using CGO bindings.
-* [logging](pkg/logging) - Structured logging utilities.
+* [logsrv](pkg/logsrv) - Default slog logger with zerolog handler.
+* [logutil](pkg/logutil) - Logging utilities for log/slog integration.
 * [logutil](pkg/logutil) - General log utilities for log/slog integration.
 * [maputil](pkg/maputil) - Helpers for Go map manipulation.
 * [metrics](pkg/metrics) - Metrics collection and reporting.
