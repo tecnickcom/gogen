@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
 )
@@ -127,6 +127,7 @@ func TestClient_HealthCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			hres := httputil.NewHTTPResp(slog.Default())
 			mux := http.NewServeMux()
 
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +135,7 @@ func TestClient_HealthCheck(t *testing.T) {
 					time.Sleep(tt.pingHandlerDelay)
 				}
 
-				httputil.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"version":"v1.0.2-beta1@2e768b5"}`)
+				hres.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"version":"v1.0.2-beta1@2e768b5"}`)
 			})
 
 			ts := httptest.NewServer(mux)
@@ -153,7 +154,7 @@ func TestClient_HealthCheck(t *testing.T) {
 				c.pingURL = tt.pingURL
 			}
 
-			err = c.HealthCheck(testutil.Context())
+			err = c.HealthCheck(t.Context())
 			if tt.wantErr {
 				require.Error(t, err, "Client.HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
@@ -212,7 +213,7 @@ func Test_httpPostRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			r, err := httpPostRequest(testutil.Context(), tt.urlStr, "0123456789abcdef", tt.req)
+			r, err := httpPostRequest(t.Context(), tt.urlStr, "0123456789abcdef", tt.req)
 
 			if !tt.wantErr {
 				require.NoError(t, err)
@@ -270,6 +271,8 @@ func getValidDeploymentReq() *DeploymentRequest {
 
 //nolint:gocognit,paralleltest
 func Test_sendRequest(t *testing.T) {
+	hres := httputil.NewHTTPResp(slog.Default())
+
 	tests := []struct {
 		name              string
 		req               *DeploymentRequest
@@ -319,7 +322,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+					hres.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
 			},
 			wantErr: true,
@@ -330,7 +333,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
+					hres.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
 				}
 			},
 			wantErr: true,
@@ -348,7 +351,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusOK, "Success")
+					hres.SendText(r.Context(), w, http.StatusOK, "Success")
 				}
 			},
 			wantErr: false,
@@ -398,7 +401,7 @@ func Test_sendRequest(t *testing.T) {
 				tt.req = getValidDeploymentReq()
 			}
 
-			err = sendRequest(testutil.Context(), c, ts.URL+urlTestPath, tt.req)
+			err = sendRequest(t.Context(), c, ts.URL+urlTestPath, tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -407,13 +410,14 @@ func Test_sendRequest(t *testing.T) {
 func getTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
+	hres := httputil.NewHTTPResp(slog.Default())
 	mux := http.NewServeMux()
 
 	createMockHandler := func(t *testing.T) http.HandlerFunc {
 		t.Helper()
 
 		return func(w http.ResponseWriter, r *http.Request) {
-			httputil.SendText(r.Context(), w, http.StatusOK, "Success")
+			hres.SendText(r.Context(), w, http.StatusOK, "Success")
 		}
 	}
 
@@ -478,7 +482,7 @@ func TestClient_SendDeployment(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendDeployment(testutil.Context(), tt.req)
+			err = c.SendDeployment(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -577,7 +581,7 @@ func TestClient_SendIncident(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendIncident(testutil.Context(), tt.req)
+			err = c.SendIncident(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -628,7 +632,7 @@ func TestClient_SendIncidentClose(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendIncidentClose(testutil.Context(), tt.req)
+			err = c.SendIncidentClose(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}

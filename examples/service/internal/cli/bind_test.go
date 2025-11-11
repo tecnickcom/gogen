@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"sync"
 	"testing"
@@ -11,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 //nolint:gocognit,paralleltest,tparallel
@@ -121,12 +120,12 @@ func Test_bind(t *testing.T) {
 				sc,
 			)
 
-			testCtx, cancel := context.WithTimeout(testutil.Context(), 1*time.Second)
+			testCtx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cancel()
 
 			testBootstrapOpts := []bootstrap.Option{
 				bootstrap.WithContext(testCtx),
-				bootstrap.WithLogger(logging.FromContext(testCtx)),
+				bootstrap.WithLogger(slog.Default()),
 				bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
 				bootstrap.WithShutdownTimeout(1 * time.Millisecond),
 				bootstrap.WithShutdownWaitGroup(wg),

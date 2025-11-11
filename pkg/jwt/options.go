@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"log/slog"
 	"time"
 )
 
@@ -63,5 +64,12 @@ func WithClaimSubject(subject string) Option {
 func WithClaimAudience(audience []string) Option {
 	return func(c *JWT) {
 		c.audience = audience
+	}
+}
+
+// WithLogger overrides the default logger.
+func WithLogger(logger *slog.Logger) Option {
+	return func(c *JWT) {
+		c.logger = logger
 	}
 }

@@ -3,22 +3,21 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/metrics"
-	"go.uber.org/zap"
 )
 
 // CreateLoggerFunc creates a new logger.
-type CreateLoggerFunc func() (*zap.Logger, error)
+type CreateLoggerFunc func() *slog.Logger
 
 // CreateMetricsClientFunc creates a new metrics client.
 type CreateMetricsClientFunc func() (metrics.Client, error)
 
 // BindFunc represents the function responsible to wire up all components of the application.
-type BindFunc func(context.Context, *zap.Logger, metrics.Client) error
+type BindFunc func(context.Context, *slog.Logger, metrics.Client) error
 
 // config represents the bootstrap configuration.
 type config struct {
@@ -54,8 +53,8 @@ func defaultConfig() *config {
 }
 
 // defaultCreateLogger creates a default logger.
-func defaultCreateLogger() (*zap.Logger, error) {
-	return logging.NewLogger() //nolint:wrapcheck
+func defaultCreateLogger() *slog.Logger {
+	return slog.Default()
 }
 
 // defaultCreateMetricsClient creates a default metrics client.

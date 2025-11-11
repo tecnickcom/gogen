@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpserver"
+	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/mock/gomock"
 )
@@ -24,8 +26,10 @@ func TestSend(t *testing.T) {
 		ProgramRelease: "12345",
 	}
 
+	jr := NewJSXResp(nil)
+
 	rr := httptest.NewRecorder()
-	Send(testutil.Context(), rr, http.StatusOK, params, "hello test")
+	jr.Send(t.Context(), rr, http.StatusOK, params, "hello test")
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -55,7 +59,7 @@ func TestSend(t *testing.T) {
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
-	Send(testutil.Context(), mockWriter, http.StatusOK, params, "message")
+	jr.Send(t.Context(), mockWriter, http.StatusOK, params, "message")
 }
 
 func TestDefaultNotFoundHandlerFunc(t *testing.T) {
@@ -67,9 +71,11 @@ func TestDefaultNotFoundHandlerFunc(t *testing.T) {
 		ProgramRelease: "1",
 	}
 
+	jr := NewJSXResp(httputil.NewHTTPResp(slog.Default()))
+
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultNotFoundHandlerFunc(appInfo)(rr, req)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	jr.DefaultNotFoundHandlerFunc(appInfo)(rr, req)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -99,9 +105,11 @@ func TestDefaultMethodNotAllowedHandlerFunc(t *testing.T) {
 		ProgramRelease: "2",
 	}
 
+	jr := NewJSXResp(httputil.NewHTTPResp(slog.Default()))
+
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultMethodNotAllowedHandlerFunc(appInfo)(rr, req)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	jr.DefaultMethodNotAllowedHandlerFunc(appInfo)(rr, req)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -131,9 +139,11 @@ func TestDefaultPanicHandlerFunc(t *testing.T) {
 		ProgramRelease: "3",
 	}
 
+	jr := NewJSXResp(httputil.NewHTTPResp(slog.Default()))
+
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultPanicHandlerFunc(appInfo)(rr, req)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	jr.DefaultPanicHandlerFunc(appInfo)(rr, req)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -177,9 +187,12 @@ func TestDefaultIndexHandler(t *testing.T) {
 			Description: "Post endpoint",
 		},
 	}
+
+	jr := NewJSXResp(httputil.NewHTTPResp(slog.Default()))
+
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	jr.DefaultIndexHandler(appInfo)(routes).ServeHTTP(rr, req)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -232,9 +245,11 @@ func TestDefaultIPHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			jr := NewJSXResp(httputil.NewHTTPResp(slog.Default()))
+
 			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-			DefaultIPHandler(appInfo, tt.ipFunc).ServeHTTP(rr, req)
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+			jr.DefaultIPHandler(appInfo, tt.ipFunc).ServeHTTP(rr, req)
 
 			resp := rr.Result()
 			require.NotNil(t, resp)
@@ -271,9 +286,11 @@ func TestDefaultPingHandler(t *testing.T) {
 		ProgramRelease: "6",
 	}
 
+	jr := NewJSXResp(httputil.NewHTTPResp(slog.Default()))
+
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultPingHandler(appInfo)(rr, req)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	jr.DefaultPingHandler(appInfo)(rr, req)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -303,9 +320,11 @@ func TestDefaultStatusHandler(t *testing.T) {
 		ProgramRelease: "7",
 	}
 
+	jr := NewJSXResp(httputil.NewHTTPResp(slog.Default()))
+
 	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	DefaultStatusHandler(appInfo)(rr, req)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	jr.DefaultStatusHandler(appInfo)(rr, req)
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -335,8 +354,10 @@ func TestHealthCheckResultWriter(t *testing.T) {
 		ProgramRelease: "8",
 	}
 
+	jr := NewJSXResp(httputil.NewHTTPResp(slog.Default()))
+
 	rr := httptest.NewRecorder()
-	HealthCheckResultWriter(appInfo)(testutil.Context(), rr, http.StatusOK, "test body")
+	jr.HealthCheckResultWriter(appInfo)(t.Context(), rr, http.StatusOK, "test body")
 
 	resp := rr.Result()
 	require.NotNil(t, resp)

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
 )
@@ -61,6 +61,8 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
+
+	hres := httputil.NewHTTPResp(slog.Default())
 
 	tests := []struct {
 		name              string
@@ -120,7 +122,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+					hres.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
 			},
 			wantErr: true,
@@ -131,7 +133,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusSwitchingProtocols)
+					hres.SendStatus(r.Context(), w, http.StatusSwitchingProtocols)
 				}
 			},
 			wantErr: true,
@@ -219,7 +221,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 				}()
 			}
 
-			got, err := c.IsPwnedPassword(testutil.Context(), tt.password)
+			got, err := c.IsPwnedPassword(t.Context(), tt.password)
 
 			require.Equal(t, tt.wantErr, err != nil, err)
 			require.Equal(t, tt.pwned, got)

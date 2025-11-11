@@ -3,6 +3,7 @@ package sqlconn
 import (
 	"database/sql"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -29,6 +30,7 @@ type config struct {
 	driver              string
 	dsn                 string
 	pingTimeout         time.Duration
+	logger              *slog.Logger
 	shutdownWaitGroup   *sync.WaitGroup
 	shutdownSignalChan  chan struct{}
 }
@@ -46,6 +48,7 @@ func defaultConfig(driver, dsn string) *config {
 		driver:              driver,
 		dsn:                 dsn,
 		pingTimeout:         defaultPingTimeout,
+		logger:              slog.Default(),
 		shutdownWaitGroup:   &sync.WaitGroup{},
 		shutdownSignalChan:  make(chan struct{}),
 	}
@@ -93,6 +96,10 @@ func (c *config) validate() error {
 
 	if c.pingTimeout < 1*time.Second {
 		return errors.New("database ping timeout must be at least 1 second")
+	}
+
+	if c.logger == nil {
+		return errors.New("logger is required")
 	}
 
 	if c.shutdownWaitGroup == nil {

@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
@@ -70,5 +71,12 @@ func WithDialContext(fn DialContextFunc) Option {
 		if ok {
 			t.DialContext = fn
 		}
+	}
+}
+
+// WithLogger overrides the default logger.
+func WithLogger(logger *slog.Logger) Option {
+	return func(c *Client) {
+		c.logger = logger
 	}
 }

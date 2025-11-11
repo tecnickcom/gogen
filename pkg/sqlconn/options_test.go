@@ -3,6 +3,7 @@ package sqlconn
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"reflect"
 	"sync"
 	"testing"
@@ -108,6 +109,16 @@ func TestWithPingTimeout(t *testing.T) {
 	cfg := &config{}
 	WithPingTimeout(v)(cfg)
 	require.Equal(t, v, cfg.pingTimeout)
+}
+
+func TestWithLogger(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+
+	v := slog.Default()
+	WithLogger(v)(cfg)
+	require.Equal(t, v, cfg.logger)
 }
 
 func TestWithShutdownWaitGroup(t *testing.T) {

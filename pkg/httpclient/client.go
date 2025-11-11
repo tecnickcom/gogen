@@ -2,15 +2,14 @@ package httpclient
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/redact"
 	"github.com/tecnickcom/gogen/pkg/traceid"
 	"github.com/tecnickcom/gogen/pkg/uidc"
-	"go.uber.org/zap"
 )
 
 // Client wraps the default HTTP client functionalities and adds logging and instrumentation capabilities.
@@ -20,6 +19,7 @@ type Client struct {
 	logPrefix         string
 	traceIDHeaderName string
 	redactFn          RedactFn
+	logger            *slog.Logger
 }
 
 // defaultClient() returns a default client.
@@ -32,6 +32,7 @@ func defaultClient() *Client {
 		traceIDHeaderName: traceid.DefaultHeader,
 		component:         "-",
 		redactFn:          redact.HTTPData,
+		logger:            slog.Default(),
 	}
 }
 
@@ -55,20 +56,20 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	//nolint:govet // calling cancel() causes long body reads to return context canceled errors.
 	ctx, _ := context.WithTimeout(r.Context(), c.client.Timeout)
 
-	l := logging.FromContext(ctx).With(zap.String(c.logPrefix+"component", c.component))
-	debug := l.Check(zap.DebugLevel, "debug") != nil
+	l := c.logger.With(c.logPrefix+"component", c.component)
+	debug := l.Enabled(ctx, slog.LevelDebug)
 
 	var err error
 
 	defer func() {
 		resTime := time.Now().UTC()
 		l = l.With(
-			zap.Time(c.logPrefix+"response_time", resTime),
-			zap.Duration(c.logPrefix+"response_duration", resTime.Sub(reqTime)),
+			slog.Time(c.logPrefix+"response_time", resTime),
+			slog.Duration(c.logPrefix+"response_duration", resTime.Sub(reqTime)),
 		)
 
 		if err != nil {
-			l.Error(c.logPrefix+"error", zap.Error(err))
+			l.With(slog.Any(c.logPrefix+"error", err)).Error(c.logPrefix + "outbound")
 			return
 		}
 
@@ -86,20 +87,18 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	r = r.WithContext(ctx)
 
 	l = l.With(
-		zap.String(c.logPrefix+traceid.DefaultLogKey, reqID),
-		zap.Time(c.logPrefix+"request_time", reqTime),
-		zap.String(c.logPrefix+"request_method", r.Method),
-		zap.String(c.logPrefix+"request_path", r.URL.Path),
-		zap.String(c.logPrefix+"request_query", r.URL.RawQuery),
-		zap.String(c.logPrefix+"request_uri", r.RequestURI),
+		slog.String(c.logPrefix+traceid.DefaultLogKey, reqID),
+		slog.Time(c.logPrefix+"request_time", reqTime),
+		slog.String(c.logPrefix+"request_method", r.Method),
+		slog.String(c.logPrefix+"request_path", r.URL.Path),
+		slog.String(c.logPrefix+"request_query", r.URL.RawQuery),
+		slog.String(c.logPrefix+"request_uri", r.RequestURI),
 	)
 
 	if debug {
 		reqDump, errd := httputil.DumpRequestOut(r, true)
 		if errd == nil {
-			l = l.With(
-				zap.String(c.logPrefix+"request", c.redactFn(string(reqDump))),
-			)
+			l = l.With(slog.String(c.logPrefix+"request", c.redactFn(string(reqDump))))
 		}
 	}
 
@@ -110,9 +109,7 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	if debug && resp != nil {
 		respDump, errd := httputil.DumpResponse(resp, true)
 		if errd == nil {
-			l = l.With(
-				zap.String(c.logPrefix+"response", c.redactFn(string(respDump))),
-			)
+			l = l.With(slog.String(c.logPrefix+"response", c.redactFn(string(respDump))))
 		}
 	}
 

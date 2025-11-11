@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"log/slog"
 	"reflect"
 	"sync"
 	"testing"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/metrics"
-	"go.uber.org/zap"
 )
 
 func TestWithContext(t *testing.T) {
@@ -29,12 +29,11 @@ func TestWithLogger(t *testing.T) {
 
 	cfg := &config{}
 
-	l := zap.NewNop()
+	l := slog.Default()
 	WithLogger(l)(cfg)
 	require.NotNil(t, cfg.createLoggerFunc)
 
-	ll, err := cfg.createLoggerFunc()
-	require.NoError(t, err)
+	ll := cfg.createLoggerFunc()
 	require.Equal(t, l, ll)
 }
 
@@ -43,8 +42,8 @@ func TestWithCreateLoggerFunc(t *testing.T) {
 
 	cfg := &config{}
 
-	v := func() (*zap.Logger, error) {
-		return nil, nil //nolint:nilnil
+	v := func() *slog.Logger {
+		return nil
 	}
 	WithCreateLoggerFunc(v)(cfg)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.createLoggerFunc).Pointer())

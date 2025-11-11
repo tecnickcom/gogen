@@ -1,6 +1,7 @@
 package healthcheck
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 //nolint:gocognit
@@ -97,10 +97,12 @@ func TestCheckHttpStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			hres := httputil.NewHTTPResp(slog.Default())
 			mux := http.NewServeMux()
+
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if tt.handlerMethod != r.Method {
-					httputil.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
+					hres.SendStatus(r.Context(), w, http.StatusMethodNotAllowed)
 					return
 				}
 
@@ -109,7 +111,7 @@ func TestCheckHttpStatus(t *testing.T) {
 						time.Sleep(tt.handlerDelay)
 					}
 
-					httputil.SendStatus(r.Context(), w, tt.handlerStatusCode)
+					hres.SendStatus(r.Context(), w, tt.handlerStatusCode)
 				}
 			})
 
@@ -118,7 +120,7 @@ func TestCheckHttpStatus(t *testing.T) {
 
 			testHTTPClient := &http.Client{Timeout: 2 * time.Second}
 
-			err := CheckHTTPStatus(testutil.Context(), testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
+			err := CheckHTTPStatus(t.Context(), testHTTPClient, tt.checkMethod, ts.URL+tt.checkExtraPath, tt.checkWantStatus, tt.checkTimeout, tt.checkOpts...)
 
 			t.Logf("check error: %v", err)
 

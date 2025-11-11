@@ -3,6 +3,7 @@ package httphandler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/tecnickcom/gogen/pkg/httpserver"
@@ -13,16 +14,18 @@ import (
 // Service is the interface representing the business logic of the service.
 type Service any
 
-// New creates a new instance of the HTTP handler.
-func New(s Service) *HTTPHandler {
-	return &HTTPHandler{
-		service: s,
-	}
-}
-
 // HTTPHandler is the struct containing all the http handlers.
 type HTTPHandler struct {
 	service Service
+	httpres *httputil.HTTPResp
+}
+
+// New creates a new instance of the HTTP handler.
+func New(s Service, l *slog.Logger) *HTTPHandler {
+	return &HTTPHandler{
+		service: s,
+		httpres: httputil.NewHTTPResp(l),
+	}
 }
 
 // BindHTTP implements the function to bind the handler to a server.
@@ -38,5 +41,5 @@ func (h *HTTPHandler) BindHTTP(_ context.Context) []httpserver.Route {
 }
 
 func (h *HTTPHandler) handleGenUID(w http.ResponseWriter, r *http.Request) {
-	httputil.SendJSON(r.Context(), w, http.StatusOK, uidc.NewID128())
+	h.httpres.SendJSON(r.Context(), w, http.StatusOK, uidc.NewID128())
 }

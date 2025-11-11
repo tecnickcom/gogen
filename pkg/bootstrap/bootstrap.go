@@ -12,14 +12,12 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"go.uber.org/zap"
 )
 
 // Bootstrap is the function in charge of configuring the core components
@@ -45,15 +43,7 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 		return fmt.Errorf("error creating application metric: %w", err)
 	}
 
-	l, err := cfg.createLoggerFunc()
-	if err != nil {
-		return fmt.Errorf("error creating application logger: %w", err)
-	}
-
-	l = logging.WithLevelFunctionHook(l, m.IncLogLevelCounter)
-	ctx = logging.WithLogger(ctx, l)
-
-	defer logging.Sync(l)
+	l := cfg.createLoggerFunc()
 
 	l.Debug("binding application components")
 
@@ -99,7 +89,7 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 }
 
 // syncWaitGroupTimeout adds a timeout to the sync.WaitGroup.Wait().
-func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *zap.Logger) {
+func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *slog.Logger) {
 	wait := make(chan struct{})
 
 	go func() {

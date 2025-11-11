@@ -4,10 +4,8 @@ package httpserver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -16,10 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 )
 
 func TestNopBinder(t *testing.T) {
@@ -30,163 +25,6 @@ func TestNopBinder(t *testing.T) {
 func Test_nopBinder_BindHTTP(t *testing.T) {
 	t.Parallel()
 	require.Nil(t, NopBinder().BindHTTP(t.Context()))
-}
-
-func Test_defaultIndexHandler(t *testing.T) {
-	t.Parallel()
-
-	routes := []Route{
-		{
-			Method:      http.MethodGet,
-			Path:        "/get",
-			Handler:     nil,
-			Description: "Get endpoint",
-		},
-		{
-			Method:      http.MethodPost,
-			Path:        "/post",
-			Handler:     nil,
-			Description: "Post endpoint",
-		},
-	}
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	defaultIndexHandler(routes).ServeHTTP(rr, req)
-
-	resp := rr.Result()
-	require.NotNil(t, resp)
-
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err, "error closing resp.Body")
-	}()
-
-	body, _ := io.ReadAll(resp.Body)
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
-	expBody, err := json.Marshal(&Index{Routes: routes})
-	require.NoError(t, err)
-
-	require.Equal(t, string(expBody)+"\n", string(body))
-}
-
-func Test_defaultIPHandler(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		ipFunc  GetPublicIPFunc
-		wantIP  string
-		wantErr bool
-	}{
-		{
-			name:    "success response",
-			ipFunc:  func(_ context.Context) (string, error) { return "0.0.0.0", nil },
-			wantIP:  "0.0.0.0",
-			wantErr: false,
-		},
-		{
-			name:    "error response",
-			ipFunc:  func(_ context.Context) (string, error) { return "ERROR", errors.New("ERROR") },
-			wantIP:  "",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-			defaultIPHandler(tt.ipFunc).ServeHTTP(rr, req)
-
-			resp := rr.Result()
-			require.NotNil(t, resp)
-
-			defer func() {
-				err := resp.Body.Close()
-				require.NoError(t, err, "error closing resp.Body")
-			}()
-
-			bodyData, _ := io.ReadAll(resp.Body)
-			body := string(bodyData)
-
-			require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
-
-			if tt.wantErr {
-				require.Equal(t, http.StatusFailedDependency, resp.StatusCode)
-				require.Equal(t, "ERROR", body)
-			} else {
-				require.Equal(t, http.StatusOK, resp.StatusCode)
-				require.Equal(t, "0.0.0.0", body)
-			}
-		})
-	}
-}
-
-func Test_defaultPingHandler(t *testing.T) {
-	t.Parallel()
-
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	defaultPingHandler(rr, req)
-
-	resp := rr.Result()
-	require.NotNil(t, resp)
-
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err, "error closing resp.Body")
-	}()
-
-	body, _ := io.ReadAll(resp.Body)
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "OK\n", string(body))
-}
-
-func Test_defaultStatusHandler(t *testing.T) {
-	t.Parallel()
-
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	defaultStatusHandler(rr, req)
-
-	resp := rr.Result()
-	require.NotNil(t, resp)
-
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err, "error closing resp.Body")
-	}()
-
-	body, _ := io.ReadAll(resp.Body)
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "text/plain; charset=utf-8", resp.Header.Get("Content-Type"))
-	require.Equal(t, "OK\n", string(body))
-}
-
-func Test_notImplementedHandler(t *testing.T) {
-	t.Parallel()
-
-	rr := httptest.NewRecorder()
-	req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
-	notImplementedHandler(rr, req)
-
-	resp := rr.Result()
-	require.NotNil(t, resp)
-
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err, "error closing resp.Body")
-	}()
-
-	require.Equal(t, http.StatusNotImplemented, resp.StatusCode)
 }
 
 type customMiddlewareBinder struct {
@@ -245,10 +83,9 @@ func Test_customMiddlewares(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	l := zap.NewNop()
 	cfg := defaultConfig()
 	cfg.setRouter(ctx)
-	loadRoutes(ctx, l, binder, cfg)
+	loadRoutes(ctx, binder, cfg)
 
 	go func() {
 		select {
@@ -280,7 +117,7 @@ func Test_customMiddlewares(t *testing.T) {
 }
 
 //nolint:gocognit
-func TestStart(t *testing.T) {
+func TestStartServer(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -406,7 +243,7 @@ YlAqGKDZ+A+l
 			opts = append(opts, WithShutdownWaitGroup(shutdownWG))
 			opts = append(opts, WithShutdownSignalChan(shutdownSG))
 
-			ctx, cancelCtx := context.WithCancel(testutil.Context())
+			ctx, cancelCtx := context.WithCancel(t.Context())
 
 			defer func() {
 				if tt.shutdownSig {
@@ -426,11 +263,17 @@ YlAqGKDZ+A+l
 				defer func() { _ = l.Close() }()
 			}
 
-			err := Start(ctx, mockBinder, opts...)
+			h, err := New(ctx, mockBinder, opts...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewLogger() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
+			if err != nil || h == nil {
+				return
+			}
+
+			h.StartServer()
 		})
 	}
 }
@@ -462,7 +305,6 @@ func Test_Serve_error(t *testing.T) {
 			WriteTimeout:      1 * time.Millisecond,
 		},
 		listener: mockListenerErr{},
-		logger:   logging.NopLogger(),
 	}
 
 	h.serve()

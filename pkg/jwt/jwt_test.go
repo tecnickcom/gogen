@@ -160,7 +160,7 @@ func TestLoginHandler(t *testing.T) {
 			require.NoError(t, err)
 
 			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", strings.NewReader(tt.body))
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", strings.NewReader(tt.body))
 
 			if tt.closeError {
 				req.Body = testutil.NewErrorCloser("close error")
@@ -254,7 +254,7 @@ func TestRenewHandler(t *testing.T) {
 			reqBody := `{"username":"test-name", "password":"test-name"}`
 
 			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", strings.NewReader(reqBody))
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", strings.NewReader(reqBody))
 			c.LoginHandler(rr, req)
 
 			resp := rr.Result()
@@ -270,7 +270,7 @@ func TestRenewHandler(t *testing.T) {
 			token, _ := io.ReadAll(resp.Body)
 
 			rr2 := httptest.NewRecorder()
-			req2, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+			req2, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
 			header := tt.bearerHeader + string(token)
 
@@ -345,7 +345,7 @@ func TestIsAuthorized(t *testing.T) {
 			reqBody := `{"username":"test-name", "password":"test-name"}`
 
 			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", strings.NewReader(reqBody))
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", strings.NewReader(reqBody))
 			c.LoginHandler(rr, req)
 
 			resp := rr.Result()
@@ -361,7 +361,7 @@ func TestIsAuthorized(t *testing.T) {
 			token, _ := io.ReadAll(resp.Body)
 
 			rr2 := httptest.NewRecorder()
-			req2, _ := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "/", nil)
+			req2, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
 			header := tt.bearerHeader + string(token)
 

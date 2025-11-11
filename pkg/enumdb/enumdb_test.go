@@ -6,7 +6,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func TestNew(t *testing.T) {
@@ -102,7 +101,7 @@ func TestNew(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			cache, err := New(testutil.Context(), mockDB, queries)
+			cache, err := New(t.Context(), mockDB, queries)
 
 			if tt.wantErr {
 				require.Error(t, err, "an error was expected")

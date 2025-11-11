@@ -1,6 +1,7 @@
 package httpreverseproxy
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -12,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/testutil"
-	"go.uber.org/zap"
 )
 
 func TestNew(t *testing.T) {
@@ -49,7 +49,7 @@ func TestNew(t *testing.T) {
 		{
 			name:        "succeeds with custom logger",
 			serviceAddr: "http://service.domain.invalid:1237/",
-			opts:        []Option{WithLogger(zap.NewNop())},
+			opts:        []Option{WithLogger(slog.Default())},
 			wantErr:     false,
 		},
 	}
@@ -89,9 +89,11 @@ func TestClient_ForwardRequest(t *testing.T) {
 		},
 	)
 
+	hres := libhttputil.NewHTTPResp(slog.Default())
+
 	targetMux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			libhttputil.SendStatus(r.Context(), w, http.StatusOK)
+			hres.SendStatus(r.Context(), w, http.StatusOK)
 		}()
 
 		rd, err := httputil.DumpRequest(r, false)
@@ -106,7 +108,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 	})
 
 	targetMux.HandleFunc("/badrequest", func(w http.ResponseWriter, r *http.Request) {
-		libhttputil.SendStatus(r.Context(), w, http.StatusBadRequest)
+		hres.SendStatus(r.Context(), w, http.StatusBadRequest)
 	})
 
 	targetMux.HandleFunc("/error", func(_ http.ResponseWriter, _ *http.Request) {
@@ -154,7 +156,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 
 			opts := []Option{}
 			if tt.withLogger {
-				opts = append(opts, WithLogger(zap.NewNop()))
+				opts = append(opts, WithLogger(slog.Default()))
 			}
 
 			// setup proxy test server
@@ -171,7 +173,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 				},
 			)
 
-			ctx := testutil.Context()
+			ctx := t.Context()
 
 			// perform test
 			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+tt.path, nil)

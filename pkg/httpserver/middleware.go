@@ -1,15 +1,14 @@
 package httpserver
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"time"
 
 	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/traceid"
 	"github.com/tecnickcom/gogen/pkg/uidc"
-	"go.uber.org/zap"
 )
 
 // MiddlewareArgs contains extra optional arguments to be passed to the middleware handler function MiddlewareFn.
@@ -30,41 +29,49 @@ type MiddlewareArgs struct {
 	RedactFunc RedactFn
 
 	// Logger is the logger.
-	Logger *zap.Logger
+	Logger *slog.Logger
 }
 
 // MiddlewareFn is a function that wraps an http.Handler.
 type MiddlewareFn func(args MiddlewareArgs, next http.Handler) http.Handler
 
 // RequestInjectHandler wraps all incoming requests and injects a logger in the request scoped context.
-func RequestInjectHandler(logger *zap.Logger, traceIDHeaderName string, redactFn RedactFn, next http.Handler) http.Handler {
+func RequestInjectHandler(logger *slog.Logger, traceIDHeaderName string, redactFn RedactFn, next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		reqTime := time.Now().UTC()
 		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, uidc.NewID128())
 
-		l := logger.With(
-			zap.String(traceid.DefaultLogKey, reqID),
-			zap.Time("request_time", reqTime),
-			zap.String("request_method", r.Method),
-			zap.String("request_path", r.URL.Path),
-			zap.String("request_query", r.URL.RawQuery),
-			zap.String("request_remote_address", r.RemoteAddr),
-			zap.String("request_uri", r.RequestURI),
-			zap.String("request_user_agent", r.UserAgent()),
-			zap.String("request_x_forwarded_for", r.Header.Get("X-Forwarded-For")),
-		)
-
-		if l.Check(zap.DebugLevel, "debug") != nil {
-			reqDump, _ := httputil.DumpRequest(r, true)
-			l = l.With(zap.String("request", redactFn(string(reqDump))))
-		}
-
 		ctx := r.Context()
 		ctx = libhttputil.WithRequestTime(ctx, reqTime)
 		ctx = traceid.NewContext(ctx, reqID)
-		ctx = logging.WithLogger(ctx, l)
+
+		logger = logger.With(
+			slog.String(traceid.DefaultLogKey, reqID),
+			slog.Time("request_time", reqTime),
+			slog.String("request_method", r.Method),
+			slog.String("request_path", r.URL.Path),
+			slog.String("request_query", r.URL.RawQuery),
+			slog.String("request_remote_address", r.RemoteAddr),
+			slog.String("request_uri", r.RequestURI),
+			slog.String("request_user_agent", r.UserAgent()),
+			slog.String("request_x_forwarded_for", r.Header.Get("X-Forwarded-For")),
+		)
+
+		dbglog := logger.Enabled(ctx, slog.LevelDebug)
+
+		if dbglog {
+			reqDump, _ := httputil.DumpRequest(r, true)
+			logger = logger.With(slog.String("request_dump", redactFn(string(reqDump))))
+		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))
+
+		if dbglog {
+			logger.Debug("request")
+			return
+		}
+
+		logger.Info("request")
 	}
 
 	return http.HandlerFunc(fn)

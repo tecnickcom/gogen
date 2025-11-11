@@ -2,10 +2,9 @@ package bootstrap
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 // Option is a type alias for a function that configures the application logger.
@@ -19,10 +18,10 @@ func WithContext(ctx context.Context) Option {
 }
 
 // WithLogger overrides the default application logger.
-func WithLogger(l *zap.Logger) Option {
+func WithLogger(l *slog.Logger) Option {
 	return func(cfg *config) {
-		cfg.createLoggerFunc = func() (*zap.Logger, error) {
-			return l, nil
+		cfg.createLoggerFunc = func() *slog.Logger {
+			return l
 		}
 	}
 }

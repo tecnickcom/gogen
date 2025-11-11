@@ -1,91 +1,116 @@
 package httpserver
 
 import (
+	"bytes"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/redact"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/tecnickcom/gogen/pkg/traceid"
-	"go.uber.org/zap/zapcore"
 )
 
-func TestRequestInjectHandler(t *testing.T) {
+func TestRequestInjectHandler_debug(t *testing.T) {
 	t.Parallel()
 
-	nextHandler := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		l := logging.FromContext(r.Context())
-		assert.NotNil(t, l, "logger not found")
+	reader, writer, perr := os.Pipe()
+	require.NoError(t, perr, "Unexpected error (os.Pipe)")
 
-		l.Info("injected")
+	logger := slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	slog.SetDefault(logger)
 
-		// check if the request_time can be retrieved.
-		reqTime, ok := httputil.GetRequestTime(r)
-		assert.True(t, ok)
-		assert.NotEmpty(t, reqTime)
-	})
+	out := make(chan string)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
 
-	ctx, logs := testutil.ContextWithLogObserver(zapcore.DebugLevel)
-	handler := RequestInjectHandler(logging.FromContext(ctx), traceid.DefaultHeader, redact.HTTPData, nextHandler)
+	go func() {
+		var buf bytes.Buffer
+
+		wg.Done()
+
+		_, err := io.Copy(&buf, reader)
+		if err == nil {
+			out <- buf.String()
+		}
+	}()
+
+	wg.Wait()
+
+	nextHandler := http.HandlerFunc(
+		func(_ http.ResponseWriter, r *http.Request) {
+			// check if the request_time can be retrieved.
+			reqTime, ok := httputil.GetRequestTime(r)
+			assert.True(t, ok)
+			assert.NotEmpty(t, reqTime)
+		},
+	)
+
+	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, nextHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)
 
-	logEntries := logs.All()
-	require.Len(t, logEntries, 1, "expected only 1 log message")
+	cerr := writer.Close()
+	require.NoError(t, cerr, "Unexpected error (writer.Close)")
 
-	logEntry := logEntries[0]
-	logContextMap := logEntry.ContextMap()
+	outlog := <-out
+	require.NotEmpty(t, outlog, "captured log output")
 
-	// check traceid
-	tiValue, tiExists := logContextMap[traceid.DefaultLogKey]
-	require.True(t, tiExists, "traceid field missing")
-	require.NotEmpty(t, tiValue, "expected traceid value not found")
+	require.Contains(t, outlog, "request_dump")
+}
 
-	// check request_time
-	rtValue, rtExists := logContextMap["request_time"]
-	require.True(t, rtExists, "request_time field missing")
-	require.NotEmpty(t, rtValue, "expected request_time value not found")
+func TestRequestInjectHandler_info(t *testing.T) {
+	t.Parallel()
 
-	// check request_method
-	mValue, mExists := logContextMap["request_method"]
-	require.True(t, mExists, "request_method field missing")
-	require.Equal(t, http.MethodGet, mValue)
+	reader, writer, perr := os.Pipe()
+	require.NoError(t, perr, "Unexpected error (os.Pipe)")
 
-	// check request_path
-	pValue, pExists := logContextMap["request_path"]
-	require.True(t, pExists, "request_path field missing")
-	require.Equal(t, "/", pValue)
+	logger := slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	slog.SetDefault(logger)
 
-	// check request_query
-	rqValue, rqExists := logContextMap["request_query"]
-	require.True(t, rqExists, "request_query field missing")
-	require.Empty(t, rqValue)
+	out := make(chan string)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
 
-	// check request_user_agent
-	_, ipExists := logContextMap["request_remote_address"]
-	require.True(t, ipExists, "request_remote_address field missing")
+	go func() {
+		var buf bytes.Buffer
 
-	// check request_uri
-	ruValue, ruExists := logContextMap["request_uri"]
-	require.True(t, ruExists, "request_uri field missing")
-	require.Equal(t, "/", ruValue)
+		wg.Done()
 
-	// check request_user_agent
-	uaValue, uaExists := logContextMap["request_user_agent"]
-	require.True(t, uaExists, "request_user_agent field missing")
-	require.Empty(t, uaValue)
+		_, err := io.Copy(&buf, reader)
+		if err == nil {
+			out <- buf.String()
+		}
+	}()
 
-	// check request_x_forwarded_for
-	rxffValue, rxffExists := logContextMap["request_x_forwarded_for"]
-	require.True(t, rxffExists, "request_x_forwarded_for field missing")
-	require.Empty(t, rxffValue)
+	wg.Wait()
 
-	// message
-	require.Equal(t, "injected", logEntry.Message)
+	nextHandler := http.HandlerFunc(
+		func(_ http.ResponseWriter, r *http.Request) {
+			// check if the request_time can be retrieved.
+			reqTime, ok := httputil.GetRequestTime(r)
+			assert.True(t, ok)
+			assert.NotEmpty(t, reqTime)
+		},
+	)
+
+	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, nextHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	handler.ServeHTTP(nil, req)
+
+	cerr := writer.Close()
+	require.NoError(t, cerr, "Unexpected error (writer.Close)")
+
+	outlog := <-out
+	require.NotEmpty(t, outlog, "captured log output")
+
+	require.NotContains(t, outlog, "request_dump")
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
 )
@@ -158,6 +158,7 @@ func TestClient_HealthCheck(t *testing.T) {
 			t.Parallel()
 
 			mux := http.NewServeMux()
+			hres := httputil.NewHTTPResp(slog.Default())
 
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if tt.pingHandlerDelay != 0 {
@@ -168,7 +169,7 @@ func TestClient_HealthCheck(t *testing.T) {
 					w.Header().Set("Content-Length", "1")
 				}
 
-				httputil.SendText(r.Context(), w, tt.pingHandlerStatusCode, tt.pingBody)
+				hres.SendText(r.Context(), w, tt.pingHandlerStatusCode, tt.pingBody)
 			})
 
 			ts := httptest.NewServer(mux)
@@ -188,7 +189,7 @@ func TestClient_HealthCheck(t *testing.T) {
 				c.pingURL = tt.pingURL
 			}
 
-			err = c.HealthCheck(testutil.Context())
+			err = c.HealthCheck(t.Context())
 			if tt.wantErr {
 				require.Error(t, err, "Client.HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
@@ -248,7 +249,7 @@ func Test_httpRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			r, err := httpPostRequest(testutil.Context(), tt.urlStr, "0123456789abcdef", tt.req)
+			r, err := httpPostRequest(t.Context(), tt.urlStr, "0123456789abcdef", tt.req)
 
 			if !tt.wantErr {
 				require.NoError(t, err)
@@ -273,6 +274,8 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 
 //nolint:gocognit,paralleltest
 func Test_sendRequest(t *testing.T) {
+	hres := httputil.NewHTTPResp(slog.Default())
+
 	tests := []struct {
 		name              string
 		req               *DeployRegistrationRequest
@@ -322,7 +325,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+					hres.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
 			},
 			wantErr: true,
@@ -333,7 +336,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
+					hres.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
 				}
 			},
 			wantErr: true,
@@ -351,7 +354,7 @@ func Test_sendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusOK, "Success")
+					hres.SendText(r.Context(), w, http.StatusOK, "Success")
 				}
 			},
 			wantErr: false,
@@ -405,7 +408,7 @@ func Test_sendRequest(t *testing.T) {
 				}
 			}
 
-			err = sendRequest(testutil.Context(), c, ts.URL+urlTestPath, tt.req)
+			err = sendRequest(t.Context(), c, ts.URL+urlTestPath, tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -415,12 +418,13 @@ func getTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
 	mux := http.NewServeMux()
+	hres := httputil.NewHTTPResp(slog.Default())
 
 	createMockHandler := func(t *testing.T) http.HandlerFunc {
 		t.Helper()
 
 		return func(w http.ResponseWriter, r *http.Request) {
-			httputil.SendText(r.Context(), w, http.StatusOK, "Success")
+			hres.SendText(r.Context(), w, http.StatusOK, "Success")
 		}
 	}
 
@@ -499,7 +503,7 @@ func TestClient_SendDeployRegistration(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendDeployRegistration(testutil.Context(), tt.req)
+			err = c.SendDeployRegistration(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -571,7 +575,7 @@ func TestClient_SendManualChange(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendManualChange(testutil.Context(), tt.req)
+			err = c.SendManualChange(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -642,7 +646,7 @@ func TestClient_SendCustomIncidentImpactRegistration(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendCustomIncidentImpactRegistration(testutil.Context(), tt.req)
+			err = c.SendCustomIncidentImpactRegistration(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
@@ -704,7 +708,7 @@ func TestClient_SendCustomMetricImpactRegistration(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			err = c.SendCustomMetricImpactRegistration(testutil.Context(), tt.req)
+			err = c.SendCustomMetricImpactRegistration(t.Context(), tt.req)
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}

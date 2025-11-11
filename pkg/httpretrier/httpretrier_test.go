@@ -441,10 +441,10 @@ func TestHTTPRetrier_Do(t *testing.T) {
 				tt.setupMocks(mockHTTP)
 			}
 
-			ctx := testutil.Context()
+			ctx := t.Context()
 
 			if tt.ctxTimeout > 0 {
-				timeoutCtx, cancel := context.WithTimeout(testutil.Context(), tt.ctxTimeout)
+				timeoutCtx, cancel := context.WithTimeout(t.Context(), tt.ctxTimeout)
 
 				defer cancel()
 

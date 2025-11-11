@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
 	"github.com/undefinedlabs/go-mpatch"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -96,7 +96,7 @@ func TestClient_setRequestHeaders(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	req, err := http.NewRequestWithContext(testutil.Context(), http.MethodGet, "https://test.invalid", nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://test.invalid", nil)
 	require.NoError(t, err)
 
 	c.setRequestHeaders(req)
@@ -185,7 +185,7 @@ func Test_httpRequest(t *testing.T) {
 			)
 			require.NoError(t, err, "Client.HealthCheck() create client unexpected error = %v", err)
 
-			r, err := c.httpRequest(testutil.Context(), http.MethodPost, tt.urlStr, tt.request)
+			r, err := c.httpRequest(t.Context(), http.MethodPost, tt.urlStr, tt.request)
 
 			if !tt.wantErr {
 				require.NoError(t, err)
@@ -239,6 +239,7 @@ func TestClient_HealthCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			hres := httputil.NewHTTPResp(slog.Default())
 			mux := http.NewServeMux()
 
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -246,7 +247,7 @@ func TestClient_HealthCheck(t *testing.T) {
 					time.Sleep(tt.pingHandlerDelay)
 				}
 
-				httputil.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"test":"OK"}`)
+				hres.SendText(r.Context(), w, tt.pingHandlerStatusCode, `{"test":"OK"}`)
 			})
 
 			ts := httptest.NewServer(mux)
@@ -265,7 +266,7 @@ func TestClient_HealthCheck(t *testing.T) {
 				c.pingAddr = tt.pingAddr
 			}
 
-			err = c.HealthCheck(testutil.Context())
+			err = c.HealthCheck(t.Context())
 			if tt.wantErr {
 				require.Error(t, err, "Client.HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
@@ -288,6 +289,8 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 //nolint:gocognit,tparallel
 func TestSendRequest(t *testing.T) {
 	t.Parallel()
+
+	hres := httputil.NewHTTPResp(slog.Default())
 
 	type testReqData struct {
 		TestField int `mapstructure:"testfield" validate:"required,min=1"`
@@ -344,7 +347,7 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendStatus(r.Context(), w, http.StatusInternalServerError)
+					hres.SendStatus(r.Context(), w, http.StatusInternalServerError)
 				}
 			},
 			wantStatusCode: http.StatusInternalServerError,
@@ -355,7 +358,7 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
+					hres.SendText(r.Context(), w, http.StatusSwitchingProtocols, "")
 				}
 			},
 			wantStatusCode: http.StatusSwitchingProtocols,
@@ -366,7 +369,7 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusMultipleChoices, "")
+					hres.SendText(r.Context(), w, http.StatusMultipleChoices, "")
 				}
 			},
 			wantStatusCode: http.StatusMultipleChoices,
@@ -388,7 +391,7 @@ func TestSendRequest(t *testing.T) {
 				t.Helper()
 
 				return func(w http.ResponseWriter, r *http.Request) {
-					httputil.SendText(r.Context(), w, http.StatusCreated, "Success")
+					hres.SendText(r.Context(), w, http.StatusCreated, "Success")
 				}
 			},
 			wantStatusCode: http.StatusCreated,
@@ -450,7 +453,7 @@ func TestSendRequest(t *testing.T) {
 				tt.query.Set("queryparam", "value")
 			}
 
-			resp, err := c.SendRequest(testutil.Context(), http.MethodPost, endpoint, tt.query, tt.req)
+			resp, err := c.SendRequest(t.Context(), http.MethodPost, endpoint, tt.query, tt.req)
 
 			if tt.wantErr {
 				require.Error(t, err, "error expected but got nil")

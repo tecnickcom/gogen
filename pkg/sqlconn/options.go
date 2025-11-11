@@ -1,6 +1,7 @@
 package sqlconn
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -70,6 +71,13 @@ func WithDefaultDriver(driver string) Option {
 func WithPingTimeout(t time.Duration) Option {
 	return func(cfg *config) {
 		cfg.pingTimeout = t
+	}
+}
+
+// WithLogger overrides the default logger.
+func WithLogger(logger *slog.Logger) Option {
+	return func(cfg *config) {
+		cfg.logger = logger
 	}
 }
 

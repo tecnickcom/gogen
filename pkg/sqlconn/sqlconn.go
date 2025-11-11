@@ -11,11 +11,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
-
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"go.uber.org/zap"
 )
 
 // ConnectFunc is the type of function called to perform the actual DB connection.
@@ -32,7 +30,6 @@ type SQLConn struct {
 	cfg    *config
 	db     *sql.DB
 	dbLock sync.RWMutex
-	logger *zap.Logger
 }
 
 // Connect attempts to connect to a SQL database.
@@ -63,21 +60,18 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 	db.SetMaxIdleConns(cfg.connMaxIdleCount)
 	db.SetMaxOpenConns(cfg.connMaxOpenCount)
 
-	l := logging.WithComponent(ctx, "sqlconn")
-
 	c := SQLConn{
-		cfg:    cfg,
-		db:     db,
-		logger: l,
+		cfg: cfg,
+		db:  db,
 	}
 
 	// wait for shutdown signal or context cancelation
 	go func() {
 		select {
 		case <-cfg.shutdownSignalChan:
-			l.Debug("sqlconn shutdown signal received")
+			cfg.logger.Debug("sqlconn shutdown signal received")
 		case <-ctx.Done():
-			l.Warn("sqlconn context canceled")
+			cfg.logger.Warn("sqlconn context canceled")
 		}
 
 		_ = c.Shutdown(ctx)
@@ -114,7 +108,7 @@ func (c *SQLConn) HealthCheck(ctx context.Context) error {
 // Shutdown closes the database and prevents new queries from starting.
 // It waits for all queries that have started processing on the server to finish.
 func (c *SQLConn) Shutdown(_ context.Context) error {
-	c.logger.Debug("shutting down sql connection")
+	c.cfg.logger.Debug("shutting down sql connection")
 
 	c.dbLock.Lock()
 	defer c.dbLock.Unlock()
@@ -124,7 +118,7 @@ func (c *SQLConn) Shutdown(_ context.Context) error {
 	c.db = nil
 	c.cfg.shutdownWaitGroup.Add(-1)
 
-	c.logger.Debug("sql connection shutdown complete", zap.Error(err))
+	c.cfg.logger.With(slog.Any("error", err)).Debug("sql connection shutdown complete")
 
 	return err //nolint:wrapcheck
 }

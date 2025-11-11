@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -329,6 +330,14 @@ func WithoutDefaultRouteLogger(routes ...DefaultRoute) Option {
 			cfg.disableDefaultRouteLogger[route] = true
 		}
 
+		return nil
+	}
+}
+
+// WithLogger overrides the default logger.
+func WithLogger(logger *slog.Logger) Option {
+	return func(cfg *config) error {
+		cfg.logger = logger
 		return nil
 	}
 }

@@ -105,6 +105,16 @@ func Test_config_validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "fail with missing logger",
+			cfg: func() *config {
+				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")
+				cfg.logger = nil
+
+				return cfg
+			}(),
+			wantErr: true,
+		},
+		{
 			name: "fail with missing shutdownWaitGroup",
 			cfg: func() *config {
 				cfg := defaultConfig("sqldb", "user:pass@tcp(127.0.0.1:1234)/testdb")

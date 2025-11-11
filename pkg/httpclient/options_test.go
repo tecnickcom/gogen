@@ -3,6 +3,7 @@ package httpclient
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 	"testing"
@@ -79,4 +80,13 @@ func TestWithDialContext(t *testing.T) {
 
 	require.Error(t, err)
 	require.Nil(t, out)
+}
+
+func TestWithLogger(t *testing.T) {
+	t.Parallel()
+
+	c := defaultClient()
+	v := slog.Default()
+	WithLogger(v)(c)
+	require.Equal(t, v, c.logger)
 }

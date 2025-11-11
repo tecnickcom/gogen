@@ -3,17 +3,14 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/logging"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 	"github.com/tecnickcom/gogen/pkg/metrics/prometheus"
-	"github.com/tecnickcom/gogen/pkg/testutil"
-	"go.uber.org/zap"
 )
 
 //nolint:gocognit,paralleltest
@@ -29,23 +26,12 @@ func TestBootstrap(t *testing.T) {
 		createMetricsClientFunc CreateMetricsClientFunc
 		stopAfter               time.Duration
 		sigterm                 bool
-		checkLogs               bool
 		wantErr                 bool
 	}{
 		{
 			name: "fail with invalid config",
 			opts: []Option{
 				WithShutdownTimeout(0),
-			},
-			wantErr: true,
-		},
-		{
-			name: "should fail due to create logger function",
-			opts: []Option{
-				WithShutdownTimeout(1 * time.Millisecond),
-			},
-			createLoggerFunc: func() (*zap.Logger, error) {
-				return nil, errors.New("log error")
 			},
 			wantErr: true,
 		},
@@ -64,7 +50,7 @@ func TestBootstrap(t *testing.T) {
 			opts: []Option{
 				WithShutdownTimeout(1 * time.Millisecond),
 			},
-			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
+			bindFunc: func(context.Context, *slog.Logger, metrics.Client) error {
 				return errors.New("bind error")
 			},
 			wantErr: true,
@@ -74,7 +60,7 @@ func TestBootstrap(t *testing.T) {
 			opts: []Option{
 				WithShutdownTimeout(100 * time.Millisecond),
 			},
-			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
+			bindFunc: func(context.Context, *slog.Logger, metrics.Client) error {
 				return nil
 			},
 			stopAfter: 500 * time.Millisecond,
@@ -87,7 +73,7 @@ func TestBootstrap(t *testing.T) {
 				WithShutdownWaitGroup(shutdownWG),
 				WithShutdownSignalChan(shutdownSG),
 			},
-			bindFunc: func(context.Context, *zap.Logger, metrics.Client) error {
+			bindFunc: func(context.Context, *slog.Logger, metrics.Client) error {
 				return nil
 			},
 			stopAfter: 500 * time.Millisecond,
@@ -99,9 +85,7 @@ func TestBootstrap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// cannot run in parallel because signals are received by all parallel tests
-			var ctx context.Context
-
-			ctx, logs := testutil.ContextWithLogObserver(zap.DebugLevel)
+			ctx := t.Context()
 
 			if tt.stopAfter != 0 {
 				if tt.sigterm {
@@ -125,9 +109,7 @@ func TestBootstrap(t *testing.T) {
 			if tt.createLoggerFunc != nil {
 				opts = append(opts, WithCreateLoggerFunc(tt.createLoggerFunc))
 			} else {
-				fn := func() (*zap.Logger, error) {
-					return logging.FromContext(ctx), nil
-				}
+				fn := slog.Default
 				opts = append(opts, WithCreateLoggerFunc(fn))
 			}
 
@@ -144,12 +126,6 @@ func TestBootstrap(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Bootstrap() error = %v, wantErr %v", err, tt.wantErr)
 			}
-
-			if tt.checkLogs {
-				entries := logs.All()
-				require.Equal(t, "application started", entries[0].Message)
-				require.Equal(t, "application stopped", entries[1].Message)
-			}
 		})
 	}
 }
@@ -162,10 +138,10 @@ func Test_syncWaitGroupTimeout(t *testing.T) {
 	wg.Add(1)
 
 	// timeout
-	syncWaitGroupTimeout(wg, 1*time.Millisecond, logging.NopLogger())
+	syncWaitGroupTimeout(wg, 1*time.Millisecond, slog.Default())
 
 	wg.Add(-1)
 
 	// wait complete
-	syncWaitGroupTimeout(wg, 1*time.Second, logging.NopLogger())
+	syncWaitGroupTimeout(wg, 1*time.Second, slog.Default())
 }

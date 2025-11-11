@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"testing"
 	"time"
@@ -88,4 +89,14 @@ func TestWithClaimAudience(t *testing.T) {
 	want := []string{"Audience_01", "Audience_02"}
 	WithClaimAudience(want)(c)
 	require.Equal(t, want, c.audience)
+}
+
+func TestWithLogger(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+
+	want := slog.Default()
+	WithLogger(want)(c)
+	require.Equal(t, want, c.logger)
 }

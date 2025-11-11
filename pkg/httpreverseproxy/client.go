@@ -2,6 +2,7 @@ package httpreverseproxy
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -9,9 +10,8 @@ import (
 	"time"
 
 	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logging"
+	"github.com/tecnickcom/gogen/pkg/logutil"
 	"github.com/tecnickcom/gogen/pkg/traceid"
-	"go.uber.org/zap"
 )
 
 // HTTPClient contains the function to perform the HTTP request to the proxied service.
@@ -23,15 +23,13 @@ type HTTPClient interface {
 type Client struct {
 	proxy      *httputil.ReverseProxy
 	httpClient HTTPClient
-	logger     *zap.Logger
+	logger     *slog.Logger
 }
 
 // errHandler defines the function signature for error handlers.
 type errHandler = func(w http.ResponseWriter, r *http.Request, err error)
 
 // New returns a new instance of the Client.
-//
-//nolint:gocognit
 func New(addr string, opts ...Option) (*Client, error) {
 	c := &Client{}
 
@@ -69,17 +67,10 @@ func New(addr string, opts ...Option) (*Client, error) {
 	}
 
 	if c.logger == nil {
-		c.logger, _ = logging.NewLogger(
-			logging.WithFormatStr("json"),
-			logging.WithLevelStr("error"),
-		)
+		c.logger = slog.Default()
 	}
 
-	// Override the default logger to write to the zap one.
-	el, err := zap.NewStdLogAt(c.logger, zap.ErrorLevel)
-	if err == nil {
-		c.proxy.ErrorLog = el
-	}
+	c.proxy.ErrorLog = logutil.NewLogFromSlog(c.logger)
 
 	if c.proxy.ErrorHandler == nil {
 		c.proxy.ErrorHandler = defaultErrorHandler(c.logger)
@@ -108,7 +99,7 @@ func (c *httpWrapper) RoundTrip(r *http.Request) (*http.Response, error) {
 }
 
 // defaultErrorHandler returns the default error handler for the reverse proxy.
-func defaultErrorHandler(logger *zap.Logger) errHandler {
+func defaultErrorHandler(logger *slog.Logger) errHandler {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		resTime := time.Now().UTC()
 		ctx := r.Context()
@@ -119,18 +110,19 @@ func defaultErrorHandler(logger *zap.Logger) errHandler {
 		}
 
 		logger.With(
-			zap.String(traceid.DefaultLogKey, traceid.FromContext(ctx, "")),
-			zap.String("request_method", r.Method),
-			zap.String("request_path", r.URL.Path),
-			zap.String("request_query", r.URL.RawQuery),
-			zap.String("request_uri", r.RequestURI),
-			zap.Int("response_code", http.StatusBadGateway),
-			zap.String("response_message", http.StatusText(http.StatusBadGateway)),
-			zap.Any("response_status", libhttputil.Status(http.StatusBadGateway)),
-			zap.Time("request_time", reqTime),
-			zap.Time("response_time", resTime),
-			zap.Duration("response_duration", resTime.Sub(reqTime)),
-		).Error("proxy_error", zap.Error(err))
+			slog.String(traceid.DefaultLogKey, traceid.FromContext(ctx, "")),
+			slog.String("request_method", r.Method),
+			slog.String("request_path", r.URL.Path),
+			slog.String("request_query", r.URL.RawQuery),
+			slog.String("request_uri", r.RequestURI),
+			slog.Int("response_code", http.StatusBadGateway),
+			slog.String("response_message", http.StatusText(http.StatusBadGateway)),
+			slog.Any("response_status", libhttputil.Status(http.StatusBadGateway)),
+			slog.Time("request_time", reqTime),
+			slog.Time("response_time", resTime),
+			slog.Duration("response_duration", resTime.Sub(reqTime)),
+			slog.Any("error", err),
+		).Error("proxy_error")
 
 		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
 	}

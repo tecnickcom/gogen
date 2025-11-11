@@ -2,10 +2,13 @@
 package main
 
 import (
+	"log/slog"
+	"os"
+
 	"github.com/gogenexampleowner/gogenexample/internal/cli"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
-	"github.com/tecnickcom/gogen/pkg/logging"
-	"go.uber.org/zap"
+	"github.com/tecnickcom/gogen/pkg/logsrv"
+	"github.com/tecnickcom/gogen/pkg/logutil"
 )
 
 var (
@@ -16,18 +19,33 @@ var (
 	programRelease = "0" //nolint:gochecknoglobals
 )
 
+// exitFn define tha exit function and can be overwritten for testing.
+var exitFn = os.Exit //nolint:gochecknoglobals
+
 func main() {
-	_, _ = logging.NewDefaultLogger(cli.AppName, programVersion, programRelease, "json", "debug")
+	logattr := []logutil.Attr{
+		slog.String("program", cli.AppName),
+		slog.String("version", programVersion),
+		slog.String("release", programRelease),
+	}
+	logcfg, _ := logutil.NewConfig(
+		logutil.WithOutWriter(os.Stderr),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithCommonAttr(logattr...),
+	)
+	l := logsrv.NewLogger(logcfg)
 
 	rootCmd, err := cli.New(programVersion, programRelease, bootstrap.Bootstrap)
 	if err != nil {
-		logging.LogFatal("UNABLE TO START THE PROGRAM", zap.Error(err))
-		return
+		l.With(slog.Any("error", err)).Error("UNABLE TO START THE PROGRAM")
+		exitFn(1)
 	}
 
 	// execute the root command and log errors (if any)
 	err = rootCmd.Execute()
 	if err != nil {
-		logging.LogFatal("UNABLE TO RUN THE COMMAND", zap.Error(err))
+		l.With(slog.Any("error", err)).Error("UNABLE TO RUN THE COMMAND")
+		exitFn(2)
 	}
 }
