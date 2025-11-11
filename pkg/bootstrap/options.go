@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/tecnickcom/gogen/pkg/logutil"
 )
 
 // Option is a type alias for a function that configures the application logger.
@@ -17,7 +19,17 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
+// WithLogConfig sets the log configuration options.
+// This should be used in alternative to WithLogger and WithCreateLoggerFunc.
+func WithLogConfig(c *logutil.Config) Option {
+	return func(cfg *config) {
+		cfg.logConfig = c
+		cfg.createLoggerFunc = cfg.newLogger
+	}
+}
+
 // WithLogger overrides the default application logger.
+// This should be used in alternative to WithLogConfig and WithCreateLoggerFunc.
 func WithLogger(l *slog.Logger) Option {
 	return func(cfg *config) {
 		cfg.createLoggerFunc = func() *slog.Logger {
@@ -27,6 +39,7 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // WithCreateLoggerFunc overrides the root logger creation function.
+// This should be used in alternative to WithLogConfig and WithLogger.
 func WithCreateLoggerFunc(fn CreateLoggerFunc) Option {
 	return func(cfg *config) {
 		cfg.createLoggerFunc = fn

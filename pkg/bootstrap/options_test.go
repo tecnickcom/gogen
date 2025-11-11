@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/logutil"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 )
 
@@ -22,6 +23,18 @@ func TestWithContext(t *testing.T) {
 	v := context.WithValue(t.Context(), empty{}, "")
 	WithContext(v)(cfg)
 	require.Equal(t, v, cfg.context)
+}
+
+func TestWithLogConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+
+	lc := logutil.DefaultConfig()
+
+	WithLogConfig(lc)(cfg)
+	require.Equal(t, lc, cfg.logConfig)
+	require.NotNil(t, cfg.createLoggerFunc)
 }
 
 func TestWithLogger(t *testing.T) {

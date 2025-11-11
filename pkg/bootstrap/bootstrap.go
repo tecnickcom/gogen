@@ -18,6 +18,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/tecnickcom/gogen/pkg/logutil"
 )
 
 // Bootstrap is the function in charge of configuring the core components
@@ -41,6 +43,13 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	m, err := cfg.createMetricsClientFunc()
 	if err != nil {
 		return fmt.Errorf("error creating application metric: %w", err)
+	}
+
+	if cfg.logConfig != nil {
+		// metric hook to count logs by level
+		cfg.logConfig.HookFn = func(level logutil.LogLevel, _ string) {
+			m.IncLogLevelCounter(logutil.LevelName(level))
+		}
 	}
 
 	l := cfg.createLoggerFunc()

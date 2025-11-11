@@ -23,6 +23,7 @@ var (
 var exitFn = os.Exit //nolint:gochecknoglobals
 
 func main() {
+	// set default logger
 	logattr := []logutil.Attr{
 		slog.String("program", cli.AppName),
 		slog.String("version", programVersion),

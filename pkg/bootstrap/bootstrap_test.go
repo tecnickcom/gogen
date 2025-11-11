@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tecnickcom/gogen/pkg/logutil"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 	"github.com/tecnickcom/gogen/pkg/metrics/prometheus"
 )
@@ -69,6 +70,7 @@ func TestBootstrap(t *testing.T) {
 		{
 			name: "should succeed and exit with SIGTERM",
 			opts: []Option{
+				WithLogConfig(logutil.DefaultConfig()),
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithShutdownWaitGroup(shutdownWG),
 				WithShutdownSignalChan(shutdownSG),
@@ -105,13 +107,6 @@ func TestBootstrap(t *testing.T) {
 				WithContext(ctx),
 			}
 			opts = append(opts, tt.opts...)
-
-			if tt.createLoggerFunc != nil {
-				opts = append(opts, WithCreateLoggerFunc(tt.createLoggerFunc))
-			} else {
-				fn := slog.Default
-				opts = append(opts, WithCreateLoggerFunc(fn))
-			}
 
 			if tt.createMetricsClientFunc != nil {
 				opts = append(opts, WithCreateMetricsClientFunc(tt.createMetricsClientFunc))

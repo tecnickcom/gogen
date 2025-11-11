@@ -3,6 +3,7 @@ package logutil
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 )
 
@@ -66,5 +67,33 @@ func ValidLevel(l LogLevel) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// LevelName returns the name associated with the specified level.
+//
+//nolint:cyclop
+func LevelName(l LogLevel) string {
+	switch l {
+	case LevelEmergency:
+		return "emergency"
+	case LevelAlert:
+		return "alert"
+	case LevelCritical:
+		return "critical"
+	case LevelError:
+		return "error"
+	case LevelWarning:
+		return "warning"
+	case LevelNotice:
+		return "notice"
+	case LevelInfo:
+		return "info"
+	case LevelDebug:
+		return "debug"
+	case LevelTrace:
+		return "trace"
+	default:
+		return strconv.Itoa(int(l))
 	}
 }

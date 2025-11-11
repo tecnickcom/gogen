@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tecnickcom/gogen/pkg/logsrv"
+	"github.com/tecnickcom/gogen/pkg/logutil"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 )
 
@@ -23,6 +25,9 @@ type BindFunc func(context.Context, *slog.Logger, metrics.Client) error
 type config struct {
 	// context is the application context.
 	context context.Context //nolint:containedctx
+
+	// logConfig stores the logger configuration
+	logConfig *logutil.Config
 
 	// createLoggerFunc is the function used to create a new logger.
 	createLoggerFunc CreateLoggerFunc
@@ -44,6 +49,7 @@ type config struct {
 func defaultConfig() *config {
 	return &config{
 		context:                 context.Background(),
+		logConfig:               nil,
 		createLoggerFunc:        defaultCreateLogger,
 		createMetricsClientFunc: defaultCreateMetricsClientFunc,
 		shutdownTimeout:         30 * time.Second,
@@ -60,6 +66,11 @@ func defaultCreateLogger() *slog.Logger {
 // defaultCreateMetricsClient creates a default metrics client.
 func defaultCreateMetricsClientFunc() (metrics.Client, error) {
 	return &metrics.Default{}, nil
+}
+
+// newLogger returs a nes slog logger with the logConfig settings.
+func (c *config) newLogger() *slog.Logger {
+	return logsrv.NewLogger(c.logConfig)
 }
 
 // validate the configuration.

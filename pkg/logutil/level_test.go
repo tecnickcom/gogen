@@ -199,3 +199,62 @@ func TestValidLevel(t *testing.T) {
 		})
 	}
 }
+
+func TestLevelName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		want  string
+		value LogLevel
+	}{
+		{
+			want:  "-128",
+			value: -128,
+		},
+		{
+			want:  "emergency",
+			value: LevelEmergency,
+		},
+		{
+			want:  "alert",
+			value: LevelAlert,
+		},
+		{
+			want:  "critical",
+			value: LevelCritical,
+		},
+		{
+			want:  "error",
+			value: LevelError,
+		},
+		{
+			want:  "warning",
+			value: LevelWarning,
+		},
+		{
+			want:  "notice",
+			value: LevelNotice,
+		},
+		{
+			want:  "info",
+			value: LevelInfo,
+		},
+		{
+			want:  "debug",
+			value: LevelDebug,
+		},
+		{
+			want:  "trace",
+			value: LevelTrace,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			t.Parallel()
+
+			got := LevelName(tt.value)
+
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
