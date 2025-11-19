@@ -12,7 +12,7 @@ import (
 
 // Cache is a wrapper for the SecretsManager client in the AWS SDK.
 type Cache struct {
-	cache *sfcache.Cache
+	cache *sfcache.Cache[string]
 }
 
 // New creates a new instance of the AWS SecretsManager cache.

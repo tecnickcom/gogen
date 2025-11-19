@@ -38,7 +38,7 @@ import (
 )
 
 // LookupFunc is the generic function signature for external lookup calls.
-type LookupFunc func(ctx context.Context, key string) (any, error)
+type LookupFunc[K comparable] func(ctx context.Context, key K) (any, error)
 
 // entry represents a cache entry for a given key.
 type entry struct {
@@ -56,12 +56,12 @@ type entry struct {
 }
 
 // Cache represents a cache for items.
-type Cache struct {
+type Cache[K comparable] struct {
 	// keymap maps a key name to an item.
-	keymap map[string]*entry
+	keymap map[K]*entry
 
 	// lookupFn is the function performing the external lookup call.
-	lookupFn LookupFunc
+	lookupFn LookupFunc[K]
 
 	// mux is the mutex for the cache.
 	mux *sync.RWMutex
@@ -78,22 +78,22 @@ type Cache struct {
 // The size parameter determines the maximum number of entries that can be cached (min = 1).
 // If the size is less than or equal to zero, the cache will have a default size of 1.
 // The ttl parameter specifies the time-to-live for each cached entry.
-func New(lookupFn LookupFunc, size int, ttl time.Duration) *Cache {
+func New[K comparable](lookupFn LookupFunc[K], size int, ttl time.Duration) *Cache[K] {
 	if size <= 0 {
 		size = 1
 	}
 
-	return &Cache{
+	return &Cache[K]{
 		lookupFn: lookupFn,
 		mux:      &sync.RWMutex{},
 		ttl:      ttl,
 		size:     size,
-		keymap:   make(map[string]*entry, size),
+		keymap:   make(map[K]*entry, size),
 	}
 }
 
 // Len returns the number of items in the cache.
-func (c *Cache) Len() int {
+func (c *Cache[K]) Len() int {
 	c.mux.RLock()
 	defer c.mux.RUnlock()
 
@@ -101,15 +101,15 @@ func (c *Cache) Len() int {
 }
 
 // Reset clears the whole cache.
-func (c *Cache) Reset() {
+func (c *Cache[K]) Reset() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	c.keymap = make(map[string]*entry, c.size)
+	c.keymap = make(map[K]*entry, c.size)
 }
 
 // Remove removes the cache entry for the specified key.
-func (c *Cache) Remove(key string) {
+func (c *Cache[K]) Remove(key K) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
@@ -124,7 +124,7 @@ func (c *Cache) Remove(key string) {
 // If the external lookup call is successful, it updates the cache with the newly obtained value.
 //
 //nolint:gocognit
-func (c *Cache) Lookup(ctx context.Context, key string) (any, error) {
+func (c *Cache[K]) Lookup(ctx context.Context, key K) (any, error) {
 	c.mux.Lock()
 	item, ok := c.keymap[key]
 
@@ -194,7 +194,7 @@ func (c *Cache) Lookup(ctx context.Context, key string) (any, error) {
 // If the cache is full, it will free up space by removing expired or old entries.
 // If the key already exists in the cache, it will update the entry with the new value.
 // NOTE: this is not thread-safe, it should be called within a mutex lock.
-func (c *Cache) set(key string, val any, err error, wait chan struct{}) {
+func (c *Cache[K]) set(key K, val any, err error, wait chan struct{}) {
 	if len(c.keymap) >= c.size {
 		if _, ok := c.keymap[key]; !ok {
 			// free up space for a new entry
@@ -218,10 +218,11 @@ func (c *Cache) set(key string, val any, err error, wait chan struct{}) {
 
 // evict removes either the oldest entry or the first expired one from the cache.
 // NOTE: this is not thread-safe, it should be called within a mutex lock.
-func (c *Cache) evict() {
+func (c *Cache[K]) evict() {
 	cuttime := time.Now().UTC().Unix()
 	oldest := int64(1<<63 - 1)
-	oldestkey := ""
+
+	var oldestkey K
 
 	for h, d := range c.keymap {
 		if d.expireAt < cuttime {

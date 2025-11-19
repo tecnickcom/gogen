@@ -30,14 +30,14 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, got.keymap)
 	require.Empty(t, got.keymap)
 
-	got = New(nil, 0, 1*time.Second)
+	got = New[string](nil, 0, 1*time.Second)
 	require.Equal(t, 1, got.size)
 }
 
 func Test_Len(t *testing.T) {
 	t.Parallel()
 
-	c := New(nil, 3, 1*time.Second)
+	c := New[string](nil, 3, 1*time.Second)
 
 	c.keymap = map[string]*entry{
 		"example.com": {
@@ -53,7 +53,7 @@ func Test_Len(t *testing.T) {
 func Test_Reset(t *testing.T) {
 	t.Parallel()
 
-	c := New(nil, 1, 1*time.Second)
+	c := New[string](nil, 1, 1*time.Second)
 
 	c.keymap = map[string]*entry{
 		"example.com": {
@@ -69,7 +69,7 @@ func Test_Reset(t *testing.T) {
 func Test_Remove(t *testing.T) {
 	t.Parallel()
 
-	c := New(nil, 3, 1*time.Second)
+	c := New[string](nil, 3, 1*time.Second)
 
 	c.keymap = map[string]*entry{
 		"example.com": {
@@ -93,7 +93,7 @@ func Test_Remove(t *testing.T) {
 func Test_evict_expired(t *testing.T) {
 	t.Parallel()
 
-	r := New(nil, 3, 1*time.Minute)
+	r := New[string](nil, 3, 1*time.Minute)
 
 	r.keymap = map[string]*entry{
 		"example.com": {
@@ -119,7 +119,7 @@ func Test_evict_expired(t *testing.T) {
 func Test_evict_oldest(t *testing.T) {
 	t.Parallel()
 
-	c := New(nil, 3, 1*time.Second)
+	c := New[string](nil, 3, 1*time.Second)
 
 	c.keymap = map[string]*entry{
 		"example.com": {
@@ -149,7 +149,7 @@ and 203.0.113.0/24 (TEST-NET-3) are provided for use in documentation.
 func Test_set(t *testing.T) {
 	t.Parallel()
 
-	c := New(nil, 2, 10*time.Second)
+	c := New[string](nil, 2, 10*time.Second)
 
 	c.set("example.com", []string{"192.0.2.1"}, nil, nil)
 	time.Sleep(1 * time.Second)

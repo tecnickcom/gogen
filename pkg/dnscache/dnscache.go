@@ -42,7 +42,7 @@ type Resolver interface {
 
 // Cache represents the single-flight DNS cache.
 type Cache struct {
-	cache *sfcache.Cache
+	cache *sfcache.Cache[string]
 }
 
 // New creates a new single-flight DNS cache of the specified size and TTL.
