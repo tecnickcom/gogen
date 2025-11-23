@@ -286,10 +286,8 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 	return nil, errors.New("ERROR: newHTTPRetrierPatch")
 }
 
-//nolint:gocognit,tparallel
+//nolint:gocognit,paralleltest
 func TestSendRequest(t *testing.T) {
-	t.Parallel()
-
 	hres := httputil.NewHTTPResp(slog.Default())
 
 	type testReqData struct {
