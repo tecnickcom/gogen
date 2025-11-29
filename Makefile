@@ -257,7 +257,7 @@ updateall: updatego updatelint updatemod
 updatego:
 	$(eval LAST_GO_TOOLCHAIN=$(shell curl -s https://go.dev/dl/ | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64\.tar\.gz' | head -n 1 | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+'))
 	$(eval LAST_GO_VERSION=$(shell echo ${LAST_GO_TOOLCHAIN} | grep -oP '[0-9]+\.[0-9]+'))
-	sed -i "s|^go [0-9]*\.[0-9]*$$|go ${LAST_GO_VERSION}|g" go.mod
+	sed -i "s|^go [0-9]*\.[0-9]*.*$$|go ${LAST_GO_VERSION}|g" go.mod
 	sed -i "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod
 	cd examples/service && make updatego
 
