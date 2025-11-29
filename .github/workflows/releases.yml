@@ -1,0 +1,27 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: release
+      uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        # Automatically generates release notes from merged pull requests
+        generate_release_notes: true
