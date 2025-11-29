@@ -156,6 +156,8 @@ To view all available Makefile options, run:
 make help
 ```
 
+If you would like to contribute, please review the [CONTRIBUTING.md](https://github.com/tecnickcom/gogen/blob/main/CONTRIBUTING.md) guidelines.
+
 -----------------------------------------------------------------
 
 <a name="runtest"></a>

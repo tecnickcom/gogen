@@ -1,7 +1,10 @@
 # How to Contribute
 
+## Add a new feature or change an existing one
 
-## Reporting a bug
+* Before writing any code please suggest the change by opening a new Feature Request [issue](https://github.com/tecnickcom/gogen/issues/new).
+
+## Reporting a Bug
 
 * **Do not open up a GitHub issue if the bug is a security vulnerability**, and instead to refer to our [Security policy](SECURITY.md).
 
@@ -9,18 +12,12 @@
 
 * If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/tecnickcom/gogen/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
 
+## Submitting a Change (bug fix or feature)
 
-## Submitting a bug fix
-
-* Open a new GitHub pull request with the patch.
-
-* Ensure the PR description clearly describes the problem and solution. Include the relevant issue number if applicable.
-
-* Ensure the new code is following the existing conventions and the unit test coverage is 100%.
-
-* Before submitting, please run the following command locally to ensure the code is passing the automatic checks: `make x`.
-
-
-## Add a new feature or change an existing one
-
-* Before writing any code please suggest the change by opening a new Feature Request [issue](https://github.com/tecnickcom/gogen/issues/new).
+* Open a new GitHub pull request (PR).
+* Ensure the PR description clearly outlines both the problem and the proposed solution. Reference the relevant issue number where applicable.
+* Adhere to the existing coding conventions throughout your changes.
+* For bug fixes, include new tests that cover the specific cases being addressed.
+* Maintain unit test coverage at 100%.
+* For new features, provide comprehensive documentation for all packages and functions, and include examples and benchmarks where appropriate.
+* Before submitting your PR, run `make x` locally to verify that the code passes all checks.
