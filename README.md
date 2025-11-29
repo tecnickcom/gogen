@@ -17,6 +17,7 @@ The package documentation is available at: [https://pkg.go.dev/github.com/tecnic
 [![check](https://github.com/tecnickcom/gogen/actions/workflows/check.yaml/badge.svg)](https://github.com/tecnickcom/gogen/actions/workflows/check.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/tecnickcom/gogen/badge.svg?branch=main)](https://coveralls.io/github/tecnickcom/gogen?branch=main)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tecnickcom/gogen)](https://goreportcard.com/report/github.com/tecnickcom/gogen)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11517/badge)](https://www.bestpractices.dev/projects/11517)
 
 * **category**    Library
 * **license**     [MIT](https://github.com/tecnickcom/gogen/blob/main/LICENSE)
