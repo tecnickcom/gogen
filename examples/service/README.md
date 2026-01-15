@@ -5,7 +5,7 @@
 ![gogenexample logo](doc/images/logo.png)
 
 * **category:**    Application
-* **copyright:**   2025-2025 gogenexampleowner
+* **copyright:**   2025-2026 gogenexampleowner
 * **license:**     [LICENSE](https://github.com/gogenexampleowner/gogenexample/blob/main/LICENSE)
 * **cvs:**         https://github.com/gogenexampleowner/gogenexample
 

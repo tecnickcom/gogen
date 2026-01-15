@@ -197,10 +197,7 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 
 			mockConnectFunc := newMockConnectFunc(db, nil)
 
-			opts := []Option{
-				WithConnectFunc(mockConnectFunc),
-			}
-			opts = append(opts, tt.configOpts...)
+			opts := append([]Option{WithConnectFunc(mockConnectFunc)}, tt.configOpts...)
 
 			conn, err := Connect(ctx, "testsql://user:pass@tcp(db.host.invalid:1234)/testdb", opts...)
 			require.NoError(t, err)
