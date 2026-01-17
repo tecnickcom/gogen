@@ -168,3 +168,11 @@ func TestConfig_SlogDefaultLogger(t *testing.T) {
 
 	require.NotNil(t, l)
 }
+
+func Test_defaultTraceID(t *testing.T) {
+	t.Parallel()
+
+	s := defaultTraceID()
+
+	require.Empty(t, s)
+}

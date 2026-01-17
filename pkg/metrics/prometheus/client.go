@@ -137,12 +137,20 @@ func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
 
 // IncLogLevelCounter counts the number of errors for each log severity level.
 func (c *Client) IncLogLevelCounter(level string) {
-	c.collectorErrorLevel.With(prometheus.Labels{labelLevel: level}).Inc()
+	c.collectorErrorLevel.With(
+		prometheus.Labels{
+			labelLevel: level,
+		}).Inc()
 }
 
 // IncErrorCounter increments the number of errors by task, operation and error code.
 func (c *Client) IncErrorCounter(task, operation, code string) {
-	c.collectorErrorCode.With(prometheus.Labels{labelTask: task, labelOperation: operation, labelCode: code}).Inc()
+	c.collectorErrorCode.With(
+		prometheus.Labels{
+			labelTask:      task,
+			labelOperation: operation,
+			labelCode:      code,
+		}).Inc()
 }
 
 // Close method.

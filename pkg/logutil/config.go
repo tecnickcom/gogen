@@ -9,6 +9,9 @@ import (
 // Attr is a type alias for slog.Attr.
 type Attr = slog.Attr
 
+// TraceIDFunc is the type of function used to retrieve a Trace ID.
+type TraceIDFunc func() string
+
 // Config holds common logger parameters.
 type Config struct {
 	Out        io.Writer
@@ -16,6 +19,7 @@ type Config struct {
 	Level      LogLevel
 	CommonAttr []Attr
 	HookFn     HookFunc
+	TraceIDFn  TraceIDFunc
 }
 
 // DefaultConfig returns a Config instance with default settings.
@@ -26,7 +30,13 @@ func DefaultConfig() *Config {
 		Level:      LevelInfo,
 		CommonAttr: []Attr{},
 		HookFn:     nil,
+		TraceIDFn:  defaultTraceID,
 	}
+}
+
+// DefaultTraceIDFn returns an empty trace ID string.
+func defaultTraceID() string {
+	return ""
 }
 
 // NewConfig returns a new configuration with the applied options.

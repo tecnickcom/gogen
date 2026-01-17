@@ -182,3 +182,16 @@ func TestWithHookFn(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.HookFn).Pointer())
 }
+
+func TestWithTraceIDFn(t *testing.T) {
+	t.Parallel()
+
+	v := func() string {
+		return "test-123"
+	}
+
+	cfg := &Config{}
+	err := WithTraceIDFn(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.TraceIDFn).Pointer())
+}
