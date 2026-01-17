@@ -74,6 +74,7 @@ Each package adheres to common conventions and coding standards, making them eas
 * [logutil](pkg/logutil) - General log utilities for log/slog integration.
 * [maputil](pkg/maputil) - Helpers for Go map manipulation.
 * [metrics](pkg/metrics) - Metrics collection and reporting.
+  * [opentel](pkg/metrics/opentel) - OpenTelemetry metrics exporter (includes tracing).
   * [prometheus](pkg/metrics/prometheus) - Prometheus metrics exporter.
   * [statsd](pkg/metrics/statsd) - StatsD metrics exporter.
 * [mysqllock](pkg/mysqllock) - Distributed locking using MySQL.
