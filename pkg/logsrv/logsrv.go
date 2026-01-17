@@ -18,6 +18,10 @@ import (
 	"github.com/tecnickcom/gogen/pkg/logutil"
 )
 
+const (
+	traceIDName = "trace_id"
+)
+
 // NewLogger configures a new slog logger with a zerolog backend.
 func NewLogger(cfg *logutil.Config) *slog.Logger {
 	w := writerByFormat(cfg.Format, cfg.Out)
@@ -34,7 +38,7 @@ func NewLogger(cfg *logutil.Config) *slog.Logger {
 		logutil.LevelTrace:     zerolog.TraceLevel,
 	}
 
-	zl := zerolog.New(w).With().Timestamp().Logger()
+	zl := zerolog.New(w).With().Timestamp().Str(traceIDName, cfg.TraceIDFn()).Logger()
 
 	if cfg.HookFn != nil {
 		hf := func(_ *zerolog.Event, level zerolog.Level, message string) {

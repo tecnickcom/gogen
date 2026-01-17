@@ -85,3 +85,11 @@ func WithHookFn(f HookFunc) Option {
 		return nil
 	}
 }
+
+// WithTraceIDFn adds a function that returns the Trace ID.
+func WithTraceIDFn(f TraceIDFunc) Option {
+	return func(cfg *Config) error {
+		cfg.TraceIDFn = f
+		return nil
+	}
+}
