@@ -11,6 +11,7 @@ package config
 import (
 	io "io"
 	reflect "reflect"
+	strings "strings"
 
 	pflag "github.com/spf13/pflag"
 	viper "github.com/spf13/viper"
@@ -229,6 +230,18 @@ func (m *MockViper) SetDefault(key string, value any) {
 func (mr *MockViperMockRecorder) SetDefault(key, value any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefault", reflect.TypeOf((*MockViper)(nil).SetDefault), key, value)
+}
+
+// SetEnvKeyReplacer mocks base method.
+func (m *MockViper) SetEnvKeyReplacer(r *strings.Replacer) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetEnvKeyReplacer", r)
+}
+
+// SetEnvKeyReplacer indicates an expected call of SetEnvKeyReplacer.
+func (mr *MockViperMockRecorder) SetEnvKeyReplacer(r any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnvKeyReplacer", reflect.TypeOf((*MockViper)(nil).SetEnvKeyReplacer), r)
 }
 
 // SetEnvPrefix mocks base method.

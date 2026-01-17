@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -144,6 +146,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			name: "fails with read config error",
 			setupViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 				mock.EXPECT().ReadInConfig().Return(errors.New("read config error"))
 
 				return mock
@@ -154,6 +157,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			name: "fails with unmarshal error",
 			setupViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 				mock.EXPECT().ReadInConfig()
 				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))
 
@@ -165,6 +169,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			name: "succeed",
 			setupViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 				mock.EXPECT().ReadInConfig()
 				mock.EXPECT().Unmarshal(gomock.Any())
 
@@ -287,6 +292,9 @@ func Test_loadRemoteConfig(t *testing.T) {
 				mock := NewMockViper(ctrl)
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
+				mock.EXPECT().AutomaticEnv()
+				mock.EXPECT().SetEnvPrefix(gomock.Any())
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 				mock.EXPECT().Unmarshal(gomock.Any())
 
 				return mock
@@ -310,6 +318,9 @@ func Test_loadRemoteConfig(t *testing.T) {
 				mock := NewMockViper(ctrl)
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
+				mock.EXPECT().AutomaticEnv()
+				mock.EXPECT().SetEnvPrefix(gomock.Any())
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))
 
 				return mock
@@ -336,6 +347,9 @@ func Test_loadRemoteConfig(t *testing.T) {
 				mock := NewMockViper(ctrl)
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
+				mock.EXPECT().AutomaticEnv()
+				mock.EXPECT().SetEnvPrefix(gomock.Any())
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 
 				return mock
 			},
@@ -361,6 +375,9 @@ func Test_loadRemoteConfig(t *testing.T) {
 				mock := NewMockViper(ctrl)
 				mock.EXPECT().SetDefault(keyLogLevel, gomock.Any())
 				mock.EXPECT().SetConfigType(defaultConfigType)
+				mock.EXPECT().AutomaticEnv()
+				mock.EXPECT().SetEnvPrefix(gomock.Any())
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 
 				return mock
 			},
@@ -421,8 +438,9 @@ func Test_loadRemoteConfig(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest,tparallel
 func Test_loadFromEnvVarSource(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name              string
 		setupConfigSource func() *remoteSourceConfig
@@ -474,6 +492,30 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "succeed with envvar data",
+			setupConfigSource: func() *remoteSourceConfig {
+				return &remoteSourceConfig{
+					Provider: "envvar",
+					Data:     "eyJrZXkiOiJvbmUifQ==", // {"key":"one"} in base64
+				}
+			},
+			setupMocks: func(mv *MockViper) {
+				mv.EXPECT().ReadConfig(gomock.Any()).Do(func(in any) {
+					// Validate that the decoded data contains the expected JSON
+					var data map[string]any
+
+					reader, ok := in.(io.Reader)
+
+					require.True(t, ok, "expected io.Reader")
+
+					err := json.NewDecoder(reader).Decode(&data)
+					require.NoError(t, err)
+					require.Equal(t, "one", data["key"])
+				})
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -488,12 +530,37 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 				tt.setupMocks(v)
 			}
 
-			err := loadFromEnvVarSource(v, tt.setupConfigSource(), "test")
+			err := loadFromEnvVarSource(v, tt.setupConfigSource(), "TESTGOGEN")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadFromEnvVarSource() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
+}
+
+func Test_loadFromEnvVarSource_with_override(t *testing.T) {
+	t.Setenv("TESTGOGEN_OVKEY", "two_from_env")
+
+	setupConfigSource := func() *remoteSourceConfig {
+		return &remoteSourceConfig{
+			Provider: "envvar",
+			Data:     "eyJvdmtleSI6Im9uZSJ9", // {"ovkey":"one"} in base64
+		}
+	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	v := viper.New()
+	v.SetConfigType("json")
+	v.AutomaticEnv()
+	v.SetEnvPrefix("TESTGOGEN")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	err := loadFromEnvVarSource(v, setupConfigSource(), "TESTGOGEN")
+	require.NoError(t, err)
+
+	require.Equal(t, os.Getenv("TESTGOGEN_OVKEY"), v.Get("ovkey"))
 }
 
 func Test_loadFromRemoteSource(t *testing.T) {
@@ -859,6 +926,7 @@ func Test_loadConfig(t *testing.T) {
 			name: "fails loading local config",
 			setupLocalViper: func(ctrl *gomock.Controller) Viper {
 				mock := mockViper(ctrl)
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 				mock.EXPECT().ReadInConfig().Return(errors.New("read config error"))
 
 				return mock
@@ -870,6 +938,9 @@ func Test_loadConfig(t *testing.T) {
 			name: "fails loading remote config",
 			setupRemoteViper: func(ctrl *gomock.Controller) Viper {
 				mock := NewMockViper(ctrl)
+				mock.EXPECT().AutomaticEnv()
+				mock.EXPECT().SetEnvPrefix(gomock.Any())
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
 				mock.EXPECT().SetDefault(gomock.Any(), gomock.Any()).AnyTimes()
 				mock.EXPECT().SetConfigType(defaultConfigType)
 				mock.EXPECT().Unmarshal(gomock.Any()).Return(errors.New("unmarshal error"))

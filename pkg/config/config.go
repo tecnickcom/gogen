@@ -64,6 +64,8 @@ highest):
     Firestore, NATS). The configuration source can also be the
     "MYPROG_REMOTECONFIGDATA" environment variable as base64-encoded JSON when
     "MYPROG_REMOTECONFIGPROVIDER" is set to "envvar".
+    Environment variables take precedence over configuration files.
+    This is useful to populate secret values from environment variables.
 
  5. Any specified command-line argument overwrites the corresponding
     configuration parameter.
@@ -171,6 +173,7 @@ type Viper interface {
 	SetConfigName(in string)
 	SetConfigType(in string)
 	SetDefault(key string, value any)
+	SetEnvKeyReplacer(r *strings.Replacer)
 	SetEnvPrefix(in string)
 	Unmarshal(rawVal any, opts ...viper.DecoderConfigOption) error
 }
@@ -276,6 +279,7 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 	// support environment variables for the remote configuration
 	v.AutomaticEnv()
 	v.SetEnvPrefix(strings.ReplaceAll(envPrefix, "-", "_")) // will be uppercased automatically
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	envVar := []string{
 		keyRemoteConfigProvider,
@@ -312,6 +316,12 @@ func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix stri
 	}
 
 	rv.SetConfigType(defaultConfigType)
+
+	// Environment variables take precedence over configuration files.
+	// This is useful to populate secret values from environment variables.
+	rv.AutomaticEnv()
+	rv.SetEnvPrefix(strings.ReplaceAll(envPrefix, "-", "_"))
+	rv.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	var err error
 
