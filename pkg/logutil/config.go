@@ -30,12 +30,12 @@ func DefaultConfig() *Config {
 		Level:      LevelInfo,
 		CommonAttr: []Attr{},
 		HookFn:     nil,
-		TraceIDFn:  DefaultTraceIDFn,
+		TraceIDFn:  defaultTraceID,
 	}
 }
 
 // DefaultTraceIDFn returns an empty trace ID string.
-func DefaultTraceIDFn() string {
+func defaultTraceID() string {
 	return ""
 }
 
