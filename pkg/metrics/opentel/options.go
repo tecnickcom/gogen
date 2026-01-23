@@ -1,15 +1,15 @@
 package opentel
 
 import (
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 // Option is the interface that allows to set client options.
 type Option func(c *Client) error
 
 // WithTracerProvider overrides the default TracerProvider.
-func WithTracerProvider(p *trace.TracerProvider) Option {
+func WithTracerProvider(p *sdktrace.TracerProvider) Option {
 	return func(c *Client) error {
 		c.tracerProvider = p
 		return nil
@@ -17,7 +17,7 @@ func WithTracerProvider(p *trace.TracerProvider) Option {
 }
 
 // WithMeterProvider overrides the default MeterProvider.
-func WithMeterProvider(p *metric.MeterProvider) Option {
+func WithMeterProvider(p *sdkmetric.MeterProvider) Option {
 	return func(c *Client) error {
 		c.meterProvider = p
 		return nil

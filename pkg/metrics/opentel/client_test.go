@@ -1,6 +1,7 @@
 package opentel
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestNew(t *testing.T) {
@@ -29,7 +31,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "succeeds with options",
 			opts: []Option{
-				WithTracerProvider(trace.NewTracerProvider()),
+				WithTracerProvider(sdktrace.NewTracerProvider()),
 				WithMeterProvider(sdkmetric.NewMeterProvider()),
 			},
 			wantErr: false,
@@ -215,4 +217,99 @@ type errMeter struct {
 
 func (m *errMeter) Int64Counter(string, ...metric.Int64CounterOption) (metric.Int64Counter, error) {
 	return nil, errors.New("test-error")
+}
+
+func TestTraceID(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		ctx      context.Context //nolint:containedctx
+		expected string
+	}{
+		{
+			name:     "context without trace ID",
+			ctx:      t.Context(),
+			expected: "",
+		},
+		{
+			name: "context with valid trace ID",
+			ctx: ContextWithSpanContext(
+				t.Context(),
+				[16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+				[8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+			),
+			expected: "0102030405060708090a0b0c0d0e0f10",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := TraceID(tt.ctx)
+			if got != tt.expected {
+				t.Errorf("TraceID() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestContextWithSpanContext(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		traceID trace.TraceID
+		spanID  trace.SpanID
+	}{
+		{
+			name:    "inject valid trace and span IDs",
+			traceID: [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+			spanID:  [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		},
+		{
+			name:    "inject zero trace and span IDs",
+			traceID: [16]byte{},
+			spanID:  [8]byte{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			newCtx := ContextWithSpanContext(ctx, tt.traceID, tt.spanID)
+
+			spanCtx := trace.SpanContextFromContext(newCtx)
+
+			if spanCtx.TraceID() != tt.traceID {
+				t.Errorf("TraceID mismatch: got %v, want %v", spanCtx.TraceID(), tt.traceID)
+			}
+
+			if spanCtx.SpanID() != tt.spanID {
+				t.Errorf("SpanID mismatch: got %v, want %v", spanCtx.SpanID(), tt.spanID)
+			}
+
+			if !spanCtx.IsSampled() {
+				t.Errorf("TraceFlags should be sampled")
+			}
+		})
+	}
+}
+
+func TestTraceIDRoundtrip(t *testing.T) {
+	t.Parallel()
+
+	originalTraceID := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+	originalSpanID := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
+
+	ctx := ContextWithSpanContext(context.Background(), originalTraceID, originalSpanID)
+	retrievedTraceID := TraceID(ctx)
+
+	expectedTraceID := trace.TraceID(originalTraceID).String()
+	if retrievedTraceID != expectedTraceID {
+		t.Errorf("Roundtrip TraceID failed: got %q, want %q", retrievedTraceID, expectedTraceID)
+	}
 }

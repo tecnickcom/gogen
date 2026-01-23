@@ -17,9 +17,10 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -51,7 +52,7 @@ type TShutdownFuncs = func(ctx context.Context) error
 
 // Client represents the state type of this client.
 type Client struct {
-	tracerProvider      *trace.TracerProvider
+	tracerProvider      *sdktrace.TracerProvider
 	meterProvider       *sdkmetric.MeterProvider
 	shutdownFuncs       []TShutdownFuncs
 	collectorErrorLevel metric.Int64Counter
@@ -177,9 +178,9 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 	// propagator
 	otel.SetTextMapPropagator(defaultPropagator())
 
-	res, _ := resource.New(
+	res, _ := sdkresource.New(
 		ctx,
-		resource.WithAttributes(
+		sdkresource.WithAttributes(
 			semconv.ServiceName(name),
 			semconv.ServiceVersion(version),
 		),
@@ -231,20 +232,20 @@ func defaultPropagator() propagation.TextMapPropagator {
 }
 
 // defaultTracerProvider provides a default OpenTelemetry TracerProvider.
-func defaultTracerProvider(res *resource.Resource) *trace.TracerProvider {
-	traceExporter, _ := stdouttrace.New(stdouttrace.WithPrettyPrint()) // no error
+func defaultTracerProvider(res *sdkresource.Resource) *sdktrace.TracerProvider {
+	traceExporter, _ := stdouttrace.New() // no error
 
-	return trace.NewTracerProvider(
-		trace.WithBatcher(
+	return sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(
 			traceExporter,
-			trace.WithBatchTimeout(traceBatchTimeoutSec*time.Second),
+			sdktrace.WithBatchTimeout(traceBatchTimeoutSec*time.Second),
 		),
-		trace.WithResource(res),
+		sdktrace.WithResource(res),
 	)
 }
 
 // defaultMeterProvider provides a default OpenTelemetry MeterProvider.
-func defaultMeterProvider(res *resource.Resource) *sdkmetric.MeterProvider {
+func defaultMeterProvider(res *sdkresource.Resource) *sdkmetric.MeterProvider {
 	metricExporter, _ := stdoutmetric.New() // returned error is always nil
 
 	return sdkmetric.NewMeterProvider(
@@ -256,4 +257,27 @@ func defaultMeterProvider(res *resource.Resource) *sdkmetric.MeterProvider {
 		),
 		sdkmetric.WithResource(res),
 	)
+}
+
+// TraceID returns the trace ID associate with the context.
+func TraceID(ctx context.Context) string {
+	spanCtx := trace.SpanContextFromContext(ctx)
+
+	if spanCtx.HasTraceID() {
+		traceID := spanCtx.TraceID()
+		return traceID.String()
+	}
+
+	return ""
+}
+
+// ContextWithSpanContext injects a span context (including trace ID) into the context.
+func ContextWithSpanContext(ctx context.Context, traceID trace.TraceID, spanID trace.SpanID) context.Context {
+	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+
+	return trace.ContextWithSpanContext(ctx, spanCtx)
 }
