@@ -32,7 +32,8 @@ func (e *gt) Evaluate(v any) bool {
 
 	val := reflect.ValueOf(v)
 
-	switch val.Kind() { //nolint:exhaustive
+	//nolint:exhaustive
+	switch val.Kind() {
 	case reflect.Float64:
 		return val.Float() > e.ref
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
