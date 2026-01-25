@@ -5,6 +5,25 @@
       "timeout": 1
     }
   },
+  "db": {
+    "enabled": false,
+    "main": {
+      "conn_max_idle_count": 5,
+      "conn_max_idle_time": 60,
+      "conn_max_lifetime": 3600,
+      "conn_max_open": 10,
+      "dsn": "",
+      "timeout_ping": 1
+    },
+    "read": {
+      "conn_max_idle_count": 5,
+      "conn_max_idle_time": 60,
+      "conn_max_lifetime": 3600,
+      "conn_max_open": 10,
+      "dsn": "",
+      "timeout_ping": 1
+    }
+  },
   "enabled": true,
   "log": {
     "address": "",
@@ -19,6 +38,10 @@
   "servers": {
     "monitoring": {
       "address": "",
+      "timeout": 60
+    },
+    "private": {
+      "address": ":",
       "timeout": 60
     },
     "public": {

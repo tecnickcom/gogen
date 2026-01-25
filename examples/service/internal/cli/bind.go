@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gogenexampleowner/gogenexample/internal/httphandler"
+	"github.com/gogenexampleowner/gogenexample/internal/db"
+	"github.com/gogenexampleowner/gogenexample/internal/httphandlerpriv"
+	"github.com/gogenexampleowner/gogenexample/internal/httphandlerpub"
 	instr "github.com/gogenexampleowner/gogenexample/internal/metrics"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/healthcheck"
@@ -18,17 +20,26 @@ import (
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
 	"github.com/tecnickcom/gogen/pkg/ipify"
 	"github.com/tecnickcom/gogen/pkg/metrics"
+	"github.com/tecnickcom/gogen/pkg/sqlconn"
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
+const (
+	dbDriver = "mysql"
+)
+
 // bind is the entry point of the service, this is where the wiring of all components happens.
+//
+//nolint:gocognit,funlen
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.WaitGroup, sc chan struct{}) bootstrap.BindFunc {
 	return func(ctx context.Context, l *slog.Logger, m metrics.Client) error {
 		jsx := jsendx.NewJSXResp(httputil.NewHTTPResp(l))
 
 		// We assume the service is disabled and override the service binder if required
-		serviceBinder := httpserver.NopBinder()
+		serviceBinderPrivate := httpserver.NopBinder()
+		serviceBinderPublic := httpserver.NopBinder()
 		statusHandler := jsx.DefaultStatusHandler(appInfo)
+		healthchecks := []healthcheck.HealthCheck{}
 
 		// common HTTP client options used for all outbound requests
 		httpClientOpts := []httpclient.Option{
@@ -52,16 +63,30 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 			return fmt.Errorf("failed to build ipify client: %w", err)
 		}
 
+		//nolint:nestif
 		if cfg.Enabled {
-			// wire the binder
-			serviceBinder = httphandler.New(nil, l)
+			serviceBinderPrivate = httphandlerpriv.New(nil, l)
+			serviceBinderPublic = httphandlerpub.New(nil, l)
+
+			reldb := db.Databases{
+				Enabled: cfg.DB.Enabled,
+			}
+
+			if cfg.DB.Enabled {
+				reldb.Main, healthchecks, err = newDatabase(ctx, "main", cfg.DB.Main, healthchecks, mtr, wg, sc)
+				if err != nil {
+					return err
+				}
+
+				reldb.Read, healthchecks, err = newDatabase(ctx, "read", cfg.DB.Read, healthchecks, mtr, wg, sc)
+				if err != nil {
+					return err
+				}
+			}
 
 			// override the default healthcheck handler
 			healthCheckHandler := healthcheck.NewHandler(
-				[]healthcheck.HealthCheck{
-					// healthcheck.New("<ID>", < HANDLER >),
-					// healthcheck.NewWithTimeout("<ID>", <HANDLER>, <TIMEOUT>),
-				},
+				healthchecks,
 				healthcheck.WithResultWriter(jsx.HealthCheckResultWriter(appInfo)),
 			)
 			statusHandler = healthCheckHandler.ServeHTTP
@@ -71,7 +96,8 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 			return m.InstrumentHandler(args.Path, next.ServeHTTP)
 		}
 
-		// start monitoring server
+		// MONITORING SERVER
+
 		httpMonitoringOpts := []httpserver.Option{
 			httpserver.WithLogger(l),
 			httpserver.WithServerAddr(cfg.Servers.Monitoring.Address),
@@ -98,10 +124,28 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 
 		httpMonitoringServer.StartServer()
 
-		// example of custom metric
-		mtr.IncExampleCounter("START")
+		// PRIVATE SERVER
 
-		// start public server
+		httpPrivateOpts := []httpserver.Option{
+			httpserver.WithLogger(l),
+			httpserver.WithServerAddr(cfg.Servers.Private.Address),
+			httpserver.WithRequestTimeout(time.Duration(cfg.Servers.Private.Timeout) * time.Second),
+			httpserver.WithMiddlewareFn(middleware),
+			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
+			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
+			httpserver.WithShutdownWaitGroup(wg),
+			httpserver.WithShutdownSignalChan(sc),
+		}
+
+		httpPrivateServer, err := httpserver.New(ctx, serviceBinderPrivate, httpPrivateOpts...)
+		if err != nil {
+			return fmt.Errorf("error creating private HTTP server: %w", err)
+		}
+
+		httpPrivateServer.StartServer()
+
+		// PUBLIC SERVER
+
 		httpPublicOpts := []httpserver.Option{
 			httpserver.WithLogger(l),
 			httpserver.WithServerAddr(cfg.Servers.Public.Address),
@@ -113,13 +157,53 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 			httpserver.WithShutdownSignalChan(sc),
 		}
 
-		httpPublicServer, err := httpserver.New(ctx, serviceBinder, httpPublicOpts...)
+		httpPublicServer, err := httpserver.New(ctx, serviceBinderPublic, httpPublicOpts...)
 		if err != nil {
 			return fmt.Errorf("error creating public HTTP server: %w", err)
 		}
 
 		httpPublicServer.StartServer()
 
+		// example of custom metric
+		mtr.IncExampleCounter("START")
+
 		return nil
 	}
+}
+
+func newDatabase(
+	ctx context.Context,
+	name string,
+	dbcfg cfgDB,
+	healthchecks []healthcheck.HealthCheck,
+	mtr instr.Metrics,
+	wg *sync.WaitGroup,
+	sc chan struct{},
+) (*sqlconn.SQLConn, []healthcheck.HealthCheck, error) {
+	// Extra options are required to correctly parse time.Time and for SQLX to work properly with projections that use joins.
+	// Ref.: https://pkg.go.dev/github.com/go-sql-driver/mysql#readme-usage
+	dbDSN := dbcfg.DSN // + "?parseTime=true&columnsWithAlias=true"
+
+	sqlConnOpts := []sqlconn.Option{
+		sqlconn.WithDefaultDriver(dbDriver),
+		sqlconn.WithPingTimeout(time.Duration(dbcfg.TimeoutPing) * time.Second),
+		sqlconn.WithConnMaxOpen(dbcfg.ConnMaxOpen),
+		sqlconn.WithConnMaxIdleCount(dbcfg.ConnMaxIdleCount),
+		sqlconn.WithConnMaxIdleTime(time.Duration(dbcfg.ConnMaxIdleTime) * time.Second),
+		sqlconn.WithConnMaxLifetime(time.Duration(dbcfg.ConnMaxLifetime) * time.Second),
+		sqlconn.WithShutdownWaitGroup(wg),
+		sqlconn.WithShutdownSignalChan(sc),
+	}
+
+	sqlConn, err := sqlconn.Connect(ctx, dbDSN, sqlConnOpts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect to %s DB: %w", name, err)
+	}
+
+	err = mtr.InstrumentDB("db_"+name, sqlConn.DB())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to instrument %s DB: %w", name, err)
+	}
+
+	return sqlConn, append(healthchecks, healthcheck.New("db", sqlConn)), nil
 }

@@ -1,4 +1,4 @@
-package httphandler
+package httphandlerpub
 
 import (
 	"io"
@@ -16,15 +16,15 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, hh)
 }
 
-func TestHTTPHandler_BindHTTP(t *testing.T) {
+func TestHTTPHandlerPublic_BindHTTP(t *testing.T) {
 	t.Parallel()
 
-	h := &HTTPHandler{}
+	h := &HTTPHandlerPublic{}
 	got := h.BindHTTP(t.Context())
 	require.Len(t, got, 1)
 }
 
-func TestHTTPHandler_handleGenUID(t *testing.T) {
+func TestHTTPHandlerPublic_handleGenUID(t *testing.T) {
 	t.Parallel()
 
 	rr := httptest.NewRecorder()

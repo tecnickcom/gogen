@@ -50,6 +50,165 @@
       "title": "Clients",
       "type": "object"
     },
+    "db": {
+      "additionalProperties": false,
+      "description": "Configuration of the databases",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "Enable or disable the database",
+          "type": "boolean"
+        },
+        "main": {
+          "additionalProperties": false,
+          "description": "Configuration of the main database (read/write)",
+          "examples": [
+            {
+              "conn_max_idle_count": 2,
+              "conn_max_idle_time": 60,
+              "conn_max_lifetime": 3600,
+              "conn_max_open": 5,
+              "dsn": "username:password@protocol(address)/dbname?param=value",
+              "timeout_ping": 1
+            }
+          ],
+          "properties": {
+            "conn_max_idle_count": {
+              "default": 5,
+              "description": "Maximum number of connections in the idle connection pool",
+              "examples": [
+                5
+              ],
+              "type": "integer"
+            },
+            "conn_max_idle_time": {
+              "default": 1,
+              "description": "Maximum amount of time a connection may be idle [seconds]",
+              "examples": [
+                60
+              ],
+              "type": "integer"
+            },
+            "conn_max_lifetime": {
+              "default": 1,
+              "description": "Maximum amount of time a connection may be reused [seconds]",
+              "examples": [
+                3600
+              ],
+              "type": "integer"
+            },
+            "conn_max_open": {
+              "default": 50,
+              "description": "Maximum number of open connections to the database. If n <= 0, no idle connections are retained",
+              "examples": [
+                50
+              ],
+              "type": "integer"
+            },
+            "dsn": {
+              "default": "",
+              "description": "Database in DSN format: username:password@protocol(address)/dbname?param=value",
+              "type": "string"
+            },
+            "timeout_ping": {
+              "default": 1,
+              "description": "Database healthcheck ping timeout [seconds]",
+              "examples": [
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "conn_max_idle_count",
+            "conn_max_idle_time",
+            "conn_max_lifetime",
+            "conn_max_open",
+            "dsn",
+            "timeout_ping"
+          ],
+          "title": "Main database configuration",
+          "type": "object"
+        },
+        "read": {
+          "additionalProperties": false,
+          "description": "Configuration of the read-replica database (read-only)",
+          "examples": [
+            {
+              "conn_max_idle_count": 2,
+              "conn_max_idle_time": 60,
+              "conn_max_lifetime": 3600,
+              "conn_max_open": 5,
+              "dsn": "username:password@protocol(address)/dbname?param=value",
+              "timeout_ping": 1
+            }
+          ],
+          "properties": {
+            "conn_max_idle_count": {
+              "default": 5,
+              "description": "Maximum number of connections in the idle connection pool",
+              "examples": [
+                5
+              ],
+              "type": "integer"
+            },
+            "conn_max_idle_time": {
+              "default": 1,
+              "description": "Maximum amount of time a connection may be idle [seconds]",
+              "examples": [
+                60
+              ],
+              "type": "integer"
+            },
+            "conn_max_lifetime": {
+              "default": 1,
+              "description": "Maximum amount of time a connection may be reused [seconds]",
+              "examples": [
+                3600
+              ],
+              "type": "integer"
+            },
+            "conn_max_open": {
+              "default": 50,
+              "description": "Maximum number of open connections to the database. If n <= 0, no idle connections are retained",
+              "examples": [
+                50
+              ],
+              "type": "integer"
+            },
+            "dsn": {
+              "default": "",
+              "description": "Database in DSN format: username:password@protocol(address)/dbname?param=value",
+              "type": "string"
+            },
+            "timeout_ping": {
+              "default": 1,
+              "description": "Database healthcheck ping timeout [seconds]",
+              "examples": [
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "required": [
+            "conn_max_idle_count",
+            "conn_max_idle_time",
+            "conn_max_lifetime",
+            "conn_max_open",
+            "dsn",
+            "timeout_ping"
+          ],
+          "title": "Read-replica database configuration",
+          "type": "object"
+        }
+      },
+      "required": [
+        "main",
+        "read"
+      ],
+      "title": "Database configuration",
+      "type": "object"
+    },
     "enabled": {
       "default": true,
       "description": "Enable or disable the service",
@@ -147,41 +306,6 @@
           "description": "Configuration for the monitoring server",
           "examples": [
             {
-              "address": ":8072",
-              "timeout": 60
-            }
-          ],
-          "properties": {
-            "address": {
-              "default": "",
-              "description": "HTTP address (ip:port) or just (:port)",
-              "examples": [
-                ":8072"
-              ],
-              "title": "Address",
-              "type": "string"
-            },
-            "timeout": {
-              "description": "HTTP request timeout [seconds]",
-              "examples": [
-                60
-              ],
-              "title": "Timeout",
-              "type": "integer"
-            }
-          },
-          "required": [
-            "address",
-            "timeout"
-          ],
-          "title": "Monitoring HTTP server",
-          "type": "object"
-        },
-        "public": {
-          "additionalProperties": false,
-          "description": "Configuration for the public server",
-          "examples": [
-            {
               "address": ":8071",
               "timeout": 60
             }
@@ -209,12 +333,83 @@
             "address",
             "timeout"
           ],
+          "title": "Monitoring HTTP server",
+          "type": "object"
+        },
+        "private": {
+          "additionalProperties": false,
+          "description": "Configuration for the private server",
+          "examples": [
+            {
+              "address": ":8072",
+              "timeout": 60
+            }
+          ],
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "HTTP address (ip:port) or just (:port)",
+              "examples": [
+                ":8072"
+              ],
+              "title": "Address",
+              "type": "string"
+            },
+            "timeout": {
+              "description": "HTTP request timeout [seconds]",
+              "examples": [
+                60
+              ],
+              "title": "Timeout",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "address",
+            "timeout"
+          ],
+          "title": "Private HTTP server",
+          "type": "object"
+        },
+        "public": {
+          "additionalProperties": false,
+          "description": "Configuration for the public server",
+          "examples": [
+            {
+              "address": ":8073",
+              "timeout": 60
+            }
+          ],
+          "properties": {
+            "address": {
+              "default": "",
+              "description": "HTTP address (ip:port) or just (:port)",
+              "examples": [
+                ":8073"
+              ],
+              "title": "Address",
+              "type": "string"
+            },
+            "timeout": {
+              "description": "HTTP request timeout [seconds]",
+              "examples": [
+                60
+              ],
+              "title": "Timeout",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "address",
+            "timeout"
+          ],
           "title": "Public HTTP server",
           "type": "object"
         }
       },
       "required": [
         "monitoring",
+        "private",
         "public"
       ],
       "title": "Servers",
@@ -229,6 +424,7 @@
   },
   "required": [
     "clients",
+    "db",
     "enabled",
     "log",
     "servers"

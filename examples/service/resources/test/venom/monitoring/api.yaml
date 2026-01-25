@@ -1,7 +1,7 @@
 version: "2"
 name: gogenexample monitoring API tests
 vars:
-  gogenexample.url: 'http://gogenexample:8072'
+  gogenexample.url: 'http://gogenexample:8071'
 
 testcases:
 

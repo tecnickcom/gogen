@@ -9,10 +9,12 @@ services:
     depends_on:
       - gogenexample
       - gogenexample_smocker_ipify
+      - gogenexample_mysql
     volumes:
       - ./target/binutil/dockerize:/usr/bin/dockerize
       - ./target/report/:/workspace/target/report/
 
+#  "-wait", "tcp://gogenexample_mysql:9306",
   gogenexample:
     image: gogenexampleowner/gogenexample
     container_name: gogenexample
@@ -21,6 +23,7 @@ services:
       - target/gogenexample.integration.env
     entrypoint: [
         "/usr/bin/dockerize",
+        "-wait", "tcp://gogenexample_mysql:3306",
         "-wait", "tcp://gogenexample_smocker_ipify:8081",
         "/usr/bin/gogenexample"
     ]
@@ -30,3 +33,17 @@ services:
   gogenexample_smocker_ipify:
     container_name: gogenexample_smocker_ipify
     image: thiht/smocker
+
+  gogenexample_mysql:
+    container_name: gogenexample_mysql
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gogenexample
+    ports:
+      - "9306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

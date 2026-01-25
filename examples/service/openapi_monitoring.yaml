@@ -9,7 +9,7 @@ info:
     url: https://github.com/gogenexampleowner/gogenexample/blob/main/LICENSE
   version: 1.0.0
 servers:
-  - url: https://gogenexample:8072/
+  - url: https://gogenexample:8071/
 security:
   - {}
 tags:

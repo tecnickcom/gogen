@@ -5,6 +5,25 @@
       "timeout": 2
     }
   },
+  "db": {
+    "enabled": false,
+    "main": {
+      "conn_max_idle_count": 2,
+      "conn_max_idle_time": 60,
+      "conn_max_lifetime": 180,
+      "conn_max_open": 10,
+      "dsn": "gogenexample:pass@tcp(gogenexample_db:9306)/gogenexample",
+      "timeout_ping": 2
+    },
+    "read": {
+      "conn_max_idle_count": 2,
+      "conn_max_idle_time": 60,
+      "conn_max_lifetime": 180,
+      "conn_max_open": 10,
+      "dsn": "gogenexample:pass@tcp(gogenexample_db:9306)/gogenexample",
+      "timeout_ping": 2
+    }
+  },
   "enabled": true,
   "log": {
     "address": "",
@@ -14,11 +33,15 @@
   },
   "servers": {
     "monitoring": {
+      "address": ":8071",
+      "timeout": 2
+    },
+    "private": {
       "address": ":8072",
       "timeout": 2
     },
     "public": {
-      "address": ":8071",
+      "address": ":8073",
       "timeout": 2
     }
   },

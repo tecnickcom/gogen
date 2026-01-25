@@ -5,6 +5,25 @@
       "timeout": 1
     }
   },
+  "db": {
+    "enabled": true,
+    "main": {
+      "conn_max_idle_count": 2,
+      "conn_max_idle_time": 30,
+      "conn_max_lifetime": 120,
+      "conn_max_open": 10,
+      "dsn": "user:pwd@tcp(db.invalid)/test-main",
+      "timeout_ping": 2
+    },
+    "read": {
+      "conn_max_idle_count": 2,
+      "conn_max_idle_time": 30,
+      "conn_max_lifetime": 120,
+      "conn_max_open": 10,
+      "dsn": "user:pwd@tcp(db.invalid)/test-read",
+      "timeout_ping": 2
+    }
+  },
   "enabled": true,
   "log": {
     "address": "",
@@ -21,8 +40,12 @@
       "address": ":invalid",
       "timeout": 60
     },
+    "private": {
+      "address": ":8072",
+      "timeout": 2
+    },
     "public": {
-      "address": ":8071",
+      "address": ":8073",
       "timeout": 60
     }
   },

@@ -230,8 +230,9 @@ ifeq ($(DEPLOY_ENV), int)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
 	#DOCKER_REGISTRY_PULL=
 	#DOCKER_REGISTRY_PUSH=
-	GOGENEXAMPLE_URL=http://gogenexample:8071
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8072
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
+	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
+	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
 	API_TEST_FILE=*.yaml
 endif
 
@@ -242,8 +243,9 @@ ifeq ($(DEPLOY_ENV), dev)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
 	#DOCKER_REGISTRY_PULL=
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_DEV}
-	GOGENEXAMPLE_URL=http://gogenexample:8071
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8072
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
+	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
+	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
 	API_TEST_FILE=*.yaml
 endif
 
@@ -254,8 +256,9 @@ ifeq ($(DEPLOY_ENV), qa)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_QA}
 	DOCKER_REGISTRY_PULL=${DOCKER_REGISTRY_DEV}
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_QA}
-	GOGENEXAMPLE_URL=http://gogenexample:8071
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8072
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
+	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
+	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
 endif
 
 # Production environment
@@ -265,8 +268,9 @@ ifeq ($(DEPLOY_ENV), prod)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_PROD}
 	DOCKER_REGISTRY_PULL=${DOCKER_REGISTRY_QA}
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_PROD}
-	GOGENEXAMPLE_URL=http://gogenexample:8071
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8072
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
+	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
+	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
 	API_TEST_FILE=*.yaml
 endif
 
@@ -327,7 +331,8 @@ x:
 .PHONY: apitest
 apitest:
 	$(MAKE) venomtest API_TEST_DIR=monitoring API_TEST_URL=${GOGENEXAMPLE_MONITORING_URL} API_TEST_FILE=api.yaml
-	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${GOGENEXAMPLE_URL} API_TEST_FILE=${API_TEST_FILE}
+	$(MAKE) venomtest API_TEST_DIR=private API_TEST_URL=${GOGENEXAMPLE_PRIVATE_URL} API_TEST_FILE=${API_TEST_FILE}
+	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${GOGENEXAMPLE_PUBLIC_URL} API_TEST_FILE=${API_TEST_FILE}
 
 # Full build and test sequence
 # You may want to change this and remove the options you don't need
@@ -593,7 +598,8 @@ mod: gotools
 .PHONY: openapitest
 openapitest:
 	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
-	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_URL} OPENAPI_FILE=openapi.yaml
+	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_PRIVATE_URL} OPENAPI_FILE=openapi_private.yaml
+	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_PUBLIC_URL} OPENAPI_FILE=openapi_public.yaml
 
 # Ping the deployed service to check if the correct deployed container is alive
 .PHONY: ping

@@ -1,7 +1,7 @@
 version: "2"
-name: gogenexample Public API tests
+name: gogenexample Private API tests
 vars:
-  gogenexample.url: 'http://gogenexample:8073'
+  gogenexample.url: 'http://gogenexample:8072'
 
 testcases:
 

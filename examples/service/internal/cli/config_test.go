@@ -16,7 +16,7 @@ func Test_appConfig_SetDefaults(t *testing.T) {
 	c.SetDefaults(v)
 
 	require.True(t, v.GetBool("enabled"))
-	require.Len(t, v.AllKeys(), 7)
+	require.Len(t, v.AllKeys(), 22)
 }
 
 func getValidTestConfig() appConfig {
@@ -39,12 +39,35 @@ func getValidTestConfig() appConfig {
 		Enabled: true,
 		Servers: cfgServers{
 			Monitoring: cfgServerMonitoring{
-				Address: ":1233",
+				Address: ":1231",
 				Timeout: 11,
 			},
-			Public: cfgServerPublic{
-				Address: ":1231",
+			Private: cfgServerPrivate{
+				Address: ":1232",
 				Timeout: 12,
+			},
+			Public: cfgServerPublic{
+				Address: ":1233",
+				Timeout: 13,
+			},
+		},
+		DB: cfgDatabases{
+			Enabled: true,
+			Main: cfgDB{
+				ConnMaxIdleCount: 2,
+				ConnMaxIdleTime:  30,
+				ConnMaxLifetime:  120,
+				ConnMaxOpen:      10,
+				DSN:              "user:pwd@tcp(db.invalid)/test-main",
+				TimeoutPing:      2,
+			},
+			Read: cfgDB{
+				ConnMaxIdleCount: 3,
+				ConnMaxIdleTime:  31,
+				ConnMaxLifetime:  121,
+				ConnMaxOpen:      11,
+				DSN:              "user:pwd@tcp(db.invalid)/test-read",
+				TimeoutPing:      3,
 			},
 		},
 	}
@@ -127,6 +150,26 @@ func Test_appConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "empty servers.private",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Private = cfgServerPrivate{}; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty servers.private.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Private.Address = ""; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "invalid servers.private.address",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Private.Address = "-WRONG_PRIVATE_ADDRESS-"; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty servers.private.timeout",
+			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Private.Timeout = 0; return cfg },
+			wantErr: true,
+		},
+		{
 			name:    "empty servers.public",
 			fcfg:    func(cfg appConfig) appConfig { cfg.Servers.Public = cfgServerPublic{}; return cfg },
 			wantErr: true,
@@ -169,6 +212,26 @@ func Test_appConfig_Validate(t *testing.T) {
 		{
 			name:    "empty clients.ipify.timeout",
 			fcfg:    func(cfg appConfig) appConfig { cfg.Clients.Ipify.Timeout = 0; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty db.main.dsn",
+			fcfg:    func(cfg appConfig) appConfig { cfg.DB.Main.DSN = ""; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty db.main.timeout_ping",
+			fcfg:    func(cfg appConfig) appConfig { cfg.DB.Main.TimeoutPing = 0; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty db.read.dsn",
+			fcfg:    func(cfg appConfig) appConfig { cfg.DB.Read.DSN = ""; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "empty db.read.timeout_ping",
+			fcfg:    func(cfg appConfig) appConfig { cfg.DB.Read.TimeoutPing = 0; return cfg },
 			wantErr: true,
 		},
 	}

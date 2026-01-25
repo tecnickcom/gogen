@@ -58,6 +58,9 @@ The configuration format is a single JSON structure with the following fields:
   * **monitoring**: Monitoring HTTP server
     * **address**: HTTP address (ip:port) or just (:port)
     * **timeout**: HTTP request timeout [seconds]
+  * **private**: *Private (internal) HTTP server*
+    * **address**: HTTP address (ip:port) or just (:port)
+    * **timeout**: HTTP request timeout [seconds]
   * **public**: *Public HTTP server*
     * **address**: HTTP address (ip:port) or just (:port)
     * **timeout**: HTTP request timeout [seconds]
@@ -66,6 +69,23 @@ The configuration format is a single JSON structure with the following fields:
   * **ipify**:  ipify service client
     * **address**:  Base URL of the service
     * **timeout**:  HTTP client timeout [seconds]
+
+* **db**: Database configuration
+  * **enabled**: Enable or disable the database
+    * **main**: Main (read/write) database
+      * **conn_max_idle_count**: Maximum number of connections in the idle connection pool
+      * **conn_max_idle_time**: Maximum amount of time a connection may be idle [seconds]
+      * **conn_max_lifetime**: Maximum amount of time a connection may be reused [seconds]
+      * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, no idle connections are retained
+      * **dsn**: Database in DSN format: username:password@protocol(address)/dbname?param=value
+      * **timeout_ping**: Database healthcheck ping timeout [seconds]
+    * **read**: Read-only database replica
+      * **conn_max_idle_count**: Maximum number of connections in the idle connection pool
+      * **conn_max_idle_time**: Maximum amount of time a connection may be idle [seconds]
+      * **conn_max_lifetime**: Maximum amount of time a connection may be reused [seconds]
+      * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, no idle connections are retained
+      * **dsn**: Database in DSN format: username:password@protocol(address)/dbname?param=value
+      * **timeout_ping**: Database healthcheck ping timeout [seconds]
 
 ## Formatting Configuration
 

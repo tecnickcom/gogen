@@ -1,5 +1,5 @@
-// Package httphandler handles the inbound service requests.
-package httphandler
+// Package httphandlerpriv handles the inbound internal service requests.
+package httphandlerpriv
 
 import (
 	"context"
@@ -14,22 +14,22 @@ import (
 // Service is the interface representing the business logic of the service.
 type Service any
 
-// HTTPHandler is the struct containing all the http handlers.
-type HTTPHandler struct {
+// HTTPHandlerPrivate is the struct containing all the http handlers.
+type HTTPHandlerPrivate struct {
 	service Service
 	httpres *httputil.HTTPResp
 }
 
 // New creates a new instance of the HTTP handler.
-func New(s Service, l *slog.Logger) *HTTPHandler {
-	return &HTTPHandler{
+func New(s Service, l *slog.Logger) *HTTPHandlerPrivate {
+	return &HTTPHandlerPrivate{
 		service: s,
 		httpres: httputil.NewHTTPResp(l),
 	}
 }
 
 // BindHTTP implements the function to bind the handler to a server.
-func (h *HTTPHandler) BindHTTP(_ context.Context) []httpserver.Route {
+func (h *HTTPHandlerPrivate) BindHTTP(_ context.Context) []httpserver.Route {
 	return []httpserver.Route{
 		{
 			Method:      http.MethodGet,
@@ -40,6 +40,6 @@ func (h *HTTPHandler) BindHTTP(_ context.Context) []httpserver.Route {
 	}
 }
 
-func (h *HTTPHandler) handleGenUID(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandlerPrivate) handleGenUID(w http.ResponseWriter, r *http.Request) {
 	h.httpres.SendJSON(r.Context(), w, http.StatusOK, uidc.NewID128())
 }
