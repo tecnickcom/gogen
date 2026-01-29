@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"os"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gogenexampleowner/gogenexample/internal/cli"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/logsrv"
 	"github.com/tecnickcom/gogen/pkg/logutil"
