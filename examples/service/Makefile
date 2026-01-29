@@ -487,6 +487,7 @@ dockertest: dockertestenv dockerdev
 	$(DOCKERCOMPOSECMD) down --volumes || true
 	$(DOCKERCOMPOSECMD) build $(DOCKERBUILDARG)
 	$(DOCKERCOMPOSECMD) run ${PROJECT}_integration || echo $${?} > $(TARGETDIR)/make.exit
+#	$(DOCKERCOMPOSECMD) logs
 	$(DOCKERCOMPOSECMD) down --rmi local --volumes --remove-orphans || true
 	@exit `cat $(TARGETDIR)/make.exit`
 
