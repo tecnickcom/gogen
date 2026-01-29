@@ -163,19 +163,31 @@ func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
 
 // parseConnectionURL attempts to extract the driver/dsn pair from a string in the format <DRIVER>://<DSN>
 // if only the DSN part is set, the driver will need to be specified via a configuration option.
+// Examples:
+// - mysql://user:pass@tcp(host:3306)/database
+// - pgx://postgres://user:pass@host:5432/database?sslmode=disable
 func parseConnectionURL(url string) (string, string, error) {
-	if url == "" {
+	if strings.TrimSpace(url) == "" {
 		return "", "", nil
 	}
 
-	parts := strings.Split(url, "://")
+	const sep = "://"
 
-	switch len(parts) {
-	case 1:
-		return "", parts[0], nil
-	case 2:
-		return parts[0], parts[1], nil
+	var driver, dsn string
+
+	before, after, found := strings.Cut(url, sep)
+
+	if found {
+		driver = before
+		dsn = after
+	} else {
+		driver = ""
+		dsn = before
 	}
 
-	return "", "", fmt.Errorf("invalid connection string: %q", url)
+	if !strings.ContainsAny(dsn, "@/=:") && !strings.Contains(dsn, " ") {
+		return "", "", fmt.Errorf("invalid DSN for driver %s", driver)
+	}
+
+	return driver, dsn, nil
 }

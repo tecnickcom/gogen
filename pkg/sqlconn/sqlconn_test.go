@@ -32,8 +32,8 @@ func TestConnect(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name:       "fail with dsn error",
-			connectDSN: "driver1://driver2://connection_string",
+			name:       "fail with DSN error",
+			connectDSN: "testdriver://invalid",
 			wantErr:    true,
 		},
 		{
@@ -368,11 +368,16 @@ func Test_parseConnectionURL(t *testing.T) {
 			wantDSN:    "",
 		},
 		{
-			name:       "empty",
-			url:        "driver1://driver2://user:pass@tcp(db0.host.invalid)/db0",
-			wantDriver: "",
-			wantDSN:    "",
-			wantErr:    true,
+			name:       "mysql",
+			url:        "mysql://user:pass@tcp(host:3306)/database",
+			wantDriver: "mysql",
+			wantDSN:    "user:pass@tcp(host:3306)/database",
+		},
+		{
+			name:       "postgres",
+			url:        "pgx://postgres://user:pass@host:5432/database?sslmode=disable",
+			wantDriver: "pgx",
+			wantDSN:    "postgres://user:pass@host:5432/database?sslmode=disable",
 		},
 		{
 			name:       "missing driver",
@@ -385,6 +390,13 @@ func Test_parseConnectionURL(t *testing.T) {
 			url:        "testdriver://user:pass@tcp(db2.host.invalid)/db2",
 			wantDriver: "testdriver",
 			wantDSN:    "user:pass@tcp(db2.host.invalid)/db2",
+		},
+		{
+			name:       "invalid DSN",
+			url:        "testdriver://invalid",
+			wantDriver: "",
+			wantDSN:    "",
+			wantErr:    true,
 		},
 	}
 

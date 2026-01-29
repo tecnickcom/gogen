@@ -132,8 +132,8 @@ func Test_bind(t *testing.T) {
 			name: "fails to instrument DB",
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Enabled = true
-				cfg.DB.Main.DSN = "sqlmock://test_main_db_1"
-				cfg.DB.Read.DSN = "sqlmock://test_read_db_1"
+				cfg.DB.Main.DSN = "sqlmock://user:pass@tcp(host:3306)/database1"
+				cfg.DB.Read.DSN = "sqlmock://user:pass@tcp(host:3306)/database2"
 
 				return cfg
 			},
@@ -149,7 +149,7 @@ func Test_bind(t *testing.T) {
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Enabled = true
 				cfg.DB.Main.DSN = "user:pwd@tcp(db.invalid)/test-main"
-				cfg.DB.Read.DSN = "sqlmock://test_read_db_2"
+				cfg.DB.Read.DSN = "sqlmock://user:pass@tcp(host:3306)/database3"
 
 				return cfg
 			},
@@ -163,7 +163,7 @@ func Test_bind(t *testing.T) {
 			name: "fails read DB",
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Enabled = true
-				cfg.DB.Main.DSN = "sqlmock://test_main_db_3"
+				cfg.DB.Main.DSN = "sqlmock://user:pass@tcp(host:3306)/database4"
 				cfg.DB.Read.DSN = "user:pwd@tcp(db.invalid)/test-read"
 
 				return cfg
@@ -177,8 +177,8 @@ func Test_bind(t *testing.T) {
 			name: "success with all features enabled",
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Enabled = true
-				cfg.DB.Main.DSN = "sqlmock://test_main_db_4"
-				cfg.DB.Read.DSN = "sqlmock://test_read_db_5"
+				cfg.DB.Main.DSN = "sqlmock://user:pass@tcp(host:3306)/database5"
+				cfg.DB.Read.DSN = "sqlmock://user:pass@tcp(host:3306)/database6"
 
 				return cfg
 			},
