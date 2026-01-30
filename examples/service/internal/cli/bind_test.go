@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"net"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -132,8 +131,8 @@ func Test_bind(t *testing.T) {
 			name: "fails to instrument DB",
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Enabled = true
-				cfg.DB.Main.DSN = "sqlmock://user:pass@tcp(host:3306)/database1"
-				cfg.DB.Read.DSN = "sqlmock://user:pass@tcp(host:3306)/database2"
+				cfg.DB.Main.DSN = "user:pass@tcp(host:3306)/database1"
+				cfg.DB.Read.DSN = "user:pass@tcp(host:3306)/database2"
 
 				return cfg
 			},
@@ -149,7 +148,7 @@ func Test_bind(t *testing.T) {
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Enabled = true
 				cfg.DB.Main.DSN = "user:pwd@tcp(db.invalid)/test-main"
-				cfg.DB.Read.DSN = "sqlmock://user:pass@tcp(host:3306)/database3"
+				cfg.DB.Read.DSN = "user:pass@tcp(host:3306)/database3"
 
 				return cfg
 			},
@@ -163,7 +162,7 @@ func Test_bind(t *testing.T) {
 			name: "fails read DB",
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Enabled = true
-				cfg.DB.Main.DSN = "sqlmock://user:pass@tcp(host:3306)/database4"
+				cfg.DB.Main.DSN = "user:pass@tcp(host:3306)/database4"
 				cfg.DB.Read.DSN = "user:pwd@tcp(db.invalid)/test-read"
 
 				return cfg
@@ -177,8 +176,8 @@ func Test_bind(t *testing.T) {
 			name: "success with all features enabled",
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Enabled = true
-				cfg.DB.Main.DSN = "sqlmock://user:pass@tcp(host:3306)/database5"
-				cfg.DB.Read.DSN = "sqlmock://user:pass@tcp(host:3306)/database6"
+				cfg.DB.Main.DSN = "user:pass@tcp(host:3306)/database5"
+				cfg.DB.Read.DSN = "user:pass@tcp(host:3306)/database6"
 
 				return cfg
 			},
@@ -210,7 +209,7 @@ func Test_bind(t *testing.T) {
 
 			if tt.setupDBMain != nil {
 				dbm, cleanupMain := tt.setupDBMain(
-					strings.ReplaceAll(cfg.DB.Main.DSN, "sqlmock://", ""),
+					cfg.DB.Main.DSN,
 					tt.expectDBMain,
 				)
 
@@ -223,7 +222,7 @@ func Test_bind(t *testing.T) {
 
 			if tt.setupDBRead != nil {
 				dbr, cleanupRead := tt.setupDBRead(
-					strings.ReplaceAll(cfg.DB.Read.DSN, "sqlmock://", ""),
+					cfg.DB.Read.DSN,
 					tt.expectDBRead,
 				)
 
@@ -239,6 +238,9 @@ func Test_bind(t *testing.T) {
 			} else {
 				mtr = metrics.New()
 			}
+
+			cfg.DB.Main.Driver = "sqlmock"
+			cfg.DB.Read.Driver = "sqlmock"
 
 			testBindFn := bind(
 				&cfg,

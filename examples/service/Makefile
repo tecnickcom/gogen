@@ -415,12 +415,27 @@ deps: ensuretarget
 
 # Build a docker container to run this service
 .PHONY: docker
-docker: dockerdir dockerbuild
+docker: dockerdir dockerbuild dockerdb
 
 # Build the docker container in the target/DOCKER directory
 .PHONY: dockerbuild
 dockerbuild:
-	$(DOCKER) build --no-cache --tag=${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest $(PATHDOCKERPKG)
+	$(DOCKER) build \
+	--no-cache \
+	--tag=${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest \
+	$(PATHDOCKERPKG)
+
+# Generate the FlyWay container to update the database
+.PHONY: dockerdb
+dockerdb:
+	cd resources/db && \
+	$(DOCKER) build \
+	--no-cache \
+	--build-arg DEPLOY_ENV=${DEPLOY_ENV} \
+	--build-arg DBTYPE="mysql" \
+	--file db.dockerfile \
+	--tag=${LCVENDOR}/${PROJECT}_db:latest \
+	.
 
 # Delete the Docker image
 .PHONY: dockerdelete
@@ -487,7 +502,7 @@ dockertest: dockertestenv dockerdev
 	$(DOCKERCOMPOSECMD) down --volumes || true
 	$(DOCKERCOMPOSECMD) build $(DOCKERBUILDARG)
 	$(DOCKERCOMPOSECMD) run ${PROJECT}_integration || echo $${?} > $(TARGETDIR)/make.exit
-#	$(DOCKERCOMPOSECMD) logs
+	$(DOCKERCOMPOSECMD) logs
 	$(DOCKERCOMPOSECMD) down --rmi local --volumes --remove-orphans || true
 	@exit `cat $(TARGETDIR)/make.exit`
 

@@ -8,9 +8,6 @@ services:
       DEPLOY_ENV: "int"
     depends_on:
       - gogenexample
-      - gogenexample_smocker_ipify
-      - gogenexample_mysql
-      - gogenexample_postgres
     volumes:
       - ./target/binutil/dockerize:/usr/bin/dockerize
       - ./target/report/:/workspace/target/report/
@@ -19,12 +16,15 @@ services:
     image: gogenexampleowner/gogenexample
     container_name: gogenexample
     restart: always
+    depends_on:
+      - gogenexample_smocker_ipify
+      - gogenexample_mysql
+      - gogenexample_flyway_mysql
     env_file:
       - target/gogenexample.integration.env
     entrypoint: [
         "/usr/bin/dockerize",
         "-wait", "tcp://gogenexample_mysql:3306",
-        "-wait", "tcp://gogenexample_postgres:5432",
         "-wait", "tcp://gogenexample_smocker_ipify:8081",
         "/usr/bin/gogenexample"
     ]
@@ -46,29 +46,60 @@ services:
     volumes:
       - ./resources/db/mysql/create.sql:/docker-entrypoint-initdb.d/01-create.sql
       - ./resources/db/mysql/users.sql:/docker-entrypoint-initdb.d/02-users.sql
-      - ./resources/db/mysql/schema.sql:/docker-entrypoint-initdb.d/03-schema.sql
-      - ./resources/db/mysql/int/data.sql:/docker-entrypoint-initdb.d/04-data.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  gogenexample_postgres:
-    container_name: gogenexample_postgres
-    image: postgres:18
-    environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: gogenexample
-    ports:
-      - "9432:5432"
-    volumes:
-      - ./resources/db/postgres/users.sql:/docker-entrypoint-initdb.d/01-users.sql
-      - ./resources/db/postgres/schema.sql:/docker-entrypoint-initdb.d/02-schema.sql
-      - ./resources/db/postgres/int/data.sql:/docker-entrypoint-initdb.d/03-data.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U root -h localhost -p 5432"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  gogenexample_flyway_mysql:
+    depends_on:
+      gogenexample_mysql:
+        condition: service_healthy
+    image: gogenexampleowner/gogenexample_db:latest
+    container_name: gogenexample_db
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e && \
+        echo 'flyway start' && \
+        flyway migrate -url="jdbc:mysql://gogenexample_mysql:3306/gogenexample?allowPublicKeyRetrieval=true&useSSL=false" -user=root -password=root -locations=filesystem:/flyway/sql && \
+        echo 'flyway completed'
+
+
+#  gogenexample_postgres:
+#    container_name: gogenexample_postgres
+#    image: postgres:18
+#    environment:
+#      POSTGRES_USER: root
+#      POSTGRES_PASSWORD: root
+#      POSTGRES_DB: gogenexample
+#    ports:
+#      - "9432:5432"
+#    volumes:
+#      - ./resources/db/postgres/users.sql:/docker-entrypoint-initdb.d/01-users.sql
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U root -h localhost -p 5432"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+
+#  gogenexample_flyway_postgres:
+#    depends_on:
+#      gogenexample_postgres:
+#        condition: service_healthy
+#    image: gogenexampleowner/gogenexample_db:latest
+#    container_name: gogenexample_db
+#    entrypoint: [
+#      "/bin/sh",
+#      "-c",
+#      "set -e && \
+#      echo 'flyway start' && \
+#      flyway migrate \
+#      -url=jdbc:postgresql://gogenexample_postgres:5432/gogenexample \
+#      -user=root \
+#      -password=root \
+#      -locations=filesystem:/flyway/sql && \
+#      echo 'flyway completed'"
+#    ]

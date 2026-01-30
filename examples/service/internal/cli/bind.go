@@ -24,10 +24,6 @@ import (
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
-const (
-	dbDriver = "mysql"
-)
-
 // bind is the entry point of the service, this is where the wiring of all components happens.
 //
 //nolint:gocognit,funlen
@@ -185,7 +181,7 @@ func newDatabase(
 	dbDSN := dbcfg.DSN // + "?parseTime=true&columnsWithAlias=true"
 
 	sqlConnOpts := []sqlconn.Option{
-		sqlconn.WithDefaultDriver(dbDriver),
+		sqlconn.WithDefaultDriver(dbcfg.Driver),
 		sqlconn.WithPingTimeout(time.Duration(dbcfg.TimeoutPing) * time.Second),
 		sqlconn.WithConnMaxOpen(dbcfg.ConnMaxOpen),
 		sqlconn.WithConnMaxIdleCount(dbcfg.ConnMaxIdleCount),
@@ -195,7 +191,7 @@ func newDatabase(
 		sqlconn.WithShutdownSignalChan(sc),
 	}
 
-	sqlConn, err := sqlconn.Connect(ctx, dbDSN, sqlConnOpts...)
+	sqlConn, err := sqlconn.New(ctx, dbcfg.Driver, dbDSN, sqlConnOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to %s DB: %w", name, err)
 	}

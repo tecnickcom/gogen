@@ -16,7 +16,9 @@ func Test_appConfig_SetDefaults(t *testing.T) {
 	c.SetDefaults(v)
 
 	require.True(t, v.GetBool("enabled"))
-	require.Len(t, v.AllKeys(), 22)
+	require.Equal(t, dbDriver, v.GetString("db.main.driver"))
+	require.Equal(t, dbDriver, v.GetString("db.read.driver"))
+	require.Len(t, v.AllKeys(), 24)
 }
 
 func getValidTestConfig() appConfig {
@@ -58,6 +60,7 @@ func getValidTestConfig() appConfig {
 				ConnMaxIdleTime:  30,
 				ConnMaxLifetime:  120,
 				ConnMaxOpen:      10,
+				Driver:           "mysql",
 				DSN:              "user:pwd@tcp(db.invalid)/test-main",
 				TimeoutPing:      2,
 			},
@@ -66,6 +69,7 @@ func getValidTestConfig() appConfig {
 				ConnMaxIdleTime:  31,
 				ConnMaxLifetime:  121,
 				ConnMaxOpen:      11,
+				Driver:           "mysql",
 				DSN:              "user:pwd@tcp(db.invalid)/test-read",
 				TimeoutPing:      3,
 			},

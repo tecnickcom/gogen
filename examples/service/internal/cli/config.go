@@ -22,6 +22,10 @@ const (
 	fieldTagName = "mapstructure"
 )
 
+const (
+	dbDriver = "mysql"
+)
+
 type cfgServer struct {
 	Address string `mapstructure:"address" validate:"required,hostname_port"`
 	Timeout int    `mapstructure:"timeout" validate:"required,min=1"`
@@ -51,7 +55,7 @@ type cfgClients struct {
 }
 
 type cfgDB struct {
-	// Database in DSN format: "username:password@protocol(address)/dbname?param=value"
+	Driver           string `mapstructure:"driver"              validate:"-"`
 	DSN              string `mapstructure:"dsn"                 validate:"required"`
 	TimeoutPing      int    `mapstructure:"timeout_ping"        validate:"required"`
 	ConnMaxOpen      int    `mapstructure:"conn_max_open"       validate:"required,min=0"`
@@ -98,6 +102,7 @@ func (c *appConfig) SetDefaults(v config.Viper) {
 	v.SetDefault("db.main.conn_max_idle_time", 60)
 	v.SetDefault("db.main.conn_max_lifetime", 3600)
 	v.SetDefault("db.main.conn_max_open", 50)
+	v.SetDefault("db.main.driver", dbDriver)
 	v.SetDefault("db.main.dsn", "")
 	v.SetDefault("db.main.timeout_ping", 1)
 
@@ -105,6 +110,7 @@ func (c *appConfig) SetDefaults(v config.Viper) {
 	v.SetDefault("db.read.conn_max_idle_time", 60)
 	v.SetDefault("db.read.conn_max_lifetime", 3600)
 	v.SetDefault("db.read.conn_max_open", 50)
+	v.SetDefault("db.read.driver", dbDriver)
 	v.SetDefault("db.read.dsn", "")
 	v.SetDefault("db.read.timeout_ping", 1)
 }

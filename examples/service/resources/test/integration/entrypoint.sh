@@ -8,7 +8,6 @@ dockerize \
     -wait tcp://gogenexample:8073/ping \
     -wait http://gogenexample_smocker_ipify:8081/version \
     -wait tcp://gogenexample_mysql:3306 \
-    -wait tcp://gogenexample_postgres:5432 \
     echo
 
 # configure smocker mocks for the ipify client
