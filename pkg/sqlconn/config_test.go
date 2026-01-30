@@ -6,6 +6,78 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_defaultConfig(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultConfig("test_driver", "test_dsn")
+	require.NotNil(t, cfg)
+	require.Equal(t, "test_driver", cfg.driver)
+	require.Equal(t, "test_dsn", cfg.dsn)
+	require.NotNil(t, cfg.connectFunc)
+	require.NotNil(t, cfg.checkConnectionFunc)
+	require.NotNil(t, cfg.sqlOpenFunc)
+	require.Equal(t, defaultConnMaxIdleCount, cfg.connMaxIdleCount)
+	require.Equal(t, defaultConnMaxIdleTime, cfg.connMaxIdleTime)
+	require.Equal(t, defaultConnMaxLifetime, cfg.connMaxLifetime)
+	require.Equal(t, defaultConnMaxOpenCount, cfg.connMaxOpenCount)
+	require.Equal(t, defaultPingTimeout, cfg.pingTimeout)
+}
+
+func Test_newConfig(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		driver  string
+		dsn     string
+		opts    []Option
+		wantErr bool
+	}{
+		{
+			name:    "fail with empty driver",
+			driver:  "",
+			dsn:     "dsnstring",
+			opts:    []Option{},
+			wantErr: true,
+		},
+		{
+			name:    "fail with empty dsn",
+			driver:  "driver",
+			dsn:     "",
+			opts:    []Option{},
+			wantErr: true,
+		},
+		{
+			name:   "success with empty options",
+			driver: "driver",
+			dsn:    "dsnstring",
+			opts:   []Option{},
+		},
+		{
+			name:   "success with driver from option",
+			driver: "",
+			dsn:    "dsnstring",
+			opts:   []Option{WithDefaultDriver("driver")},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg, err := newConfig(tt.driver, tt.dsn, tt.opts...)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, cfg)
+		})
+	}
+}
+
 func Test_config_validate(t *testing.T) {
 	t.Parallel()
 
@@ -154,21 +226,4 @@ func Test_config_validate(t *testing.T) {
 			}
 		})
 	}
-}
-
-func Test_defaultConfig(t *testing.T) {
-	t.Parallel()
-
-	cfg := defaultConfig("test_driver", "test_dsn")
-	require.NotNil(t, cfg)
-	require.Equal(t, "test_driver", cfg.driver)
-	require.Equal(t, "test_dsn", cfg.dsn)
-	require.NotNil(t, cfg.connectFunc)
-	require.NotNil(t, cfg.checkConnectionFunc)
-	require.NotNil(t, cfg.sqlOpenFunc)
-	require.Equal(t, defaultConnMaxIdleCount, cfg.connMaxIdleCount)
-	require.Equal(t, defaultConnMaxIdleTime, cfg.connMaxIdleTime)
-	require.Equal(t, defaultConnMaxLifetime, cfg.connMaxLifetime)
-	require.Equal(t, defaultConnMaxOpenCount, cfg.connMaxOpenCount)
-	require.Equal(t, defaultPingTimeout, cfg.pingTimeout)
 }

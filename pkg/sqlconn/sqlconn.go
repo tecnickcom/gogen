@@ -32,24 +32,8 @@ type SQLConn struct {
 	dbLock sync.RWMutex
 }
 
-// Connect attempts to connect to a SQL database.
-func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) {
-	driver, dsn, err := parseConnectionURL(url)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := defaultConfig(driver, dsn)
-
-	for _, applyOpt := range opts {
-		applyOpt(cfg)
-	}
-
-	err = cfg.validate()
-	if err != nil {
-		return nil, err
-	}
-
+// connect attempts to connect to a SQL database.
+func (cfg *config) connect(ctx context.Context) (*SQLConn, error) {
 	db, err := cfg.connectFunc(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -80,6 +64,27 @@ func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) 
 	cfg.shutdownWaitGroup.Add(1)
 
 	return &c, nil
+}
+
+// New attempts to connect to a SQL database and returns a SQLConn instance.
+// The driver can be left as empty sring and set with the WithDefaultDriver() option.
+// For the DSN format please refer to the database driver package documentation.
+func New(ctx context.Context, driver, dsn string, opts ...Option) (*SQLConn, error) {
+	cfg, err := newConfig(driver, dsn, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg.connect(ctx)
+}
+
+// Connect attempts to connect to a SQL database using a url connection string
+// in the format <DRIVER>://<DSN>.
+// See also the function New to set driver and DSN directly.
+func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) {
+	driver, dsn := parseConnectionURL(url)
+
+	return New(ctx, driver, dsn, opts...)
 }
 
 // DB returns a database connection from the pool.
@@ -166,28 +171,18 @@ func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
 // Examples:
 // - mysql://user:pass@tcp(host:3306)/database
 // - pgx://postgres://user:pass@host:5432/database?sslmode=disable
-func parseConnectionURL(url string) (string, string, error) {
+func parseConnectionURL(url string) (string, string) {
 	if strings.TrimSpace(url) == "" {
-		return "", "", nil
+		return "", ""
 	}
 
 	const sep = "://"
 
-	var driver, dsn string
-
 	before, after, found := strings.Cut(url, sep)
 
 	if found {
-		driver = before
-		dsn = after
-	} else {
-		driver = ""
-		dsn = before
+		return before, after
 	}
 
-	if !strings.ContainsAny(dsn, "@/=:") && !strings.Contains(dsn, " ") {
-		return "", "", fmt.Errorf("invalid DSN for driver %s", driver)
-	}
-
-	return driver, dsn, nil
+	return "", before
 }

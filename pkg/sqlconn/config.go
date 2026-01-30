@@ -54,6 +54,22 @@ func defaultConfig(driver, dsn string) *config {
 	}
 }
 
+// newConfig creates a new config instance.
+func newConfig(driver, dsn string, opts ...Option) (*config, error) {
+	cfg := defaultConfig(driver, dsn)
+
+	for _, applyOpt := range opts {
+		applyOpt(cfg)
+	}
+
+	err := cfg.validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
 // validate checks the configuration for required fields and valid values.
 //
 //nolint:gocyclo,cyclop,gocognit

@@ -81,7 +81,7 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-// WithShutdownWaitGroup sets the shared waiting group to communicate externally when the databse connection is closed.
+// WithShutdownWaitGroup sets the shared waiting group to communicate externally when the database connection is closed.
 func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 	return func(cfg *config) {
 		cfg.shutdownWaitGroup = wg

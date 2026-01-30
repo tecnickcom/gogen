@@ -19,12 +19,13 @@ func newMockConnectFunc(db *sql.DB, err error) ConnectFunc {
 }
 
 //nolint:gocognit
-func TestConnect(t *testing.T) {
+func TestNew(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name           string
-		connectDSN     string
+		driver         string
+		dsn            string
 		connectErr     error
 		configMockFunc func(sqlmock.Sqlmock)
 		wantConn       bool
@@ -32,24 +33,132 @@ func TestConnect(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name:       "fail with DSN error",
-			connectDSN: "testdriver://invalid",
+			name:    "fail with config validation error",
+			driver:  "",
+			dsn:     "",
+			wantErr: true,
+		},
+		{
+			name:       "fail to open DB connection",
+			driver:     "testsql",
+			dsn:        "user:pass@tcp(db.host.invalid:1234)/testdb",
+			connectErr: errors.New("db open error"),
 			wantErr:    true,
 		},
 		{
+			name:   "success with close error",
+			driver: "testsql",
+			dsn:    "user:pass@tcp(db.host.invalid:1234)/testdb",
+			configMockFunc: func(mock sqlmock.Sqlmock) {
+				mock.ExpectClose().WillReturnError(errors.New("close error"))
+			},
+			wantConn: true,
+		},
+		{
+			name:   "success",
+			driver: "testsql",
+			dsn:    "user:pass@tcp(db.host.invalid:1234)/testdb",
+			configMockFunc: func(mock sqlmock.Sqlmock) {
+				mock.ExpectClose()
+			},
+			wantConn: true,
+		},
+		{
+			name:   "success with shutdown signal",
+			driver: "testsql",
+			dsn:    "user:pass@tcp(db.host.invalid:1234)/testdb",
+			configMockFunc: func(mock sqlmock.Sqlmock) {
+				mock.ExpectClose()
+			},
+			shutdownSig: true,
+			wantConn:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+			require.NoError(t, err)
+
+			if tt.configMockFunc != nil {
+				tt.configMockFunc(mock)
+			}
+
+			shutdownWG := &sync.WaitGroup{}
+			shutdownSG := make(chan struct{})
+
+			ctx, cancel := context.WithCancel(t.Context())
+
+			defer func() {
+				if tt.shutdownSig {
+					close(shutdownSG)
+				} else {
+					cancel()
+				}
+
+				// wait to allow the disconnect goroutine to execute
+				time.Sleep(100 * time.Millisecond)
+
+				err := mock.ExpectationsWereMet()
+				if err != nil {
+					t.Errorf("there were unfulfilled expectations: %s", err)
+				}
+			}()
+
+			mockConnectFunc := newMockConnectFunc(db, nil)
+			if tt.connectErr != nil {
+				mockConnectFunc = newMockConnectFunc(nil, tt.connectErr)
+			}
+
+			conn, err := New(
+				ctx,
+				tt.driver,
+				tt.dsn,
+				WithConnectFunc(mockConnectFunc),
+				WithShutdownWaitGroup(shutdownWG),
+				WithShutdownSignalChan(shutdownSG),
+			)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (conn != nil) != tt.wantConn {
+				t.Errorf("Connect() gotConn = %v, wantConn %v", conn != nil, tt.wantConn)
+			}
+		})
+	}
+}
+
+//nolint:gocognit
+func TestConnect(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		connectURL     string
+		connectErr     error
+		configMockFunc func(sqlmock.Sqlmock)
+		wantConn       bool
+		shutdownSig    bool
+		wantErr        bool
+	}{
+		{
 			name:       "fail with config validation error",
-			connectDSN: "",
+			connectURL: "",
 			wantErr:    true,
 		},
 		{
 			name:       "fail to open DB connection",
-			connectDSN: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
+			connectURL: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
 			connectErr: errors.New("db open error"),
 			wantErr:    true,
 		},
 		{
 			name:       "success with close error",
-			connectDSN: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
+			connectURL: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
 			configMockFunc: func(mock sqlmock.Sqlmock) {
 				mock.ExpectClose().WillReturnError(errors.New("close error"))
 			},
@@ -57,7 +166,7 @@ func TestConnect(t *testing.T) {
 		},
 		{
 			name:       "success",
-			connectDSN: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
+			connectURL: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
 			configMockFunc: func(mock sqlmock.Sqlmock) {
 				mock.ExpectClose()
 			},
@@ -65,7 +174,7 @@ func TestConnect(t *testing.T) {
 		},
 		{
 			name:       "success with shutdown signal",
-			connectDSN: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
+			connectURL: "testsql://user:pass@tcp(db.host.invalid:1234)/testdb",
 			configMockFunc: func(mock sqlmock.Sqlmock) {
 				mock.ExpectClose()
 			},
@@ -113,7 +222,7 @@ func TestConnect(t *testing.T) {
 
 			conn, err := Connect(
 				ctx,
-				tt.connectDSN,
+				tt.connectURL,
 				WithConnectFunc(mockConnectFunc),
 				WithShutdownWaitGroup(shutdownWG),
 				WithShutdownSignalChan(shutdownSG),
@@ -359,7 +468,6 @@ func Test_parseConnectionURL(t *testing.T) {
 		url        string
 		wantDriver string
 		wantDSN    string
-		wantErr    bool
 	}{
 		{
 			name:       "empty",
@@ -391,32 +499,16 @@ func Test_parseConnectionURL(t *testing.T) {
 			wantDriver: "testdriver",
 			wantDSN:    "user:pass@tcp(db2.host.invalid)/db2",
 		},
-		{
-			name:       "invalid DSN",
-			url:        "testdriver://invalid",
-			wantDriver: "",
-			wantDSN:    "",
-			wantErr:    true,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotDriver, gotDSN, err := parseConnectionURL(tt.url)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseConnectionURL() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			gotDriver, gotDSN := parseConnectionURL(tt.url)
 
-			if gotDriver != tt.wantDriver {
-				t.Errorf("parseConnectionURL() gotDriver = %v, want %v", gotDriver, tt.wantDriver)
-			}
-
-			if gotDSN != tt.wantDSN {
-				t.Errorf("parseConnectionURL() gotDSN = %v, want %v", gotDSN, tt.wantDSN)
-			}
+			require.Equal(t, tt.wantDriver, gotDriver)
+			require.Equal(t, tt.wantDSN, gotDSN)
 		})
 	}
 }
