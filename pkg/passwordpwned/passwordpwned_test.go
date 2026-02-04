@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 	return nil, errors.New("error")
 }
 
-//nolint:gocognit,tparallel
+//nolint:gocognit,tparallel,gocyclo,cyclop
 func TestClient_IsPwnedPassword(t *testing.T) {
 	t.Parallel()
 
@@ -183,6 +184,11 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 	//nolint:paralleltest
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Skip mpatch-based testcases on Apple Silicon macOS
+			if tt.setupPatches != nil && runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+				t.Skip("mpatch not supported on Mac silicon - skipping test")
+			}
+
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 

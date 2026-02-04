@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 
@@ -272,7 +273,7 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 	return nil, errors.New("ERROR: newHTTPRetrierPatch")
 }
 
-//nolint:gocognit,paralleltest
+//nolint:gocognit,paralleltest,gocyclo,cyclop
 func Test_sendRequest(t *testing.T) {
 	hres := httputil.NewHTTPResp(slog.Default())
 
@@ -363,6 +364,11 @@ func Test_sendRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Skip mpatch-based testcases on Apple Silicon macOS
+			if tt.setupPatches != nil && runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+				t.Skip("mpatch not supported on Mac silicon - skipping test")
+			}
+
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
