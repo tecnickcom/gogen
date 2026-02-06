@@ -274,6 +274,15 @@ ifeq ($(DEPLOY_ENV), prod)
 	API_TEST_FILE=*.yaml
 endif
 
+# Retry the make target (1) for (2) times each (3) seconds.
+define make_retry
+	ret=1 ; num=1 ; while [[ $${num} -le $(2) ]] ; do \
+		$(MAKE) $(1) && ret=0 && break ; \
+		((num = num + 1)) ; \
+		sleep $(3); \
+	done ; exit $${ret}
+endef
+
 # Display general help about this command
 .PHONY: help
 help:
