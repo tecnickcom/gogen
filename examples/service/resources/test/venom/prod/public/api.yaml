@@ -1,0 +1,24 @@
+version: "2"
+name: gogenexample Public API tests
+vars:
+  gogenexample.url: 'http://gogenexample:8073'
+
+testcases:
+
+- name: wrong_endpoint
+  steps:
+  - type: http
+    ignore_verify_ssl optional: true
+    method: GET
+    url: '{{.gogenexample.url}}/error'
+    assertions:
+    - result.statuscode ShouldEqual 404
+
+- name: ping
+  steps:
+    - type: http
+      ignore_verify_ssl optional: true
+      method: GET
+      url: '{{.gogenexample.url}}/ping'
+      assertions:
+        - result.statuscode ShouldEqual 200

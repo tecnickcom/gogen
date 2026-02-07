@@ -734,7 +734,7 @@ venomtest:
 		--var gogenexample.release="${RELEASE}" \
 		-vv \
 		--output-dir=$(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR) \
-		resources/test/venom/$(API_TEST_DIR)/$(API_TEST_FILE)
+		resources/test/venom/$(DEPLOY_ENV)/$(API_TEST_DIR)/$(API_TEST_FILE)
 
 # Increase the patch number in the VERSION file
 .PHONY: versionup
