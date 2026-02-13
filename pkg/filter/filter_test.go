@@ -11,10 +11,6 @@ import (
 
 type stringAlias string
 
-func strPtr(v string) *string {
-	return &v
-}
-
 func getSliceLen(slice any) uint {
 	rSlice := reflect.ValueOf(slice)
 	rSlice = reflect.Indirect(rSlice)
@@ -370,7 +366,7 @@ func TestFilter_Apply(t *testing.T) {
 			name: "success - nil equal",
 			elements: &[]simpleStruct{
 				{
-					StringPtrField: strPtr("value 1"),
+					StringPtrField: new("value 1"),
 				},
 				{
 					StringPtrField: nil,

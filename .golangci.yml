@@ -50,6 +50,17 @@ linters:
         - G115
     misspell:
       locale: US
+    revive:
+      rules:
+        - name: var-naming
+          arguments: [allowList]
+          disabled: false
+        - name: var-naming
+          disabled: true
+          path: pkg/metrics
+        - name: var-naming
+          disabled: true
+          path: pkg/httputil
     whitespace:
       multi-if: false
       multi-func: false

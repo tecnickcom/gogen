@@ -40,8 +40,10 @@ func Zero[T any](_ T) T {
 }
 
 // Pointer returns the address of v.
+//
+// Deprecated: use new() instead.
 func Pointer[T any](v T) *T {
-	return &v
+	return new(v)
 }
 
 // Value returns the value of the provided pointer or the type default (zero value) if nil.

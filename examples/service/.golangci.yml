@@ -49,6 +49,14 @@ linters:
       min-complexity: 10
     misspell:
       locale: US
+    revive:
+      rules:
+        - name: var-naming
+          arguments: [allowList]
+          disabled: false
+        - name: var-naming
+          disabled: true
+          path: internal/metrics
     whitespace:
       multi-if: false
       multi-func: false

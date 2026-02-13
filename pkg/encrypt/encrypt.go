@@ -126,7 +126,7 @@ func ByteDecryptAny(key, msg []byte, data any) error {
 }
 
 // EncryptAny wraps the ByteEncryptAny function to return a string instead of a byte slice.
-func EncryptAny(key []byte, data any) (string, error) { //nolint:revive
+func EncryptAny(key []byte, data any) (string, error) {
 	b, err := ByteEncryptAny(key, data)
 	if err != nil {
 		return "", fmt.Errorf("decrypt: %w", err)
@@ -173,7 +173,7 @@ func ByteDecryptSerializeAny(key, msg []byte, data any) error {
 }
 
 // EncryptSerializeAny wraps the ByteEncrypSerializetAny function to return a string instead of a byte slice.
-func EncryptSerializeAny(key []byte, data any) (string, error) { //nolint:revive
+func EncryptSerializeAny(key []byte, data any) (string, error) {
 	b, err := ByteEncryptSerializeAny(key, data)
 	if err != nil {
 		return "", fmt.Errorf("decrypt: %w", err)

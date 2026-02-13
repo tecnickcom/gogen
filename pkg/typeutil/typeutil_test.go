@@ -206,6 +206,7 @@ func TestPointer(t *testing.T) {
 			t.Parallel()
 
 			got := Pointer(tt.value)
+			require.NotNil(t, got)
 			require.Equal(t, tt.value, *got)
 		})
 	}

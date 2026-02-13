@@ -36,14 +36,6 @@ func ExampleZero() {
 	// 0
 }
 
-//nolint:testableexamples
-func ExamplePointer() {
-	v := 5
-
-	p := typeutil.Pointer(v)
-	fmt.Println(p)
-}
-
 func ExampleValue() {
 	num := 5
 	p := &num
