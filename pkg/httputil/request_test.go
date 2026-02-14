@@ -13,6 +13,33 @@ import (
 	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
+func TestClient_AddJSONHeaders(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	AddJsonHeaders(r)
+
+	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	wanted.Header.Set("Accept", "application/json")
+	wanted.Header.Set("Content-Type", "application/json")
+	require.Equal(t, wanted, r)
+}
+
+func TestAddAuthorizationHeadert(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	AddAuthorizationHeader("key", r)
+
+	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	wanted.Header.Set("Authorization", "key")
+	require.Equal(t, wanted, r)
+}
+
 func TestAddBasicAuth(t *testing.T) {
 	t.Parallel()
 

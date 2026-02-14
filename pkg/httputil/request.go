@@ -2,7 +2,6 @@ package httputil
 
 import (
 	"context"
-	"encoding/base64"
 	"math"
 	"net/http"
 	"net/url"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/tecnickcom/gogen/pkg/encode"
 )
 
 // timeCtxKey is the type used for the context key to store request time.
@@ -29,14 +29,25 @@ const (
 	MimeTypeJSON        = "application/json"
 )
 
+// AddJsonHeaders adds application/json Accept and Content-Type http request headers.
+func AddJsonHeaders(r *http.Request) {
+	r.Header.Set(HeaderAccept, MimeTypeJSON)
+	r.Header.Set(HeaderContentType, MimeTypeJSON)
+}
+
+// AddAuthorizationHeader decorates the provided http.Request with the specified Authorization string.
+func AddAuthorizationHeader(auth string, r *http.Request) {
+	r.Header.Add(HeaderAuthorization, auth)
+}
+
 // AddBasicAuth decorates the provided http.Request with Basic Authorization.
 func AddBasicAuth(apiKey, apiSecret string, r *http.Request) {
-	r.Header.Add(HeaderAuthorization, HeaderAuthBasic+base64.StdEncoding.EncodeToString([]byte(apiKey+":"+apiSecret)))
+	AddAuthorizationHeader(HeaderAuthBasic+encode.Base64EncodeString(apiKey+":"+apiSecret), r)
 }
 
 // AddBearerToken decorates the provided http.Request with Bearer Authorization.
 func AddBearerToken(token string, r *http.Request) {
-	r.Header.Add(HeaderAuthorization, HeaderAuthBearer+token)
+	AddAuthorizationHeader(HeaderAuthBearer+token, r)
 }
 
 // PathParam returns the value from the named path segment.
