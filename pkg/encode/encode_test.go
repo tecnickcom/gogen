@@ -15,7 +15,38 @@ func (w *mockWriter) Write(_ []byte) (int, error) {
 	return 0, errors.New("write error")
 }
 
-func Test_base64Encoder(t *testing.T) {
+func Test_Base64EncodeString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "empty string",
+			in:   "",
+			want: "",
+		},
+		{
+			name: "non-empty string",
+			in:   "test string",
+			want: "dGVzdCBzdHJpbmc=",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			enc := Base64EncodeString(tt.in)
+
+			require.Equal(t, tt.want, enc)
+		})
+	}
+}
+
+func Test_Base64Encoder(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -36,7 +67,7 @@ func Test_base64Encoder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			enc := base64Encoder(tt.value)
+			enc := Base64Encoder(tt.value)
 
 			require.NotNil(t, enc)
 		})
@@ -53,7 +84,7 @@ func (w *mockWriteCloserCloseError) Close() error {
 	return errors.New("close error")
 }
 
-func Test_gobEncode(t *testing.T) {
+func Test_GobEncoder(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -71,19 +102,19 @@ func Test_gobEncode(t *testing.T) {
 		{
 			name:    "writer error",
 			data:    3,
-			enc:     base64Encoder(&mockWriter{}),
+			enc:     Base64Encoder(&mockWriter{}),
 			wantErr: true,
 		},
 		{
 			name:    "data error",
 			data:    make(chan int),
-			enc:     base64Encoder(new(bytes.Buffer)),
+			enc:     Base64Encoder(new(bytes.Buffer)),
 			wantErr: true,
 		},
 		{
 			name:    "success",
 			data:    5,
-			enc:     base64Encoder(new(bytes.Buffer)),
+			enc:     Base64Encoder(new(bytes.Buffer)),
 			wantErr: false,
 		},
 	}
@@ -92,14 +123,14 @@ func Test_gobEncode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := gobEncode(tt.enc, tt.data)
+			err := GobEncoder(tt.enc, tt.data)
 
 			require.Equal(t, tt.wantErr, err != nil)
 		})
 	}
 }
 
-func Test_jsonEncode(t *testing.T) {
+func Test_JsonEncoder(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -117,19 +148,19 @@ func Test_jsonEncode(t *testing.T) {
 		{
 			name:    "writer error",
 			data:    3,
-			enc:     base64Encoder(&mockWriter{}),
+			enc:     Base64Encoder(&mockWriter{}),
 			wantErr: true,
 		},
 		{
 			name:    "data error",
 			data:    make(chan int),
-			enc:     base64Encoder(new(bytes.Buffer)),
+			enc:     Base64Encoder(new(bytes.Buffer)),
 			wantErr: true,
 		},
 		{
 			name:    "success",
 			data:    5,
-			enc:     base64Encoder(new(bytes.Buffer)),
+			enc:     Base64Encoder(new(bytes.Buffer)),
 			wantErr: false,
 		},
 	}
@@ -138,9 +169,52 @@ func Test_jsonEncode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := jsonEncode(tt.enc, tt.data)
+			err := JsonEncoder(tt.enc, tt.data)
 
 			require.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func TestByteEncodeDecode(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+		Gamma float32
+	}
+
+	tests := []struct {
+		name  string
+		value TestData
+	}{
+		{
+			name:  "empty",
+			value: TestData{},
+		},
+		{
+			name:  "full",
+			value: TestData{Alpha: "abc1234", Beta: -3756, Gamma: 0.1234},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			enc, err := ByteEncode(tt.value)
+
+			require.NoError(t, err)
+
+			var data TestData
+
+			err = ByteDecode(enc, &data)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.value.Alpha, data.Alpha)
+			require.Equal(t, tt.value.Beta, data.Beta)
+			require.InDelta(t, tt.value.Gamma, data.Gamma, 0.001)
 		})
 	}
 }
@@ -314,49 +388,6 @@ func TestEncodeDecode(t *testing.T) {
 			var data TestData
 
 			err = Decode(enc, &data)
-
-			require.NoError(t, err)
-			require.Equal(t, tt.value.Alpha, data.Alpha)
-			require.Equal(t, tt.value.Beta, data.Beta)
-			require.InDelta(t, tt.value.Gamma, data.Gamma, 0.001)
-		})
-	}
-}
-
-func TestByteEncodeDecode(t *testing.T) {
-	t.Parallel()
-
-	type TestData struct {
-		Alpha string
-		Beta  int
-		Gamma float32
-	}
-
-	tests := []struct {
-		name  string
-		value TestData
-	}{
-		{
-			name:  "empty",
-			value: TestData{},
-		},
-		{
-			name:  "full",
-			value: TestData{Alpha: "abc1234", Beta: -3756, Gamma: 0.1234},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			enc, err := ByteEncode(tt.value)
-
-			require.NoError(t, err)
-
-			var data TestData
-
-			err = ByteDecode(enc, &data)
 
 			require.NoError(t, err)
 			require.Equal(t, tt.value.Alpha, data.Alpha)
@@ -577,6 +608,92 @@ func TestByteSerializeDeserialize(t *testing.T) {
 			var data TestData
 
 			err = ByteDeserialize(enc, &data)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.value.Alpha, data.Alpha)
+			require.Equal(t, tt.value.Beta, data.Beta)
+			require.InDelta(t, tt.value.Gamma, data.Gamma, 0.001)
+		})
+	}
+}
+
+func TestBufferEncodeDecode(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+		Gamma float32
+	}
+
+	tests := []struct {
+		name  string
+		value TestData
+	}{
+		{
+			name:  "empty",
+			value: TestData{},
+		},
+		{
+			name:  "full",
+			value: TestData{Alpha: "abc1234", Beta: -3756, Gamma: 0.1234},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			enc, err := BufferEncode(tt.value)
+
+			require.NoError(t, err)
+
+			var data TestData
+
+			err = BufferDecode(enc, &data)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.value.Alpha, data.Alpha)
+			require.Equal(t, tt.value.Beta, data.Beta)
+			require.InDelta(t, tt.value.Gamma, data.Gamma, 0.001)
+		})
+	}
+}
+
+func TestBufferSerializeDeserialize(t *testing.T) {
+	t.Parallel()
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+		Gamma float32
+	}
+
+	tests := []struct {
+		name  string
+		value TestData
+	}{
+		{
+			name:  "empty",
+			value: TestData{},
+		},
+		{
+			name:  "full",
+			value: TestData{Alpha: "abc1235", Beta: -3755, Gamma: 0.1235},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			enc, err := BufferSerialize(tt.value)
+
+			require.NoError(t, err)
+
+			var data TestData
+
+			err = BufferDeserialize(enc, &data)
 
 			require.NoError(t, err)
 			require.Equal(t, tt.value.Alpha, data.Alpha)
