@@ -158,9 +158,8 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	r.Header.Set(httputil.HeaderAuthorization, "apikey "+apiKey)
-	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
-	r.Header.Set(httputil.HeaderAccept, httputil.MimeTypeJSON)
+	httputil.AddJsonHeaders(r)
+	httputil.AddAuthorizationHeader("apikey "+apiKey, r)
 
 	return r, nil
 }

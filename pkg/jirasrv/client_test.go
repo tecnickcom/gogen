@@ -471,3 +471,77 @@ func TestSendRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_requestBuffer(t *testing.T) {
+	t.Parallel()
+
+	type testReqData struct {
+		TestField int `validate:"required,min=1"`
+	}
+
+	tests := []struct {
+		name    string
+		request any
+		wantErr bool
+	}{
+		{
+			name:    "success with valid request",
+			request: &testReqData{TestField: 5},
+			wantErr: false,
+		},
+		{
+			name:    "fails with invalid request - validation error",
+			request: &testReqData{TestField: 0},
+			wantErr: true,
+		},
+		{
+			name:    "fails with nil request",
+			request: nil,
+			wantErr: false,
+		},
+		{
+			name:    "fails with non-encodable type",
+			request: make(chan int),
+			wantErr: true,
+		},
+		{
+			name:    "success with map",
+			request: map[string]any{"key": "value"},
+			wantErr: false,
+		},
+		{
+			name:    "success with string",
+			request: "test string",
+			wantErr: false,
+		},
+		{
+			name:    "success with slice",
+			request: []int{1, 2, 3},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c, err := New(
+				"https://test.invalid",
+				"0123456789abcdef",
+				WithRetryAttempts(1),
+			)
+			require.NoError(t, err)
+
+			buf, err := c.requestBuffer(t.Context(), tt.request)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Nil(t, buf)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, buf)
+				require.Positive(t, buf.Len())
+			}
+		})
+	}
+}

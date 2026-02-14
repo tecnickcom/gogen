@@ -129,9 +129,8 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
+	httputil.AddJsonHeaders(r)
 	httputil.AddBearerToken(apiKey, r)
-	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
-	r.Header.Set(httputil.HeaderAccept, httputil.MimeTypeJSON)
 
 	return r, nil
 }

@@ -120,19 +120,15 @@ func (c *Client) SendRequest(
 	query *url.Values,
 	request any,
 ) (*http.Response, error) {
-	var buffer io.Reader
+	var (
+		buffer io.Reader
+		err    error
+	)
 
 	if request != nil {
-		err := c.valid.ValidateStructCtx(ctx, request)
+		buffer, err = c.requestBuffer(ctx, request)
 		if err != nil {
-			return nil, fmt.Errorf("invalid request: %w", err)
-		}
-
-		buffer := &bytes.Buffer{}
-
-		err = json.NewEncoder(buffer).Encode(request)
-		if err != nil {
-			return nil, fmt.Errorf("json encoding: %w", err)
+			return nil, err
 		}
 	}
 
@@ -154,6 +150,26 @@ func (c *Client) SendRequest(
 	return hr.Do(r) //nolint:wrapcheck
 }
 
+// requestBuffer validate the request and returns the data as buffer.
+func (c *Client) requestBuffer(
+	ctx context.Context,
+	request any,
+) (*bytes.Buffer, error) {
+	err := c.valid.ValidateStructCtx(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	buf := &bytes.Buffer{}
+
+	err = json.NewEncoder(buf).Encode(request)
+	if err != nil {
+		return nil, fmt.Errorf("json encoding: %w", err)
+	}
+
+	return buf, nil
+}
+
 // httpRequest prepares a generic HTTP request.
 func (c *Client) httpRequest(
 	ctx context.Context,
@@ -173,8 +189,7 @@ func (c *Client) httpRequest(
 
 // setRequestHeaders sets the required headers on the request.
 func (c *Client) setRequestHeaders(r *http.Request) {
-	r.Header.Set(httputil.HeaderAccept, httputil.MimeTypeJSON)
-	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
+	httputil.AddJsonHeaders(r)
 	httputil.AddBearerToken(c.token, r)
 }
 
