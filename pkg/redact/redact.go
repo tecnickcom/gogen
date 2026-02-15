@@ -27,6 +27,8 @@ const (
 	redactURLEncodedKey       = `$1$2$3=` + redacted
 
 	// General regular expression used to match Credit Card Numbers (Visa, MasterCard, American Express, Diners Club, Discover, and JCB cards).
+	//
+	//nolint:gosec
 	regexPatternCreditCard = `([^\w\s]+)(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\d{3})\d{11})([^\w\s]+)`
 	redactCreditCard       = `$1` + redacted + `$2`
 )

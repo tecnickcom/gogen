@@ -2,7 +2,7 @@ package validator
 
 // ErrorTemplates returns a map of validation tags with error messages as html templates.
 //
-//nolint:funlen
+//nolint:funlen,dupword
 func ErrorTemplates() map[string]string {
 	return map[string]string{
 		"alpha":                         `{{.Namespace}} can only contain alphabetic characters`,
