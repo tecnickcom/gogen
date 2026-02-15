@@ -28,6 +28,7 @@ KEY=SECRET
 TEST_KEY=SECRET
 password=SECRET&key=SECRET
 ApiKey=SECRET&alpha=beta&password=SECRET&key=SECRET&gamma=delta
+Token=SECRET
 
 {
 	"password":"SECRET",
@@ -57,7 +58,14 @@ ApiKey=SECRET&alpha=beta&password=SECRET&key=SECRET&gamma=delta
 	"ApiKey":"SECRET",
 	"ApiKey": "SECRET",
 	"ApiKey" : "SECRET","ApiKey" :"SECRET",
-	"OtherField" : "OtherValue"
+	"Token" : "SECRET",
+	"OtherField" : "OtherValue",
+    "Visa" : "4012888888881881",
+    "MasterCard" : "5555555555554444",
+    "American Express" : "371449635398431",
+    "Diners Club" : "38520000023237",
+    "Discover" : "6011000990139424",
+    "JCB" : "3566002020360505"
 }
 `
 	expected := `
@@ -79,6 +87,7 @@ KEY=@~REDACTED~@
 TEST_KEY=@~REDACTED~@
 password=@~REDACTED~@&key=@~REDACTED~@
 ApiKey=@~REDACTED~@&alpha=beta&password=@~REDACTED~@&key=@~REDACTED~@&gamma=delta
+Token=@~REDACTED~@
 
 {
 	"password":"@~REDACTED~@",
@@ -108,7 +117,14 @@ ApiKey=@~REDACTED~@&alpha=beta&password=@~REDACTED~@&key=@~REDACTED~@&gamma=delt
 	"ApiKey":"@~REDACTED~@",
 	"ApiKey": "@~REDACTED~@",
 	"ApiKey" : "@~REDACTED~@","ApiKey" :"@~REDACTED~@",
-	"OtherField" : "OtherValue"
+	"Token" : "@~REDACTED~@",
+	"OtherField" : "OtherValue",
+    "Visa" : "@~REDACTED~@",
+    "MasterCard" : "@~REDACTED~@",
+    "American Express" : "@~REDACTED~@",
+    "Diners Club" : "@~REDACTED~@",
+    "Discover" : "@~REDACTED~@",
+    "JCB" : "@~REDACTED~@"
 }
 `
 	got := HTTPData(data)
