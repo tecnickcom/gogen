@@ -27,6 +27,7 @@ KEY=SECRET
 TEST_KEY=SECRET
 password=SECRET&key=SECRET
 alpha=beta&password=SECRET&key=SECRET&gamma=delta
+Token=SECRET
 
 {
 	"password": "SECRET",
@@ -36,7 +37,14 @@ alpha=beta&password=SECRET&key=SECRET&gamma=delta
 	"key": "SECRET",
 	"test_key": "SECRET",
 	"KEY": "SECRET",
-	"TEST_KEY": "SECRET"
+	"TEST_KEY": "SECRET",
+	"Token": "SECRET",
+	"Visa" : "4012888888881881",
+	"MasterCard" : "5555555555554444",
+	"American Express" : "371449635398431",
+	"Diners Club" : "38520000023237",
+	"Discover" : "6011000990139424",
+	"JCB" : "3566002020360505"
 }
 `
 	// redact input data
@@ -63,6 +71,7 @@ alpha=beta&password=SECRET&key=SECRET&gamma=delta
 	// TEST_KEY=@~REDACTED~@
 	// password=@~REDACTED~@&key=@~REDACTED~@
 	// alpha=beta&password=@~REDACTED~@&key=@~REDACTED~@&gamma=delta
+	// Token=@~REDACTED~@
 	//
 	// {
 	// 	"password": "@~REDACTED~@",
@@ -72,6 +81,13 @@ alpha=beta&password=SECRET&key=SECRET&gamma=delta
 	// 	"key": "@~REDACTED~@",
 	// 	"test_key": "@~REDACTED~@",
 	// 	"KEY": "@~REDACTED~@",
-	// 	"TEST_KEY": "@~REDACTED~@"
+	// 	"TEST_KEY": "@~REDACTED~@",
+	// 	"Token": "@~REDACTED~@",
+	// 	"Visa" : "@~REDACTED~@",
+	// 	"MasterCard" : "@~REDACTED~@",
+	// 	"American Express" : "@~REDACTED~@",
+	// 	"Diners Club" : "@~REDACTED~@",
+	// 	"Discover" : "@~REDACTED~@",
+	// 	"JCB" : "@~REDACTED~@"
 	// }
 }

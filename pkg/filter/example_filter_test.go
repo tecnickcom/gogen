@@ -24,7 +24,7 @@ func ExampleProcessor_Apply() {
 	// Simulate an encoded query passed in the http.Request of a http.Handler
 	encodedJSONFilter := "%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22%3D%3D%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22%3C%3D%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22%5EEN%24%7C%5EFR%24%22%7D%5D%5D"
 
-	u, err := url.Parse("https://server.com/items?filter=" + encodedJSONFilter)
+	u, err := url.Parse("https://example.invalid/items?filter=" + encodedJSONFilter)
 	if err != nil {
 		log.Fatal(err)
 	}
