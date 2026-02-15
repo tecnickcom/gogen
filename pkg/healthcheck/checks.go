@@ -15,7 +15,15 @@ type HTTPClient interface {
 }
 
 // CheckHTTPStatus checks if the given HTTP request responds with the expected status code.
-func CheckHTTPStatus(ctx context.Context, httpClient HTTPClient, method string, url string, wantStatusCode int, timeout time.Duration, opts ...CheckOption) (err error) {
+func CheckHTTPStatus(
+	ctx context.Context,
+	httpClient HTTPClient,
+	method string,
+	url string,
+	wantStatusCode int,
+	timeout time.Duration,
+	opts ...CheckOption,
+) (err error) {
 	cfg := checkConfig{}
 
 	for _, apply := range opts {
