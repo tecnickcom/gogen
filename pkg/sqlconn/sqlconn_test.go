@@ -481,7 +481,7 @@ func Test_parseConnectionURL(t *testing.T) {
 			wantDriver: "mysql",
 			wantDSN:    "user:pass@tcp(host:3306)/database",
 		},
-		{
+		{ //nolint:gosec
 			name:       "postgres",
 			url:        "pgx://postgres://user:pass@host:5432/database?sslmode=disable",
 			wantDriver: "pgx",

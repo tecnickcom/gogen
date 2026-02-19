@@ -4,7 +4,7 @@ package validator
 //
 //nolint:funlen,dupword
 func ErrorTemplates() map[string]string {
-	return map[string]string{
+	return map[string]string{ //nolint:gosec
 		"alpha":                         `{{.Namespace}} can only contain alphabetic characters`,
 		"alphanum":                      `{{.Namespace}} can only contain alphanumeric characters`,
 		"alphanumspace":                 `{{.Namespace}} can only contain alphanumeric characters and space`,

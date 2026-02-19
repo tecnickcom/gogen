@@ -104,7 +104,7 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 
 	var resp *http.Response
 
-	resp, err = c.client.Do(r)
+	resp, err = c.client.Do(r) //nolint:gosec
 
 	if debug && resp != nil {
 		respDump, errd := httputil.DumpResponse(resp, true)

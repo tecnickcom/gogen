@@ -179,7 +179,7 @@ func TestClient_ForwardRequest(t *testing.T) {
 			req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+tt.path, nil)
 
 			hc := &http.Client{Timeout: timeout}
-			resp, err := hc.Do(req)
+			resp, err := hc.Do(req) //nolint:gosec
 
 			t.Cleanup(
 				func() {

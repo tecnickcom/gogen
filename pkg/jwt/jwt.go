@@ -47,7 +47,7 @@ type SigningMethod jwt.SigningMethod
 // Credentials holds the user name and password from the request body.
 type Credentials struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
+	Password string `json:"password"` //nolint:gosec
 }
 
 // Claims holds the JWT information to be encoded.

@@ -41,7 +41,7 @@ func New(addr string, opts ...Option) (*Client, error) {
 		c.proxy = &httputil.ReverseProxy{}
 	}
 
-	if c.proxy.Director == nil {
+	if c.proxy.Rewrite == nil {
 		addr = strings.TrimRight(addr, "/")
 
 		proxyURL, err := url.Parse(addr)
@@ -49,12 +49,13 @@ func New(addr string, opts ...Option) (*Client, error) {
 			return nil, fmt.Errorf("invalid service address: %s", addr)
 		}
 
-		c.proxy.Director = func(r *http.Request) {
-			r.URL.Scheme = proxyURL.Scheme
-			r.URL.Host = proxyURL.Host
-			r.URL.Path = "/" + libhttputil.PathParam(r, "path")
-			r.Host = proxyURL.Host
-			r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+		c.proxy.Rewrite = func(r *httputil.ProxyRequest) {
+			r.SetURL(proxyURL)
+			r.Out.URL.Scheme = proxyURL.Scheme
+			r.Out.URL.Host = proxyURL.Host
+			r.Out.URL.Path = "/" + libhttputil.PathParam(r.Out, "path")
+			r.Out.Host = proxyURL.Host
+			r.SetXForwarded()
 		}
 	}
 
@@ -81,7 +82,7 @@ func New(addr string, opts ...Option) (*Client, error) {
 
 // ForwardRequest forwards a request to the proxied service.
 func (c *Client) ForwardRequest(w http.ResponseWriter, r *http.Request) {
-	c.proxy.ServeHTTP(w, r)
+	c.proxy.ServeHTTP(w, r) //nolint:gosec
 }
 
 // httpWrapper wraps an HTTPClient to implement the RoundTripper interface.

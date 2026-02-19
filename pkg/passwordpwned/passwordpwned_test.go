@@ -169,7 +169,7 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			pwned:   false,
 			wantErr: false,
 		},
-		{
+		{ //nolint:gosec
 			name:     "ok password",
 			password: "not.pwned.password",
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
