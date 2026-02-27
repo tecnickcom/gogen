@@ -145,7 +145,7 @@ DOCKERBUILDARG=--build-arg HOST_USER="$(shell id -u ${USER})" --build-arg HOST_G
 
 # Common commands
 GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
-GOVERSION=${shell go version | grep -Po '(go[0-9]+.[0-9]+)'}
+GOVERSION=${shell go version | grep -Eo '(go[0-9]+.[0-9]+)'}
 GOFMT=$(shell which gofmt)
 GOTEST=$(GO) test
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
