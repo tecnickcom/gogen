@@ -102,6 +102,7 @@ Each package adheres to common conventions and coding standards, making them eas
 * [sqs](pkg/sqs) - Utilities for AWS SQS (Simple Queue Service) integration.
 * [stringkey](pkg/stringkey) - Create unique hash keys from multiple strings.
 * [stringmetric](pkg/stringmetric) - String similarity and distance metrics.
+* [strsplit](pkg/strsplit) - Utilities to split strings and Unicode text.
 * [testutil](pkg/testutil) - Utilities for testing.
 * [threadsafe](pkg/threadsafe) - Thread-safe data structures.
   * [tsmap](pkg/threadsafe/tsmap) - Thread-safe map implementation.
