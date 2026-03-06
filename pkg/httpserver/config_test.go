@@ -188,7 +188,7 @@ func Test_setRouter(t *testing.T) {
 			}
 
 			rr := httptest.NewRecorder()
-			cfg.router.ServeHTTP(rr, httptest.NewRequest(tt.method, tt.path, nil))
+			cfg.router.ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), tt.method, tt.path, nil))
 
 			resp := rr.Result()
 			require.NotNil(t, resp)

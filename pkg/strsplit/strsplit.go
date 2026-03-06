@@ -1,5 +1,5 @@
 /*
-Package strsplit contains utility functions to split strings.
+Package strsplit contains utility functions to split Unicode strings.
 */
 package strsplit
 
@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 )
 
-// Chunk slices the inputtext block string s into substrings of maximum byte size at the closest separator.
+// Chunk slices the input text block string s into substrings of maximum byte size at the closest separator.
 // Account for Unicode strings to avoid splitting multi-byte characters.
 // Newlines characters are applied first.
 //

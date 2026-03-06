@@ -82,7 +82,7 @@ func New(addr string, opts ...Option) (*Client, error) {
 
 // ForwardRequest forwards a request to the proxied service.
 func (c *Client) ForwardRequest(w http.ResponseWriter, r *http.Request) {
-	c.proxy.ServeHTTP(w, r) //nolint:gosec
+	c.proxy.ServeHTTP(w, r)
 }
 
 // httpWrapper wraps an HTTPClient to implement the RoundTripper interface.

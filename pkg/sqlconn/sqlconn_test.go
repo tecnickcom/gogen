@@ -89,7 +89,7 @@ func TestNew(t *testing.T) {
 			shutdownWG := &sync.WaitGroup{}
 			shutdownSG := make(chan struct{})
 
-			ctx, cancel := context.WithCancel(t.Context())
+			ctx, cancel := context.WithCancel(t.Context()) //nolint:gosec
 
 			defer func() {
 				if tt.shutdownSig {
@@ -197,7 +197,7 @@ func TestConnect(t *testing.T) {
 			shutdownWG := &sync.WaitGroup{}
 			shutdownSG := make(chan struct{})
 
-			ctx, cancel := context.WithCancel(t.Context())
+			ctx, cancel := context.WithCancel(t.Context()) //nolint:gosec
 
 			defer func() {
 				if tt.shutdownSig {

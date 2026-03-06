@@ -53,7 +53,7 @@ func New(opts ...Option) *Client {
 func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	reqTime := time.Now().UTC()
 
-	//nolint:govet // calling cancel() causes long body reads to return context canceled errors.
+	//nolint:govet,gosec // calling cancel() causes long body reads to return context canceled errors.
 	ctx, _ := context.WithTimeout(r.Context(), c.client.Timeout)
 
 	l := c.logger.With(c.logPrefix+"component", c.component)

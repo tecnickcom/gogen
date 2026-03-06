@@ -96,7 +96,7 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 // This ignore the context passed to the New() method.
 func (h *HTTPServer) StartServerCtx(ctx context.Context) {
 	// wait for shutdown signal or context cancelation
-	go func() {
+	go func() { //nolint:gosec
 		select {
 		case <-h.cfg.shutdownSignalChan:
 			h.cfg.logger.Debug("shutdown notification received")

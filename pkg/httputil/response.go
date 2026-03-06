@@ -83,7 +83,7 @@ func (hr *HTTPResp) SendText(ctx context.Context, w http.ResponseWriter, statusC
 
 	writeHeaders(w, statusCode, MimeTextPlain)
 
-	_, err := w.Write([]byte(data))
+	_, err := w.Write([]byte(data)) //nolint:gosec
 	if err != nil {
 		hr.logger.With(slog.Any("error", err)).Error("httputil.SendText()")
 	}

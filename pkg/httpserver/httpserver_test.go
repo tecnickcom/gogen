@@ -243,7 +243,7 @@ YlAqGKDZ+A+l
 			opts = append(opts, WithShutdownWaitGroup(shutdownWG))
 			opts = append(opts, WithShutdownSignalChan(shutdownSG))
 
-			ctx, cancelCtx := context.WithCancel(t.Context())
+			ctx, cancelCtx := context.WithCancel(t.Context()) //nolint:gosec
 
 			defer func() {
 				if tt.shutdownSig {

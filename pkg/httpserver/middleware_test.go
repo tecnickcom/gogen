@@ -54,7 +54,7 @@ func TestRequestInjectHandler_debug(t *testing.T) {
 
 	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, nextHandler)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)
 
 	cerr := writer.Close()
@@ -103,7 +103,7 @@ func TestRequestInjectHandler_info(t *testing.T) {
 
 	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, nextHandler)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)
 
 	cerr := writer.Close()
