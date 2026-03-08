@@ -8,28 +8,30 @@ string format.
 The generated IDs are not intended for cryptographic or security-related
 purposes. Instead, they serve as simple unique identifiers for various use
 cases.
+
+Deprecated: Please use github.com/tecnickcom/gogen/pkg/random instead.
 */
 package uidc
 
 import (
-	"strconv"
-	"time"
-
 	"github.com/tecnickcom/gogen/pkg/random"
 )
+
+var rnd = random.New(nil) //nolint:gochecknoglobals
 
 // NewID64 returns a 64-bit unique ID encoded as a base-36 string.
 // The upper 32 bits contain a timestamp and the lower 32 bits are random.
 // The timestamp epoch is January 1st of the current decade's starting year.
+//
+// Deprecated: use random.UID64() instead.
 func NewID64() string {
-	t := time.Now().UTC()
-	offset := time.Date(t.Year()-t.Year()%10, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
-
-	return strconv.FormatUint((((uint64)(t.Unix()-offset))<<32)+(uint64)(random.New(nil).RandUint32()), 36)
+	return rnd.UID64()
 }
 
 // NewID128 returns a 128-bit unique identifier encoded as a base-36 string.
 // The high 64 bits are derived from the current time; the low 64 bits are random.
+//
+// Deprecated: use random.UID128() instead.
 func NewID128() string {
-	return strconv.FormatUint((uint64)(time.Now().UTC().UnixNano()), 36) + strconv.FormatUint(random.New(nil).RandUint64(), 36)
+	return rnd.UID128()
 }
