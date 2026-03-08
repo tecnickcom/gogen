@@ -7,9 +7,9 @@ import (
 	"net/http/httputil"
 	"time"
 
+	"github.com/tecnickcom/gogen/pkg/random"
 	"github.com/tecnickcom/gogen/pkg/redact"
 	"github.com/tecnickcom/gogen/pkg/traceid"
-	"github.com/tecnickcom/gogen/pkg/uidc"
 )
 
 // Client wraps the default HTTP client functionalities and adds logging and instrumentation capabilities.
@@ -20,6 +20,7 @@ type Client struct {
 	traceIDHeaderName string
 	redactFn          RedactFn
 	logger            *slog.Logger
+	rnd               *random.Rnd
 }
 
 // defaultClient() returns a default client.
@@ -33,6 +34,7 @@ func defaultClient() *Client {
 		component:         "-",
 		redactFn:          redact.HTTPData,
 		logger:            slog.Default(),
+		rnd:               random.New(nil),
 	}
 }
 
@@ -81,7 +83,7 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 		l.Info(c.logPrefix + "outbound")
 	}()
 
-	reqID := traceid.FromContext(ctx, uidc.NewID128())
+	reqID := traceid.FromContext(ctx, c.rnd.UUIDv7().String())
 	ctx = traceid.NewContext(ctx, reqID)
 	r.Header.Set(c.traceIDHeaderName, reqID)
 	r = r.WithContext(ctx)

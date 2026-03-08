@@ -19,7 +19,7 @@ import (
 
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/uidc"
+	"github.com/tecnickcom/gogen/pkg/random"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -71,6 +71,7 @@ type JWT struct {
 	audience            []string // the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
 	logger              *slog.Logger
 	httpresp            *httputil.HTTPResp
+	rnd                 *random.Rnd
 }
 
 // defaultJWT creates a JWT instance with default values.
@@ -81,6 +82,7 @@ func defaultJWT() *JWT {
 		authorizationHeader: DefaultAuthorizationHeader,
 		signingMethod:       defaultSigningMethod(),
 		logger:              slog.Default(),
+		rnd:                 random.New(nil),
 	}
 
 	cfg.httpresp = httputil.NewHTTPResp(cfg.logger)
@@ -167,7 +169,7 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 			ExpiresAt: jwt.NewNumericDate(tnow.Add(c.expirationTime)), // exp
 			IssuedAt:  jwt.NewNumericDate(tnow),                       // iat
 			NotBefore: jwt.NewNumericDate(tnow),                       // nbf
-			ID:        uidc.NewID128(),                                // jti
+			ID:        c.rnd.UUIDv7().String(),                        // jti
 			Issuer:    c.issuer,                                       // iss
 			Subject:   c.subject,                                      // sub
 			Audience:  c.audience,                                     // aud

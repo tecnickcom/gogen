@@ -8,7 +8,7 @@ import (
 
 	"github.com/tecnickcom/gogen/pkg/httpserver"
 	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/uidc"
+	"github.com/tecnickcom/gogen/pkg/random"
 )
 
 // Service is the interface representing the business logic of the service.
@@ -18,6 +18,7 @@ type Service any
 type HTTPHandlerPublic struct {
 	service Service
 	httpres *httputil.HTTPResp
+	rnd     *random.Rnd
 }
 
 // New creates a new instance of the HTTP handler.
@@ -25,6 +26,7 @@ func New(s Service, l *slog.Logger) *HTTPHandlerPublic {
 	return &HTTPHandlerPublic{
 		service: s,
 		httpres: httputil.NewHTTPResp(l),
+		rnd:     random.New(nil),
 	}
 }
 
@@ -41,5 +43,5 @@ func (h *HTTPHandlerPublic) BindHTTP(_ context.Context) []httpserver.Route {
 }
 
 func (h *HTTPHandlerPublic) handleGenUID(w http.ResponseWriter, r *http.Request) {
-	h.httpres.SendJSON(r.Context(), w, http.StatusOK, uidc.NewID128())
+	h.httpres.SendJSON(r.Context(), w, http.StatusOK, h.rnd.UUIDv7().String())
 }

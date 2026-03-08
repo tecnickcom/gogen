@@ -7,9 +7,12 @@ import (
 	"time"
 
 	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/random"
 	"github.com/tecnickcom/gogen/pkg/traceid"
-	"github.com/tecnickcom/gogen/pkg/uidc"
 )
+
+//nolint:gochecknoglobals
+var rnd = random.New(nil)
 
 // MiddlewareArgs contains extra optional arguments to be passed to the middleware handler function MiddlewareFn.
 type MiddlewareArgs struct {
@@ -39,7 +42,7 @@ type MiddlewareFn func(args MiddlewareArgs, next http.Handler) http.Handler
 func RequestInjectHandler(logger *slog.Logger, traceIDHeaderName string, redactFn RedactFn, next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		reqTime := time.Now().UTC()
-		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, uidc.NewID128())
+		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, rnd.UUIDv7().String())
 
 		ctx := r.Context()
 		ctx = libhttputil.WithRequestTime(ctx, reqTime)
