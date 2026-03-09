@@ -11,6 +11,8 @@ import (
 	"github.com/tecnickcom/gogen/pkg/random"
 )
 
+var rnd = random.New(nil) //nolint:gochecknoglobals
+
 // RandKey stores the random key.
 type RandKey struct {
 	key uint64
@@ -18,7 +20,7 @@ type RandKey struct {
 
 // New generates a new uint64 random key.
 func New() *RandKey {
-	return &RandKey{key: random.New(nil).RandUint64()}
+	return &RandKey{key: rnd.RandUint64()}
 }
 
 // Key returns a uint64 key.

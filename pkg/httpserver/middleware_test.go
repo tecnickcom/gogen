@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/random"
 	"github.com/tecnickcom/gogen/pkg/redact"
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
@@ -51,8 +52,9 @@ func TestRequestInjectHandler_debug(t *testing.T) {
 			assert.NotEmpty(t, reqTime)
 		},
 	)
+	rnd := random.New(nil)
 
-	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, nextHandler)
+	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, rnd, nextHandler)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)
@@ -101,7 +103,9 @@ func TestRequestInjectHandler_info(t *testing.T) {
 		},
 	)
 
-	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, nextHandler)
+	rnd := random.New(nil)
+
+	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, rnd, nextHandler)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)

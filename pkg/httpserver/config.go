@@ -18,6 +18,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/ipify"
 	"github.com/tecnickcom/gogen/pkg/profiling"
+	"github.com/tecnickcom/gogen/pkg/random"
 	"github.com/tecnickcom/gogen/pkg/redact"
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
@@ -69,6 +70,7 @@ type config struct {
 	shutdownWaitGroup           *sync.WaitGroup
 	shutdownSignalChan          chan struct{}
 	httpresp                    *httputil.HTTPResp
+	rnd                         *random.Rnd
 }
 
 // defaultConfig returns the default configuration for the HTTP server.
@@ -91,6 +93,7 @@ func defaultConfig() *config {
 		shutdownWaitGroup:         &sync.WaitGroup{},
 		shutdownSignalChan:        make(chan struct{}),
 		httpresp:                  httputil.NewHTTPResp(logger),
+		rnd:                       random.New(nil),
 	}
 
 	cfg.pprofHandlerFunc = profiling.PProfHandler
@@ -178,6 +181,7 @@ func (c *config) setRouter(_ context.Context) {
 				TraceIDHeaderName: c.traceIDHeaderName,
 				RedactFunc:        c.redactFn,
 				Logger:            l,
+				Rnd:               c.rnd,
 			},
 			c.notFoundHandlerFunc,
 			middleware...,
@@ -192,6 +196,7 @@ func (c *config) setRouter(_ context.Context) {
 				TraceIDHeaderName: c.traceIDHeaderName,
 				RedactFunc:        c.redactFn,
 				Logger:            l,
+				Rnd:               c.rnd,
 			},
 			c.methodNotAllowedHandlerFunc,
 			middleware...,
@@ -211,6 +216,7 @@ func (c *config) setRouter(_ context.Context) {
 					TraceIDHeaderName: c.traceIDHeaderName,
 					RedactFunc:        c.redactFn,
 					Logger:            l,
+					Rnd:               c.rnd,
 				},
 				c.panicHandlerFunc,
 				middleware...,

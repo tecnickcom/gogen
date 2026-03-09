@@ -11,9 +11,6 @@ import (
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
-//nolint:gochecknoglobals
-var rnd = random.New(nil)
-
 // MiddlewareArgs contains extra optional arguments to be passed to the middleware handler function MiddlewareFn.
 type MiddlewareArgs struct {
 	// Method is the HTTP method (e.g.: GET, POST, PUT, DELETE, ...).
@@ -33,13 +30,22 @@ type MiddlewareArgs struct {
 
 	// Logger is the logger.
 	Logger *slog.Logger
+
+	// Rnd is the random generator.
+	Rnd *random.Rnd
 }
 
 // MiddlewareFn is a function that wraps an http.Handler.
 type MiddlewareFn func(args MiddlewareArgs, next http.Handler) http.Handler
 
 // RequestInjectHandler wraps all incoming requests and injects a logger in the request scoped context.
-func RequestInjectHandler(logger *slog.Logger, traceIDHeaderName string, redactFn RedactFn, next http.Handler) http.Handler {
+func RequestInjectHandler(
+	logger *slog.Logger,
+	traceIDHeaderName string,
+	redactFn RedactFn,
+	rnd *random.Rnd,
+	next http.Handler,
+) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		reqTime := time.Now().UTC()
 		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, rnd.UUIDv7().String())
@@ -82,7 +88,7 @@ func RequestInjectHandler(logger *slog.Logger, traceIDHeaderName string, redactF
 
 // LoggerMiddlewareFn returns the middleware handler function to handle logs.
 func LoggerMiddlewareFn(args MiddlewareArgs, next http.Handler) http.Handler {
-	return RequestInjectHandler(args.Logger, args.TraceIDHeaderName, args.RedactFunc, next)
+	return RequestInjectHandler(args.Logger, args.TraceIDHeaderName, args.RedactFunc, args.Rnd, next)
 }
 
 // ApplyMiddleware returns an http Handler with all middleware handler functions applied.

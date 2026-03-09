@@ -200,6 +200,7 @@ func loadRoutes(ctx context.Context, binder Binder, cfg *config) {
 			TraceIDHeaderName: cfg.traceIDHeaderName,
 			RedactFunc:        cfg.redactFn,
 			Logger:            cfg.logger,
+			Rnd:               cfg.rnd,
 		}
 
 		handler := ApplyMiddleware(args, r.Handler, middleware...)
@@ -221,6 +222,7 @@ func loadRoutes(ctx context.Context, binder Binder, cfg *config) {
 			TraceIDHeaderName: cfg.traceIDHeaderName,
 			RedactFunc:        cfg.redactFn,
 			Logger:            cfg.logger,
+			Rnd:               cfg.rnd,
 		}
 
 		handler := ApplyMiddleware(args, cfg.indexHandlerFunc(routes), middleware...)

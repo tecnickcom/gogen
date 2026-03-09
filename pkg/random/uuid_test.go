@@ -14,9 +14,9 @@ func TestUUIDv7(t *testing.T) {
 	a := r.UUIDv7()
 	b := r.UUIDv7()
 
-	if a == b {
-		t.Errorf("Two UUID should be different")
-	}
+	require.NotEqual(t, a, b)
+	require.Len(t, a, 16)
+	require.Len(t, b, 16)
 }
 
 func TestUUIDv7_Byte(t *testing.T) {
@@ -40,7 +40,7 @@ func TestUUIDv7_String(t *testing.T) {
 	a := r.UUIDv7().String()
 	b := r.UUIDv7().String()
 
-	require.NotEqual(t, a, b)
+	require.Less(t, a, b)
 	require.Len(t, a, 36)
 	require.Len(t, b, 36)
 }
