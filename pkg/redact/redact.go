@@ -15,15 +15,33 @@ const (
 	// Replacement string to hide the original information.
 	redacted = `@~REDACTED~@`
 
+	// kwdSEC is a pattern for Authentication & Session keywords.
+	kwdSEC = `auth|bearer|cert|cookie|cred|dsn|jwt|key|login|pass|pwd|seal|secret|secur|sess|sgn|sid|sig|token`
+
+	// kwdCRY is a pattern for Cryptographic & API Markers keywords.
+	kwdCRY = `checksum|dsa|ecdsa|fingerprint|hash|hmac|pkcs|proof|rsa|salt`
+
+	// kwdLEG is a pattern for Legal & Document Signing keywords.
+	kwdLEG = `attestation|autograph|endorse`
+
+	// kwdFIN is a pattern for Financial keywords.
+	kwdFIN = `acc|amount|bal|bill|card|cc_|cvv|iban|pay|swift`
+
+	// kwdPII is a pattern for Identity & Personal Data (PII) keywords.
+	kwdPII = `addr|birth|cell|dob|email|mail|phone|social|ssn|tax|tel`
+
+	// kwdALL is a collection of keyword sub-strings to redact.
+	kwdALL = kwdSEC + "|" + kwdCRY + "|" + kwdLEG + "|" + kwdFIN + "|" + kwdPII
+
 	// Hide the Authorization header information.
 	regexPatternAuthorizationHeader = `(?i)(authorization[\s]*:[\s]*).*`
 	redactAuthorizationHeader       = `$1` + redacted
 
 	// Hide common secret fields.
-	regexPatternJSONKey = `(?i)"([^"]*)(key|password|secret|token)([^"]*)"([\s]*:[\s]*)"[^"]*"`
+	regexPatternJSONKey = `(?i)"([^"]*)(` + kwdALL + `)([^"]*)"([\s]*:[\s]*)"[^"]*"`
 	redactJSONKey       = `"$1$2$3"$4"` + redacted + `"`
 
-	regexPatternURLEncodedKey = `(?i)([^=&\n]*)(key|password|secret|token)([^=]*)=[^=&\n]*`
+	regexPatternURLEncodedKey = `(?i)([^=&\n]*)(` + kwdALL + `)([^=]*)=[^=&\n]*`
 	redactURLEncodedKey       = `$1$2$3=` + redacted
 
 	// General regular expression used to match Credit Card Numbers (Visa, MasterCard, American Express, Diners Club, Discover, and JCB cards).

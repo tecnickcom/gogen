@@ -29,6 +29,8 @@ TEST_KEY=SECRET
 password=SECRET&key=SECRET
 ApiKey=SECRET&alpha=beta&password=SECRET&key=SECRET&gamma=delta
 Token=SECRET
+security_key=SECRET
+secure_data=SECRET
 
 {
 	"password":"SECRET",
@@ -65,7 +67,9 @@ Token=SECRET
     "American Express" : "371449635398431",
     "Diners Club" : "38520000023237",
     "Discover" : "6011000990139424",
-    "JCB" : "3566002020360505"
+    "JCB" : "3566002020360505",
+	"Security_Key": "SECRET",
+	"Secure_Data": "SECRET" 
 }
 `
 	expected := `
@@ -88,6 +92,8 @@ TEST_KEY=@~REDACTED~@
 password=@~REDACTED~@&key=@~REDACTED~@
 ApiKey=@~REDACTED~@&alpha=beta&password=@~REDACTED~@&key=@~REDACTED~@&gamma=delta
 Token=@~REDACTED~@
+security_key=@~REDACTED~@
+secure_data=@~REDACTED~@
 
 {
 	"password":"@~REDACTED~@",
@@ -124,7 +130,9 @@ Token=@~REDACTED~@
     "American Express" : "@~REDACTED~@",
     "Diners Club" : "@~REDACTED~@",
     "Discover" : "@~REDACTED~@",
-    "JCB" : "@~REDACTED~@"
+    "JCB" : "@~REDACTED~@",
+	"Security_Key": "@~REDACTED~@",
+	"Secure_Data": "@~REDACTED~@" 
 }
 `
 	got := HTTPData(data)
