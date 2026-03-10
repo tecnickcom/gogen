@@ -8,6 +8,18 @@ import (
 )
 
 //nolint:testableexamples
+func ExampleRnd_RandomBytes() {
+	r := random.New(nil)
+
+	b, err := r.RandomBytes(4)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("%v\n", b)
+}
+
+//nolint:testableexamples
 func ExampleRnd_RandUint32() {
 	r := random.New(nil)
 
@@ -23,6 +35,24 @@ func ExampleRnd_RandUint64() {
 	n := r.RandUint64()
 
 	fmt.Println(n)
+}
+
+//nolint:testableexamples
+func ExampleRnd_RandHex64() {
+	r := random.New(nil)
+
+	h := r.RandHex64()
+
+	fmt.Println(h)
+}
+
+//nolint:testableexamples
+func ExampleRnd_RandString64() {
+	r := random.New(nil)
+
+	h := r.RandString64()
+
+	fmt.Println(h)
 }
 
 //nolint:testableexamples

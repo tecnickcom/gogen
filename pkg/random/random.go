@@ -17,6 +17,9 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand/v2"
+	"strconv"
+
+	"github.com/tecnickcom/gogen/pkg/uhex"
 )
 
 // Character sets for random string generation.
@@ -87,6 +90,16 @@ func (r *Rnd) RandUint64() uint64 {
 	}
 
 	return binary.LittleEndian.Uint64(b)
+}
+
+// RandHex64 returns a pseudo-random 64-bit value as a fixed-length 16 digits hexadecimal string.
+func (r *Rnd) RandHex64() string {
+	return string(uhex.Hex64(r.RandUint64()))
+}
+
+// RandString64 returns a pseudo-random 64-bit value as a base-36 variable-length string.
+func (r *Rnd) RandString64() string {
+	return strconv.FormatUint(r.RandUint64(), 36)
 }
 
 // RandString returns n-characters long random string that can be used as password.

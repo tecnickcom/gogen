@@ -78,6 +78,26 @@ func TestRandUint64(t *testing.T) {
 	require.NotZero(t, u)
 }
 
+func TestRandHex64(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+
+	h := r.RandHex64()
+
+	require.Len(t, h, 16)
+}
+
+func TestRandString64(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+
+	s := r.RandString64()
+
+	require.NotEmpty(t, s)
+}
+
 func TestRandString(t *testing.T) {
 	t.Parallel()
 
