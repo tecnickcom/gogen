@@ -104,7 +104,7 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 		return nil, ErrFailed
 	}
 
-	//nolint:gosec // The release context is independent from the parent context.
+	// The release context is independent from the parent context.
 	releaseCtx, cancelReleaseCtx := context.WithCancel(context.Background())
 
 	releaseFunc := func() error {
