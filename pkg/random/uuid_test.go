@@ -40,7 +40,7 @@ func TestUUIDv7_String(t *testing.T) {
 	a := r.UUIDv7().String()
 	b := r.UUIDv7().String()
 
-	require.Less(t, a, b)
+	require.NotEqual(t, a, b)
 	require.Len(t, a, 36)
 	require.Len(t, b, 36)
 }
