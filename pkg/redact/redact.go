@@ -25,7 +25,7 @@ const (
 	kwdLEG = `attestation|autograph|endorse`
 
 	// kwdFIN is a pattern for Financial keywords.
-	kwdFIN = `acc|amount|bal|bill|card|cc_|cvv|iban|pay|swift`
+	kwdFIN = `acc|amount|bal|bill|card|cc_|cv2|cvc|cvv|iban|pay|swift`
 
 	// kwdPII is a pattern for Identity & Personal Data (PII) keywords.
 	kwdPII = `addr|birth|cell|dob|email|mail|phone|social|ssn|tax|tel`
