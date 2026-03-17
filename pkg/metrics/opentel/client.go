@@ -12,6 +12,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/metric"
@@ -47,12 +49,31 @@ const (
 	NameErrorCode = "code"
 )
 
+const (
+	otelExporterOtlpTracesEndpoint  = "localhost:4318"
+	otelExporterOtlpMetricsEndpoint = "localhost:4318"
+)
+
 // TShutdownFuncs is a type alias for the OpenTelemetry shutdown functions.
 type TShutdownFuncs = func(ctx context.Context) error
 
+// SDKResourceFunc is a function that returns an SDK Resource.
+type SDKResourceFunc = func(ctx context.Context, name, version string) *sdkresource.Resource
+
+// TraceProviderFunc is a function that returns an SDK Trace Provider.
+type TraceProviderFunc = func(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider
+
+// MetricProviderFunc is a function that returns an SDK Metr Provider.
+type MetricProviderFunc = func(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider
+
 // Client represents the state type of this client.
 type Client struct {
+	propagator          propagation.TextMapPropagator
+	resFn               SDKResourceFunc
+	res                 *sdkresource.Resource
+	tracerProviderFn    TraceProviderFunc
 	tracerProvider      *sdktrace.TracerProvider
+	meterProviderFn     MetricProviderFunc
 	meterProvider       *sdkmetric.MeterProvider
 	shutdownFuncs       []TShutdownFuncs
 	collectorErrorLevel metric.Int64Counter
@@ -176,30 +197,35 @@ func (c *Client) CloseCtx(ctx context.Context) error {
 
 func (c *Client) set(ctx context.Context, name, version string) error {
 	// propagator
-	otel.SetTextMapPropagator(defaultPropagator())
+	if c.propagator == nil {
+		c.propagator = DefaultPropagator()
+	}
 
-	res, _ := sdkresource.New(
-		ctx,
-		sdkresource.WithAttributes(
-			semconv.ServiceName(name),
-			semconv.ServiceVersion(version),
-		),
-	)
+	otel.SetTextMapPropagator(c.propagator)
+
+	// SDK resource
+	if c.resFn == nil {
+		c.resFn = DefaultSDKResource
+	}
+
+	c.res = c.resFn(ctx, name, version)
 
 	// trace provider
-	if c.tracerProvider == nil {
-		tp := defaultTracerProvider(res)
-		c.tracerProvider = tp
+	if c.tracerProviderFn == nil {
+		c.tracerProviderFn = DefaultTracerProviderStdout
 	}
+
+	c.tracerProvider = c.tracerProviderFn(ctx, c.res)
 
 	c.shutdownFuncs = append(c.shutdownFuncs, c.tracerProvider.Shutdown)
 	otel.SetTracerProvider(c.tracerProvider)
 
 	// meter provider
-	if c.meterProvider == nil {
-		mp := defaultMeterProvider(res)
-		c.meterProvider = mp
+	if c.meterProviderFn == nil {
+		c.meterProviderFn = DefaultMeterProviderStdout
 	}
+
+	c.meterProvider = c.meterProviderFn(ctx, c.res)
 
 	c.shutdownFuncs = append(c.shutdownFuncs, c.meterProvider.Shutdown)
 	otel.SetMeterProvider(c.meterProvider)
@@ -223,40 +249,88 @@ func (c *Client) setInt64Counter(ctx context.Context, errMeter metric.Meter, nam
 	return counter, nil
 }
 
-// defaultPropagator provides a default OpenTelemetry TextMapPropagator.
-func defaultPropagator() propagation.TextMapPropagator {
+// DefaultPropagator provides a default OpenTelemetry TextMapPropagator.
+func DefaultPropagator() propagation.TextMapPropagator {
 	return propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	)
 }
 
-// defaultTracerProvider provides a default OpenTelemetry TracerProvider.
-func defaultTracerProvider(res *sdkresource.Resource) *sdktrace.TracerProvider {
-	traceExporter, _ := stdouttrace.New() // no error
+// DefaultSDKResource returns a default OTLP SDK resource.
+func DefaultSDKResource(ctx context.Context, name, version string) *sdkresource.Resource {
+	res, _ := sdkresource.New(
+		ctx,
+		sdkresource.WithAttributes(
+			semconv.ServiceName(name),
+			semconv.ServiceVersion(version),
+		),
+	)
 
+	return res
+}
+
+// DefaultTracerProviderWithExporter provides a default TracerProvider for the given the trace exporter.
+func DefaultTracerProviderWithExporter(res *sdkresource.Resource, exp sdktrace.SpanExporter) *sdktrace.TracerProvider {
 	return sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(
-			traceExporter,
+			exp,
 			sdktrace.WithBatchTimeout(traceBatchTimeoutSec*time.Second),
 		),
 		sdktrace.WithResource(res),
 	)
 }
 
-// defaultMeterProvider provides a default OpenTelemetry MeterProvider.
-func defaultMeterProvider(res *sdkresource.Resource) *sdkmetric.MeterProvider {
-	metricExporter, _ := stdoutmetric.New() // returned error is always nil
+// DefaultTracerProviderStdout provides a default STDOUT OpenTelemetry Tracer Provider.
+func DefaultTracerProviderStdout(_ context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
+	exp, _ := stdouttrace.New() // no error
 
+	return DefaultTracerProviderWithExporter(res, exp)
+}
+
+// DefaultTracerProviderOTLP provides a default OTLP OpenTelemetry Tracer Provider.
+func DefaultTracerProviderOTLP(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
+	exp, _ := otlptracehttp.New(
+		ctx,
+		otlptracehttp.WithEndpoint(otelExporterOtlpTracesEndpoint), // OTEL_EXPORTER_OTLP_TRACES_ENDPOINT env var will take precedence.
+		otlptracehttp.WithInsecure(),
+	) // no error
+
+	return DefaultTracerProviderWithExporter(res, exp)
+}
+
+// DefaultMeterProviderWithExporter provides a MeterProvider for the given the metric exporter.
+func DefaultMeterProviderWithExporter(
+	res *sdkresource.Resource,
+	exp sdkmetric.Exporter,
+) *sdkmetric.MeterProvider {
 	return sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(
 			sdkmetric.NewPeriodicReader(
-				metricExporter,
+				exp,
 				sdkmetric.WithInterval(metricIntervalSec*time.Second),
 			),
 		),
 		sdkmetric.WithResource(res),
 	)
+}
+
+// DefaultMeterProviderStdout provides a default STDOUT OpenTelemetry Meter Provider.
+func DefaultMeterProviderStdout(_ context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
+	exp, _ := stdoutmetric.New() // returned error is always nil
+
+	return DefaultMeterProviderWithExporter(res, exp)
+}
+
+// DefaultMeterProviderOTLP provides a default OTLP OpenTelemetry Meter Provider.
+func DefaultMeterProviderOTLP(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
+	exp, _ := otlpmetrichttp.New(
+		ctx,
+		otlpmetrichttp.WithEndpoint(otelExporterOtlpMetricsEndpoint), // OTEL_EXPORTER_OTLP_METRICS_ENDPOINT env var will take precedence.
+		otlpmetrichttp.WithInsecure(),
+	) // no error
+
+	return DefaultMeterProviderWithExporter(res, exp)
 }
 
 // TraceID returns the trace ID associate with the context.

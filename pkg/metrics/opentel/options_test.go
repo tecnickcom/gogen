@@ -4,26 +4,44 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-func TestWithTracerProvider(t *testing.T) {
+func TestWithSDKResourceFn(t *testing.T) {
 	t.Parallel()
 
 	c := initClient()
-	opt := sdktrace.NewTracerProvider()
-	err := WithTracerProvider(opt)(c)
+	opt := DefaultSDKResource
+	err := WithSDKResourceFn(opt)(c)
 	require.NoError(t, err)
-	require.NotNil(t, c.tracerProvider)
+	require.NotNil(t, c.resFn)
 }
 
-func TestWithMeterProvider(t *testing.T) {
+func TestWithTracerProviderFn(t *testing.T) {
 	t.Parallel()
 
 	c := initClient()
-	opt := sdkmetric.NewMeterProvider()
-	err := WithMeterProvider(opt)(c)
+	opt := DefaultTracerProviderOTLP
+	err := WithTracerProviderFn(opt)(c)
 	require.NoError(t, err)
-	require.NotNil(t, c.meterProvider)
+	require.NotNil(t, c.tracerProviderFn)
+}
+
+func TestWithMeterProviderFn(t *testing.T) {
+	t.Parallel()
+
+	c := initClient()
+	opt := DefaultMeterProviderOTLP
+	err := WithMeterProviderFn(opt)(c)
+	require.NoError(t, err)
+	require.NotNil(t, c.meterProviderFn)
+}
+
+func TestWithPropagator(t *testing.T) {
+	t.Parallel()
+
+	c := initClient()
+	opt := DefaultPropagator()
+	err := WithPropagator(opt)(c)
+	require.NoError(t, err)
+	require.NotNil(t, c.propagator)
 }

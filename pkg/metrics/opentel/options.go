@@ -1,25 +1,40 @@
 package opentel
 
 import (
-	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // Option is the interface that allows to set client options.
 type Option func(c *Client) error
 
-// WithTracerProvider overrides the default TracerProvider.
-func WithTracerProvider(p *sdktrace.TracerProvider) Option {
+// WithSDKResourceFn overrides the default SDKResourceFunc.
+func WithSDKResourceFn(fn SDKResourceFunc) Option {
 	return func(c *Client) error {
-		c.tracerProvider = p
+		c.resFn = fn
 		return nil
 	}
 }
 
-// WithMeterProvider overrides the default MeterProvider.
-func WithMeterProvider(p *sdkmetric.MeterProvider) Option {
+// WithTracerProviderFn overrides the default TraceProviderFunc.
+func WithTracerProviderFn(fn TraceProviderFunc) Option {
 	return func(c *Client) error {
-		c.meterProvider = p
+		c.tracerProviderFn = fn
+		return nil
+	}
+}
+
+// WithMeterProviderFn overrides the default MetricProviderFunc.
+func WithMeterProviderFn(fn MetricProviderFunc) Option {
+	return func(c *Client) error {
+		c.meterProviderFn = fn
+		return nil
+	}
+}
+
+// WithPropagator overrides the default TextMapPropagator.
+func WithPropagator(p propagation.TextMapPropagator) Option {
+	return func(c *Client) error {
+		c.propagator = p
 		return nil
 	}
 }

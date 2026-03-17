@@ -12,29 +12,54 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 )
 
+//nolint:gocognit
 func TestNew(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		opts    []Option
-		wantErr bool
+		name         string
+		opts         []Option
+		wantErr      bool
+		wantCloseErr bool
 	}{
 		{
 			name:    "succeeds with empty options",
 			wantErr: false,
 		},
 		{
-			name: "succeeds with options",
+			name: "succeeds with STDOUT options",
 			opts: []Option{
-				WithTracerProvider(sdktrace.NewTracerProvider()),
-				WithMeterProvider(sdkmetric.NewMeterProvider()),
+				WithTracerProviderFn(DefaultTracerProviderStdout),
+				WithMeterProviderFn(DefaultMeterProviderStdout),
 			},
 			wantErr: false,
+		},
+		{
+			name: "succeeds with in-memory exporter",
+			opts: []Option{
+				WithTracerProviderFn(func(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
+					return DefaultTracerProviderWithExporter(DefaultSDKResource(ctx, "gogen-test", "0.0.0-1"), tracetest.NewInMemoryExporter())
+				}),
+				WithMeterProviderFn(func(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
+					return sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewManualReader()))
+				}),
+			},
+			wantErr: false,
+		},
+		{
+			name: "succeeds with OTLP options",
+			opts: []Option{
+				WithTracerProviderFn(DefaultTracerProviderOTLP),
+				WithMeterProviderFn(DefaultMeterProviderOTLP),
+			},
+			wantErr:      false,
+			wantCloseErr: true,
 		},
 		{
 			name:    "fails with invalid option",
@@ -51,7 +76,9 @@ func TestNew(t *testing.T) {
 			if err == nil {
 				defer func() {
 					err := c.Close()
-					require.NoError(t, err)
+					if tt.wantErr {
+						require.Error(t, err)
+					}
 				}()
 			}
 
