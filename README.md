@@ -85,8 +85,7 @@ Each package adheres to common conventions and coding standards, making them eas
 * [periodic](pkg/periodic) - Periodic task scheduling.
 * [phonekeypad](pkg/phonekeypad) - Phone keypad mapping utilities.
 * [profiling](pkg/profiling) - Application profiling tools.
-* [randkey](pkg/randkey) - Helpers for random key generation.
-* [random](pkg/random) - Utilities for random data generation.
+* [random](pkg/random) - Utilities for random data generation, including UUID.
 * [redact](pkg/redact) - Data redaction helpers.
 * [redis](pkg/redis) - Redis client and utilities.
 * [retrier](pkg/retrier) - Retry logic for operations.
@@ -110,7 +109,6 @@ Each package adheres to common conventions and coding standards, making them eas
 * [timeutil](pkg/timeutil) - Time and date utilities.
 * [traceid](pkg/traceid) - Trace ID generation and management.
 * [typeutil](pkg/typeutil) - Type conversion and utility functions.
-* [uidc](pkg/uidc) - Unique identifier generation.
 * [validator](pkg/validator) - Data validation utilities.
 * [valkey](pkg/valkey) - Wrapper client for interacting with valkey.io, an open-source in-memory data store.
 
