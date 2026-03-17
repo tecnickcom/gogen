@@ -18,13 +18,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-//nolint:gocognit
+//nolint:gocognit,paralleltest
 func TestNew(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name         string
 		opts         []Option
+		setEnvFn     func()
 		wantErr      bool
 		wantCloseErr bool
 	}{
@@ -33,7 +32,7 @@ func TestNew(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "succeeds with STDOUT options",
+			name: "succeeds with default STDOUT options",
 			opts: []Option{
 				WithTracerProviderFn(DefaultTracerProviderStdout),
 				WithMeterProviderFn(DefaultMeterProviderStdout),
@@ -41,25 +40,59 @@ func TestNew(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "succeeds with in-memory exporter",
-			opts: []Option{
-				WithTracerProviderFn(func(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
-					return DefaultTracerProviderWithExporter(DefaultSDKResource(ctx, "gogen-test", "0.0.0-1"), tracetest.NewInMemoryExporter())
-				}),
-				WithMeterProviderFn(func(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
-					return sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewManualReader()))
-				}),
-			},
-			wantErr: false,
-		},
-		{
-			name: "succeeds with OTLP options",
+			name: "succeeds with default OTLP options",
 			opts: []Option{
 				WithTracerProviderFn(DefaultTracerProviderOTLP),
 				WithMeterProviderFn(DefaultMeterProviderOTLP),
 			},
 			wantErr:      false,
 			wantCloseErr: true,
+		},
+		{
+			name: "succeeds with default providers and no env vars (STDOUT)",
+			opts: []Option{
+				WithTracerProviderFn(DefaultTracerProvider),
+				WithMeterProviderFn(DefaultMeterProvider),
+			},
+			wantErr:      false,
+			wantCloseErr: false,
+		},
+		{
+			name: "succeeds with default providers and first opt env vars (OTLP)",
+			opts: []Option{
+				WithTracerProviderFn(DefaultTracerProvider),
+				WithMeterProviderFn(DefaultMeterProvider),
+			},
+			setEnvFn: func() {
+				t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "localhost:64000")
+				t.Setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "localhost:64000")
+			},
+			wantErr:      false,
+			wantCloseErr: false,
+		},
+		{
+			name: "succeeds with default providers and OTEL_EXPORTER_OTLP_ENDPOINT env var (OTLP)",
+			opts: []Option{
+				WithTracerProviderFn(DefaultTracerProvider),
+				WithMeterProviderFn(DefaultMeterProvider),
+			},
+			setEnvFn: func() {
+				t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:64000")
+			},
+			wantErr:      false,
+			wantCloseErr: false,
+		},
+		{
+			name: "succeeds with in-memory exporter",
+			opts: []Option{
+				WithTracerProviderFn(func(ctx context.Context, _ *sdkresource.Resource) *sdktrace.TracerProvider {
+					return DefaultTracerProviderWithExporter(DefaultSDKResource(ctx, "gogen-test", "0.0.0-1"), tracetest.NewInMemoryExporter())
+				}),
+				WithMeterProviderFn(func(ctx context.Context, _ *sdkresource.Resource) *sdkmetric.MeterProvider {
+					return sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewManualReader()))
+				}),
+			},
+			wantErr: false,
 		},
 		{
 			name:    "fails with invalid option",
@@ -70,7 +103,9 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			if tt.setEnvFn != nil {
+				tt.setEnvFn()
+			}
 
 			c, err := New(t.Context(), "gogen-test", "0.0.0-1", tt.opts...)
 			if err == nil {

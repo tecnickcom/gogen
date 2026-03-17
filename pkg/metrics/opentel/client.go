@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/XSAM/otelsql"
@@ -47,11 +48,6 @@ const (
 
 	// NameErrorCode is the name of the collector that counts the number of errors by task, operation and error code.
 	NameErrorCode = "code"
-)
-
-const (
-	otelExporterOtlpTracesEndpoint  = "localhost:4318"
-	otelExporterOtlpMetricsEndpoint = "localhost:4318"
 )
 
 // TShutdownFuncs is a type alias for the OpenTelemetry shutdown functions.
@@ -212,7 +208,7 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 
 	// trace provider
 	if c.tracerProviderFn == nil {
-		c.tracerProviderFn = DefaultTracerProviderStdout
+		c.tracerProviderFn = DefaultTracerProvider
 	}
 
 	c.tracerProvider = c.tracerProviderFn(ctx, c.res)
@@ -222,7 +218,7 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 
 	// meter provider
 	if c.meterProviderFn == nil {
-		c.meterProviderFn = DefaultMeterProviderStdout
+		c.meterProviderFn = DefaultMeterProvider
 	}
 
 	c.meterProvider = c.meterProviderFn(ctx, c.res)
@@ -289,14 +285,25 @@ func DefaultTracerProviderStdout(_ context.Context, res *sdkresource.Resource) *
 }
 
 // DefaultTracerProviderOTLP provides a default OTLP OpenTelemetry Tracer Provider.
+// The endpoint is defined by (in order of priority):
+//   - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+//   - OTEL_EXPORTER_OTLP_ENDPOINT
+//   - "localhost:4318"
 func DefaultTracerProviderOTLP(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
-	exp, _ := otlptracehttp.New(
-		ctx,
-		otlptracehttp.WithEndpoint(otelExporterOtlpTracesEndpoint), // OTEL_EXPORTER_OTLP_TRACES_ENDPOINT env var will take precedence.
-		otlptracehttp.WithInsecure(),
-	) // no error
+	exp, _ := otlptracehttp.New(ctx) // no error
 
 	return DefaultTracerProviderWithExporter(res, exp)
+}
+
+// DefaultTracerProvider provides a default OpenTelemetry Tracer Provider.
+// If neither OTEL_EXPORTER_OTLP_TRACES_ENDPOINT or OTEL_EXPORTER_OTLP_ENDPOINT are defined,
+// the default STDOUT provider is returned.
+func DefaultTracerProvider(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
+	if os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") != "" || os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
+		return DefaultTracerProviderOTLP(ctx, res)
+	}
+
+	return DefaultTracerProviderStdout(ctx, res)
 }
 
 // DefaultMeterProviderWithExporter provides a MeterProvider for the given the metric exporter.
@@ -323,14 +330,25 @@ func DefaultMeterProviderStdout(_ context.Context, res *sdkresource.Resource) *s
 }
 
 // DefaultMeterProviderOTLP provides a default OTLP OpenTelemetry Meter Provider.
+// The endpoint is defined by (in order of priority):
+//   - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+//   - OTEL_EXPORTER_OTLP_ENDPOINT
+//   - "localhost:4318"
 func DefaultMeterProviderOTLP(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
-	exp, _ := otlpmetrichttp.New(
-		ctx,
-		otlpmetrichttp.WithEndpoint(otelExporterOtlpMetricsEndpoint), // OTEL_EXPORTER_OTLP_METRICS_ENDPOINT env var will take precedence.
-		otlpmetrichttp.WithInsecure(),
-	) // no error
+	exp, _ := otlpmetrichttp.New(ctx) // no error
 
 	return DefaultMeterProviderWithExporter(res, exp)
+}
+
+// DefaultMeterProvider provides a default OTLP OpenTelemetry Meter Provider.
+// If neither OTEL_EXPORTER_OTLP_METRICS_ENDPOINT or OTEL_EXPORTER_OTLP_ENDPOINT are defined,
+// the default STDOUT provider is returned.
+func DefaultMeterProvider(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
+	if os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT") != "" || os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
+		return DefaultMeterProviderOTLP(ctx, res)
+	}
+
+	return DefaultMeterProviderStdout(ctx, res)
 }
 
 // TraceID returns the trace ID associate with the context.
