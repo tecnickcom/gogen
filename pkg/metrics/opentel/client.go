@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/XSAM/otelsql"
@@ -77,6 +78,11 @@ type Client struct {
 }
 
 // New creates a new metrics instance.
+// The name can be also set via the OTEL_SERVICE_NAME environment variable.
+// The service can be also set via the OTEL_SERVICE_VERSION environment variable.
+// The deployment environment can be set via the OTEL_DEPLOYMENT_ENVIRONMENT_NAME environment variable.
+// The parameters can be also set as OTEL_RESOURCE_ATTRIBUTES environment variables attributes:
+// service.name, service.version, deployment.environment.name.
 func New(ctx context.Context, name, version string, opts ...Option) (*Client, error) {
 	c := initClient()
 
@@ -254,16 +260,75 @@ func DefaultPropagator() propagation.TextMapPropagator {
 }
 
 // DefaultSDKResource returns a default OTLP SDK resource.
+// The name can be also set via the OTEL_SERVICE_NAME environment variable.
+// The service can be also set via the OTEL_SERVICE_VERSION environment variable.
+// The deployment environment can be set via the OTEL_DEPLOYMENT_ENVIRONMENT_NAME environment variable.
+// The parameters can be also set as OTEL_RESOURCE_ATTRIBUTES environment variables attributes:
+// service.name, service.version, deployment.environment.name.
 func DefaultSDKResource(ctx context.Context, name, version string) *sdkresource.Resource {
+	attrs := []attribute.KeyValue{}
+	ora := parseOTELResourceAttributes(os.Getenv("OTEL_RESOURCE_ATTRIBUTES"))
+
+	name = getOTELAttr(name, "OTEL_SERVICE_NAME", "service.name", ora)
+	if name != "" {
+		attrs = append(attrs, semconv.ServiceName(name))
+	}
+
+	version = getOTELAttr(version, "OTEL_SERVICE_VERSION", "service.version", ora)
+	if version != "" {
+		attrs = append(attrs, semconv.ServiceVersion(version))
+	}
+
+	env := getOTELAttr("", "OTEL_DEPLOYMENT_ENVIRONMENT_NAME", "deployment.environment.name", ora)
+	if env != "" {
+		attrs = append(attrs, semconv.DeploymentEnvironmentName(env))
+	}
+
 	res, _ := sdkresource.New(
 		ctx,
-		sdkresource.WithAttributes(
-			semconv.ServiceName(name),
-			semconv.ServiceVersion(version),
-		),
+		sdkresource.WithAttributes(attrs...),
 	)
 
 	return res
+}
+
+// getOTELAttr returns the value of the OTEL attribute.
+// If empty it searches for the envname environment variable and then for
+// attrname key inside the ora key/value map.
+func getOTELAttr(val, envname, attrname string, ora map[string]string) string {
+	if val != "" {
+		return val
+	}
+
+	val = os.Getenv(envname)
+	if val != "" {
+		return val
+	}
+
+	val, ok := ora[attrname]
+	if ok {
+		return val
+	}
+
+	return ""
+}
+
+// parseOTELResourceAttributes extract key/value pairs.
+func parseOTELResourceAttributes(val string) map[string]string {
+	attr := make(map[string]string)
+
+	if val == "" {
+		return attr
+	}
+
+	for item := range strings.SplitSeq(val, ",") {
+		kv := strings.SplitN(item, "=", 2)
+		if len(kv) == 2 {
+			attr[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+		}
+	}
+
+	return attr
 }
 
 // DefaultTracerProviderWithExporter provides a default TracerProvider for the given the trace exporter.
@@ -357,6 +422,7 @@ func TraceID(ctx context.Context) string {
 
 	if spanCtx.HasTraceID() {
 		traceID := spanCtx.TraceID()
+
 		return traceID.String()
 	}
 

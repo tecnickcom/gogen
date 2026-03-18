@@ -78,6 +78,7 @@ func TestNew(t *testing.T) {
 			},
 			setEnvFn: func() {
 				t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:64000")
+				t.Setenv("OTEL_DEPLOYMENT_ENVIRONMENT_NAME", "test")
 			},
 			wantErr:      false,
 			wantCloseErr: false,
@@ -373,5 +374,84 @@ func TestTraceIDRoundtrip(t *testing.T) {
 	expectedTraceID := trace.TraceID(originalTraceID).String()
 	if retrievedTraceID != expectedTraceID {
 		t.Errorf("Roundtrip TraceID failed: got %q, want %q", retrievedTraceID, expectedTraceID)
+	}
+}
+
+//nolint:paralleltest
+func Test_getOTELAttr(t *testing.T) {
+	tests := []struct {
+		name     string
+		val      string
+		envname  string
+		attrname string
+		ora      map[string]string
+		setEnvFn func()
+		want     string
+	}{
+		{
+			name: "empty",
+			want: "",
+		},
+		{
+			name: "val",
+			val:  "testval",
+			want: "testval",
+		},
+		{
+			name:    "env",
+			envname: "TEST_ENV",
+			setEnvFn: func() {
+				t.Setenv("TEST_ENV", "testenv")
+			},
+			want: "testenv",
+		},
+		{
+			name:     "attr",
+			attrname: "testattrname",
+			ora:      map[string]string{"testattrname": "testattr"},
+			want:     "testattr",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setEnvFn != nil {
+				tt.setEnvFn()
+			}
+
+			got := getOTELAttr(tt.val, tt.envname, tt.attrname, tt.ora)
+
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_parseOTELResourceAttributes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		val  string
+		want map[string]string
+	}{
+		{
+			name: "empty",
+			want: map[string]string{},
+		},
+		{
+			name: "two",
+			val:  "key1=val1,key2=val2",
+			want: map[string]string{"key1": "val1", "key2": "val2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := parseOTELResourceAttributes(tt.val)
+
+			require.Equal(t, tt.want, got)
+		})
 	}
 }
