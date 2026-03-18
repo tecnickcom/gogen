@@ -21,6 +21,7 @@ type Metrics interface {
 	CreateMetricsClientFunc() (metrics.Client, error)
 	IncExampleCounter(code string)
 	InstrumentDB(dbName string, db *sql.DB) error
+	SqlOpen(driverName, dsn string) (*sql.DB, error)
 }
 
 // Client groups the custom collectors to be shared with other packages.
@@ -64,4 +65,9 @@ func (m *Client) IncExampleCounter(code string) {
 // InstrumentDB wraps a sql.DB to collect metrics.
 func (m *Client) InstrumentDB(dbName string, db *sql.DB) error {
 	return m.libClient.InstrumentDB(dbName, db) //nolint:wrapcheck
+}
+
+// SqlOpen wraps sql.Open.
+func (m *Client) SqlOpen(driverName, dsn string) (*sql.DB, error) {
+	return m.libClient.SqlOpen(driverName, dsn) //nolint:wrapcheck
 }

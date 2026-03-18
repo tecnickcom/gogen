@@ -15,6 +15,9 @@ import (
 
 // Client is an interface type for the metrics functions.
 type Client interface {
+	// SqlOpen wraps sql.Open to add instrumentation (when available).
+	SqlOpen(driverName, dsn string) (*sql.DB, error)
+
 	// InstrumentDB wraps a sql.DB to collect metrics.
 	InstrumentDB(dbName string, db *sql.DB) error
 
@@ -39,6 +42,11 @@ type Client interface {
 
 // Default is the default implementation for the Client interface.
 type Default struct{}
+
+// SqlOpen wraps sql.Open.
+func (c *Default) SqlOpen(driverName, dsn string) (*sql.DB, error) {
+	return sql.Open(driverName, dsn) //nolint:wrapcheck
+}
 
 // InstrumentDB wraps a sql.DB to collect metrics.
 func (c *Default) InstrumentDB(_ string, _ *sql.DB) error {

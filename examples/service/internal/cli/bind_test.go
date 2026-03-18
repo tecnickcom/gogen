@@ -28,6 +28,10 @@ func (c *mockMetricsClientError) InstrumentDB(_ string, _ *sql.DB) error {
 	return errors.New("TEST ERROR")
 }
 
+func (c *mockMetricsClientError) SqlOpen(driverName, dsn string) (*sql.DB, error) {
+	return (&libmtr.Default{}).SqlOpen(driverName, dsn) //nolint:wrapcheck
+}
+
 func (c *mockMetricsClientError) IncExampleCounter(_ string) {}
 
 //nolint:gocognit,gocyclo,cyclop,paralleltest,maintidx

@@ -23,7 +23,7 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -103,15 +103,25 @@ func initClient() *Client {
 	return &Client{}
 }
 
-// InstrumentDB wraps a sql.DB to collect metrics.
+// SqlOpen wraps sql.Open with OTel instrumentation.
+func (c *Client) SqlOpen(driverName, dsn string) (*sql.DB, error) {
+	options := c.otelsqlOpts(
+		otelsql.WithAttributes(otelsql.AttributesFromDSN(dsn)...),
+	)
+
+	return otelsql.Open(driverName, dsn, options...) //nolint:wrapcheck
+}
+
+// InstrumentDB wraps a sql.DB to collect connection pool statistics.
+// For full query tracing, use SqlOpen() before creating the sql.DB.
 func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
 	reg, err := defRegisterDBStatsMetrics(
 		db,
-		otelsql.WithAttributes(
-			attribute.String(labelDBname, dbName),
-		),
-		otelsql.WithMeterProvider(c.meterProvider),
-		otelsql.WithTracerProvider(c.tracerProvider),
+		c.otelsqlOpts(
+			otelsql.WithAttributes(
+				attribute.String(labelDBname, dbName),
+			),
+		)...,
 	)
 	if err != nil {
 		return fmt.Errorf("failed instrumenting the database: %w", err)
@@ -195,6 +205,14 @@ func (c *Client) CloseCtx(ctx context.Context) error {
 	c.shutdownFuncs = nil
 
 	return err
+}
+
+// otelsqlOpts merge default otelsql options.
+func (c *Client) otelsqlOpts(opts ...otelsql.Option) []otelsql.Option {
+	return append([]otelsql.Option{
+		otelsql.WithMeterProvider(c.meterProvider),
+		otelsql.WithTracerProvider(c.tracerProvider),
+	}, opts...)
 }
 
 func (c *Client) set(ctx context.Context, name, version string) error {

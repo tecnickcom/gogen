@@ -82,6 +82,11 @@ func defaultClient() *Client {
 	}
 }
 
+// SqlOpen wraps sql.Open.
+func (c *Client) SqlOpen(driverName, dsn string) (*sql.DB, error) {
+	return sql.Open(driverName, dsn) //nolint:wrapcheck
+}
+
 // InstrumentDB wraps a sql.DB to collect metrics - [NOT IMPLEMENTED].
 func (c *Client) InstrumentDB(_ string, _ *sql.DB) error {
 	return nil

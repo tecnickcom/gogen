@@ -184,6 +184,33 @@ func TestIncErrorCounter(t *testing.T) {
 	c.IncErrorCounter("test_task", "test_operation", "3791")
 }
 
+func TestSqlOpen(t *testing.T) {
+	t.Parallel()
+
+	c, err := New()
+	require.NoError(t, err)
+
+	defer func() {
+		err := c.Close()
+		require.NoError(t, err)
+	}()
+
+	db, err := c.SqlOpen("", "")
+	require.Error(t, err)
+	require.Nil(t, db)
+
+	dsn := "sqlmock_db_statsd"
+
+	_, _, err = sqlmock.NewWithDSN(dsn)
+	require.NoError(t, err)
+
+	db, err = c.SqlOpen("sqlmock", dsn)
+	require.NoError(t, err)
+	require.NotNil(t, db)
+
+	db.Close()
+}
+
 func TestInstrumentDB(t *testing.T) {
 	t.Parallel()
 

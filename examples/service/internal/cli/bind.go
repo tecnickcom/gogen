@@ -191,6 +191,7 @@ func newDatabase(
 		sqlconn.WithConnMaxLifetime(time.Duration(dbcfg.ConnMaxLifetime) * time.Second),
 		sqlconn.WithShutdownWaitGroup(wg),
 		sqlconn.WithShutdownSignalChan(sc),
+		sqlconn.WithSQLOpenFunc(mtr.SqlOpen),
 	}
 
 	sqlConn, err := sqlconn.New(ctx, dbcfg.Driver, dbDSN, sqlConnOpts...)

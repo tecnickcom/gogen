@@ -10,6 +10,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSqlOpen(t *testing.T) {
+	t.Parallel()
+
+	c := &Default{}
+
+	dsn := "sqlmock_db_metrics"
+
+	_, _, err := sqlmock.NewWithDSN(dsn)
+	require.NoError(t, err)
+
+	db, err := c.SqlOpen("sqlmock", dsn)
+	require.NoError(t, err)
+	require.NotNil(t, db)
+
+	db.Close()
+}
+
 func TestInstrumentDB(t *testing.T) {
 	t.Parallel()
 

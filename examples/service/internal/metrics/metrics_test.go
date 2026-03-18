@@ -51,3 +51,23 @@ func TestInstrumentDB(t *testing.T) {
 	err = m.InstrumentDB("db_test", db)
 	require.NoError(t, err)
 }
+
+func TestSqlOpen(t *testing.T) {
+	t.Parallel()
+
+	m := New()
+	c, err := m.CreateMetricsClientFunc()
+	require.NoError(t, err, "CreateMetricsClientFunc() unexpected error = %v", err)
+	require.NotNil(t, c, "metrics.Client should not be nil")
+
+	dsn := "sqlmock_db_gogenexample"
+
+	_, _, err = sqlmock.NewWithDSN(dsn)
+	require.NoError(t, err)
+
+	db, err := m.SqlOpen("sqlmock", dsn)
+	require.NoError(t, err)
+	require.NotNil(t, db)
+
+	db.Close()
+}
