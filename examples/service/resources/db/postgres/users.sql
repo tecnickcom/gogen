@@ -1,13 +1,52 @@
--- Create the R/W role
-CREATE ROLE dbrw_user WITH LOGIN PASSWORD 'dbrw_pass';
-GRANT USAGE ON SCHEMA public TO dbrw_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO dbrw_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO dbrw_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO dbrw_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO dbrw_user;
+-- read-only role
 
--- Create the R/O role
-CREATE ROLE dbro_user WITH LOGIN PASSWORD 'dbro_pass';
-GRANT USAGE ON SCHEMA public TO dbro_user;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO dbro_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO dbro_user;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolename = 'readonly') THEN
+    CREATE ROLE readonly;
+  END IF;
+END
+$$;
+
+GRANT CONNECT ON DATABASE gogenexample TO readonly;
+
+-- read-write role
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolename = 'readwrite') THEN
+    CREATE ROLE readwrite;
+  END IF;
+END
+$$;
+
+GRANT CONNECT ON DATABASE gogenexample TO readwrite;
+
+-- read-only user
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolename = 'dbro_user') THEN
+    CREATE USER dbro_user WITH PASSWORD 'dbro_pass';
+  ELSE
+    ALTER USER dbro_user WITH PASSWORD 'dbro_pass';
+  END IF;
+END
+$$;
+
+
+-- read-write user
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolename = 'dbrw_user') THEN
+    CREATE USER dbrw_user WITH PASSWORD 'dbrw_pass';
+  ELSE
+    ALTER USER dbrw_user WITH PASSWORD 'dbrw_pass';
+  END IF;
+END
+$$;
+
+-- grant role memberships to users
+GRANT readonly TO dbro_user;
+GRANT readwrite TO dbrw_user;
