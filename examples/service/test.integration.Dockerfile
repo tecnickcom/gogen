@@ -15,5 +15,5 @@ COPY RELEASE /workspace
 COPY VERSION /workspace
 
 WORKDIR /workspace
-ENTRYPOINT ["/workspace/resources/test/integration/entrypoint.sh"]
+ENTRYPOINT ["/workspace/resources/test/int/entrypoint.sh"]
 HEALTHCHECK CMD go version || exit 1

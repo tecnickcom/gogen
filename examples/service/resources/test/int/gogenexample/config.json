@@ -1,0 +1,49 @@
+{
+  "clients": {
+    "ipify": {
+      "address": "http://gogenexample_smocker_ipify:8080",
+      "timeout": 15
+    }
+  },
+  "db": {
+    "enabled": true,
+    "main": {
+      "conn_max_idle_count": 2,
+      "conn_max_idle_time": 60,
+      "conn_max_lifetime": 180,
+      "conn_max_open": 10,
+      "dsn": "dbrw_user:dbrw_pass@tcp(gogenexample_mysql:3306)/gogenexample",
+      "timeout_ping": 2
+    },
+    "read": {
+      "conn_max_idle_count": 2,
+      "conn_max_idle_time": 60,
+      "conn_max_lifetime": 180,
+      "conn_max_open": 10,
+      "dsn": "dbro_user:dbro_pass@tcp(gogenexample_mysql:3306)/gogenexample",
+      "timeout_ping": 2
+    }
+  },
+  "enabled": true,
+  "log": {
+    "address": "",
+    "format": "JSON",
+    "level": "DEBUG",
+    "network": ""
+  },
+  "servers": {
+    "monitoring": {
+      "address": ":8071",
+      "timeout": 60
+    },
+    "private": {
+      "address": ":8072",
+      "timeout": 60
+    },
+    "public": {
+      "address": ":8073",
+      "timeout": 60
+    }
+  },
+  "shutdown_timeout": 60
+}

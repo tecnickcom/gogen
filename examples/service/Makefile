@@ -236,6 +236,19 @@ ifeq ($(DEPLOY_ENV), int)
 	API_TEST_FILE=*.yaml
 endif
 
+# local environment via docker-compose
+ifeq ($(DEPLOY_ENV), local)
+	#ECR_PROFILE_PULL=
+	#ECR_PROFILE_PUSH=
+	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
+	#DOCKER_REGISTRY_PULL=
+	#DOCKER_REGISTRY_PUSH=
+	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
+	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
+	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
+	API_TEST_FILE=*.yaml
+endif
+
 # Development environment
 ifeq ($(DEPLOY_ENV), dev)
 	#ECR_PROFILE_PULL=
@@ -304,6 +317,8 @@ help:
 	@echo "  make dockerpromote : Promote docker image from  DEV to PROD reporitory"
 	@echo "  make dockerpush    : Push docker container to a remote repository"
 	@echo "  make dockertest    : Test the newly built docker container"
+	@echo "  make localenvstart : Start a local docker compose environment for manual testing"
+	@echo "  make localenvstop  : Stop the local docker compose environment"
 	@echo "  make format        : Format the source code"
 	@echo "  make gendoc        : Generate static documentation from /doc/src"
 	@echo "  make generate      : Generate go code automatically"
@@ -381,6 +396,7 @@ dbuild: clean ensuretarget dockerdev
 	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' DOCKERTAG='$(DOCKERTAG)' $(CURRENTDIR)dockerbuild.sh
 	@exit `cat $(TARGETDIR)/make.exit`
 
+
 # Build the DEB package for Debian-like Linux distributions
 .PHONY: deb
 deb:
@@ -454,7 +470,9 @@ dockerdelete:
 # Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
+ifeq ($(DEPLOY_ENV),int)
 	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT}:dev --file ./resources/docker/Dockerfile.dev ./resources/docker/
+endif
 
 # Create the directory with docker files to be packaged
 .PHONY: dockerdir
@@ -503,23 +521,46 @@ dockerpush:
 	$(DOCKER) tag "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 
+# Start a local docker compose environment for manual testing.
+.PHONY: localenvstart
+localenvstart:
+	make dcenvup DEPLOY_ENV=local
+
+# Stop and remove the local docker compose environment.
+.PHONY: localenvstop
+localenvstop:
+	make dcenvdown DEPLOY_ENV=local
+
 # Test the newly built docker container
 .PHONY: dockertest
-dockertest: dockertestenv dockerdev
+dockertest:
+	make dcenvup dcenvdown DEPLOY_ENV=int
+
+# Start a docker-compose environment.
+.PHONY: dcenvup
+dcenvup: dockerenvcfg dockerdev
 	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/${DOCKERIZEVERSION}/dockerize-linux-amd64-${DOCKERIZEVERSION}.tar.gz | tar -xz -C $(BINUTIL)
 	@echo 0 > $(TARGETDIR)/make.exit
-	$(DOCKERCOMPOSECMD) down --volumes || true
-	$(DOCKERCOMPOSECMD) build $(DOCKERBUILDARG)
-	$(DOCKERCOMPOSECMD) run ${PROJECT}_integration || echo $${?} > $(TARGETDIR)/make.exit
-	$(DOCKERCOMPOSECMD) logs
-	$(DOCKERCOMPOSECMD) down --rmi local --volumes --remove-orphans || true
+	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml down --volumes || true
+	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml build $(DOCKERBUILDARG)
+ifeq ($(DEPLOY_ENV),int)
+	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml run ${PROJECT}_integration || echo $${?} > $(TARGETDIR)/make.exit
+else
+	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml up
+endif
+	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml logs
+
+# Stop a docker-compose environment.
+.PHONY: dcenvdown
+dcenvdown:
+	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml down --rmi local --volumes --remove-orphans || true
 	@exit `cat $(TARGETDIR)/make.exit`
 
 # Run the integration tests; locally we need to execute 'build' and 'docker' targets first
-.PHONY: dockertestenv
-dockertestenv: ensuretarget
-	@echo "GOGENEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gogenexample.integration.env
-	@echo "GOGENEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/integration/gogenexample/config.json | base64 | tr -d \\n)" >> $(TARGETDIR)/gogenexample.integration.env
+.PHONY: dockerenvcfg
+dockerenvcfg: ensuretarget
+	@echo "GOGENEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gogenexample.cfg.env
+	@echo "GOGENEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/$(DEPLOY_ENV)/gogenexample/config.json | base64 | tr -d \\n)" >> $(TARGETDIR)/gogenexample.cfg.env
 
 # Create the trget directories if missing
 .PHONY: ensuretarget

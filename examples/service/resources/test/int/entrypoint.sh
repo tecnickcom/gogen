@@ -13,7 +13,7 @@ dockerize \
 # configure smocker mocks for the ipify client
 curl -s -XPOST \
   --header "Content-Type: application/x-yaml" \
-  --data-binary "@resources/test/integration/smocker/ipify_apitest.yaml" \
+  --data-binary "@resources/test/int/smocker/ipify_apitest.yaml" \
   http://gogenexample_smocker_ipify:8081/mocks
 
 # run tests
