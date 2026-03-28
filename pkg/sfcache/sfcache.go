@@ -1,30 +1,33 @@
 /*
-Package sfcache provides a simple, local, thread-safe, fixed-size, and
-single-flight cache for expensive lookup calls.
+Package sfcache provides a simple, local, thread-safe, fixed-size cache for
+expensive lookups with single-flight deduplication.
 
-This package is designed to improve the performance of expensive, slow, or
-high-frequency function calls that retrieve data associated with a unique
-identifier (key). It achieves this by caching previous values, eliminating the
-need for repeated expensive requests.
+This package solves the common problem of repeated slow or costly external
+calls by caching result values for a configurable duration. When multiple
+clients request the same key concurrently, sfcache ensures only one lookup
+executes and all duplicate callers receive the same result.
 
-The sfcache package offers a local in-memory cache with a configurable maximum
-number of entries. The fixed-size nature of the cache ensures efficient memory
-management and prevents excessive memory usage. Additionally, the cache is
-thread-safe, allowing concurrent access without the need for external
-synchronization. It efficiently handles concurrent requests by sharing results
-from the first lookup, ensuring that only one request performs the expensive
-call. This approach avoids unnecessary network load or resource starvation.
-Duplicate calls for the same key will wait for the first call to complete and
-return the same value.
+Key Features:
+  - fixed-size local cache with explicit entry capacity to avoid unbounded
+    memory growth
+  - thread-safe access with internal sync, so callers do not need external
+    locking
+  - single-flight behavior: duplicate concurrent lookups for the same key wait
+    on the first in-flight request instead of triggering redundant work
+  - TTL-based expiration so stale entries are automatically refreshed on the
+    next miss
+  - manual Remove and Reset operations for explicit cache control
 
-Each cache entry has a time-to-live (TTL) value, which determines its
-expiration. The cache also provides methods to force the removal of a specific
-entry or reset the entire cache.
+Why this matters:
+  - reduces repeated network, database, or computation cost for the same key
+  - improves throughput for high-concurrency workloads by collapsing duplicate
+    requests
+  - keeps memory bounded with a predictable maximum number of stored entries
 
-The sfcache package is ideal for any Go application that heavily relies on
-expensive or slow lookups.
+Use sfcache whenever your service needs cached external values, but also
+requires safe concurrent access and efficient duplicate-request handling.
 
-Example applications that can benefit from this package include:
+Example applications in this repository include:
   - github.com/tecnickcom/gogen/pkg/awssecretcache
   - github.com/tecnickcom/gogen/pkg/dnscache
 */

@@ -2,19 +2,23 @@
 Package filter provides generic rule-based filtering capabilities for struct
 slices.
 
-Large sets of data can be filtered down to a subset of elements using a set of
-rules.
+It solves the problem of applying dynamic, declarative filters to in-memory
+data without writing custom loop logic for each data type.
 
-The filter can be specified as a slice of slices of rules or as JSON (see
-filter_schema.json for the JSON schema). The first slice contains the rule sets
-that will be combined with a boolean AND. The sub-slices contain the rules that
-will be combined with a boolean OR.
+Filters are expressed as a slice of rule groups or as JSON, where the outer
+slice is combined with AND semantics and each inner slice is combined with OR
+semantics.
 
-A common application consists of users specifying a filter in a URL query
-parameter to reduce the amount of data to download on a GET request. The rules
-are parsed and applied server-side.
+A common use case is parsing a URL query string from a client request and
+applying the resulting filter to server-side data before serialization.
 
-# Example:
+Top features:
+- JSON-friendly rule syntax for client-driven filtering
+- nested AND/OR semantics for expressive queries
+- field path support for nested struct values
+- runtime validation and rule count limits for safer filtering
+
+Example:
 
 The following pretty-printed JSON:
 
@@ -48,18 +52,18 @@ and URL-encoded as a query parameter:
 
 	filter=%5B%5B%7B%22field%22%3A%22name%22%2C%22type%22%3A%22%3D%3D%22%2C%22value%22%3A%22doe%22%7D%2C%7B%22field%22%3A%22age%22%2C%22type%22%3A%22%3C%3D%22%2C%22value%22%3A42%7D%5D%2C%5B%7B%22field%22%3A%22address.country%22%2C%22type%22%3A%22regexp%22%2C%22value%22%3A%22%5EEN%24%7C%5EFR%24%22%7D%5D%5D
 
-the equivalent logic is:
+The equivalent logic is:
 
 	((name==doe OR age<=42) AND (address.country match "EN" or "FR"))
 
-The supported rule types are listed in the rule.go file:
+Supported rule types are listed in rule.go:
 
   - "regexp" : matches the value against a reference regular expression.
   - "=="     : Equal to - matches exactly the reference value.
   - "="      : Equal fold - matches when strings, interpreted as UTF-8, are equal under simple Unicode case-folding, which is a more general form of case-insensitivity. For example "AB" will match "ab".
   - "^="     : Starts with - (strings only) matches when the value begins with the reference string.
   - "=$"     : Ends with - (strings only) matches when the value ends with the reference string.
-  - "~="     : Contains -(strings only)  matches when the reference string is a sub-string of the value.
+  - "~="     : Contains - (strings only) matches when the reference string is a sub-string of the value.
   - "<"      : Less than - matches when the value is less than the reference.
   - "<="     : Less than or equal to - matches when the value is less than or equal the reference.
   - ">"      : Greater than - matches when the value is greater than reference.

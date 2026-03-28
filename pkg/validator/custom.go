@@ -115,7 +115,8 @@ func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 
 // hasDefaultvalue returns true if the field has a default value (nil/zero) or if is unset/invalid.
 func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool {
-	switch kind { //nolint:exhaustive
+	//nolint:exhaustive
+	switch kind {
 	case reflect.Invalid:
 		return true
 	case reflect.Slice, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Chan, reflect.Func:
@@ -129,7 +130,8 @@ func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool
 //
 //nolint:gocyclo,cyclop
 func hasNotValue(value reflect.Value, kind reflect.Kind, paramValue string) bool {
-	switch kind { //nolint:exhaustive
+	//nolint:exhaustive
+	switch kind {
 	case reflect.String:
 		return value.String() != paramValue
 	case reflect.Slice, reflect.Map, reflect.Array:

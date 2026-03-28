@@ -1,7 +1,26 @@
 /*
-Package encode provides a collection of functions for safe serialization and
-deserialization of data between different systems, such as databases, queues,
-and caches.
+Package encode provides a collection of helper functions for safe serialization
+and deserialization across system boundaries such as databases, queues, caches,
+and RPC payloads.
+
+It solves the common problem of reliably encoding Go values into transport-safe
+formats and decoding them back without losing structure or introducing unsafe
+byte streams.
+
+The package supports two main modes:
+- Gob + Base64 encoding for arbitrary Go values
+- JSON + Base64 encoding for interoperable text-based payloads
+
+Top features:
+- encode/decode helpers for strings, byte slices, buffers, and streams
+- consistent Base64 wrapping to keep binary payloads safe for text channels
+- explicit error wrapping for easier debugging
+- small API surface that works with any serializable Go value
+
+Benefits:
+- reduce boilerplate for common serialization flows
+- avoid accidental misuse of raw binary in text-only transports
+- simplify data exchange between services and storage layers
 */
 package encode
 

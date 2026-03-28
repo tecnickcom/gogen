@@ -1,8 +1,30 @@
 /*
-Package countrycode provides information about countries and their ISO-3166 Codes.
-The default data originates from multiple sources, including ISO-3166, CIA, United Nations, and Wikipedia.
-The data is stored in a compact binary format for fast access and small memory footprint.
-It is also possible to load custom country data.
+Package countrycode provides fast, reusable access to ISO-3166 country metadata.
+
+It solves the common problem of translating country codes into structured country
+information and selecting countries by region, sub-region, intermediate region,
+status, or top-level domain.
+
+CountryData includes:
+- ISO-3166 alpha-2, alpha-3, and numeric codes
+- English and French country names
+- region, sub-region, and intermediate region names and codes
+- assignment status and top-level domain (TLD)
+
+New(nil) returns a Data object built from embedded default data sourced from
+ISO-3166, the CIA World Factbook, United Nations M49, and Wikipedia. Custom
+country datasets are also supported by passing your own slice of CountryData.
+
+Top features:
+- lookup by Alpha-2, Alpha-3, Numeric code, or TLD
+- enumerations for region, sub-region, intermediate region, and status
+- country filtering by region/name/status/TLD
+- compact internal representation for fast lookups and small memory use
+
+Benefits:
+- standardize country metadata across codebases
+- simplify validation, enrichment, and reporting workflows
+- keep geographic lookups efficient in APIs and batch processing
 */
 package countrycode
 

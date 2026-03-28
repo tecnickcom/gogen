@@ -1,28 +1,29 @@
 /*
-Package dnscache implements github.com/tecnickcom/gogen/pkg/sfcache to provide a
-simple, local, thread-safe, fixed-size, and single-flight cache for DNS lookup
-calls.
+Package dnscache provides a local DNS cache that is safe for concurrent use,
+bounded in size, and uses single-flight request collapsing to avoid duplicate
+lookups.
 
-This package provides LookupHost() and DialContext() functions that can be used
-in place of the standard ones in the net package.
+The package is designed as a drop-in complement to the standard net package.
+It exposes LookupHost and DialContext helpers that cache resolved host names,
+so repeated DNS lookups for the same host return cached results and only one
+outstanding lookup is performed at a time.
 
-By caching previous values, dnscache improves DNS lookup performance by
-eliminating the need for repeated expensive requests.
+Key features:
+  - fixed-size in-memory cache with configurable capacity
+  - per-entry TTL expiry to keep DNS data fresh
+  - thread-safe access for concurrent goroutines
+  - single-flight behavior so duplicate lookups share one network request
+  - optional custom net.Resolver support with sensible default behavior
+  - DialContext helper that resolves host names before dialing addresses
 
-This package provides a local in-memory cache with a configurable maximum number
-of entries. The fixed size helps with efficient memory management and prevents
-excessive memory usage. The cache is thread-safe, allowing concurrent access
-without the need for external synchronization. It efficiently handles concurrent
-requests by sharing results from the first lookup, ensuring only one request
-does the expensive call, and avoiding unnecessary network load or resource
-starvation. Duplicate calls for the same key will wait for the first call to
-complete and return the same value.
+Why it matters:
+  - reduces DNS resolution latency for repeated host names
+  - lowers load on upstream resolvers and avoids query storms
+  - keeps memory usage predictable with a capped entry count
+  - makes DNS-heavy applications more resilient under concurrency
 
-Each cache entry has a set time-to-live (TTL), so it will automatically expire.
-However, it is also possible to force the removal of a specific DNS entry or
-reset the entire cache.
-
-This package is ideal for any Go application that relies heavily on DNS lookups.
+Use this package in any Go service that performs frequent DNS lookups or needs
+an efficient, safe cache for host resolution.
 */
 package dnscache
 

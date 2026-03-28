@@ -1,9 +1,18 @@
 /*
 Package decint provides utility functions to parse and represent decimal values
-as integers with a set precision.
+as fixed-point integers with a defined precision.
 
-The functions in this package are typically used to store and retrieve small
-currency values without loss of precision.
+This package solves the common problem of safely handling small monetary and
+fixed-precision decimal values without using floating-point arithmetic for
+storage or comparison.
+
+Decint is designed for values with at most six decimal places, and it stores
+those values as integers to avoid rounding issues and preserve exactness.
+
+Key benefits:
+- deterministic decimal handling for currency, rates, and small amounts
+- safe integer representation up to 2^53 with 6 decimal digits
+- simplified serialization and comparison of fixed-precision values
 
 Safe decimal values are limited up to 2^53 / 1e+6 = 9_007_199_254.740_992.
 */

@@ -1,21 +1,23 @@
 /*
-Package httpretrier provides the ability to automatically repeat HTTP requests
-based on user-defined conditions.
+Package httpretrier provides configurable retry logic for HTTP requests.
 
-Any part of the returned http.Response (e.g., StatusCode) and error can be used
-to define the retry function (retry condition). The default behavior is to retry
-only in case of an error.
+It solves the problem of transient network failures and unreliable remote
+services by allowing requests to be retried automatically according to
+application-defined conditions.
 
-This package also offers ready-made retry functions that can be used for most
-cases:
+The retry function can inspect any part of the returned http.Response and error,
+and the default behavior retries only on transport-level failures.
 
-  - RetryIfForWriteRequests
-  - RetryIfForReadRequests
+Top features:
+- customizable retry conditions based on response and error
+- built-in retry helpers for read and write request patterns
+- exponential backoff with jitter
+- configurable max attempts, initial delay, and delay multiplier
 
-Additionally, it allows you to set the maximum number of retries, the delay
-after the first failed attempt, the time multiplication factor to determine the
-successive delay value, and the jitter used to introduce randomness and avoid
-request collisions.
+Benefits:
+- improve robustness of outbound HTTP calls
+- eliminate duplicated retry logic across services
+- reduce the risk of retry storms with jitter and bounded attempts
 */
 package httpretrier
 

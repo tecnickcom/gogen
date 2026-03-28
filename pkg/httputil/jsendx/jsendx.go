@@ -1,14 +1,25 @@
 /*
-Package jsendx implements a custom JSend model to wrap all HTTP responses in a
-consistent JSON object with default fields.
+Package jsendx implements an extended JSend response model for HTTP APIs.
 
-JSend is a specification that defines rules for formatting JSON responses from
-web servers. This implementation extends the JSend model by adding additional
-fields to enrich the response with application metadata.
+It solves the problem of inconsistent response envelopes by wrapping all HTTP
+response payloads in a predictable JSON structure enriched with application
+metadata.
 
-This model is particularly suitable for REST-style applications and APIs, as it
-provides a standardized format for all responses, simplifying the development of
-API clients.
+This package adds fields such as program name, version, release, timestamp, and
+status metadata on top of the JSend convention, making responses easier to
+consume and debug in REST-style applications.
+
+Top features:
+  - consistent response envelope for success and error payloads
+  - automatic enrichment with application metadata
+  - reusable default handlers for not-found, method-not-allowed, panic, and index
+    responses
+  - easy integration with existing HTTP and healthcheck workflows
+
+Benefits:
+- simplify API client implementation with predictable response structure
+- reduce response formatting boilerplate
+- improve observability and traceability of API responses
 */
 package jsendx
 

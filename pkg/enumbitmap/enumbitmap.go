@@ -1,11 +1,26 @@
 /*
-Package enumbitmap provides functions to encode slices of enumeration strings
-into integer bitmap values and vice versa.
+Package enumbitmap provides helpers to encode and decode enumeration values as
+bitmaps.
 
-Each bit correspond to a unique enumeration value. It supports maximum 32 bit
-(33 distinct values including NONE).
+It solves the problem of compactly representing sets of named flags using a
+single integer, while still allowing easy conversion back to human-readable
+values.
 
-# Example with 8 bits:
+Each bit corresponds to a unique enumeration value. The package supports up to
+32 bits (33 distinct values including NONE), making it suitable for small set
+flags and feature toggles.
+
+Top features:
+- convert string slices to bitmap integers
+- convert bitmap integers back to string slices
+- detect unknown enum values and return clear errors
+
+Benefits:
+- compact in-memory and storage representation for enum sets
+- easy interoperability with bitmask-based APIs
+- safe conversion that preserves decoding errors for invalid values
+
+Example with 8 bits:
 
 	00000000 =   0 dec = NONE
 	00000001 =   1 dec = FIRST

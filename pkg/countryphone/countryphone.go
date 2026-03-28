@@ -1,10 +1,28 @@
 /*
-Package countryphone provides geographical information of phone numbers. Country
-phone codes are defined by the International Telecommunication Union (ITU) in
-ITU-T standards E.123 and E.164.
+Package countryphone provides fast geographical lookup for phone number prefixes.
 
-The default phone prefixes data can be overridden with a custom dataset. The
-data is stored in a trie for fast prefix matching.
+It solves the problem of mapping an international telephone number to the
+country and regional dialing metadata that developers need for validation,
+formatting, routing, and analytics.
+
+Country phone codes are defined by the International Telecommunication Union
+(ITU) in ITU-T recommendations E.123 and E.164.
+
+This package stores default prefix data in a prefix trie for fast longest-prefix
+matching, while still allowing callers to replace the default dataset with a
+custom dataset.
+
+Top features:
+- prefix-based phone number lookup with longest-match semantics
+- support for country calling code, national prefix groups, and area metadata
+- explicit number and area type enums for safer interpretation
+- custom dataset injection for non-standard or updated dialing plans
+
+Benefits:
+  - standardize phone prefix resolution across services
+  - improve performance for bulk and realtime lookup workflows
+  - make it easy to combine phone geography with ISO country data from
+    github.com/tecnickcom/gogen/pkg/countrycode
 */
 package countryphone
 

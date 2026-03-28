@@ -1,7 +1,24 @@
 /*
-Package encrypt provides a collection of functions for safe encryption and
-decryption of data between different systems, such as databases, queues, and
-caches.
+Package encrypt provides helpers for encrypting and decrypting data safely for
+transport and storage.
+
+It solves the problem of protecting application payloads when data moves between
+systems such as databases, queues, caches, or external services.
+
+This package uses AES-GCM with nonce prefixing for authenticated encryption,
+and provides both raw byte-level APIs and convenience functions for serializing
+arbitrary structs with gob or JSON before encryption.
+
+Top features:
+- AES-GCM encryption/decryption with standard key sizes (128, 192, 256 bits)
+- Base64-safe encrypted payload helpers for byte and string interchange
+- generic Gob and JSON serialization wrappers for arbitrary Go values
+- clear error wrapping for debugging encryption flows
+
+Benefits:
+- reduce boilerplate for secure payload handling
+- avoid accidental use of insecure or unauthenticated encryption modes
+- simplify encryption for structured data in distributed systems
 */
 package encrypt
 

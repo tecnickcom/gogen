@@ -1,9 +1,25 @@
 /*
-Package healthcheck provides a simple way to define health checks for external services or components.
+Package healthcheck provides a simple reusable framework for defining and
+collecting health checks for external services or application components.
 
-It provides an HTTP handler to collect and return the results of the health checks concurrently.
+It solves the problem of consolidating liveness and readiness logic by
+standardizing health check definitions and offering concurrent result
+collection.
 
-For an implementation example, see the file examples/service/internal/cli/bind.go.
+The package is intended to be used with an HTTP handler that aggregates checks
+and returns a combined health status.
+
+Top features:
+- declarative HealthChecker interface for pluggable checks
+- lightweight health check registration and configuration
+- concurrency-friendly result collection for faster health probes
+
+Benefits:
+- make service health monitoring consistent across components
+- reduce boilerplate when wiring health check endpoints
+- simplify integration with orchestrators and monitoring tools
+
+For an implementation example, see examples/service/internal/cli/bind.go.
 */
 package healthcheck
 
