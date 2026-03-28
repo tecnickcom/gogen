@@ -7,3 +7,4 @@
 golangci-lint
 target
 vendor
+resources/hugo
