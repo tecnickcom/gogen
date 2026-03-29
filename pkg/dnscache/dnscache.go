@@ -46,16 +46,19 @@ type Resolver interface {
 	LookupHost(ctx context.Context, host string) (addrs []string, err error)
 }
 
-// Cache represents the single-flight DNS cache.
+// Cache provides DNS resolution caching with TTL and single-flight deduplication.
 type Cache struct {
 	cache *sfcache.Cache[string]
 }
 
-// New creates a new single-flight DNS cache of the specified size and TTL.
-// If the resolver parameter is nil, a default net.Resolver will be used.
-// The size parameter determines the maximum number of DNS entries that can be cached (min = 1).
-// If the size is less than or equal to zero, the cache will have a default size of 1.
-// The ttl parameter specifies the time-to-live for each cached DNS entry.
+// New creates a concurrent DNS cache with TTL expiry and single-flight lookups.
+//
+// If resolver is nil, a default net.Resolver is used. size bounds cache
+// capacity (minimum effective size is 1), and ttl controls how long each
+// hostname resolution remains valid.
+//
+// This constructor is useful for DNS-heavy clients that need lower latency and
+// fewer duplicate upstream queries.
 func New(resolver Resolver, size int, ttl time.Duration) *Cache {
 	if resolver == nil {
 		resolver = &net.Resolver{}
@@ -70,11 +73,12 @@ func New(resolver Resolver, size int, ttl time.Duration) *Cache {
 	}
 }
 
-// LookupHost performs a DNS lookup for the given host.
-// Duplicate lookup calls for the same host will wait for the first lookup to complete (single-flight).
-// It also handles the case where the cache entry is removed or updated during the wait.
-// The function returns the cached value if available; otherwise, it performs a new lookup.
-// If the external lookup call is successful, it updates the cache with the newly obtained value.
+// LookupHost resolves host to IP addresses using cache-first semantics.
+//
+// On cache miss or expiry, one goroutine performs the DNS lookup while other
+// concurrent callers for the same host wait and share the result.
+//
+// This reduces resolver load and avoids thundering-herd lookups.
 func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 	val, err := c.cache.Lookup(ctx, host)
 	if err != nil {
@@ -84,12 +88,11 @@ func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 	return val.([]string), nil //nolint:forcetypeassert
 }
 
-// DialContext dials the network and address specified by the parameters.
-// It resolves the host from the address using the LookupHost method of the Resolver.
-// It then attempts to establish a connection to each resolved IP address until a successful connection is made.
-// If all connection attempts fail, it returns an error.
-// The function returns the established net.Conn and any error encountered during the process.
-// This function can replace the DialContext in http.Transport.
+// DialContext resolves address through the cache and dials resolved IPs in order.
+//
+// It is intended as a drop-in replacement for transport DialContext functions
+// (for example in http.Transport) when DNS caching is desired. The method tries
+// each resolved IP until one connection succeeds.
 func (c *Cache) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
@@ -116,17 +119,17 @@ func (c *Cache) DialContext(ctx context.Context, network, address string) (net.C
 	return nil, fmt.Errorf("failed to dial %s: %w", address, err)
 }
 
-// Len returns the number of items in the cache.
+// Len reports the current number of cached host entries.
 func (c *Cache) Len() int {
 	return c.cache.Len()
 }
 
-// Reset clears the whole cache.
+// Reset clears all cached DNS entries.
 func (c *Cache) Reset() {
 	c.cache.Reset()
 }
 
-// Remove removes the cache entry for the specified host.
+// Remove evicts a single host entry from the cache.
 func (c *Cache) Remove(host string) {
 	c.cache.Remove(host)
 }

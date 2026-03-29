@@ -12,7 +12,7 @@ import (
 // Option is the interface that allows to set configuration options.
 type Option func(v *Validator) error
 
-// WithFieldNameTag allows to use the field names specified by the tag instead of the original struct names.
+// WithFieldNameTag configures field lookup to use the given struct tag (e.g., "json") instead of field names.
 func WithFieldNameTag(tag string) Option {
 	return func(v *Validator) error {
 		if tag == "" {
@@ -32,7 +32,7 @@ func WithFieldNameTag(tag string) Option {
 	}
 }
 
-// WithCustomValidationTags register custom tags and validation functions.
+// WithCustomValidationTags registers custom domain-specific validation rules (e.g., e164noplus, ein, zipcode).
 func WithCustomValidationTags(t map[string]vt.FuncCtx) Option {
 	return func(v *Validator) error {
 		for tag, fn := range t {
@@ -46,7 +46,7 @@ func WithCustomValidationTags(t map[string]vt.FuncCtx) Option {
 	}
 }
 
-// WithCustomTypeFunc registers a CustomTypeFunc against a number of types.
+// WithCustomTypeFunc registers a custom type converter for specialized types before validation.
 func WithCustomTypeFunc(fn vt.CustomTypeFunc, types ...any) Option {
 	return func(v *Validator) error {
 		v.v.RegisterCustomTypeFunc(fn, types...)
@@ -54,9 +54,7 @@ func WithCustomTypeFunc(fn vt.CustomTypeFunc, types ...any) Option {
 	}
 }
 
-// WithErrorTemplates sets basic template-based error message translations.
-// The argument t maps tags to html templates that uses the Error data.
-// These translations takes precedence over the parent library translation object.
+// WithErrorTemplates registers html/template-based error message translations for validation tags, taking precedence over upstream messages.
 func WithErrorTemplates(t map[string]string) Option {
 	return func(v *Validator) error {
 		if len(v.tpl) == 0 {

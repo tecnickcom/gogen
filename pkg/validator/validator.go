@@ -102,7 +102,7 @@ type Validator struct {
 	tpl map[string]*template.Template
 }
 
-// New returns a new validator with the specified options.
+// New constructs a Validator with registered custom tags, field-name aliases, and error templates from the provided options.
 func New(opts ...Option) (*Validator, error) {
 	v := &Validator{v: vt.New()}
 
@@ -116,12 +116,12 @@ func New(opts ...Option) (*Validator, error) {
 	return v, nil
 }
 
-// ValidateStruct validates the structure fields tagged with "validate" and returns a multierror.
+// ValidateStruct validates struct fields against registered rules, returning a multierror of structured Errors if any fail.
 func (v *Validator) ValidateStruct(obj any) error {
 	return v.ValidateStructCtx(context.Background(), obj)
 }
 
-// ValidateStructCtx validates the structure fields tagged with "validate" and returns a multierror.
+// ValidateStructCtx validates struct fields with context cancellation support, returning a multierror of structured Errors if any fail.
 func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 	vErr := v.v.StructCtx(ctx, obj)
 

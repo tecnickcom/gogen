@@ -14,8 +14,7 @@ const (
 	uuidSep = '-'
 )
 
-// UUIDv7 returns 128-bit Universally Unique IDentifier (UUID) version 7 as defined by
-// RFC 9562 (https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-version-7).
+// UUIDv7 generates a 128-bit RFC 9562 UUID version 7 with millisecond-precision time and random bits.
 func (r *Rnd) UUIDv7() UUID {
 	var ub UUID
 
@@ -64,8 +63,7 @@ func (r *Rnd) UUIDv7() UUID {
 	return ub
 }
 
-// Byte returns the UUID byte-slice representation:
-// []byte("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx").
+// Byte returns the UUID as a 36-byte slice in the standard format: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
 func (u UUID) Byte() []byte {
 	uuid := make([]byte, 36)
 
@@ -82,8 +80,7 @@ func (u UUID) Byte() []byte {
 	return uuid
 }
 
-// String returns the UUID string representation:
-// "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
+// String returns the UUID as a standard 36-character string: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
 func (u UUID) String() string {
 	return string(u.Byte())
 }

@@ -51,12 +51,12 @@ import (
 	"context"
 )
 
-// HealthChecker is the interface that wraps the HealthCheck method.
+// HealthChecker defines a single health probe operation.
 type HealthChecker interface {
 	HealthCheck(ctx context.Context) error
 }
 
-// HealthCheck is a structure containing the configuration for a single health check.
+// HealthCheck describes one registered probe and its unique identifier.
 type HealthCheck struct {
 	// ID is a unique identifier for the healthcheck.
 	ID string
@@ -65,7 +65,10 @@ type HealthCheck struct {
 	Checker HealthChecker
 }
 
-// New creates a new health check configuration.
+// New creates a HealthCheck registration entry.
+//
+// It binds a stable check ID to a HealthChecker implementation so handlers can
+// execute and report results consistently.
 func New(id string, checker HealthChecker) HealthCheck {
 	return HealthCheck{
 		ID:      id,

@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-// Link generates a public Link using the service url.
-// It replaces all segments into the template.
-// The template then gets joined at the end of the service url.
+// Link composes URL by substituting template segments using fmt.Sprintf and appending to service URL.
 func Link(url, template string, segments ...any) string {
 	template = strings.TrimLeft(template, "/")
 

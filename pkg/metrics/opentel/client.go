@@ -51,7 +51,7 @@ const (
 	NameErrorCode = "code"
 )
 
-// TShutdownFuncs is a type alias for the OpenTelemetry shutdown functions.
+// TShutdownFuncs aliases a shutdown callback used to flush/close OTel resources.
 type TShutdownFuncs = func(ctx context.Context) error
 
 // SDKResourceFunc is a function that returns an SDK Resource.
@@ -60,7 +60,7 @@ type SDKResourceFunc = func(ctx context.Context, name, version string) *sdkresou
 // TraceProviderFunc is a function that returns an SDK Trace Provider.
 type TraceProviderFunc = func(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider
 
-// MetricProviderFunc is a function that returns an SDK Metr Provider.
+// MetricProviderFunc is a function that returns an SDK meter provider.
 type MetricProviderFunc = func(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider
 
 // Client is an OpenTelemetry-backed implementation of the shared metrics
@@ -220,7 +220,7 @@ func (c *Client) CloseCtx(ctx context.Context) error {
 	return err
 }
 
-// otelsqlOpts merge default otelsql options.
+// otelsqlOpts merges default otelsql options with additional opts.
 func (c *Client) otelsqlOpts(opts ...otelsql.Option) []otelsql.Option {
 	return append([]otelsql.Option{
 		otelsql.WithMeterProvider(c.meterProvider),
@@ -344,7 +344,7 @@ func getOTELAttr(val, envname, attrname string, ora map[string]string) string {
 	return ""
 }
 
-// parseOTELResourceAttributes extract key/value pairs.
+// parseOTELResourceAttributes extracts key/value pairs.
 func parseOTELResourceAttributes(val string) map[string]string {
 	attr := make(map[string]string)
 
@@ -362,7 +362,7 @@ func parseOTELResourceAttributes(val string) map[string]string {
 	return attr
 }
 
-// DefaultTracerProviderWithExporter provides a default TracerProvider for the given the trace exporter.
+// DefaultTracerProviderWithExporter provides a default tracer provider for exp.
 func DefaultTracerProviderWithExporter(res *sdkresource.Resource, exp sdktrace.SpanExporter) *sdktrace.TracerProvider {
 	return sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(
@@ -402,7 +402,7 @@ func DefaultTracerProvider(ctx context.Context, res *sdkresource.Resource) *sdkt
 	return DefaultTracerProviderStdout(ctx, res)
 }
 
-// DefaultMeterProviderWithExporter provides a MeterProvider for the given the metric exporter.
+// DefaultMeterProviderWithExporter provides a meter provider for exp.
 func DefaultMeterProviderWithExporter(
 	res *sdkresource.Resource,
 	exp sdkmetric.Exporter,
@@ -447,7 +447,7 @@ func DefaultMeterProvider(ctx context.Context, res *sdkresource.Resource) *sdkme
 	return DefaultMeterProviderStdout(ctx, res)
 }
 
-// TraceID returns the trace ID associate with the context.
+// TraceID returns the trace ID associated with ctx.
 func TraceID(ctx context.Context) string {
 	spanCtx := trace.SpanContextFromContext(ctx)
 

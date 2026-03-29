@@ -133,17 +133,14 @@ type Node[T any] struct {
 	children    [indexSize]*Node[T]
 }
 
-// New creates and returns an empty root [Node][T].
+// New constructs an empty root Node[T] for building a numerical prefix trie.
 func New[T any]() *Node[T] {
 	return &Node[T]{}
 }
 
-// Add stores val in the trie at the position defined by the digit sequence in
-// num. Non-digit characters and separators in num are silently skipped;
-// letter characters are mapped to their ITU E.161 keypad digits.
-//
-// Returns true if the key is new (no previous value was stored at that
-// position), or false if an existing non-nil value was overwritten.
+// Add stores val at the trie position defined by num.
+// Non-digit characters are skipped and letters are mapped to keypad digits.
+// It returns true when the key was new, or false when an existing value was overwritten.
 func (t *Node[T]) Add(num string, val *T) bool {
 	node := t
 
@@ -168,23 +165,24 @@ func (t *Node[T]) Add(num string, val *T) bool {
 	return isnew
 }
 
-// Get retrieves a value from the trie using longest-prefix match on num.
+// Get retrieves the longest-prefix match for num.
+// Non-digit characters are skipped. The returned status indicates exact, partial,
+// prefix, or no-match outcomes as described by the StatusMatch* constants.
 //
-// The trie is traversed digit by digit. Non-digit characters in num are
-// skipped. Get returns the last non-nil value encountered on the path (the
-// deepest matching prefix), together with a status code that describes the
-// quality of the match:
+// The status int8 returned by [Node.Get] is a compact bit field:
 //
-//   - [StatusMatchEmpty]         (-127) — no digits in input
-//   - [StatusMatchNo]            (-125) — no root child for first digit
-//   - [StatusMatchFull]          (   0) — exact match, leaf node
-//   - [StatusMatchPartial]       (   1) — exact match, non-leaf node
-//   - [StatusMatchPrefix]        (   2) — stored key is a prefix of input
-//   - [StatusMatchPartialPrefix] (   3) — stored key is a prefix of input, non-leaf
+//	Bit 7 (sign): set   → no digits matched at all (empty input or no root child)
+//	Bit 1:        set   → input extends beyond the matched trie path (prefix match)
+//	Bit 0:        set   → matched node has children (partial match)
 //
-// The returned pointer may be nil when no value was set on any node along the
-// matched path (e.g. intermediate nodes with no stored value). Always check
-// for nil before dereferencing.
+// The six named constants encode every meaningful combination:
+//
+//	StatusMatchEmpty         (-127) — input was empty
+//	StatusMatchNo            (-125) — first digit not in trie
+//	StatusMatchFull          (   0) — exact match, leaf node
+//	StatusMatchPartial       (   1) — exact match, non-leaf node
+//	StatusMatchPrefix        (   2) — stored key is prefix of input, leaf node
+//	StatusMatchPartialPrefix (   3) — stored key is prefix of input, non-leaf node
 func (t *Node[T]) Get(num string) (*T, int8) {
 	var match, digit int
 
@@ -194,7 +192,7 @@ func (t *Node[T]) Get(num string) (*T, int8) {
 	for _, v := range num {
 		i, ok := phonekeypad.KeypadDigit(v)
 		if !ok {
-			// ingnore non-digit characters
+			// ignore non-digit characters
 			continue
 		}
 

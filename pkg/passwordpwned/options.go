@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// Option is the interface that allows to set client options.
+// Option customizes passwordpwned client configuration.
 type Option func(c *Client)
 
 // WithURL overrides the default HIBP API base URL (default: https://api.pwnedpasswords.com).
@@ -15,21 +15,21 @@ func WithURL(addr string) Option {
 	}
 }
 
-// WithUserAgent overrides the default user-agent for service requests.
+// WithUserAgent overrides the User-Agent header used by API requests.
 func WithUserAgent(s string) Option {
 	return func(c *Client) {
 		c.userAgent = s
 	}
 }
 
-// WithTimeout overrides the default request timeout.
+// WithTimeout sets HTTP request timeout.
 func WithTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
 		c.timeout = timeout
 	}
 }
 
-// WithHTTPClient overrides the default HTTP client.
+// WithHTTPClient injects a custom HTTP client implementation.
 func WithHTTPClient(hc HTTPClient) Option {
 	return func(c *Client) {
 		c.httpClient = hc
@@ -43,7 +43,7 @@ func WithRetryAttempts(attempts uint) Option {
 	}
 }
 
-// WithRetryDelay sets the delay to apply after the first failed attempt.
+// WithRetryDelay sets base delay for retry backoff.
 func WithRetryDelay(value time.Duration) Option {
 	return func(c *Client) {
 		c.retryDelay = value

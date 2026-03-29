@@ -13,8 +13,7 @@ type TUID128 struct {
 	r uint64
 }
 
-// UID128 returns a 128-bit unique identifier.
-// The high 64 bits are derived from the current time; the low 64 bits are random.
+// UID128 generates a 128-bit unique identifier with high 64 bits from current time and low 64 bits random.
 func (r *Rnd) UID128() TUID128 {
 	return TUID128{
 		t: (uint64)(time.Now().UnixNano()),
@@ -22,13 +21,12 @@ func (r *Rnd) UID128() TUID128 {
 	}
 }
 
-// Hex returns the UID128 value as a fixed-length 32 digits hexadecimal string.
-// This representation preserves the time-order.
+// Hex returns the UID128 as a 32-character hexadecimal string, preserving time-order.
 func (u TUID128) Hex() string {
 	return string(uhex.Hex64(u.t)) + string(uhex.Hex64(u.r))
 }
 
-// String returns the UID128 value as a base-36 variable-length string.
+// String returns the UID128 as a variable-length base-36 string (concatenated high and low parts).
 func (u TUID128) String() string {
 	return strconv.FormatUint(u.t, 36) + strconv.FormatUint(u.r, 36)
 }

@@ -1,33 +1,30 @@
 package redis
 
-// Option is a type to allow setting custom client options.
+// Option customizes client configuration.
 type Option func(*cfg)
 
-// WithMessageEncodeFunc allow to replace DefaultMessageEncodeFunc.
-// This function used by SendData() to encode and serialize the input data to a string.
+// WithMessageEncodeFunc overrides the encoder used by SendData and SetData.
 func WithMessageEncodeFunc(f TEncodeFunc) Option {
 	return func(c *cfg) {
 		c.messageEncodeFunc = f
 	}
 }
 
-// WithMessageDecodeFunc allow to replace DefaultMessageDecodeFunc().
-// This function used by ReceiveData() to decode a message encoded with messageEncodeFunc to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// WithMessageDecodeFunc overrides the decoder used by ReceiveData and GetData.
 func WithMessageDecodeFunc(f TDecodeFunc) Option {
 	return func(c *cfg) {
 		c.messageDecodeFunc = f
 	}
 }
 
-// WithSubscrChannels sets the channels to subscribe to and receive data from.
+// WithSubscrChannels sets channels subscribed at client creation time.
 func WithSubscrChannels(channels ...string) Option {
 	return func(c *cfg) {
 		c.subChannels = channels
 	}
 }
 
-// WithSubscrChannelOptions sets options for the subscribed channels.
+// WithSubscrChannelOptions sets subscription channel options for go-redis Pub/Sub.
 func WithSubscrChannelOptions(opts ...ChannelOption) Option {
 	return func(c *cfg) {
 		c.subChannelOpts = opts

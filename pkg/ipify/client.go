@@ -17,12 +17,12 @@ const (
 	defaultErrorIP = ""                      // string to return in case of error in place of the IP
 )
 
-// HTTPClient contains the function to perform the actual HTTP request.
+// HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Client represents the config options required by this client.
+// Client resolves public IP addresses through an ipify-compatible endpoint.
 type Client struct {
 	httpClient HTTPClient
 	timeout    time.Duration
@@ -30,7 +30,9 @@ type Client struct {
 	errorIP    string
 }
 
-// defaultClient creates a client with default values.
+// defaultClient returns a Client preloaded with package defaults.
+//
+// It keeps New focused on option application and validation.
 func defaultClient() *Client {
 	return &Client{
 		timeout: defaultTimeout,
@@ -39,7 +41,10 @@ func defaultClient() *Client {
 	}
 }
 
-// New creates a new ipify client instance.
+// New constructs an ipify client with validated configuration.
+//
+// It applies options, initializes a default HTTP client when needed, and
+// validates the configured API URL.
 func New(opts ...Option) (*Client, error) {
 	c := defaultClient()
 
@@ -59,7 +64,10 @@ func New(opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// GetPublicIP retrieves the public IP of this service instance via ipify.com API.
+// GetPublicIP resolves the instance public IP through the configured ipify endpoint.
+//
+// On any request or response failure, it returns the configured fallback
+// errorIP together with the error.
 //
 //nolint:nonamedreturns
 func (c *Client) GetPublicIP(ctx context.Context) (ip string, err error) {

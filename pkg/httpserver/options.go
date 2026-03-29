@@ -12,7 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// Option is a type alias for a function that configures the HTTP httpServer instance.
+// Option configures an [HTTPServer] instance.
 type Option func(*config) error
 
 // WithRouter replaces the default router used by the httpServer (mostly used for test purposes with a mock router).

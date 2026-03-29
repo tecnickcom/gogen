@@ -98,7 +98,7 @@ type TaskFn func(ctx context.Context) error
 // RetryIfFn is the signature of the function used to decide when retry.
 type RetryIfFn func(err error) bool
 
-// Retrier represents an instance of the HTTP retrier.
+// Retrier applies configurable retry logic to generic task functions.
 type Retrier struct {
 	nextDelay         float64
 	delayFactor       float64
@@ -113,7 +113,7 @@ type Retrier struct {
 	taskError         error
 }
 
-// defaultRetrier returns a new instance of Retrier with default configuration values.
+// defaultRetrier returns a [Retrier] initialized with package defaults.
 func defaultRetrier() *Retrier {
 	return &Retrier{
 		attempts:    DefaultAttempts,
@@ -126,12 +126,12 @@ func defaultRetrier() *Retrier {
 	}
 }
 
-// DefaultRetryIf is the default function to check the retry condition.
+// DefaultRetryIf is the default retry predicate: returns true if error is non-nil.
 func DefaultRetryIf(err error) bool {
 	return err != nil
 }
 
-// New creates a new instance.
+// New constructs a Retrier with defaults, applying optional configuration.
 func New(opts ...Option) (*Retrier, error) {
 	r := defaultRetrier()
 
@@ -145,7 +145,7 @@ func New(opts ...Option) (*Retrier, error) {
 	return r, nil
 }
 
-// Run attempts to execute the task according to the retry rules.
+// Run executes the task with exponential backoff and jitter, respecting parent context cancellation.
 func (r *Retrier) Run(ctx context.Context, task TaskFn) error {
 	r.nextDelay = float64(r.delay)
 	r.remainingAttempts = r.attempts
@@ -169,8 +169,7 @@ func (r *Retrier) Run(ctx context.Context, task TaskFn) error {
 	}
 }
 
-// setTimer sets the timer for the Retrier with the given duration.
-// If the timer is already running, it is stopped and the timer channel is drained before resetting.
+// setTimer resets the internal timer, draining its channel if necessary to prevent deadlocks.
 func (r *Retrier) setTimer(d time.Duration) {
 	if !r.timer.Stop() {
 		// make sure to drain timer channel before reset
@@ -183,9 +182,8 @@ func (r *Retrier) setTimer(d time.Duration) {
 	r.timer.Reset(d)
 }
 
-// exec executes the given task function with a timeout and handles retries if necessary.
-// It returns true if the task should not be retried or if the maximum number of attempts has been reached.
-// Otherwise, it returns false to indicate that the task should be retried.
+// exec runs the task with a per-attempt timeout, evaluates the retry predicate, and schedules the next attempt if needed.
+// Returns true to stop retrying (success, exhausted attempts, or retry not needed).
 func (r *Retrier) exec(ctx context.Context, task TaskFn) bool {
 	tctx, cancel := context.WithTimeout(ctx, r.timeout)
 	r.taskError = task(tctx)

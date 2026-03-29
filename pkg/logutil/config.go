@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-// Attr is a type alias for slog.Attr.
+// Attr aliases [slog.Attr] for package-local configuration types.
 type Attr = slog.Attr
 
 // TraceIDFunc is the type of function used to retrieve a Trace ID.
@@ -22,7 +22,7 @@ type Config struct {
 	TraceIDFn  TraceIDFunc
 }
 
-// DefaultConfig returns a Config instance with default settings.
+// DefaultConfig returns a pre-initialized Config with stderr output, JSON format, info level, and empty trace ID.
 func DefaultConfig() *Config {
 	return &Config{
 		Out:        os.Stderr,
@@ -39,7 +39,7 @@ func defaultTraceID() string {
 	return ""
 }
 
-// NewConfig returns a new configuration with the applied options.
+// NewConfig constructs a Config by applying options to DefaultConfig.
 func NewConfig(opts ...Option) (*Config, error) {
 	cfg := DefaultConfig()
 
@@ -53,7 +53,7 @@ func NewConfig(opts ...Option) (*Config, error) {
 	return cfg, nil
 }
 
-// SlogDefaultLogger set and return a slog logger based on the Config settings.
+// SlogDefaultLogger constructs a slog.Logger from Config settings and installs it as the process default.
 func (c *Config) SlogDefaultLogger() *slog.Logger {
 	l := c.SlogLogger()
 
@@ -62,12 +62,12 @@ func (c *Config) SlogDefaultLogger() *slog.Logger {
 	return l
 }
 
-// SlogLogger returns a slog logger based on the Config settings.
+// SlogLogger constructs a slog.Logger from Config settings (format, level, common attributes, hooks).
 func (c *Config) SlogLogger() *slog.Logger {
 	return slog.New(c.SlogHandler())
 }
 
-// SlogHandler returns a new slog Handler based on the Config settings.
+// SlogHandler constructs a slog.Handler from Config settings with optional hook interception.
 func (c *Config) SlogHandler() slog.Handler {
 	opt := &slog.HandlerOptions{
 		Level: c.Level,

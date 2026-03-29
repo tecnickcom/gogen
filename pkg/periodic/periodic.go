@@ -68,13 +68,13 @@ import (
 	"time"
 )
 
-// TaskFn is the signature of the function executed on each tick.
+// TaskFn is the function signature executed on each scheduler tick.
 // The context passed in carries the deadline configured via the timeout
 // parameter of [New]. Implementations should respect context cancellation
 // and return promptly when ctx.Done() is closed.
 type TaskFn func(context.Context)
 
-// Periodic schedules a [TaskFn] to run repeatedly at a configurable interval.
+// Periodic schedules a [TaskFn] to run repeatedly with configurable interval and jitter.
 // Create one with [New], start it with [Periodic.Start], and stop it with
 // [Periodic.Stop]. The zero value is not usable; always use [New].
 type Periodic struct {
@@ -87,18 +87,8 @@ type Periodic struct {
 	cancel     context.CancelFunc
 }
 
-// New creates and validates a new [Periodic] scheduler.
-//
-// Parameters:
-//   - interval: the base duration between successive task invocations; must be > 0.
-//   - jitter:   upper bound of a uniformly distributed random delay added to
-//     interval after each call; must be >= 0. Pass 0 to disable jitter.
-//   - timeout:  deadline applied to each individual task call via a derived
-//     [context.Context]; must be > 0.
-//   - task:     the [TaskFn] to execute on each tick; must not be nil.
-//
-// New returns an error if any parameter fails its constraint. Call
-// [Periodic.Start] on the returned instance to begin execution.
+// New constructs a Periodic scheduler with constraints on interval, jitter, timeout, and task validation.
+// Returns error if any parameter violates its constraint; call Start() to begin execution.
 func New(interval time.Duration, jitter time.Duration, timeout time.Duration, task TaskFn) (*Periodic, error) {
 	intervalNs := int64(interval)
 	if intervalNs < 1 {
@@ -127,12 +117,9 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 	}, nil
 }
 
-// Start begins the periodic execution loop in a new goroutine.
-//
-// The first task invocation fires almost immediately (after ~1 ns). Subsequent
-// invocations are scheduled at interval + rand(0, jitter) after each call
-// completes. The loop exits when ctx is canceled or [Periodic.Stop] is called.
-// Start must not be called more than once on the same [Periodic] instance.
+// Start begins periodic task execution in a background goroutine.
+// First invocation fires almost immediately; subsequent calls are at interval+rand(0,jitter) after each completion.
+// The loop exits when ctx is canceled or Stop() is called. Must not be called more than once on the same instance.
 func (p *Periodic) Start(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	p.cancel = cancel
@@ -140,11 +127,8 @@ func (p *Periodic) Start(ctx context.Context) {
 	go p.loop(ctx)
 }
 
-// Stop cancels the execution loop.
-//
-// It signals the goroutine started by [Periodic.Start] to exit and may block
-// briefly until the currently running task invocation returns. It is safe to
-// call Stop multiple times or before Start.
+// Stop cancels the execution loop and waits for the current task invocation to complete.
+// Safe to call multiple times or before Start() is called.
 func (p *Periodic) Stop() {
 	if p.cancel != nil {
 		p.cancel()

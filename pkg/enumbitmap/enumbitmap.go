@@ -49,7 +49,10 @@ const (
 	maxBit = 32
 )
 
-// BitMapToStrings converts a int bitmap value into a string slice.
+// BitMapToStrings expands a bitmap value into its enum names.
+//
+// Unknown set bits are reported in the returned error while known values are
+// still returned, enabling tolerant parsing and diagnostics.
 func BitMapToStrings(enum map[int]string, v int) ([]string, error) {
 	if v == 0 {
 		return []string{}, nil
@@ -82,7 +85,10 @@ func BitMapToStrings(enum map[int]string, v int) ([]string, error) {
 	return s, err
 }
 
-// StringsToBitMap converts a string slice into a int bitmap value.
+// StringsToBitMap converts enum names into a combined bitmap value.
+//
+// Unknown names are aggregated in the returned error while known values are
+// still included in the bitmap.
 func StringsToBitMap(enum map[string]int, s []string) (int, error) {
 	errStrings := make([]string, 0, maxBit)
 

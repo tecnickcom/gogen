@@ -42,7 +42,7 @@ package uhex
 
 const hexTable = "0123456789abcdef"
 
-// Hex64 converts a uint64 to 16-byte hexadecimal representation.
+// Hex64 converts uint64 to 16-byte lowercase hexadecimal slice, zero-padded and allocated on stack.
 func Hex64(n uint64) []byte {
 	var buf [16]byte
 
@@ -66,7 +66,7 @@ func Hex64(n uint64) []byte {
 	return buf[:]
 }
 
-// Hex32 converts a uint32 to 8-byte hexadecimal representation.
+// Hex32 converts uint32 to 8-byte lowercase hexadecimal slice, zero-padded and allocated on stack.
 func Hex32(n uint32) []byte {
 	var buf [8]byte
 
@@ -82,7 +82,7 @@ func Hex32(n uint32) []byte {
 	return buf[:]
 }
 
-// Hex16 converts a uint16 to 4-byte hexadecimal representation.
+// Hex16 converts uint16 to 4-byte lowercase hexadecimal slice, zero-padded and allocated on stack.
 func Hex16(n uint16) []byte {
 	var buf [4]byte
 
@@ -94,7 +94,7 @@ func Hex16(n uint16) []byte {
 	return buf[:]
 }
 
-// Hex8 converts a uint8 to 2-byte hexadecimal representation.
+// Hex8 converts uint8 to 2-byte lowercase hexadecimal slice, zero-padded and allocated on stack.
 func Hex8(n uint8) []byte {
 	var buf [2]byte
 

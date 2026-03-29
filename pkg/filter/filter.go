@@ -143,11 +143,9 @@ type Processor struct {
 	urlQueryFilterKey string
 }
 
-// New returns a new Processor with the rules and the given options.
-//
-// The first level of rules is matched with an AND operator and the second level with an OR.
-//
-// "[a,[b,c],d]" evaluates to "a AND (b OR c) AND d".
+// New constructs a Processor for declarative rule-based filtering with custom options.
+// The first rule level uses AND semantics; the second uses OR ("[a,[b,c],d]" → "a AND (b OR c) AND d").
+// Customizable via field-tag lookup, query-parameter keys, and result/rule count limits.
 func New(opts ...Option) (*Processor, error) {
 	p := &Processor{
 		maxRules:          DefaultMaxRules,
@@ -165,11 +163,9 @@ func New(opts ...Option) (*Processor, error) {
 	return p, nil
 }
 
-// ParseURLQuery parses and returns the defined query parameter from a *url.URL.
-// Defaults to DefaultURLQueryFilterKey and can be customized with WithQueryFilterKey().
-//
-// If the query parameter is empty or missing, will return a nil slice.
-// If there is a value which is invalid, will return an error.
+// ParseURLQuery unmarshals the JSON filter rule set from a URL query parameter.
+// Defaults to the "filter" key; override with WithQueryFilterKey().
+// Returns nil rules when the key is missing or empty; returns error on invalid JSON.
 func (p *Processor) ParseURLQuery(q url.Values) ([][]Rule, error) {
 	value := q.Get(p.urlQueryFilterKey)
 	if value == "" {
@@ -179,23 +175,16 @@ func (p *Processor) ParseURLQuery(q url.Values) ([][]Rule, error) {
 	return ParseJSON(value)
 }
 
-// Apply filters the slice to remove elements not matching the defined rules.
-// The slice parameter must be a pointer to a slice and is filtered *in place*.
-//
-// This is a shortcut to ApplySubset with 0 offset and maxResults length.
-//
-// Returns the length of the filtered slice, the total number of elements that matched the filter, and the eventual error.
+// Apply filters a slice by removing non-matching elements in place.
+// Convenience method equivalent to ApplySubset(rules, slicePtr, 0, p.maxResults).
+// Returns filtered-slice length, total-match count, and any error.
 func (p *Processor) Apply(rules [][]Rule, slicePtr any) (uint, uint, error) {
 	return p.ApplySubset(rules, slicePtr, 0, p.maxResults)
 }
 
-// ApplySubset filters the slice to remove elements not matching the defined rules.
-// The slice parameter must be a pointer to a slice and is filtered *in place*.
-//
-// Depending on offset, the first results are filtered even if they match
-// Depending on length, the filtered slice will only contain a set number of elements.
-//
-// Returns the length of the filtered slice, the total number of elements that matched the filter, and the eventual error.
+// ApplySubset filters a slice by removing non-matching elements in place, with pagination support.
+// The slicePtr must be a pointer to a slice; offset and length control pagination within matches.
+// Returns filtered-slice length within window, total-match count overall, and any error.
 func (p *Processor) ApplySubset(rules [][]Rule, slicePtr any, offset, length uint) (uint, uint, error) {
 	if length < 1 {
 		return 0, 0, errors.New("length must be at least 1")
@@ -243,11 +232,8 @@ func (p *Processor) checkRulesCount(rules [][]Rule) error {
 	return nil
 }
 
-// filterSliceValue filters a slice passed as a reflect.Value, in place.
-// It calls the matcher function to evaluate whether to keep each item or not.
-//
-// n is number of matched elements in the slice.
-// m is number of total matched elements.
+// filterSliceValue filters a reflect.Value slice in place using a matcher function.
+// Returns matched-element count within pagination window and total-match count overall.
 func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length int, matcher func(any) (bool, error)) (int, uint, error) {
 	skip := offset
 
@@ -290,7 +276,7 @@ func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length in
 	return n, m, nil
 }
 
-// evaluateRules evaluates the set of rules over an object.
+// evaluateRules applies AND-OR rule composition to determine object match: outer-AND, inner-OR.
 //
 //nolint:gocognit
 func (p *Processor) evaluateRules(rules [][]Rule, obj any) (bool, error) {
@@ -317,8 +303,8 @@ func (p *Processor) evaluateRules(rules [][]Rule, obj any) (bool, error) {
 	return true, nil
 }
 
-// evaluateRule evaluates a specific rule over an object.
-// It needs a pointer to let the Rule reuse its state (e.g. precompiled regexp).
+// evaluateRule resolves a rule field, applies the evaluator, and treats missing fields as non-matches.
+// Returns false without error for missing fields; pointer to obj allows Rule state reuse (e.g. compiled regexp).
 func (p *Processor) evaluateRule(rule *Rule, obj any) (bool, error) {
 	value, err := p.fields.GetFieldValue(obj, rule.Field)
 	if errors.Is(err, errFieldNotFound) {
@@ -332,7 +318,7 @@ func (p *Processor) evaluateRule(rule *Rule, obj any) (bool, error) {
 	return rule.Evaluate(value)
 }
 
-// ParseJSON parses and returns a [][]Rule from its JSON representation.
+// ParseJSON unmarshals rule-set JSON into its composite AND-OR structure.
 func ParseJSON(s string) ([][]Rule, error) {
 	var r [][]Rule
 

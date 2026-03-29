@@ -12,7 +12,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
-// Client wraps the default HTTP client functionalities and adds logging and instrumentation capabilities.
+// Client wraps http.Client with trace ID propagation, structured request/response logging, and optional debug payload dumps.
 type Client struct {
 	client            *http.Client
 	component         string
@@ -38,7 +38,7 @@ func defaultClient() *Client {
 	}
 }
 
-// New creates a new HTTP client instance.
+// New constructs an HTTP client with 1-minute timeout, trace ID propagation, and request/response logging from provided options.
 func New(opts ...Option) *Client {
 	c := defaultClient()
 
@@ -49,7 +49,7 @@ func New(opts ...Option) *Client {
 	return c
 }
 
-// Do performs the HTTP request with added trace ID and logging.
+// Do executes the request with trace ID attachment, structured logging, and optional debug payload dumps; returns error from underlying client.
 //
 //nolint:gocognit
 func (c *Client) Do(r *http.Request) (*http.Response, error) {

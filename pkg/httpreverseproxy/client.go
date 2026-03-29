@@ -14,7 +14,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
-// HTTPClient contains the function to perform the HTTP request to the proxied service.
+// HTTPClient is the transport used by [Client] for outgoing proxied requests.
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -29,7 +29,7 @@ type Client struct {
 // errHandler defines the function signature for error handlers.
 type errHandler = func(w http.ResponseWriter, r *http.Request, err error)
 
-// New returns a new instance of the Client.
+// New constructs reverse proxy client forwarding requests to upstream address with default rewrite and X-Forwarded-* headers.
 func New(addr string, opts ...Option) (*Client, error) {
 	c := &Client{}
 
@@ -80,12 +80,12 @@ func New(addr string, opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// ForwardRequest forwards a request to the proxied service.
+// ForwardRequest forwards HTTP request to configured upstream service via reverse proxy.
 func (c *Client) ForwardRequest(w http.ResponseWriter, r *http.Request) {
 	c.proxy.ServeHTTP(w, r)
 }
 
-// httpWrapper wraps an HTTPClient to implement the RoundTripper interface.
+// httpWrapper adapts [HTTPClient] to the [http.RoundTripper] interface.
 type httpWrapper struct {
 	client HTTPClient
 }

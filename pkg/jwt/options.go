@@ -8,35 +8,35 @@ import (
 // Option is the interface that allows to set the options.
 type Option func(c *JWT)
 
-// WithExpirationTime set the JWT expiration time.
+// WithExpirationTime sets the token lifetime from issuance to expiry.
 func WithExpirationTime(expirationTime time.Duration) Option {
 	return func(c *JWT) {
 		c.expirationTime = expirationTime
 	}
 }
 
-// WithRenewTime set the time before the JWT expiration when the renewal is allowed.
+// WithRenewTime sets how close to expiry renewal becomes allowed.
 func WithRenewTime(renewTime time.Duration) Option {
 	return func(c *JWT) {
 		c.renewTime = renewTime
 	}
 }
 
-// WithSendResponseFn set the function used to send back the HTTP responses.
+// WithSendResponseFn overrides how auth handlers write HTTP responses.
 func WithSendResponseFn(sendResponseFn SendResponseFn) Option {
 	return func(c *JWT) {
 		c.sendResponseFn = sendResponseFn
 	}
 }
 
-// WithAuthorizationHeader sets the authorization header name.
+// WithAuthorizationHeader sets the header key used to read bearer tokens.
 func WithAuthorizationHeader(authorizationHeader string) Option {
 	return func(c *JWT) {
 		c.authorizationHeader = authorizationHeader
 	}
 }
 
-// WithSigningMethod sets the signing method function.
+// WithSigningMethod sets the JWT signing algorithm.
 func WithSigningMethod(signingMethod SigningMethod) Option {
 	return func(c *JWT) {
 		c.signingMethod = signingMethod
@@ -67,7 +67,7 @@ func WithClaimAudience(audience []string) Option {
 	}
 }
 
-// WithLogger overrides the default logger.
+// WithLogger sets the logger used by authentication handlers.
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *JWT) {
 		c.logger = logger

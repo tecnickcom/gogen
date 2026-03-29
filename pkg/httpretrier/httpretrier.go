@@ -76,16 +76,16 @@ const (
 	DefaultJitter = 100 * time.Millisecond
 )
 
-// RetryIfFn is the signature of the function used to decide when retry.
+// RetryIfFn decides whether a request should be retried after a response/error.
 type RetryIfFn func(r *http.Response, err error) bool
 
-// HTTPClient contains the function to perform the actual HTTP request.
+// HTTPClient is the minimal client contract used by [HTTPRetrier].
 type HTTPClient interface {
 	// Do performs the HTTP request.
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// HTTPRetrier represents an instance of the HTTP retrier.
+// HTTPRetrier applies configurable retry policies to HTTP requests.
 type HTTPRetrier struct {
 	nextDelay         float64
 	delayFactor       float64
@@ -114,7 +114,7 @@ func defaultHTTPRetrier() *HTTPRetrier {
 	}
 }
 
-// New creates a new instance.
+// New constructs HTTP retrier wrapping client with exponential backoff retry orchestration from provided options.
 func New(httpClient HTTPClient, opts ...Option) (*HTTPRetrier, error) {
 	c := defaultHTTPRetrier()
 
@@ -130,7 +130,7 @@ func New(httpClient HTTPClient, opts ...Option) (*HTTPRetrier, error) {
 	return c, nil
 }
 
-// Do attempts to run the request according to the retry rules.
+// Do executes request up to configured attempts with exponential delay and jitter between retries, applying retry decision function to each response.
 func (c *HTTPRetrier) Do(r *http.Request) (*http.Response, error) {
 	c.nextDelay = float64(c.delay)
 	c.remainingAttempts = c.attempts
@@ -145,13 +145,12 @@ func (c *HTTPRetrier) Do(r *http.Request) (*http.Response, error) {
 	return c.doResponse, c.doError
 }
 
-// defaultRetryIf is the default function to check the retry condition.
+// defaultRetryIf is the default retry policy: returns true only when error is not nil (transport failures).
 func defaultRetryIf(_ *http.Response, err error) bool {
 	return err != nil
 }
 
-// RetryIfForWriteRequests is a retry check function used for write requests
-// (e.g. PUT/PATCH/POST requests that can modify the remote state).
+// RetryIfForWriteRequests is a retry policy for state-changing requests: retries on 429/502/503 or transport error.
 func RetryIfForWriteRequests(r *http.Response, err error) bool {
 	if err != nil {
 		return true
@@ -168,8 +167,7 @@ func RetryIfForWriteRequests(r *http.Response, err error) bool {
 	return false
 }
 
-// RetryIfForReadRequests is a retry check function used for read requests
-// (e.g. GET requests that are guaranteed to not modify the remote state).
+// RetryIfForReadRequests is a retry policy for idempotent requests: retries on 404/408/409/423/425/429/500/502/503/504/507 or transport error.
 func RetryIfForReadRequests(r *http.Response, err error) bool {
 	if err != nil {
 		return true
@@ -194,7 +192,7 @@ func RetryIfForReadRequests(r *http.Response, err error) bool {
 	return false
 }
 
-// RetryIfFnByHTTPMethod returns a RetryIfFn based on the HTTP method.
+// RetryIfFnByHTTPMethod selects retry policy by HTTP method: idempotent read policy for GET, write policy for all others.
 func RetryIfFnByHTTPMethod(httpMethod string) RetryIfFn {
 	if httpMethod == http.MethodGet {
 		return RetryIfForReadRequests

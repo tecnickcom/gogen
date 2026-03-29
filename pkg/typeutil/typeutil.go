@@ -60,7 +60,7 @@ import (
 	"reflect"
 )
 
-// IsNil returns true if the input value is nil.
+// IsNil reliably detects nil including nil pointers wrapped in non-nil interfaces; works on any nilable type.
 func IsNil(v any) bool {
 	if v == nil {
 		return true
@@ -77,12 +77,12 @@ func IsNil(v any) bool {
 	return false
 }
 
-// IsZero returns true if the input value is equal to the zero instance (e.g. empty string, 0 int, nil pointer).
+// IsZero returns true if value equals type T's zero value without requiring comparable constraint.
 func IsZero[T any](v T) bool {
 	return reflect.ValueOf(&v).Elem().IsZero()
 }
 
-// Zero returns the zero instance (e.g. empty string, 0 int, nil pointer).
+// Zero returns zero value for type T as a generic sentinel, useful for readable error returns.
 func Zero[T any](_ T) T {
 	var zero T
 	return zero
@@ -95,7 +95,7 @@ func Pointer[T any](v T) *T {
 	return new(v)
 }
 
-// Value returns the value of the provided pointer or the type default (zero value) if nil.
+// Value safely dereferences pointer p, returning zero value of T if nil.
 func Value[T any](p *T) T {
 	if IsNil(p) {
 		var zero T
@@ -105,13 +105,7 @@ func Value[T any](p *T) T {
 	return *p
 }
 
-// BoolToInt converts a boolean value to an integer.
-//
-// NOTE: this is currently the fastest implementation as it will be optimized by
-// the compiler with a MOVBLZX instruction.
-// Ref.:
-//   - https://0x0f.me/blog/golang-compiler-optimization/
-//   - https://github.com/golang/go/issues/6011
+// BoolToInt converts bool to 0 or 1 with compiler optimization to MOVBLZX; avoids branch in hot paths.
 func BoolToInt(b bool) int {
 	var i int
 

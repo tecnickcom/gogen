@@ -2,127 +2,127 @@ package timeutil
 
 import "time"
 
-// Common types for DateTime[T].
+// Marker types implementing DateTimeType for standard time layouts.
 
-// TLayout represents the Layout time type.
+// TLayout selects [time.Layout].
 type TLayout struct{}
 
-// Format returns the Layout format string.
+// Format returns the layout string.
 func (TLayout) Format() string { return time.Layout }
 
-// TANSIC represents the ANSIC time type.
+// TANSIC selects [time.ANSIC].
 type TANSIC struct{}
 
-// Format returns the ANSIC format string.
+// Format returns the layout string.
 func (TANSIC) Format() string { return time.ANSIC }
 
-// TUnixDate represents the UnixDate time type.
+// TUnixDate selects [time.UnixDate].
 type TUnixDate struct{}
 
-// Format returns the UnixDate format string.
+// Format returns the layout string.
 func (TUnixDate) Format() string { return time.UnixDate }
 
-// TRubyDate represents the RubyDate time type.
+// TRubyDate selects [time.RubyDate].
 type TRubyDate struct{}
 
-// Format returns the RubyDate format string.
+// Format returns the layout string.
 func (TRubyDate) Format() string { return time.RubyDate }
 
-// TRFC822 represents the RFC822 time type.
+// TRFC822 selects [time.RFC822].
 type TRFC822 struct{}
 
-// Format returns the RFC822 format string.
+// Format returns the layout string.
 func (TRFC822) Format() string { return time.RFC822 }
 
-// TRFC822Z represents the RFC822Z time type.
+// TRFC822Z selects [time.RFC822Z].
 type TRFC822Z struct{}
 
-// Format returns the RFC822Z format string.
+// Format returns the layout string.
 func (TRFC822Z) Format() string { return time.RFC822Z }
 
-// TRFC850 represents the RFC850 time type.
+// TRFC850 selects [time.RFC850].
 type TRFC850 struct{}
 
-// Format returns the RFC850 format string.
+// Format returns the layout string.
 func (TRFC850) Format() string { return time.RFC850 }
 
-// TRFC1123 represents the RFC1123 time type.
+// TRFC1123 selects [time.RFC1123].
 type TRFC1123 struct{}
 
-// Format returns the RFC1123 format string.
+// Format returns the layout string.
 func (TRFC1123) Format() string { return time.RFC1123 }
 
-// TRFC1123Z represents the RFC1123Z time type.
+// TRFC1123Z selects [time.RFC1123Z].
 type TRFC1123Z struct{}
 
-// Format returns the RFC1123Z format string.
+// Format returns the layout string.
 func (TRFC1123Z) Format() string { return time.RFC1123Z }
 
-// TRFC3339 represents the RFC3339 time type.
+// TRFC3339 selects [time.RFC3339].
 type TRFC3339 struct{}
 
-// Format returns the RFC3339 format string.
+// Format returns the layout string.
 func (TRFC3339) Format() string { return time.RFC3339 }
 
-// TRFC3339Nano represents the RFC3339Nano time type.
+// TRFC3339Nano selects [time.RFC3339Nano].
 type TRFC3339Nano struct{}
 
-// Format returns the RFC3339Nano format string.
+// Format returns the layout string.
 func (TRFC3339Nano) Format() string { return time.RFC3339Nano }
 
-// TKitchen represents the Kitchen time type.
+// TKitchen selects [time.Kitchen].
 type TKitchen struct{}
 
-// Format returns the Kitchen format string.
+// Format returns the layout string.
 func (TKitchen) Format() string { return time.Kitchen }
 
-// TStamp represents the Stamp time type.
+// TStamp selects [time.Stamp].
 type TStamp struct{}
 
-// Format returns the Stamp format string.
+// Format returns the layout string.
 func (TStamp) Format() string { return time.Stamp }
 
-// TStampMilli represents the StampMilli time type.
+// TStampMilli selects [time.StampMilli].
 type TStampMilli struct{}
 
-// Format returns the StampMilli format string.
+// Format returns the layout string.
 func (TStampMilli) Format() string { return time.StampMilli }
 
-// TStampMicro represents the StampMicro time type.
+// TStampMicro selects [time.StampMicro].
 type TStampMicro struct{}
 
-// Format returns the StampMicro format string.
+// Format returns the layout string.
 func (TStampMicro) Format() string { return time.StampMicro }
 
-// TStampNano represents the StampNano time type.
+// TStampNano selects [time.StampNano].
 type TStampNano struct{}
 
-// Format returns the StampNano format string.
+// Format returns the layout string.
 func (TStampNano) Format() string { return time.StampNano }
 
-// TDateTime represents the DateTime time type.
+// TDateTime selects [time.DateTime].
 type TDateTime struct{}
 
-// Format returns the DateTime format string.
+// Format returns the layout string.
 func (TDateTime) Format() string { return time.DateTime }
 
-// TDateOnly represents the DateOnly time type.
+// TDateOnly selects [time.DateOnly].
 type TDateOnly struct{}
 
-// Format returns the DateOnly format string.
+// Format returns the layout string.
 func (TDateOnly) Format() string { return time.DateOnly }
 
-// TTimeOnly represents the TimeOnly time type.
+// TTimeOnly selects [time.TimeOnly].
 type TTimeOnly struct{}
 
-// Format returns the TimeOnly format string.
+// Format returns the layout string.
 func (TTimeOnly) Format() string { return time.TimeOnly }
 
 // TimeJiraFormat is the Jira date-time format string.
 const TimeJiraFormat = "2006-01-02T15:04:05.000-0700"
 
-// TJira represents the Jira time type.
+// TJira selects [TimeJiraFormat].
 type TJira struct{}
 
-// Format returns the Jira format string.
+// Format returns the layout string.
 func (TJira) Format() string { return TimeJiraFormat }

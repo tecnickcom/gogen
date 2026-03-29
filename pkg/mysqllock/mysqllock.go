@@ -107,33 +107,12 @@ type MySQLLock struct {
 	db *sql.DB
 }
 
-// New creates a [MySQLLock] bound to db.
-//
-// The provided db must be configured for MySQL and kept open for the full
-// lifetime of lock operations.
+// New constructs distributed lock manager using MySQL named locks on provided database connection.
 func New(db *sql.DB) *MySQLLock {
 	return &MySQLLock{db: db}
 }
 
-// Acquire attempts to acquire a named MySQL lock.
-//
-// On success, it returns a [ReleaseFunc] that releases the lock by calling
-// RELEASE_LOCK on the same SQL connection that acquired it.
-//
-// Parameters:
-//   - ctx controls lock acquisition and connection retrieval.
-//   - key is the lock name in MySQL's global named-lock namespace.
-//   - timeout is passed to GET_LOCK in whole seconds (fractional parts are
-//     truncated).
-//
-// Returns:
-//   - (release, nil) on success; release must be called by the caller.
-//   - (nil, [ErrTimeout]) if acquisition times out.
-//   - (nil, [ErrFailed]) on non-timeout lock acquisition failure.
-//   - (nil, err) for transport/query/scan errors.
-//
-// A keep-alive goroutine is started after successful acquisition to keep the
-// lock-owning connection active until release is called.
+// Acquire acquires named lock with timeout, returning release function and keep-alive management; returns ErrTimeout if acquisition fails due to timeout.
 //
 //nolint:contextcheck,nonamedreturns
 func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Duration) (rf ReleaseFunc, err error) {

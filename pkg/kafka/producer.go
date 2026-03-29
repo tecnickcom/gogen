@@ -12,19 +12,19 @@ import (
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
 type TEncodeFunc func(ctx context.Context, data any) ([]byte, error)
 
-// producerClient is an interface representing the methods used by Producer.
+// producerClient captures the kafka.Writer methods used by [Producer].
 type producerClient interface {
 	WriteMessages(ctx context.Context, msg ...kafka.Message) error
 	Close() error
 }
 
-// Producer represents a wrapper around kafka.Producer.
+// Producer publishes messages to a Kafka topic with pluggable encoding.
 type Producer struct {
 	cfg    *config
 	client producerClient
 }
 
-// NewProducer creates a new instance of Producer.
+// NewProducer constructs a Kafka producer for a topic with optional tuning (encoding, balancing).
 func NewProducer(urls []string, topic string, opts ...Option) (*Producer, error) {
 	cfg := defaultConfig()
 
@@ -48,7 +48,7 @@ func NewProducer(urls []string, topic string, opts ...Option) (*Producer, error)
 	}, nil
 }
 
-// Close cleans up Producer's internal resources.
+// Close releases Producer's resources and closes the broker connection.
 func (p *Producer) Close() error {
 	err := p.client.Close()
 	if err != nil {
@@ -58,7 +58,7 @@ func (p *Producer) Close() error {
 	return nil
 }
 
-// Send sends a message to Kafka topic.
+// Send publishes a raw byte message to the Kafka topic.
 func (p *Producer) Send(ctx context.Context, msg []byte) error {
 	err := p.client.WriteMessages(
 		ctx,
@@ -73,12 +73,12 @@ func (p *Producer) Send(ctx context.Context, msg []byte) error {
 	return nil
 }
 
-// DefaultMessageEncodeFunc is the default function to encode the input data for SendData().
+// DefaultMessageEncodeFunc is the default SendData() serializer, using encode.ByteEncode.
 func DefaultMessageEncodeFunc(_ context.Context, data any) ([]byte, error) {
 	return encode.ByteEncode(data) //nolint:wrapcheck
 }
 
-// SendData delivers the specified data as encoded message to the queue.
+// SendData encodes the data argument and publishes the result to the Kafka topic using the configured encoder.
 func (p *Producer) SendData(ctx context.Context, data any) error {
 	message, err := p.cfg.messageEncodeFunc(ctx, data)
 	if err != nil {

@@ -99,7 +99,7 @@ type SendResponseFn func(ctx context.Context, w http.ResponseWriter, statusCode 
 // The hash values should be generated via bcrypt.GenerateFromPassword(pwd, bcrypt.MinCost).
 type UserHashFn func(username string) ([]byte, error)
 
-// SigningMethod is a type alias for the Signing Method interface.
+// SigningMethod aliases jwt.SigningMethod to keep package-level APIs decoupled from direct imports.
 type SigningMethod jwt.SigningMethod
 
 // Credentials holds the user name and password from the request body.
@@ -115,7 +115,7 @@ type Claims struct {
 	Username string `json:"username"`
 }
 
-// JWT represents an instance of the JWT object.
+// JWT provides HTTP handlers and helpers for token-based authentication.
 type JWT struct {
 	key                 []byte         // JWT signing key.
 	expirationTime      time.Duration  // JWT expiration time.
@@ -132,7 +132,10 @@ type JWT struct {
 	rnd                 *random.Rnd
 }
 
-// defaultJWT creates a JWT instance with default values.
+// defaultJWT returns a JWT instance initialized with package defaults.
+//
+// It wires default expiration, renew window, authorization header, signing
+// method, logger, and response helpers.
 func defaultJWT() *JWT {
 	cfg := &JWT{
 		expirationTime:      DefaultExpirationTime,
@@ -149,12 +152,17 @@ func defaultJWT() *JWT {
 	return cfg
 }
 
-// defaultSigningMethod returns the default JWT signing method.
+// defaultSigningMethod returns the default signing algorithm.
+//
+// The package default is HMAC-SHA256.
 func defaultSigningMethod() SigningMethod {
 	return jwt.SigningMethodHS256
 }
 
-// New creates a new instance.
+// New constructs a JWT authentication helper.
+//
+// It validates required dependencies (signing key and user hash resolver),
+// applies options, and prepares HTTP response utilities.
 func New(key []byte, userHashFn UserHashFn, opts ...Option) (*JWT, error) {
 	if len(key) == 0 {
 		return nil, errors.New("empty JWT key")
@@ -177,7 +185,10 @@ func New(key []byte, userHashFn UserHashFn, opts ...Option) (*JWT, error) {
 	return c, nil
 }
 
-// LoginHandler handles the login endpoint.
+// LoginHandler authenticates credentials and returns a signed JWT.
+//
+// It expects a JSON body with username/password, validates credentials against
+// UserHashFn and bcrypt, and replies with a token on success.
 func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var creds Credentials
 
@@ -237,7 +248,10 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	c.sendTokenResponse(w, r, &claims)
 }
 
-// RenewHandler handles the JWT renewal endpoint.
+// RenewHandler renews a valid token when it is close to expiration.
+//
+// Requests are rejected if the token is invalid or still outside the renew
+// window configured by renewTime.
 func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
 	claims, err := c.checkToken(r)
 	if err != nil {
@@ -263,7 +277,9 @@ func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
 	c.sendTokenResponse(w, r, claims)
 }
 
-// IsAuthorized checks if the user is authorized via JWT token.
+// IsAuthorized validates the bearer token on the incoming request.
+//
+// On failure it writes an unauthorized response and returns false.
 func (c *JWT) IsAuthorized(w http.ResponseWriter, r *http.Request) bool {
 	claims, err := c.checkToken(r)
 	if err != nil {
@@ -279,7 +295,9 @@ func (c *JWT) IsAuthorized(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-// sendTokenResponse sends the signed JWT token if claims are valid.
+// sendTokenResponse signs claims and writes the token response.
+//
+// If signing fails, it returns a 500 response with a generic error message.
 func (c *JWT) sendTokenResponse(w http.ResponseWriter, r *http.Request, claims *Claims) {
 	token := jwt.NewWithClaims(c.signingMethod, claims)
 
@@ -297,8 +315,9 @@ func (c *JWT) sendTokenResponse(w http.ResponseWriter, r *http.Request, claims *
 	c.sendResponseFn(r.Context(), w, http.StatusOK, signedToken)
 }
 
-// checkToken extracts the JWT token from the header "Authorization: Bearer <TOKEN>"
-// and returns an error if the token is invalid.
+// checkToken extracts and validates the bearer token from the authorization header.
+//
+// It returns parsed claims and any validation/parsing error.
 func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
 	claims := &Claims{}
 
@@ -325,7 +344,7 @@ func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
 	return claims, err //nolint:wrapcheck
 }
 
-// defaultSendResponse is the default function used to send back the HTTP responses.
+// defaultSendResponse writes plain-text HTTP responses via httputil.HTTPResp.
 func (c *JWT) defaultSendResponse(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
 	c.httpresp.SendText(ctx, w, statusCode, data)
 }

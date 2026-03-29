@@ -10,14 +10,12 @@ type equalFold struct {
 	ref any
 }
 
-// newEqualFold returns an Evaluator that checks for equality under Unicode case-folding.
+// newEqualFold constructs a case-insensitive equality evaluator using Unicode case-folding.
 func newEqualFold(r any) Evaluator {
 	return &equalFold{ref: convertValue(r)}
 }
 
-// Evaluate returns whether reference and actual value are considered equal under simple Unicode case-folding, which is a more general form of case-insensitivity.
-// For example "AB" will match "ab".
-// It converts numerical values implicitly before comparison.
+// Evaluate returns true for strings equal under Unicode case-folding (e.g., "AB" matches "ab"), with numeric normalization fallback.
 func (e *equalFold) Evaluate(v any) bool {
 	v = convertValue(v)
 

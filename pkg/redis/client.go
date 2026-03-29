@@ -16,16 +16,16 @@ type TEncodeFunc func(ctx context.Context, data any) (string, error)
 // TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
 type TDecodeFunc func(ctx context.Context, msg string, data any) error
 
-// SrvOptions is an alias for the parent library client options.
+// SrvOptions aliases go-redis client options used when constructing a client.
 type SrvOptions = libredis.Options
 
-// RMessage is an alias for the parent library Message type.
+// RMessage aliases a go-redis Pub/Sub message.
 type RMessage = libredis.Message
 
-// ChannelOption is an alias for the parent library ChannelOption.
+// ChannelOption aliases go-redis Pub/Sub channel options.
 type ChannelOption = libredis.ChannelOption
 
-// RClient represents the mockable functions in the parent Redis Client.
+// RClient defines the go-redis client calls used by [Client].
 type RClient interface {
 	Close() error
 	Del(ctx context.Context, keys ...string) *libredis.IntCmd
@@ -36,13 +36,13 @@ type RClient interface {
 	Subscribe(ctx context.Context, channels ...string) *libredis.PubSub
 }
 
-// RPubSub represents the mockable functions in the parent Redis PubSub.
+// RPubSub defines the go-redis Pub/Sub calls used by [Client].
 type RPubSub interface {
 	Channel(opts ...libredis.ChannelOption) <-chan *libredis.Message
 	Close() error
 }
 
-// Client is a wrapper for the Redis Client.
+// Client wraps Redis KV/PubSub operations with optional typed payload codecs.
 type Client struct {
 	// rclient is the upstream Client.
 	rclient RClient
@@ -63,7 +63,7 @@ type Client struct {
 	messageDecodeFunc TDecodeFunc
 }
 
-// New creates a new instance of the Redis client wrapper.
+// New constructs a Redis client wrapper with optional Pub/Sub subscriptions and pluggable message codecs.
 func New(ctx context.Context, srvopt *SrvOptions, opts ...Option) (*Client, error) {
 	cfg, err := loadConfig(ctx, srvopt, opts...)
 	if err != nil {
@@ -83,7 +83,7 @@ func New(ctx context.Context, srvopt *SrvOptions, opts ...Option) (*Client, erro
 	}, nil
 }
 
-// Close closes the parent client, releasing any open resources.
+// Close gracefully closes Pub/Sub and Redis client resources.
 func (c *Client) Close() error {
 	err := c.rpubsub.Close()
 	if err != nil {
@@ -98,8 +98,7 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// Set a raw value for the specified key with an expiration time.
-// Zero expiration means the key has no expiration time.
+// Set stores a raw value for key with expiration; zero expiration disables TTL.
 func (c *Client) Set(ctx context.Context, key string, value any, exp time.Duration) error {
 	err := c.rclient.Set(ctx, key, value, exp).Err()
 	if err != nil {
@@ -109,7 +108,7 @@ func (c *Client) Set(ctx context.Context, key string, value any, exp time.Durati
 	return nil
 }
 
-// Get retrieves the raw value of the specified key and extract its content in the value parameter.
+// Get retrieves the raw value of key and scans it into value.
 func (c *Client) Get(ctx context.Context, key string, value any) error {
 	err := c.rclient.Get(ctx, key).Scan(value)
 	if err != nil {
@@ -119,7 +118,7 @@ func (c *Client) Get(ctx context.Context, key string, value any) error {
 	return nil
 }
 
-// Del deletes the specified key from the datastore.
+// Del deletes key from the datastore.
 func (c *Client) Del(ctx context.Context, key string) error {
 	err := c.rclient.Del(ctx, key).Err()
 	if err != nil {
@@ -129,7 +128,7 @@ func (c *Client) Del(ctx context.Context, key string) error {
 	return nil
 }
 
-// Send publish a raw value to the specified channel.
+// Send publishes a raw value to channel.
 func (c *Client) Send(ctx context.Context, channel string, message any) error {
 	err := c.rclient.Publish(ctx, channel, message).Err()
 	if err != nil {
@@ -139,8 +138,7 @@ func (c *Client) Send(ctx context.Context, channel string, message any) error {
 	return nil
 }
 
-// Receive receives a raw string message from a subscribed channel.
-// Returns the channel name and the message value.
+// Receive returns the next raw message from subscribed channels as channel name and payload.
 func (c *Client) Receive(ctx context.Context) (string, string, error) {
 	select {
 	case <-ctx.Done():
@@ -154,30 +152,27 @@ func (c *Client) Receive(ctx context.Context) (string, string, error) {
 	return "", "", errors.New("the receiving channel is closed")
 }
 
-// MessageEncode encodes and serialize the input data to a string.
+// MessageEncode encodes and serializes data into a string payload.
 func MessageEncode(data any) (string, error) {
 	return encode.Encode(data) //nolint:wrapcheck
 }
 
-// MessageDecode decodes a message encoded with MessageEncode to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// MessageDecode decodes a MessageEncode payload into data, which must be a pointer.
 func MessageDecode(msg string, data any) error {
 	return encode.Decode(msg, data) //nolint:wrapcheck
 }
 
-// DefaultMessageEncodeFunc is the default function to encode and serialize the input data for SendData().
+// DefaultMessageEncodeFunc provides default encoding used by SendData.
 func DefaultMessageEncodeFunc(_ context.Context, data any) (string, error) {
 	return MessageEncode(data)
 }
 
-// DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// DefaultMessageDecodeFunc provides default decoding used by ReceiveData.
 func DefaultMessageDecodeFunc(_ context.Context, msg string, data any) error {
 	return MessageDecode(msg, data)
 }
 
-// SetData sets an encoded value for the specified key with an expiration time.
-// Zero expiration means the key has no expiration time.
+// SetData encodes data and stores it at key with expiration; zero expiration disables TTL.
 func (c *Client) SetData(ctx context.Context, key string, data any, exp time.Duration) error {
 	value, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
@@ -187,7 +182,7 @@ func (c *Client) SetData(ctx context.Context, key string, data any, exp time.Dur
 	return c.Set(ctx, key, value, exp)
 }
 
-// GetData retrieves an encoded value of the specified key and extract its content in the data parameter.
+// GetData retrieves an encoded value from key and decodes it into data.
 func (c *Client) GetData(ctx context.Context, key string, data any) error {
 	var value string
 
@@ -199,7 +194,7 @@ func (c *Client) GetData(ctx context.Context, key string, data any) error {
 	return c.messageDecodeFunc(ctx, value, data)
 }
 
-// SendData publish an encoded value to the specified channel.
+// SendData encodes data and publishes it to channel.
 func (c *Client) SendData(ctx context.Context, channel string, data any) error {
 	message, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
@@ -209,9 +204,7 @@ func (c *Client) SendData(ctx context.Context, channel string, data any) error {
 	return c.Send(ctx, channel, message)
 }
 
-// ReceiveData receives an encoded message from a subscribed channel,
-// and extract its content in the data parameter.
-// Returns the channel name in case of success.
+// ReceiveData receives an encoded message, decodes it into data, and returns the source channel.
 func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 	channel, value, err := c.Receive(ctx)
 	if err != nil {
@@ -221,7 +214,7 @@ func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 	return channel, c.messageDecodeFunc(ctx, value, data)
 }
 
-// HealthCheck checks if the current data-store is alive.
+// HealthCheck verifies Redis connectivity with a PING command.
 func (c *Client) HealthCheck(ctx context.Context) error {
 	err := c.rclient.Ping(ctx).Err()
 	if err != nil {

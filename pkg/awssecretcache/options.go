@@ -16,28 +16,44 @@ type SrvOptionFunc = func(*secretsmanager.Options)
 // Option is a type to allow setting custom client options.
 type Option func(*cfg)
 
-// WithAWSOptions allows to add an arbitrary AWS options.
+// WithAWSOptions appends raw AWS SDK load options used to build aws.Config.
+//
+// Use this to pass shared awsopt.Options (region, credentials, retryers, and
+// similar settings) so the cache client follows the same AWS behavior as other
+// services in the process.
 func WithAWSOptions(opt awsopt.Options) Option {
 	return func(c *cfg) {
 		c.awsOpts = append(c.awsOpts, opt...)
 	}
 }
 
-// WithSrvOptionFuncs allows to specify specific options.
+// WithSrvOptionFuncs appends Secrets Manager service-level option functions.
+//
+// These options are applied when constructing the underlying
+// secretsmanager.Client, enabling per-service customization beyond global
+// aws.Config settings.
 func WithSrvOptionFuncs(opt ...SrvOptionFunc) Option {
 	return func(c *cfg) {
 		c.srvOptFns = append(c.srvOptFns, opt...)
 	}
 }
 
-// WithSecretsManagerClient overrides the AWS secretemanager.Client with a custom one.
+// WithSecretsManagerClient injects a custom SecretsManagerClient implementation.
+//
+// This is primarily useful for tests and advanced integrations where the
+// caller needs full control over request behavior without creating a real
+// secretsmanager.Client from aws.Config.
 func WithSecretsManagerClient(smclient SecretsManagerClient) Option {
 	return func(c *cfg) {
 		c.smclient = smclient
 	}
 }
 
-// WithEndpointMutable sets a mutable endpoint.
+// WithEndpointMutable sets BaseEndpoint on the SDK client.
+//
+// Because BaseEndpoint remains mutable, the SDK can still adjust request
+// routing details. This is a practical choice for local stacks and some proxy
+// setups where endpoint customization should not fully replace SDK resolution.
 func WithEndpointMutable(url string) Option {
 	return WithSrvOptionFuncs(
 		func(o *secretsmanager.Options) {
@@ -46,7 +62,10 @@ func WithEndpointMutable(url string) Option {
 	)
 }
 
-// WithEndpointImmutable sets an immutable endpoint.
+// WithEndpointImmutable installs a custom EndpointResolverV2 with a fixed URL.
+//
+// This makes endpoint selection deterministic and bypasses default resolver
+// logic, which is useful when all requests must target an exact endpoint.
 func WithEndpointImmutable(url string) Option {
 	return WithSrvOptionFuncs(
 		func(o *secretsmanager.Options) {
@@ -60,7 +79,10 @@ type endpointResolver struct {
 	url string
 }
 
-// ResolveEndpoint resolves the endpoint.
+// ResolveEndpoint parses and returns the fixed endpoint configured on r.
+//
+// It is used by WithEndpointImmutable to provide a stable EndpointResolverV2
+// implementation for the Secrets Manager client.
 func (r *endpointResolver) ResolveEndpoint(_ context.Context, _ secretsmanager.EndpointParameters) (
 	sep.Endpoint,
 	error,

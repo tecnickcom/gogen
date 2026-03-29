@@ -98,8 +98,7 @@ var (
 	regexCreditCard          = regexp.MustCompile(regexPatternCreditCard)
 )
 
-// HTTPData returns the input string with sensitive HTTP data obscured.
-// Redacts the Authorization header, password and key fields.
+// HTTPData redacts sensitive HTTP-like data (Authorization headers, secret fields, and card patterns).
 func HTTPData(s string) string {
 	s = regexAuthorizationHeader.ReplaceAllString(s, redactAuthorizationHeader)
 	s = regexJSONKey.ReplaceAllString(s, redactJSONKey)

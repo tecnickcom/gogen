@@ -91,7 +91,12 @@ const (
 // Options is a set of all AWS options to apply.
 type Options []config.LoadOptionsFunc
 
-// LoadDefaultConfig populates an AWS Config with the values from the external configurations and set options.
+// LoadDefaultConfig builds an aws.Config from the accumulated options.
+//
+// It solves the "repeat config wiring in every AWS client" problem by turning
+// one shared Options value into a concrete SDK configuration in a single call.
+// This keeps region, credentials, and any custom SDK loaders consistent across
+// packages that consume awsopt.
 func (c *Options) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
 	o := make([]func(*config.LoadOptions) error, len(*c))
 	for k, v := range *c {
@@ -101,27 +106,45 @@ func (c *Options) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
 	return config.LoadDefaultConfig(ctx, o...) //nolint:wrapcheck
 }
 
-// WithAWSOption allows to add an arbitrary AWS option.
+// WithAWSOption appends any raw aws-sdk-go-v2 load option.
+//
+// Use this as the escape hatch when you need an SDK feature that does not have
+// a dedicated helper in this package. The main benefit is flexibility without
+// giving up the shared Options composition pattern.
 func (c *Options) WithAWSOption(opt config.LoadOptionsFunc) {
 	*c = append(*c, opt)
 }
 
-// WithRegion allows to specify the AWS region.
+// WithRegion appends an explicit AWS region option.
+//
+// This is the direct choice when the region is already known, and it ensures
+// every downstream AWS client built from the same Options value uses the same
+// target region.
 func (c *Options) WithRegion(region string) {
 	c.WithAWSOption(config.WithRegion(region))
 }
 
-// WithRegionFromURL allows to specify the AWS region extracted from the provided URL.
-// If the URL does not contain a region, a default one will be returned with the order of precedence:
+// WithRegionFromURL appends a region derived from an AWS endpoint URL.
+//
+// It removes common endpoint-parsing boilerplate by extracting the region from
+// URLs like "https://service.region.amazonaws.com" and automatically applying
+// robust fallbacks. If the URL does not contain a region, a default region is
+// selected with the following order of precedence:
 //   - the specified defaultRegion;
 //   - the AWS_REGION environment variable;
 //   - the AWS_DEFAULT_REGION environment variable;
 //   - the region set in the awsDefaultRegion constant.
+//
+// The benefit is predictable region resolution across services, even when input
+// URLs are incomplete or environment-specific.
 func (c *Options) WithRegionFromURL(url, defaultRegion string) {
 	c.WithRegion(awsRegionFromURL(url, defaultRegion))
 }
 
-// awsRegionFromURL extracts a region from a URL string or return the default value.
+// awsRegionFromURL extracts an AWS region from a service endpoint URL.
+//
+// When extraction fails, it returns the first available fallback region from
+// the precedence chain documented by WithRegionFromURL.
 func awsRegionFromURL(url, defaultRegion string) string {
 	re := regexp.MustCompile(awsRegionFromURLRegexp)
 	match := re.FindStringSubmatch(url)

@@ -15,19 +15,19 @@ type TEncodeFunc func(ctx context.Context, data any) (string, error)
 // TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
 type TDecodeFunc func(ctx context.Context, msg string, data any) error
 
-// SrvOptions is an alias for the parent library client options.
+// SrvOptions aliases valkey-go client options used when constructing a client.
 type SrvOptions = libvalkey.ClientOption
 
-// VKMessage is an alias for the parent library Message type.
+// VKMessage aliases a valkey-go Pub/Sub message.
 type VKMessage = libvalkey.PubSubMessage
 
-// VKClient represents the mockable functions in the parent Valkey Client.
+// VKClient aliases the valkey-go client interface used by [Client].
 type VKClient = libvalkey.Client
 
-// VKPubSub represents the mockable functions in the parent Valkey PubSub.
+// VKPubSub aliases the valkey-go completed Pub/Sub command type used by [Client].
 type VKPubSub = libvalkey.Completed
 
-// Client is a wrapper for the Valkey Client.
+// Client wraps Valkey KV/PubSub operations with optional typed payload codecs.
 type Client struct {
 	// vkclient is the upstream Client.
 	vkclient VKClient
@@ -45,7 +45,7 @@ type Client struct {
 	messageDecodeFunc TDecodeFunc
 }
 
-// New creates a new instance of the Valkey client wrapper.
+// New constructs a Valkey client wrapper with pinned Pub/Sub subscription and pluggable codecs.
 func New(ctx context.Context, srvopt SrvOptions, opts ...Option) (*Client, error) {
 	cfg, err := loadConfig(ctx, srvopt, opts...)
 	if err != nil {
@@ -69,13 +69,12 @@ func New(ctx context.Context, srvopt SrvOptions, opts ...Option) (*Client, error
 	}, nil
 }
 
-// Close closes the client.
-// All pending calls will be finished.
+// Close closes the underlying client after pending calls complete.
 func (c *Client) Close() {
 	c.vkclient.Close()
 }
 
-// Set a raw string value for the specified key with an expiration time.
+// Set stores a raw string value for key with expiration.
 func (c *Client) Set(ctx context.Context, key string, value string, exp time.Duration) error {
 	err := c.vkclient.Do(ctx, c.vkclient.B().Set().Key(key).Value(value).Ex(exp).Build()).Error()
 	if err != nil {
@@ -85,7 +84,7 @@ func (c *Client) Set(ctx context.Context, key string, value string, exp time.Dur
 	return nil
 }
 
-// Get retrieves the raw string value of the specified key.
+// Get retrieves the raw string value for key.
 func (c *Client) Get(ctx context.Context, key string) (string, error) {
 	value, err := c.vkclient.Do(ctx, c.vkclient.B().Get().Key(key).Build()).ToString()
 	if err != nil {
@@ -95,7 +94,7 @@ func (c *Client) Get(ctx context.Context, key string) (string, error) {
 	return value, nil
 }
 
-// Del deletes the specified key from the datastore.
+// Del deletes key from the datastore.
 func (c *Client) Del(ctx context.Context, key string) error {
 	err := c.vkclient.Do(ctx, c.vkclient.B().Del().Key(key).Build()).Error()
 	if err != nil {
@@ -105,7 +104,7 @@ func (c *Client) Del(ctx context.Context, key string) error {
 	return nil
 }
 
-// Send publish a raw string value to the specified channel.
+// Send publishes a raw string message to channel.
 func (c *Client) Send(ctx context.Context, channel string, message string) error {
 	err := c.vkclient.Do(ctx, c.vkclient.B().Publish().Channel(channel).Message(message).Build()).Error()
 	if err != nil {
@@ -115,8 +114,7 @@ func (c *Client) Send(ctx context.Context, channel string, message string) error
 	return nil
 }
 
-// Receive receives a raw string message from a subscribed channel.
-// Returns the channel name and the message value.
+// Receive returns the next raw Pub/Sub message as channel name and payload.
 func (c *Client) Receive(ctx context.Context) (string, string, error) {
 	data := VKMessage{}
 
@@ -130,30 +128,27 @@ func (c *Client) Receive(ctx context.Context) (string, string, error) {
 	return data.Channel, data.Message, nil
 }
 
-// MessageEncode encodes and serialize the input data to a string.
+// MessageEncode encodes and serializes data into a string payload.
 func MessageEncode(data any) (string, error) {
 	return encode.Encode(data) //nolint:wrapcheck
 }
 
-// MessageDecode decodes a message encoded with MessageEncode to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// MessageDecode decodes a MessageEncode payload into data, which must be a pointer.
 func MessageDecode(msg string, data any) error {
 	return encode.Decode(msg, data) //nolint:wrapcheck
 }
 
-// DefaultMessageEncodeFunc is the default function to encode and serialize the input data for SendData().
+// DefaultMessageEncodeFunc provides default encoding used by SendData.
 func DefaultMessageEncodeFunc(_ context.Context, data any) (string, error) {
 	return MessageEncode(data)
 }
 
-// DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// DefaultMessageDecodeFunc provides default decoding used by ReceiveData.
 func DefaultMessageDecodeFunc(_ context.Context, msg string, data any) error {
 	return MessageDecode(msg, data)
 }
 
-// SetData sets an encoded value for the specified key with an expiration time.
-// Zero expiration means the key has no expiration time.
+// SetData encodes data and stores it at key with expiration.
 func (c *Client) SetData(ctx context.Context, key string, data any, exp time.Duration) error {
 	value, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
@@ -163,7 +158,7 @@ func (c *Client) SetData(ctx context.Context, key string, data any, exp time.Dur
 	return c.Set(ctx, key, value, exp)
 }
 
-// GetData retrieves an encoded value of the specified key and extract its content in the data parameter.
+// GetData retrieves an encoded value from key and decodes it into data.
 func (c *Client) GetData(ctx context.Context, key string, data any) error {
 	value, err := c.Get(ctx, key)
 	if err != nil {
@@ -173,7 +168,7 @@ func (c *Client) GetData(ctx context.Context, key string, data any) error {
 	return c.messageDecodeFunc(ctx, value, data)
 }
 
-// SendData publish an encoded value to the specified channel.
+// SendData encodes data and publishes it to channel.
 func (c *Client) SendData(ctx context.Context, channel string, data any) error {
 	message, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
@@ -183,9 +178,7 @@ func (c *Client) SendData(ctx context.Context, channel string, data any) error {
 	return c.Send(ctx, channel, message)
 }
 
-// ReceiveData receives an encoded message from a subscribed channel,
-// and extract its content in the data parameter.
-// Returns the channel name in case of success.
+// ReceiveData receives an encoded message, decodes it into data, and returns the source channel.
 func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 	channel, value, err := c.Receive(ctx)
 	if err != nil {
@@ -195,7 +188,7 @@ func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 	return channel, c.messageDecodeFunc(ctx, value, data)
 }
 
-// HealthCheck checks if the current data-store is alive.
+// HealthCheck verifies Valkey connectivity with a PING command.
 func (c *Client) HealthCheck(ctx context.Context) error {
 	err := c.vkclient.Do(ctx, c.vkclient.B().Ping().Build()).Error()
 	if err != nil {

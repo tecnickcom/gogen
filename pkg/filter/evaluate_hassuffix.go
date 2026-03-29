@@ -11,7 +11,8 @@ type evalHasSuffix struct {
 	ref string
 }
 
-// newHasSuffix returns an Evaluator that checks if a string ends with the reference suffix.
+// newHasSuffix constructs a suffix-match evaluator from a reference string.
+// Returns error if r is not a string.
 func newHasSuffix(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {
@@ -21,8 +22,7 @@ func newHasSuffix(r any) (Evaluator, error) {
 	return &evalHasSuffix{ref: str}, nil
 }
 
-// Evaluate returns whether the input value ends with the reference string.
-// It returns false if the input value is not a string.
+// Evaluate returns true if the input string ends with the reference suffix, false if input is not a string.
 func (e *evalHasSuffix) Evaluate(v any) bool {
 	s, ok := convertStringValue(v)
 	if !ok {

@@ -59,7 +59,7 @@ type HTTPResp struct {
 	logger *slog.Logger
 }
 
-// NewHTTPResp returns a new Response object.
+// NewHTTPResp constructs HTTP response helper with structured logging to provided logger (or slog.Default() if nil).
 func NewHTTPResp(l *slog.Logger) *HTTPResp {
 	if l == nil {
 		l = slog.Default()
@@ -70,14 +70,14 @@ func NewHTTPResp(l *slog.Logger) *HTTPResp {
 	}
 }
 
-// SendStatus sends write a HTTP status code to the response.
+// SendStatus writes HTTP status code with standard text and logs response entry.
 func (hr *HTTPResp) SendStatus(ctx context.Context, w http.ResponseWriter, statusCode int) {
 	defer hr.logResponse(ctx, statusCode, logKeyResponseDataText, "")
 
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
-// SendText sends text to the response.
+// SendText writes plain text response with cache-control headers and structured logging.
 func (hr *HTTPResp) SendText(ctx context.Context, w http.ResponseWriter, statusCode int, data string) {
 	defer hr.logResponse(ctx, statusCode, logKeyResponseDataText, data)
 
@@ -89,7 +89,7 @@ func (hr *HTTPResp) SendText(ctx context.Context, w http.ResponseWriter, statusC
 	}
 }
 
-// SendJSON sends a JSON object to the response.
+// SendJSON encodes data as JSON, writes with cache-control headers, and logs response entry.
 func (hr *HTTPResp) SendJSON(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {
 	defer hr.logResponse(ctx, statusCode, logKeyResponseDataObject, data)
 
@@ -101,7 +101,7 @@ func (hr *HTTPResp) SendJSON(ctx context.Context, w http.ResponseWriter, statusC
 	}
 }
 
-// SendXML sends an XML object to the response.
+// SendXML encodes data as XML with header prefix, cache-control headers, and structured logging.
 func (hr *HTTPResp) SendXML(ctx context.Context, w http.ResponseWriter, statusCode int, xmlHeader string, data any) {
 	defer hr.logResponse(ctx, statusCode, logKeyResponseDataObject, data)
 

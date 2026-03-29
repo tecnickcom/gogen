@@ -7,35 +7,37 @@ import (
 // Option is the interface that allows to set client options.
 type Option func(c *Client)
 
-// WithTimeout overrides the default request timeout.
+// WithTimeout sets the default timeout for Jira API requests.
 func WithTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
 		c.timeout = timeout
 	}
 }
 
-// WithPingTimeout overrides the default ping timeout.
+// WithPingTimeout sets the timeout used by HealthCheck.
 func WithPingTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
 		c.pingTimeout = timeout
 	}
 }
 
-// WithHTTPClient overrides the default HTTP client.
+// WithHTTPClient injects a custom HTTP client implementation.
+//
+// Use this for custom transport behavior or test doubles.
 func WithHTTPClient(hc HTTPClient) Option {
 	return func(c *Client) {
 		c.httpClient = hc
 	}
 }
 
-// WithRetryAttempts overrides the default HTTP client.
+// WithRetryAttempts sets the maximum retry attempts for API requests.
 func WithRetryAttempts(attempts uint) Option {
 	return func(c *Client) {
 		c.retryAttempts = attempts
 	}
 }
 
-// WithRetryDelay sets the delay to apply after the first failed attempt.
+// WithRetryDelay sets the delay between retry attempts.
 func WithRetryDelay(value time.Duration) Option {
 	return func(c *Client) {
 		c.retryDelay = value

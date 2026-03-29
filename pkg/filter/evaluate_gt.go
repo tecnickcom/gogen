@@ -4,12 +4,13 @@ import (
 	"reflect"
 )
 
-// gt is an Evaluator that checks if a value is greater than a reference.
+// gt evaluates whether a value is greater than a reference.
 type gt struct {
 	ref float64
 }
 
-// newGT returns an Evaluator that checks if a value is greater than the reference.
+// newGT constructs a greater-than evaluator from a reference numeric value.
+// Returns error if r cannot be converted to float64.
 func newGT(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {
@@ -19,10 +20,7 @@ func newGT(r any) (Evaluator, error) {
 	return &gt{ref: v}, nil
 }
 
-// Evaluate returns whether the actual value is greater than the reference.
-// It converts numerical values implicitly before comparison.
-// Returns the lengths comparison for Array, Map, Slice or String.
-// Returns false if the value is nil.
+// Evaluate returns true if the numeric value exceeds the reference, or collection length exceeds reference for arrays/maps/slices/strings.
 func (e *gt) Evaluate(v any) bool {
 	v = convertValue(v)
 

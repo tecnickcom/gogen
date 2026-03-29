@@ -9,10 +9,13 @@ type checkConfig struct {
 	configureRequest func(r *http.Request)
 }
 
-// CheckOption is a type alias for a function able to configure HTTP healthcheck options.
+// CheckOption configures HTTP probe behavior used by [CheckHTTPStatus].
 type CheckOption func(*checkConfig)
 
-// WithConfigureRequest allows to configure the request before it is sent.
+// WithConfigureRequest injects a request mutator before the probe is executed.
+//
+// This is useful for adding headers, auth tokens, or tracing fields to
+// outbound healthcheck HTTP requests.
 func WithConfigureRequest(fn func(r *http.Request)) CheckOption {
 	return func(c *checkConfig) {
 		c.configureRequest = fn

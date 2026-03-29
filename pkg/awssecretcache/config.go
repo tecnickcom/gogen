@@ -9,7 +9,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
-// SecretsManagerClient represents the mockable functions in the AWS SDK SecretsManagerClient client.
+// SecretsManagerClient defines the AWS Secrets Manager calls used by this package.
 type SecretsManagerClient interface {
 	GetSecretValue(ctx context.Context, params *awssm.GetSecretValueInput, optFns ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error)
 }
@@ -28,7 +28,11 @@ type cfg struct {
 	smclient SecretsManagerClient
 }
 
-// loadConfig loads the configuration for the AWS Secret Cache.
+// loadConfig applies options and materializes the AWS SDK configuration.
+//
+// It centralizes option processing so New can build the cache from one
+// validated cfg value. The function guarantees that awsConfig is loaded once
+// with all collected awsopt options before any Secrets Manager client is used.
 func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 	c := &cfg{}
 

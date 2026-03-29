@@ -9,12 +9,12 @@ type SlogWriter struct {
 	Logger *slog.Logger
 }
 
-// NewSlogWriter creates a new SlogWriter with the provided slog.Logger.
+// NewSlogWriter constructs an io.Writer that routes writes to an slog.Logger at error level.
 func NewSlogWriter(logger *slog.Logger) *SlogWriter {
 	return &SlogWriter{Logger: logger}
 }
 
-// Write writes the log message to the slog.Logger at the error level.
+// Write logs the input bytes at error level, stripping trailing newlines, and returns bytes written.
 func (w SlogWriter) Write(p []byte) (int, error) {
 	msg := string(p)
 

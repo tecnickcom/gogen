@@ -54,7 +54,10 @@ type EnumDB map[string]*enumcache.EnumCache
 // EnumTableQuery maps each enumeration table name with the SQL query string used to read the data.
 type EnumTableQuery map[string]string
 
-// New returns a new enumeration cache for all the tables listed in the queries map.
+// New loads enum caches for all tables listed in queries.
+//
+// Each query should return rows compatible with (id int, name string). The
+// result map is keyed by table name for direct access from application code.
 func New(ctx context.Context, db *sql.DB, queries EnumTableQuery) (EnumDB, error) {
 	enum := make(EnumDB, len(queries))
 
@@ -70,7 +73,10 @@ func New(ctx context.Context, db *sql.DB, queries EnumTableQuery) (EnumDB, error
 	return enum, nil
 }
 
-// loadTableEnumCache load the cache using the specified SQL query.
+// loadTableEnumCache executes query and builds one in-memory EnumCache.
+//
+// It scans each row into id/name pairs and stores them for fast bidirectional
+// lookups at runtime.
 //
 //nolint:nonamedreturns
 func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (cache *enumcache.EnumCache, err error) {

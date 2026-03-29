@@ -1,6 +1,6 @@
 package jirasrv
 
-// IssueUpdate represents the payload to update a Jira issue.
+// IssueUpdate models the request payload used to update a Jira issue.
 // Ref.: https://docs.atlassian.com/software/jira/docs/api/REST/9.17.0
 type IssueUpdate struct {
 	Transition      *Transition          `json:"transition,omitempty"`
@@ -10,7 +10,7 @@ type IssueUpdate struct {
 	Properties      []EntityProperty     `json:"properties,omitempty"`
 }
 
-// Transition represents a Jira issue transition.
+// Transition describes a workflow transition available for an issue.
 type Transition struct {
 	ID             string               `json:"id,omitempty"`
 	Name           string               `json:"name,omitempty"`
@@ -20,7 +20,7 @@ type Transition struct {
 	Fields         map[string]FieldMeta `json:"fields,omitempty"`
 }
 
-// Status represents a Jira issue status.
+// Status describes the target/current workflow status of a Jira issue.
 type Status struct {
 	StatusColor    string          `json:"statusColor,omitempty"`
 	Description    string          `json:"description,omitempty"`
@@ -30,7 +30,7 @@ type Status struct {
 	StatusCategory *StatusCategory `json:"statusCategory,omitempty"`
 }
 
-// StatusCategory represents a Jira issue status category.
+// StatusCategory groups statuses into high-level workflow buckets.
 type StatusCategory struct {
 	ID        int    `json:"id,omitempty"`
 	Key       string `json:"key,omitempty"`
@@ -38,7 +38,7 @@ type StatusCategory struct {
 	Name      string `json:"name,omitempty"`
 }
 
-// FieldMeta represents metadata about a field in a Jira issue.
+// FieldMeta describes edit metadata and constraints for an issue field.
 type FieldMeta struct {
 	Required        bool      `json:"required"`
 	Schema          *JSONType `json:"schema,omitempty"`
@@ -51,7 +51,7 @@ type FieldMeta struct {
 	DefaultValue    any       `json:"defaultValue,omitempty"`
 }
 
-// JSONType represents the JSON schema type of a field in a Jira issue.
+// JSONType describes the field schema returned by Jira metadata endpoints.
 type JSONType struct {
 	Type     string `json:"type,omitempty"`
 	Items    string `json:"items,omitempty"`
@@ -60,10 +60,10 @@ type JSONType struct {
 	CustomID int    `json:"customId,omitempty"`
 }
 
-// FieldOp represents a field operation in a Jira issue update.
+// FieldOp defines one field mutation operation in an issue update request.
 type FieldOp map[string]any
 
-// HistoryMetadata represents metadata about a Jira issue history item.
+// HistoryMetadata carries additional context for issue history entries.
 type HistoryMetadata struct {
 	Type                   string                      `json:"type,omitempty"`
 	Description            string                      `json:"description,omitempty"`
@@ -78,7 +78,7 @@ type HistoryMetadata struct {
 	ExtraData              map[string]string           `json:"extraData,omitempty"`
 }
 
-// HistoryMetadataParticipant represents a participant in a Jira issue history item.
+// HistoryMetadataParticipant identifies an actor linked to a history entry.
 type HistoryMetadataParticipant struct {
 	ID             string `json:"id,omitempty"`
 	DisplayName    string `json:"displayName,omitempty"`
@@ -88,7 +88,7 @@ type HistoryMetadataParticipant struct {
 	URL            string `json:"url,omitempty"`
 }
 
-// EntityProperty represents a property of a Jira issue.
+// EntityProperty stores a key/value property attached to an issue.
 type EntityProperty struct {
 	Key   string `json:"key"`
 	Value any    `json:"value"`

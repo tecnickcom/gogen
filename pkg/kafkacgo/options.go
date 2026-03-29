@@ -20,10 +20,10 @@ const (
 // Offset points to where Kafka should start to read messages from.
 type Offset string
 
-// Option is a type alias for a function that configures Kafka client.
+// Option applies a configuration change shared by producer and consumer instances.
 type Option func(*config)
 
-// WithConfigParameter extends kafka.ConfigMap with additional parameters.
+// WithConfigParameter appends a raw librdkafka configuration key/value pair.
 // Parameters are listed at:
 // * consumer: https://docs.confluent.io/platform/current/installation/configuration/consumer-configs.html
 // * producer: https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html
@@ -33,39 +33,31 @@ func WithConfigParameter(key string, val kafka.ConfigValue) Option {
 	}
 }
 
-// WithSessionTimeout sets the timeout used to detect client failures when using Kafka's group management facility.
-// The client sends periodic heartbeats to indicate its liveness to the broker.
-// If no heartbeats are received by the broker before the expiration of this session timeout,
-// then the broker will remove this client from the group and initiate a rebalance.
-// Note that the value must be in the allowable range as configured in the broker configuration
-// by group.min.session.timeout.ms and group.max.session.timeout.ms.
+// WithSessionTimeout sets the consumer group session timeout used for heartbeat failure detection.
+// The value must respect broker-side min/max session timeout configuration.
 func WithSessionTimeout(t time.Duration) Option {
 	return WithConfigParameter("session.timeout.ms", int(t.Milliseconds()))
 }
 
-// WithAutoOffsetResetPolicy sets what to do when there is no initial offset in Kafka
-// or if the current offset does not exist any more on the server
-// (e.g. because that data has been deleted).
+// WithAutoOffsetResetPolicy sets behavior when no committed offset exists or stored offset is no longer available.
 func WithAutoOffsetResetPolicy(p Offset) Option {
 	return WithConfigParameter("auto.offset.reset", string(p))
 }
 
-// WithProduceChannelSize sets the buffer size (in number of messages).
+// WithProduceChannelSize sets the internal producer channel buffer size in number of messages.
 func WithProduceChannelSize(size int) Option {
 	return WithConfigParameter("go.produce.channel.size", size)
 }
 
-// WithMessageEncodeFunc allow to replace DefaultMessageEncodeFunc.
-// This function used by SendData() to encode the input data.
+// WithMessageEncodeFunc overrides DefaultMessageEncodeFunc used by SendData.
 func WithMessageEncodeFunc(f TEncodeFunc) Option {
 	return func(c *config) {
 		c.messageEncodeFunc = f
 	}
 }
 
-// WithMessageDecodeFunc allow to replace DefaultMessageDecodeFunc().
-// This function used by ReceiveData() to decode a message encoded with messageEncodeFunc to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// WithMessageDecodeFunc overrides DefaultMessageDecodeFunc used by ReceiveData.
+// The data argument passed to ReceiveData must be a pointer to the expected type.
 func WithMessageDecodeFunc(f TDecodeFunc) Option {
 	return func(c *config) {
 		c.messageDecodeFunc = f

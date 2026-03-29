@@ -41,9 +41,11 @@ type Data struct {
 	dAlpha2IDsByTLD                  map[uint16][]uint16
 }
 
-// New generates the country data, including various indexes.
-// If the cdata parameter is nil, the embedded default data is used.
-// The generated object should be reused to avoid copying the data.
+// New builds a Data resolver with all lookup indexes precomputed.
+//
+// If cdata is nil, embedded default metadata is loaded; otherwise cdata is
+// encoded and indexed. Reusing the returned Data instance avoids repeated index
+// construction and keeps country lookups fast in hot paths.
 //
 // Default data sources (updated at: 2024-07-17):
 //   - https://www.iso.org/iso-3166-country-codes.html
@@ -75,7 +77,10 @@ func New(cdata []*CountryData) (*Data, error) {
 	return d, nil
 }
 
-// loadData loads the country data from the given CountryData slice.
+// loadData ingests custom country records and constructs base enum/key tables.
+//
+// It converts each record into compact internal keys and captures region,
+// sub-region, and intermediate-region catalogs needed by later index builders.
 //
 //nolint:gocognit
 func (d *Data) loadData(cdata []*CountryData) error {
@@ -146,7 +151,9 @@ func (d *Data) loadData(cdata []*CountryData) error {
 	return nil
 }
 
-// statusMap initializes the status maps.
+// statusMap initializes assignment-status enumerations and reverse lookups.
+//
+// Names are normalized to uppercase for case-insensitive matching.
 func (d *Data) statusMap() {
 	d.dStatusByID = [...]*enumData{
 		{"0", "Unassigned"},
@@ -164,7 +171,10 @@ func (d *Data) statusMap() {
 	}
 }
 
-// genIndexes generates various indexes for fast lookups.
+// genIndexes builds all reverse indexes used by query methods.
+//
+// This one-time preprocessing enables constant-time or near constant-time
+// retrieval for code/name lookups and grouped country queries.
 func (d *Data) genIndexes() {
 	d.dRegionIDByCode = make(map[string]uint8, len(d.dRegionByID))
 	d.dRegionIDByName = make(map[string]uint8, len(d.dRegionByID))
@@ -216,7 +226,7 @@ func (d *Data) genIndexes() {
 	delete(d.dAlpha2IDByNumericID, 0)
 }
 
-// statusByID returns the status enumData for the given ID.
+// statusByID returns status metadata for an internal status ID.
 func (d *Data) statusByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dStatusByID) {
 		return nil, errInvalidKey
@@ -225,7 +235,9 @@ func (d *Data) statusByID(id int) (*enumData, error) {
 	return d.dStatusByID[id], nil
 }
 
-// statusIDByName returns the status ID for the given name.
+// statusIDByName resolves an internal status ID from a status name.
+//
+// Name matching is case-insensitive.
 func (d *Data) statusIDByName(name string) (uint8, error) {
 	v, ok := d.dStatusIDByName[strings.ToUpper(name)]
 	if !ok {
@@ -235,7 +247,7 @@ func (d *Data) statusIDByName(name string) (uint8, error) {
 	return v, nil
 }
 
-// regionByID returns the region enumData for the given ID.
+// regionByID returns region metadata for an internal region ID.
 func (d *Data) regionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dRegionByID) {
 		return nil, errInvalidKey
@@ -244,7 +256,7 @@ func (d *Data) regionByID(id int) (*enumData, error) {
 	return d.dRegionByID[id], nil
 }
 
-// regionIDByCode returns the region ID for the given code.
+// regionIDByCode resolves an internal region ID from a region code.
 func (d *Data) regionIDByCode(code string) (uint8, error) {
 	v, ok := d.dRegionIDByCode[code]
 	if !ok {
@@ -254,7 +266,9 @@ func (d *Data) regionIDByCode(code string) (uint8, error) {
 	return v, nil
 }
 
-// regionIDByName returns the region ID for the given name.
+// regionIDByName resolves an internal region ID from a region name.
+//
+// Name matching is case-insensitive.
 func (d *Data) regionIDByName(name string) (uint8, error) {
 	v, ok := d.dRegionIDByName[strings.ToUpper(name)]
 	if !ok {
@@ -264,7 +278,7 @@ func (d *Data) regionIDByName(name string) (uint8, error) {
 	return v, nil
 }
 
-// subRegionByID returns the sub-region enumData for the given ID.
+// subRegionByID returns sub-region metadata for an internal sub-region ID.
 func (d *Data) subRegionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dSubRegionByID) {
 		return nil, errInvalidKey
@@ -273,7 +287,7 @@ func (d *Data) subRegionByID(id int) (*enumData, error) {
 	return d.dSubRegionByID[id], nil
 }
 
-// subRegionIDByCode returns the sub-region ID for the given code.
+// subRegionIDByCode resolves an internal sub-region ID from a sub-region code.
 func (d *Data) subRegionIDByCode(code string) (uint8, error) {
 	v, ok := d.dSubRegionIDByCode[code]
 	if !ok {
@@ -283,7 +297,9 @@ func (d *Data) subRegionIDByCode(code string) (uint8, error) {
 	return v, nil
 }
 
-// subRegionIDByName returns the sub-region ID for the given name.
+// subRegionIDByName resolves an internal sub-region ID from a sub-region name.
+//
+// Name matching is case-insensitive.
 func (d *Data) subRegionIDByName(name string) (uint8, error) {
 	v, ok := d.dSubRegionIDByName[strings.ToUpper(name)]
 	if !ok {
@@ -293,7 +309,7 @@ func (d *Data) subRegionIDByName(name string) (uint8, error) {
 	return v, nil
 }
 
-// intermediateRegionByID returns the intermediate-region enumData for the given ID.
+// intermediateRegionByID returns intermediate-region metadata for an internal ID.
 func (d *Data) intermediateRegionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dIntermediateRegionByID) {
 		return nil, errInvalidKey
@@ -302,7 +318,7 @@ func (d *Data) intermediateRegionByID(id int) (*enumData, error) {
 	return d.dIntermediateRegionByID[id], nil
 }
 
-// intermediateRegionIDByCode returns the intermediate-region ID for the given code.
+// intermediateRegionIDByCode resolves an internal intermediate-region ID from code.
 func (d *Data) intermediateRegionIDByCode(code string) (uint8, error) {
 	v, ok := d.dIntermediateRegionIDByCode[code]
 	if !ok {
@@ -312,7 +328,9 @@ func (d *Data) intermediateRegionIDByCode(code string) (uint8, error) {
 	return v, nil
 }
 
-// intermediateRegionIDByName returns the intermediate-region ID for the given name.
+// intermediateRegionIDByName resolves an internal intermediate-region ID from name.
+//
+// Name matching is case-insensitive.
 func (d *Data) intermediateRegionIDByName(name string) (uint8, error) {
 	v, ok := d.dIntermediateRegionIDByName[strings.ToUpper(name)]
 	if !ok {
@@ -322,7 +340,7 @@ func (d *Data) intermediateRegionIDByName(name string) (uint8, error) {
 	return v, nil
 }
 
-// countryNamesByAlpha2ID returns the country Names for the given alpha-2 ID.
+// countryNamesByAlpha2ID returns localized country names for an alpha-2 ID.
 func (d *Data) countryNamesByAlpha2ID(id uint16) (*Names, error) {
 	v, ok := d.dCountryNamesByAlpha2ID[id]
 	if !ok {
@@ -332,7 +350,7 @@ func (d *Data) countryNamesByAlpha2ID(id uint16) (*Names, error) {
 	return v, nil
 }
 
-// countryKeyByAlpha2ID returns the country key for the given alpha-2 ID.
+// countryKeyByAlpha2ID returns the packed country key for an alpha-2 ID.
 func (d *Data) countryKeyByAlpha2ID(id uint16) (uint64, error) {
 	v, ok := d.dCountryKeyByAlpha2ID[id]
 	if !ok {
@@ -342,7 +360,7 @@ func (d *Data) countryKeyByAlpha2ID(id uint16) (uint64, error) {
 	return v, nil
 }
 
-// alpha2IDByAlpha3ID returns the alpha-2 ID for the given alpha-3 ID.
+// alpha2IDByAlpha3ID resolves alpha-2 ID from an encoded alpha-3 ID.
 func (d *Data) alpha2IDByAlpha3ID(id uint16) (uint16, error) {
 	v, ok := d.dAlpha2IDByAlpha3ID[id]
 	if !ok {
@@ -352,7 +370,7 @@ func (d *Data) alpha2IDByAlpha3ID(id uint16) (uint16, error) {
 	return v, nil
 }
 
-// alpha2IDByNumericID returns the alpha-2 ID for the given numeric ID.
+// alpha2IDByNumericID resolves alpha-2 ID from an encoded numeric code.
 func (d *Data) alpha2IDByNumericID(id uint16) (uint16, error) {
 	v, ok := d.dAlpha2IDByNumericID[id]
 	if !ok {
@@ -362,7 +380,7 @@ func (d *Data) alpha2IDByNumericID(id uint16) (uint16, error) {
 	return v, nil
 }
 
-// alpha2IDsByRegionID returns the alpha-2 IDs for the given region ID.
+// alpha2IDsByRegionID returns alpha-2 IDs grouped by internal region ID.
 func (d *Data) alpha2IDsByRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByRegionID[id]
 	if !ok {
@@ -372,7 +390,7 @@ func (d *Data) alpha2IDsByRegionID(id uint8) ([]uint16, error) {
 	return v, nil
 }
 
-// alpha2IDsBySubRegionID returns the alpha-2 IDs for the given sub-region ID.
+// alpha2IDsBySubRegionID returns alpha-2 IDs grouped by internal sub-region ID.
 func (d *Data) alpha2IDsBySubRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsBySubRegionID[id]
 	if !ok {
@@ -382,7 +400,7 @@ func (d *Data) alpha2IDsBySubRegionID(id uint8) ([]uint16, error) {
 	return v, nil
 }
 
-// alpha2IDsByIntermediateRegionID returns the alpha-2 IDs for the given intermediate-region ID.
+// alpha2IDsByIntermediateRegionID returns alpha-2 IDs by intermediate-region ID.
 func (d *Data) alpha2IDsByIntermediateRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByIntermediateRegionID[id]
 	if !ok {
@@ -392,7 +410,7 @@ func (d *Data) alpha2IDsByIntermediateRegionID(id uint8) ([]uint16, error) {
 	return v, nil
 }
 
-// alpha2IDsByStatusID returns the alpha-2 IDs for the given status ID.
+// alpha2IDsByStatusID returns alpha-2 IDs grouped by assignment status ID.
 func (d *Data) alpha2IDsByStatusID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByStatusID[id]
 	if !ok {
@@ -402,7 +420,7 @@ func (d *Data) alpha2IDsByStatusID(id uint8) ([]uint16, error) {
 	return v, nil
 }
 
-// alpha2IDsByTLD returns the alpha-2 IDs for the given TLD ID.
+// alpha2IDsByTLD returns alpha-2 IDs associated with an encoded TLD.
 func (d *Data) alpha2IDsByTLD(id uint16) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByTLD[id]
 	if !ok {
@@ -412,7 +430,10 @@ func (d *Data) alpha2IDsByTLD(id uint16) ([]uint16, error) {
 	return v, nil
 }
 
-// defaultData set the default data.
+// defaultData loads the embedded ISO/M49/TLD metadata snapshot.
+//
+// It populates canonical enum tables and packed country dictionaries used by
+// New(nil) to provide an out-of-the-box country resolver.
 //
 // Default data sources (updated at: 2024-07-17):
 //   - https://www.iso.org/iso-3166-country-codes.html

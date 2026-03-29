@@ -35,11 +35,7 @@ making map-heavy code easier to read, review, and test.
 */
 package maputil
 
-// Filter returns a new map containing only entries from m for which predicate
-// f returns true.
-//
-// The returned map has the same concrete map type as m. The input map is not
-// modified.
+// Filter returns new map containing only entries where predicate f returns true; input map is not modified.
 func Filter[M ~map[K]V, K comparable, V any](m M, f func(K, V) bool) M {
 	r := make(M, len(m))
 
@@ -52,11 +48,7 @@ func Filter[M ~map[K]V, K comparable, V any](m M, f func(K, V) bool) M {
 	return r
 }
 
-// Map transforms each entry of m using f and returns a new map containing the
-// transformed key/value pairs.
-//
-// If f maps multiple input entries to the same output key, the last processed
-// entry overwrites earlier ones (last write wins).
+// Map transforms each entry of m using f, with last-write-wins semantics for duplicate output keys.
 func Map[M ~map[K]V, K, J comparable, V, U any](m M, f func(K, V) (J, U)) map[J]U {
 	r := make(map[J]U, len(m))
 
@@ -68,12 +60,7 @@ func Map[M ~map[K]V, K, J comparable, V, U any](m M, f func(K, V) (J, U)) map[J]
 	return r
 }
 
-// Reduce folds m into a single value by repeatedly applying f to each entry
-// and the running accumulator.
-//
-// The accumulator is initialized with init. Because Go map iteration order is
-// not deterministic, f should be order-independent if deterministic output is
-// required.
+// Reduce folds m into single value by repeatedly applying f to each entry and accumulator; f should be order-independent for deterministic output.
 func Reduce[M ~map[K]V, K comparable, V, U any](m M, init U, f func(K, V, U) U) U {
 	r := init
 
@@ -84,10 +71,7 @@ func Reduce[M ~map[K]V, K comparable, V, U any](m M, init U, f func(K, V, U) U) 
 	return r
 }
 
-// Invert returns a new map where keys and values are swapped.
-//
-// If multiple input keys share the same value, only one key is kept in the
-// output map (last write wins).
+// Invert returns new map with swapped keys/values, with last-write-wins semantics for duplicate input values.
 func Invert[M ~map[K]V, K, V comparable](m M) map[V]K {
 	r := make(map[V]K, len(m))
 

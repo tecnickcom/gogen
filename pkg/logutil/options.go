@@ -5,10 +5,10 @@ import (
 	"io"
 )
 
-// Option is a type alias for a function that updates the Config.
+// Option configures a [Config] instance.
 type Option func(*Config) error
 
-// WithOutWriter overrides the output io.Writer.
+// WithOutWriter overrides the output destination for log messages.
 func WithOutWriter(w io.Writer) Option {
 	return func(cfg *Config) error {
 		cfg.Out = w
@@ -16,7 +16,7 @@ func WithOutWriter(w io.Writer) Option {
 	}
 }
 
-// WithFormat overrides the log format.
+// WithFormat overrides the log output format (JSON, console, or discard).
 func WithFormat(f LogFormat) Option {
 	return func(cfg *Config) error {
 		if !ValidFormat(f) {
@@ -29,7 +29,7 @@ func WithFormat(f LogFormat) Option {
 	}
 }
 
-// WithFormatStr overrides the log format.
+// WithFormatStr overrides the log format using a string ("json", "console", "none").
 func WithFormatStr(f string) Option {
 	return func(cfg *Config) error {
 		lf, err := ParseFormat(f)
@@ -43,7 +43,7 @@ func WithFormatStr(f string) Option {
 	}
 }
 
-// WithLevel overrides the log level.
+// WithLevel overrides the minimum log level to emit.
 func WithLevel(l LogLevel) Option {
 	return func(cfg *Config) error {
 		if !ValidLevel(l) {
@@ -56,7 +56,7 @@ func WithLevel(l LogLevel) Option {
 	}
 }
 
-// WithLevelStr overrides the log level.
+// WithLevelStr overrides the log level using a string (e.g., "error", "debug", "trace").
 func WithLevelStr(l string) Option {
 	return func(cfg *Config) error {
 		ll, err := ParseLevel(l)
@@ -70,7 +70,7 @@ func WithLevelStr(l string) Option {
 	}
 }
 
-// WithCommonAttr adds common attributes to the logger.
+// WithCommonAttr adds attributes that will be attached to every log record.
 func WithCommonAttr(a ...Attr) Option {
 	return func(cfg *Config) error {
 		cfg.CommonAttr = a
@@ -78,7 +78,7 @@ func WithCommonAttr(a ...Attr) Option {
 	}
 }
 
-// WithHookFn adds a function to intercept the log message before passing it to the underlying handler.
+// WithHookFn adds a callback that intercepts each log record before the underlying handler processes it.
 func WithHookFn(f HookFunc) Option {
 	return func(cfg *Config) error {
 		cfg.HookFn = f
@@ -86,7 +86,7 @@ func WithHookFn(f HookFunc) Option {
 	}
 }
 
-// WithTraceIDFn adds a function that returns the Trace ID.
+// WithTraceIDFn adds a callback that dynamically retrieves the trace ID for each record.
 func WithTraceIDFn(f TraceIDFunc) Option {
 	return func(cfg *Config) error {
 		cfg.TraceIDFn = f

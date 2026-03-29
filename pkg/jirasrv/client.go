@@ -23,13 +23,13 @@ const (
 	apiBasePath        = "/rest/api/2" // https://docs.atlassian.com/software/jira/docs/api/REST/9.17.0/
 )
 
-// HTTPClient contains the function to perform the actual HTTP request.
+// HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
 	// Do sends an HTTP request and returns an HTTP response.
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Client represents the config options required by this client.
+// Client wraps Jira Server REST API operations with validation and retries.
 type Client struct {
 	httpClient    HTTPClient
 	baseURL       *url.URL
@@ -43,7 +43,10 @@ type Client struct {
 	pingAddr      string
 }
 
-// New creates a new client instance.
+// New constructs a Jira Server REST client.
+//
+// It validates base URL and token, initializes validators and endpoint paths,
+// applies options, and provisions a default HTTP client when none is provided.
 func New(addr, token string, opts ...Option) (*Client, error) {
 	baseURL, err := url.Parse(addr)
 	if err != nil {
@@ -85,7 +88,10 @@ func New(addr, token string, opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// HealthCheck performs a status check on this service.
+// HealthCheck verifies Jira server reachability and health endpoint status.
+//
+// It runs with pingTimeout and returns an error for transport failures or
+// unexpected HTTP status codes.
 func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
@@ -111,7 +117,11 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	return nil
 }
 
-// SendRequest sends an HTTP request to the Jira server and returns the response.
+// SendRequest validates and sends a Jira REST API request.
+//
+// It builds the target URL from endpoint and query, JSON-encodes request when
+// provided, applies auth/content headers, and executes through the configured
+// method-aware retrier.
 // NOTE: The caller must close the response body.
 func (c *Client) SendRequest(
 	ctx context.Context,
@@ -150,7 +160,10 @@ func (c *Client) SendRequest(
 	return hr.Do(r) //nolint:wrapcheck
 }
 
-// requestBuffer validate the request and returns the data as buffer.
+// requestBuffer validates request and JSON-encodes it into a buffer.
+//
+// This keeps SendRequest focused on transport flow while enforcing payload
+// schema checks before network calls.
 func (c *Client) requestBuffer(
 	ctx context.Context,
 	request any,
@@ -170,7 +183,7 @@ func (c *Client) requestBuffer(
 	return buf, nil
 }
 
-// httpRequest prepares a generic HTTP request.
+// httpRequest builds an HTTP request with Jira default headers attached.
 func (c *Client) httpRequest(
 	ctx context.Context,
 	httpMethod string,
@@ -187,13 +200,16 @@ func (c *Client) httpRequest(
 	return r, nil
 }
 
-// setRequestHeaders sets the required headers on the request.
+// setRequestHeaders attaches JSON and bearer-token headers to r.
 func (c *Client) setRequestHeaders(r *http.Request) {
 	httputil.AddJsonHeaders(r)
 	httputil.AddBearerToken(c.token, r)
 }
 
-// newHTTPRetrier creates a new HTTP retrier instance.
+// newHTTPRetrier creates a retrier configured for the given HTTP method.
+//
+// Retry behavior follows method semantics (for example write methods are
+// retried more conservatively).
 func (c *Client) newHTTPRetrier(httpMethod string) (*httpretrier.HTTPRetrier, error) {
 	//nolint:wrapcheck
 	return httpretrier.New(

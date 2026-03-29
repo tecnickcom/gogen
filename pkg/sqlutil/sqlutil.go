@@ -70,7 +70,7 @@ type SQLUtil struct {
 	quoteValueFunc SQLQuoteFunc
 }
 
-// New creates a new instance.
+// New constructs SQL utility with configurable identifier and value quoting functions (default: MySQL-style).
 func New(opts ...Option) (*SQLUtil, error) {
 	c := defaultSQLUtil()
 
@@ -94,13 +94,12 @@ func defaultSQLUtil() *SQLUtil {
 	}
 }
 
-// QuoteID quotes identifiers such as schema, table, or column names.
+// QuoteID quotes identifiers (schema/table/column names) with configurable SQL dialect rules.
 func (c *SQLUtil) QuoteID(s string) string {
 	return c.quoteIDFunc(s)
 }
 
-// QuoteValue quotes database string values.
-// The returned value will include all surrounding quotes.
+// QuoteValue quotes string literal values with configurable SQL dialect escape rules; includes surrounding quotes.
 func (c *SQLUtil) QuoteValue(s string) string {
 	return c.quoteValueFunc(s)
 }

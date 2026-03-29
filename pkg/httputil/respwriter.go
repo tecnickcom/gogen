@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-// ResponseWriterWrapper is the interface defining the extendend functions of the proxy.
+// ResponseWriterWrapper augments [http.ResponseWriter] with status/size tracking and tee support.
 type ResponseWriterWrapper interface {
 	http.ResponseWriter
 
@@ -22,7 +22,7 @@ type ResponseWriterWrapper interface {
 	Tee(w io.Writer)
 }
 
-// responseWriterWrapper implements the ResponseWriterWrapper interface.
+// responseWriterWrapper is the concrete [ResponseWriterWrapper] implementation.
 type responseWriterWrapper struct {
 	http.ResponseWriter
 
@@ -32,12 +32,12 @@ type responseWriterWrapper struct {
 	tee           io.Writer
 }
 
-// NewResponseWriterWrapper wraps an http.ResponseWriter with an enhanced proxy.
+// NewResponseWriterWrapper wraps http.ResponseWriter with status/size capture and optional tee support.
 func NewResponseWriterWrapper(w http.ResponseWriter) ResponseWriterWrapper {
 	return &responseWriterWrapper{ResponseWriter: w}
 }
 
-// Size returns the total number of bytes sent to the client.
+// Size returns the total number of bytes written to the response.
 func (b *responseWriterWrapper) Size() int {
 	return b.size
 }
@@ -101,12 +101,12 @@ func (b *responseWriterWrapper) ReadFrom(r io.Reader) (int64, error) {
 	return n, err
 }
 
-// Status returns the HTTP status of the request.
+// Status returns the HTTP status code written to response.
 func (b *responseWriterWrapper) Status() int {
 	return b.status
 }
 
-// Tee sets a writer that will contain a copy of the bytes written to the response writer.
+// Tee sets a writer to receive a copy of all bytes written to the response.
 func (b *responseWriterWrapper) Tee(w io.Writer) {
 	b.tee = w
 }

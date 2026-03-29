@@ -11,7 +11,8 @@ type evalHasPrefix struct {
 	ref string
 }
 
-// newHasPrefix returns an Evaluator that checks if a string begins with the reference prefix.
+// newHasPrefix constructs a prefix-match evaluator from a reference string.
+// Returns error if r is not a string.
 func newHasPrefix(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {
@@ -21,8 +22,7 @@ func newHasPrefix(r any) (Evaluator, error) {
 	return &evalHasPrefix{ref: str}, nil
 }
 
-// Evaluate returns whether the input value begins with the reference string.
-// It returns false if the input value is not a string.
+// Evaluate returns true if the input string begins with the reference prefix, false if input is not a string.
 func (e *evalHasPrefix) Evaluate(v any) bool {
 	s, ok := convertStringValue(v)
 	if !ok {

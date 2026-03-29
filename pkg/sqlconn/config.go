@@ -54,7 +54,7 @@ func defaultConfig(driver, dsn string) *config {
 	}
 }
 
-// newConfig creates a new config instance.
+// newConfig builds and validates a config from defaults plus options.
 func newConfig(driver, dsn string, opts ...Option) (*config, error) {
 	cfg := defaultConfig(driver, dsn)
 

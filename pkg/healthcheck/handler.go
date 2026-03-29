@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	// StatusOK represents an OK status.
+	// StatusOK is the canonical success value used in per-check results.
 	StatusOK = "OK"
 )
 
-// ResultWriter is a type alias for a function in charge of writing the result of the health checks.
+// ResultWriter writes aggregated healthcheck output to an HTTP response.
 type ResultWriter func(ctx context.Context, w http.ResponseWriter, statusCode int, data any)
 
-// Handler is the struct containng the HTTP handler function that performs the healthchecks.
+// Handler aggregates and serves healthcheck results over HTTP.
 type Handler struct {
 	checks      []HealthCheck
 	checksCount int
@@ -25,7 +25,10 @@ type Handler struct {
 	logger      *slog.Logger
 }
 
-// NewHandler creates a new instance of the healthcheck handler.
+// NewHandler builds an HTTP healthcheck aggregator handler.
+//
+// It executes registered checks concurrently and writes a combined response via
+// the configured ResultWriter.
 func NewHandler(checks []HealthCheck, opts ...HandlerOption) *Handler {
 	h := &Handler{
 		checks:      checks,
@@ -42,7 +45,10 @@ func NewHandler(checks []HealthCheck, opts ...HandlerOption) *Handler {
 	return h
 }
 
-// ServeHTTP runs the configured health checks in parallel and collects their results.
+// ServeHTTP executes all configured checks in parallel and writes aggregated output.
+//
+// The response status is 200 when all checks pass, otherwise 503. The response
+// body maps check IDs to "OK" or error messages.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	type checkResult struct {
 		id  string

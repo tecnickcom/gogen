@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-// Option is the interface that allows to set the options.
+// Option configures an [HTTPRetrier] instance.
 type Option func(c *HTTPRetrier) error
 
-// WithRetryIfFn set the function used to decide when retry.
+// WithRetryIfFn customizes retry decision function (default: retry only on transport errors).
 func WithRetryIfFn(retryIfFn RetryIfFn) Option {
 	return func(r *HTTPRetrier) error {
 		if retryIfFn == nil {
@@ -21,7 +21,7 @@ func WithRetryIfFn(retryIfFn RetryIfFn) Option {
 	}
 }
 
-// WithAttempts set the maximum number of retries.
+// WithAttempts sets maximum retry attempts (default 4), must be at least 1.
 func WithAttempts(attempts uint) Option {
 	return func(r *HTTPRetrier) error {
 		if attempts < 1 {
@@ -34,7 +34,7 @@ func WithAttempts(attempts uint) Option {
 	}
 }
 
-// WithDelay set the delay after the first failed attempt.
+// WithDelay sets initial delay between first failed attempt and first retry (default 1 second).
 func WithDelay(delay time.Duration) Option {
 	return func(r *HTTPRetrier) error {
 		if int64(delay) < 1 {
@@ -47,9 +47,7 @@ func WithDelay(delay time.Duration) Option {
 	}
 }
 
-// WithDelayFactor set the multiplication factor to get the successive delay value.
-// A delay factor greater than 1 means an exponential delay increase.
-// if the delay factor is 2 and the first delay is 1, then the delays will be: [1, 2, 4, 8, ...].
+// WithDelayFactor sets exponential backoff multiplier (default 2): next_delay = current_delay * delayFactor.
 func WithDelayFactor(delayFactor float64) Option {
 	return func(r *HTTPRetrier) error {
 		if delayFactor < 1 {
@@ -62,8 +60,7 @@ func WithDelayFactor(delayFactor float64) Option {
 	}
 }
 
-// WithJitter sets the maximum random Jitter time between retries.
-// This is useful to avoid the Thundering herd problem (https://en.wikipedia.org/wiki/Thundering_herd_problem).
+// WithJitter sets random jitter ceiling to prevent synchronized retry storms (default 100ms).
 func WithJitter(jitter time.Duration) Option {
 	return func(r *HTTPRetrier) error {
 		if int64(jitter) < 1 {

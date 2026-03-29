@@ -102,9 +102,7 @@ type Rnd struct {
 	chrMap []byte
 }
 
-// New initialize the random reader.
-// The r argument must be a cryptographically secure random number generator.
-// The crypto/rand.Read is used as default if r == nil.
+// New constructs a random generator using the specified reader (or crypto/rand.Reader if nil) with optional customization.
 func New(r io.Reader, opts ...Option) *Rnd {
 	if r == nil {
 		r = rand.Reader
@@ -122,7 +120,7 @@ func New(r io.Reader, opts ...Option) *Rnd {
 	return rnd
 }
 
-// RandomBytes generates a slice of random bytes with the specified length.
+// RandomBytes generates a slice of n random bytes, returning error if the reader fails.
 func (r *Rnd) RandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 
@@ -134,8 +132,7 @@ func (r *Rnd) RandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-// RandUint32 returns a pseudo-random 32-bit value as a uint32 from the default Source.
-// It try to use crypto/rand.Reader, if it fails, it falls back to math/rand/v2.Uint32.
+// RandUint32 returns a random 32-bit value, falling back to math/rand/v2 if crypto/rand fails.
 func (r *Rnd) RandUint32() uint32 {
 	b, err := r.RandomBytes(4)
 	if err != nil {
@@ -145,8 +142,7 @@ func (r *Rnd) RandUint32() uint32 {
 	return binary.LittleEndian.Uint32(b)
 }
 
-// RandUint64 returns a pseudo-random 64-bit value as a uint64 from the default Source.
-// It try to use crypto/rand.Reader, if it fails, it falls back to math/rand/v2.Uint64.
+// RandUint64 returns a random 64-bit value, falling back to math/rand/v2 if crypto/rand fails.
 func (r *Rnd) RandUint64() uint64 {
 	b, err := r.RandomBytes(8)
 	if err != nil {
@@ -156,19 +152,17 @@ func (r *Rnd) RandUint64() uint64 {
 	return binary.LittleEndian.Uint64(b)
 }
 
-// RandHex64 returns a pseudo-random 64-bit value as a fixed-length 16 digits hexadecimal string.
+// RandHex64 returns a random 64-bit value as a 16-character hexadecimal string.
 func (r *Rnd) RandHex64() string {
 	return string(uhex.Hex64(r.RandUint64()))
 }
 
-// RandString64 returns a pseudo-random 64-bit value as a base-36 variable-length string.
+// RandString64 returns a random 64-bit value as a variable-length base-36 string.
 func (r *Rnd) RandString64() string {
 	return strconv.FormatUint(r.RandUint64(), 36)
 }
 
-// RandString returns n-characters long random string that can be used as password.
-// It generates n random bytes and maps them to characters using the default character set.
-// The default character set can be overwritten by using the WithCharByteMap option.
+// RandString returns an n-character random string using the configured character map, suitable for passwords.
 func (r *Rnd) RandString(n int) (string, error) {
 	b, err := r.RandomBytes(n)
 	if err != nil {

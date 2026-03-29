@@ -1,5 +1,5 @@
 /*
-Package redis provides a focused wrapper around go-redis for common application
+Package redis provides focused helpers built on go-redis for common application
 workflows: key/value storage, Pub/Sub messaging, typed payload encoding, and
 basic connection health checks.
 

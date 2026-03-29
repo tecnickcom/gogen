@@ -63,7 +63,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/threadsafe"
 )
 
-// Set is a thread-safe function to assign a value v to a key k in a slice s.
+// Set assigns value v at index k using an exclusive lock.
 func Set[S ~[]E, E any](mux threadsafe.Locker, s S, k int, v E) {
 	mux.Lock()
 	defer mux.Unlock()
@@ -71,7 +71,7 @@ func Set[S ~[]E, E any](mux threadsafe.Locker, s S, k int, v E) {
 	s[k] = v
 }
 
-// Get is a thread-safe function to get a value by key k in a slice.
+// Get returns value at index k under a read lock.
 func Get[S ~[]E, E any](mux threadsafe.RLocker, s S, k int) E {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -79,7 +79,7 @@ func Get[S ~[]E, E any](mux threadsafe.RLocker, s S, k int) E {
 	return s[k]
 }
 
-// Len is a thread-safe function to get the length of a slice.
+// Len returns slice length under a read lock.
 func Len[S ~[]E, E any](mux threadsafe.RLocker, s S) int {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -87,8 +87,7 @@ func Len[S ~[]E, E any](mux threadsafe.RLocker, s S) int {
 	return len(s)
 }
 
-// Append is a thread-safe version of the Go built-in append function.
-// Appends the value v to the slice s.
+// Append appends one or more values using an exclusive lock.
 func Append[S ~[]E, E any](mux threadsafe.Locker, s *S, v ...E) {
 	mux.Lock()
 	defer mux.Unlock()
@@ -96,8 +95,7 @@ func Append[S ~[]E, E any](mux threadsafe.Locker, s *S, v ...E) {
 	*s = append(*s, v...)
 }
 
-// Filter is a thread-safe function that returns a new slice containing
-// only the elements in the input slice s for which the specified function f is true.
+// Filter returns a new slice containing elements for which predicate f is true, under a read lock.
 func Filter[S ~[]E, E any](mux threadsafe.RLocker, s S, f func(int, E) bool) S {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -105,8 +103,7 @@ func Filter[S ~[]E, E any](mux threadsafe.RLocker, s S, f func(int, E) bool) S {
 	return sliceutil.Filter(s, f)
 }
 
-// Map is a thread-safe function that returns a new slice that contains
-// each of the elements of the input slice s mutated by the specified function.
+// Map transforms each element under a read lock and returns a new slice.
 func Map[S ~[]E, E any, U any](mux threadsafe.RLocker, s S, f func(int, E) U) []U {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -114,9 +111,7 @@ func Map[S ~[]E, E any, U any](mux threadsafe.RLocker, s S, f func(int, E) U) []
 	return sliceutil.Map(s, f)
 }
 
-// Reduce is a thread-safe function that applies the reducing function f
-// to each element of the input slice s, and returns the value of the last call to f.
-// The first parameter of the reducing function f is initialized with init.
+// Reduce folds slice elements under a read lock starting from init.
 func Reduce[S ~[]E, E any, U any](mux threadsafe.RLocker, s S, init U, f func(int, E, U) U) U {
 	mux.RLock()
 	defer mux.RUnlock()

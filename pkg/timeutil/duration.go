@@ -6,25 +6,22 @@ import (
 	"time"
 )
 
-// Duration is an alias for the standard time.Duration.
+// Duration aliases time.Duration for JSON marshaling as human-readable strings (e.g., "1h30m") instead of nanoseconds.
 //
 //nolint:recvcheck
 type Duration time.Duration
 
-// String returns a string representing the duration in the form "72h3m0.5s".
-// It is a wrapper for time.Duration.String().
+// String returns the duration as a human-readable string (e.g., "1h30m0s") per time.Duration.String().
 func (d Duration) String() string {
 	return time.Duration(d).String()
 }
 
-// MarshalJSON returns d as the JSON encoding of d.
-// It encodes the time.Duration in human readable format (e.g.: 20s, 1h, ...).
+// MarshalJSON encodes the duration as a human-readable string (e.g., "20s", "1h") rather than a raw nanosecond integer.
 func (d Duration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.String()) //nolint:wrapcheck
 }
 
-// UnmarshalJSON sets *d to a copy of data.
-// It converts human readable time duration format (e.g.: 20s, 1h, ...) in standard time.Duration.
+// UnmarshalJSON parses the duration from either a human-readable string (e.g., "20s", "1h") or a numeric nanosecond value.
 func (d *Duration) UnmarshalJSON(data []byte) error {
 	var v any
 

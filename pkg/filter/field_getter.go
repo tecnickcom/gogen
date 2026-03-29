@@ -15,7 +15,7 @@ const (
 // errFieldNotFound is returned when a specified field is not found in a struct.
 var errFieldNotFound = errors.New("field not found")
 
-// reflectPath represents a field path (e.g. address.country) as the indices of the fields (e.g. [2,1]) that can be used with reflect.Value.Field(i int).
+// reflectPath stores a dot path (for example, "address.country") as field indices (for example, []int{2,1}) usable with reflect.Value.Field.
 type reflectPath []int
 
 // fieldGetter retrieves field values from objects based on their field paths.
@@ -24,7 +24,8 @@ type fieldGetter struct {
 	cache    fieldCache
 }
 
-// GetFieldValue returns the value of obj's field, specified by its dot separated path.
+// GetFieldValue resolves the dot-separated field path within obj, with caching and nil handling.
+// Empty path returns the root object; missing fields return error, not nil.
 func (r *fieldGetter) GetFieldValue(obj any, path string) (any, error) {
 	// empty path means the root object
 	if path == "" {

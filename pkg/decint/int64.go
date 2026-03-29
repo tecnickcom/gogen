@@ -5,17 +5,22 @@ import (
 	"strconv"
 )
 
-// FloatToInt Converts the value to a int64 representation.
+// FloatToInt converts a decimal float into the scaled int64 fixed-point form.
+//
+// The value is multiplied by 1e6 and truncated toward zero.
 func FloatToInt(v float64) int64 {
 	return int64(v * precision)
 }
 
-// IntToFloat Converts back the int64 representation into a float value.
+// IntToFloat converts a scaled int64 fixed-point value back to float64.
 func IntToFloat(v int64) float64 {
 	return float64(v) / precision
 }
 
-// StringToInt parse the input string float value and returns the int64 representation.
+// StringToInt parses a decimal string and returns its scaled int64 form.
+//
+// This is useful when ingesting textual values from config, APIs, or storage
+// while preserving the package's fixed-point representation.
 func StringToInt(s string) (int64, error) {
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
@@ -25,7 +30,9 @@ func StringToInt(s string) (int64, error) {
 	return FloatToInt(v), nil
 }
 
-// IntToString format the int64 representation as string.
+// IntToString formats a scaled int64 value as a six-decimal string.
+//
+// The fixed format provides stable output for serialization and comparisons.
 func IntToString(v int64) string {
 	return fmt.Sprintf(stringFormat, IntToFloat(v))
 }

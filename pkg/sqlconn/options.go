@@ -6,59 +6,59 @@ import (
 	"time"
 )
 
-// Option is a type alias for a function that configures the DB connector.
+// Option configures SQL connection behavior.
 type Option func(*config)
 
-// WithConnectFunc replaces the default connection function.
+// WithConnectFunc replaces default connection function (e.g., for testing).
 func WithConnectFunc(fn ConnectFunc) Option {
 	return func(cfg *config) {
 		cfg.connectFunc = fn
 	}
 }
 
-// WithCheckConnectionFunc replaces the default connection check function.
+// WithCheckConnectionFunc replaces default connection verification function.
 func WithCheckConnectionFunc(fn CheckConnectionFunc) Option {
 	return func(cfg *config) {
 		cfg.checkConnectionFunc = fn
 	}
 }
 
-// WithSQLOpenFunc replaces the default open database function.
+// WithSQLOpenFunc replaces default sql.Open wrapper (for testing only).
 func WithSQLOpenFunc(fn SQLOpenFunc) Option {
 	return func(cfg *config) {
 		cfg.sqlOpenFunc = fn
 	}
 }
 
-// WithConnMaxIdleCount sets the maximum number of idle database connections.
+// WithConnMaxIdleCount sets maximum number of idle database connections in pool.
 func WithConnMaxIdleCount(maxIdle int) Option {
 	return func(cfg *config) {
 		cfg.connMaxIdleCount = maxIdle
 	}
 }
 
-// WithConnMaxIdleTime sets the maximum idle time of a database connection.
+// WithConnMaxIdleTime sets maximum idle time before connection is reconnected.
 func WithConnMaxIdleTime(t time.Duration) Option {
 	return func(cfg *config) {
 		cfg.connMaxIdleTime = t
 	}
 }
 
-// WithConnMaxLifetime sets the maximum lifetime of a database connection.
+// WithConnMaxLifetime sets maximum lifetime of a connection before it must be closed.
 func WithConnMaxLifetime(t time.Duration) Option {
 	return func(cfg *config) {
 		cfg.connMaxLifetime = t
 	}
 }
 
-// WithConnMaxOpen sets the maximum number of open database connections.
+// WithConnMaxOpen sets maximum number of open connections in the pool.
 func WithConnMaxOpen(maxOpen int) Option {
 	return func(cfg *config) {
 		cfg.connMaxOpenCount = maxOpen
 	}
 }
 
-// WithDefaultDriver sets the default driver to use if not included in the DSN.
+// WithDefaultDriver sets fallback driver if not included in DSN.
 func WithDefaultDriver(driver string) Option {
 	return func(cfg *config) {
 		if cfg.driver == "" {
@@ -67,29 +67,28 @@ func WithDefaultDriver(driver string) Option {
 	}
 }
 
-// WithPingTimeout sets the healthcheck ping timeout.
+// WithPingTimeout sets context timeout for health check ping operations.
 func WithPingTimeout(t time.Duration) Option {
 	return func(cfg *config) {
 		cfg.pingTimeout = t
 	}
 }
 
-// WithLogger overrides the default logger.
+// WithLogger overrides default logger for connection lifecycle events.
 func WithLogger(logger *slog.Logger) Option {
 	return func(cfg *config) {
 		cfg.logger = logger
 	}
 }
 
-// WithShutdownWaitGroup sets the shared waiting group to communicate externally when the database connection is closed.
+// WithShutdownWaitGroup sets external wait group to signal when connection closes.
 func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 	return func(cfg *config) {
 		cfg.shutdownWaitGroup = wg
 	}
 }
 
-// WithShutdownSignalChan sets the shared channel uset to signal a shutdown.
-// When the channel signal is received the database connection will be closed.
+// WithShutdownSignalChan sets channel to trigger graceful shutdown of connection.
 func WithShutdownSignalChan(ch chan struct{}) Option {
 	return func(cfg *config) {
 		cfg.shutdownSignalChan = ch

@@ -1,16 +1,16 @@
 package sqlutil
 
-// Option is a type alias for a function that configures the DB connector.
+// Option configures a [SQLUtil] instance.
 type Option func(*SQLUtil)
 
-// WithQuoteIDFunc replaces the default QuoteID function.
+// WithQuoteIDFunc customizes identifier quoting function (e.g., for Postgres backticks vs PostgreSQL quotes).
 func WithQuoteIDFunc(fn SQLQuoteFunc) Option {
 	return func(c *SQLUtil) {
 		c.quoteIDFunc = fn
 	}
 }
 
-// WithQuoteValueFunc replaces the default QuoteValue function.
+// WithQuoteValueFunc customizes value quoting function for different SQL dialects.
 func WithQuoteValueFunc(fn SQLQuoteFunc) Option {
 	return func(c *SQLUtil) {
 		c.quoteValueFunc = fn

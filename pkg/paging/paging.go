@@ -68,11 +68,7 @@ metadata in a single import.
 */
 package paging
 
-// Paging holds all pagination metadata derived from a current-page number,
-// a page size, and a total item count. All fields are JSON-serialisable and
-// ready to embed in an API response envelope.
-//
-// Use [New] to construct a populated instance; do not fill fields manually.
+// Paging contains all pagination metadata computed from current page, page size, and total item count; all fields are JSON-serializable for API responses.
 type Paging struct {
 	// CurrentPage is the current page number starting from 1.
 	CurrentPage uint `json:"page"`
@@ -96,16 +92,7 @@ type Paging struct {
 	Offset uint `json:"offset"`
 }
 
-// New computes all pagination metadata from currentPage, pageSize, and
-// totalItems and returns a fully populated [Paging] value.
-//
-// Input clamping:
-//   - pageSize < 1 is raised to 1.
-//   - currentPage < 1 is raised to 1.
-//   - currentPage > TotalPages is clamped to TotalPages.
-//
-// This means callers can pass raw URL query-string values without prior
-// validation and always receive a coherent, in-bounds result.
+// New computes all pagination metadata, clamping inputs to safe ranges: pageSize and currentPage default to 1 if less, and currentPage is clamped to totalPages.
 func New(currentPage, pageSize, totalItems uint) Paging {
 	pageSize = minPageSize(pageSize)
 	totalPages := computeTotalPages(totalItems, pageSize)
@@ -122,12 +109,7 @@ func New(currentPage, pageSize, totalItems uint) Paging {
 	}
 }
 
-// ComputeOffsetAndLimit returns the zero-based SQL OFFSET and the LIMIT
-// (page size) for the given currentPage and pageSize.
-//
-// This is a lightweight alternative to [New] when only the two SQL values
-// are needed and the full [Paging] metadata is not required.
-// Both inputs are clamped to a minimum of 1.
+// ComputeOffsetAndLimit returns the zero-based SQL OFFSET and LIMIT (page size) for the given currentPage and pageSize, auto-clamping both to minimum values of 1.
 func ComputeOffsetAndLimit(currentPage, pageSize uint) (uint, uint) {
 	currentPage = minCurrentPage(currentPage)
 	pageSize = minPageSize(pageSize)

@@ -8,14 +8,14 @@ import (
 	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
-// cfg holds the configuration for the S3 service client.
+// cfg stores AWS and service-specific settings used to construct an S3 client.
 type cfg struct {
 	awsConfig aws.Config
 	awsOpts   awsopt.Options
 	srvOptFns []SrvOptionFunc
 }
 
-// loadConfig loads the configuration for the S3 service client using the provided options.
+// loadConfig applies options and resolves aws.Config for S3 client construction.
 func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 	c := &cfg{}
 

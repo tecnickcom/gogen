@@ -13,7 +13,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/encode"
 )
 
-// constants used in the SQS client.
+// Internal constants used by SQS queue/metadata validation.
 const (
 	fifoSuffix          = ".fifo"
 	regexMessageGroupID = `^[[:graph:]]{1,128}$`
@@ -25,7 +25,7 @@ type TEncodeFunc func(ctx context.Context, data any) (string, error)
 // TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
 type TDecodeFunc func(ctx context.Context, msg string, data any) error
 
-// SQS represents the mockable functions in the AWS SDK SQS client.
+// SQS defines the AWS SDK SQS calls used by [Client].
 type SQS interface {
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
 	GetQueueAttributes(ctx context.Context, params *sqs.GetQueueAttributesInput, optFns ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error)
@@ -33,9 +33,9 @@ type SQS interface {
 	SendMessage(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
 }
 
-// Client is a wrapper for the SQS client in the AWS SDK.
+// Client wraps AWS SQS operations and typed message encoding/decoding for a single queue URL.
 type Client struct {
-	// sqs is the interface for the upstream functions.
+	// sqs provides the AWS SDK operations used by this client.
 	sqs SQS
 
 	// queueURL is the SQS queue URL. Names are case-sensitive and limited up to 80 chars.
@@ -68,8 +68,8 @@ type Client struct {
 	hcGetQueueAttributesInput *sqs.GetQueueAttributesInput
 }
 
-// New creates a new instance of the SQS client wrapper.
-// msgGroupID is required for FIFO queues.
+// New builds a client for queueURL and validates FIFO message-group constraints.
+// msgGroupID is required only when queueURL targets a FIFO queue.
 func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Client, error) {
 	cfg, err := loadConfig(ctx, opts...)
 	if err != nil {
@@ -102,7 +102,7 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 	}, nil
 }
 
-// Message represents a message in the queue.
+// Message holds a received payload and the receipt handle used for deletion.
 type Message struct {
 	// Body is the message content and can contain: JSON, XML or plain text.
 	Body string
@@ -111,7 +111,7 @@ type Message struct {
 	ReceiptHandle string
 }
 
-// Send delivers a raw string message to the queue.
+// Send publishes a raw string message to the queue.
 func (c *Client) Send(ctx context.Context, message string) error {
 	_, err := c.sqs.SendMessage(
 		ctx,
@@ -127,10 +127,8 @@ func (c *Client) Send(ctx context.Context, message string) error {
 	return nil
 }
 
-// Receive retrieves a raw string message from the queue.
-// This function will wait up to WaitTimeSeconds seconds for a message to be available, otherwise it will return nil.
-// Once retrieved, a message will not be visible for up to VisibilityTimeout seconds.
-// Once processed the message should be removed from the queue by calling the Delete method.
+// Receive retrieves one raw message from the queue with configured wait/visibility settings.
+// Returns nil message when no message is available within waitTimeSeconds.
 func (c *Client) Receive(ctx context.Context) (*Message, error) {
 	resp, err := c.sqs.ReceiveMessage(
 		ctx,
@@ -153,7 +151,7 @@ func (c *Client) Receive(ctx context.Context) (*Message, error) {
 	}, nil
 }
 
-// Delete deletes the specified message from the queue.
+// Delete removes a message from the queue by receipt handle.
 func (c *Client) Delete(ctx context.Context, receiptHandle string) error {
 	if receiptHandle == "" {
 		return nil
@@ -172,29 +170,27 @@ func (c *Client) Delete(ctx context.Context, receiptHandle string) error {
 	return nil
 }
 
-// MessageEncode encodes and serialize the input data to a string compatible with SQS.
+// MessageEncode encodes and serializes data into an SQS-compatible string payload.
 func MessageEncode(data any) (string, error) {
 	return encode.Encode(data) //nolint:wrapcheck
 }
 
-// MessageDecode decodes a message encoded with MessageEncode to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// MessageDecode decodes a MessageEncode payload into data, which must be a pointer.
 func MessageDecode(msg string, data any) error {
 	return encode.Decode(msg, data) //nolint:wrapcheck
 }
 
-// DefaultMessageEncodeFunc is the default function to encode and serialize the input data for SendData().
+// DefaultMessageEncodeFunc is the default serializer used by SendData.
 func DefaultMessageEncodeFunc(_ context.Context, data any) (string, error) {
 	return MessageEncode(data)
 }
 
-// DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// DefaultMessageDecodeFunc is the default deserializer used by ReceiveData.
 func DefaultMessageDecodeFunc(_ context.Context, msg string, data any) error {
 	return MessageDecode(msg, data)
 }
 
-// SendData delivers the specified data as encoded message to the queue.
+// SendData encodes data via configured codec and publishes it to the queue.
 func (c *Client) SendData(ctx context.Context, data any) error {
 	message, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
@@ -204,12 +200,8 @@ func (c *Client) SendData(ctx context.Context, data any) error {
 	return c.Send(ctx, message)
 }
 
-// ReceiveData retrieves a message from the queue, extract its content in the data and returns the ReceiptHandle.
-// The value underlying data must be a pointer to the correct type for the next data item received.
-// This function will wait up to WaitTimeSeconds seconds for a message to be available, otherwise it will return an empty ReceiptHandle.
-// Once retrieved, a message will not be visible for up to VisibilityTimeout seconds.
-// Once processed the message should be removed from the queue by calling the Delete method.
-// In case of decoding error the returned receipt handle will be not empty, so it can be used to delete the message.
+// ReceiveData receives one message, decodes its payload into data, and returns the receipt handle.
+// If decoding fails, receipt handle is still returned so callers can decide whether to delete or requeue.
 func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 	message, err := c.Receive(ctx)
 	if err != nil {
@@ -225,7 +217,7 @@ func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 	return message.ReceiptHandle, err
 }
 
-// HealthCheck checks if the current queue is present in the current region and returns an error otherwise.
+// HealthCheck verifies queue reachability by fetching a known queue attribute.
 func (c *Client) HealthCheck(ctx context.Context) error {
 	q, err := c.sqs.GetQueueAttributes(ctx, c.hcGetQueueAttributesInput)
 	if err != nil {

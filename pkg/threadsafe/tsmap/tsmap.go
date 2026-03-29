@@ -65,7 +65,7 @@ import (
 	"github.com/tecnickcom/gogen/pkg/threadsafe"
 )
 
-// Set is a thread-safe function to assign a value v to a key k in a map m.
+// Set stores value v at key k using an exclusive lock.
 func Set[M ~map[K]V, K comparable, V any](mux threadsafe.Locker, m M, k K, v V) {
 	mux.Lock()
 	defer mux.Unlock()
@@ -73,7 +73,7 @@ func Set[M ~map[K]V, K comparable, V any](mux threadsafe.Locker, m M, k K, v V) 
 	m[k] = v
 }
 
-// Delete is a thread-safe function to delete the key-value pair with the specified key from the given map.
+// Delete removes key k from map using an exclusive lock.
 func Delete[M ~map[K]V, K comparable, V any](mux threadsafe.Locker, m M, k K) {
 	mux.Lock()
 	defer mux.Unlock()
@@ -81,8 +81,7 @@ func Delete[M ~map[K]V, K comparable, V any](mux threadsafe.Locker, m M, k K) {
 	delete(m, k)
 }
 
-// Get is a thread-safe function to get a value by key k in a map m.
-// See also GetOK.
+// Get returns value for key k under a read lock.
 func Get[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, k K) V {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -90,8 +89,7 @@ func Get[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, k K) V {
 	return m[k]
 }
 
-// GetOK is a thread-safe function to get a value by key k in a map m.
-// The second return value is a boolean that indicates whether the key was present in the map.
+// GetOK returns value and presence flag for key k under a read lock.
 func GetOK[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, k K) (V, bool) {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -101,7 +99,7 @@ func GetOK[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, k K) (V
 	return v, ok
 }
 
-// Len is a thread-safe function to get the length of a map m.
+// Len returns map length under a read lock.
 func Len[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M) int {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -109,8 +107,7 @@ func Len[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M) int {
 	return len(m)
 }
 
-// Filter is a thread-safe function that returns a new map containing
-// only the elements in the input map m for which the specified function f is true.
+// Filter returns a new map containing entries for which predicate f is true, under a read lock.
 func Filter[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, f func(K, V) bool) M {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -118,9 +115,7 @@ func Filter[M ~map[K]V, K comparable, V any](mux threadsafe.RLocker, m M, f func
 	return maputil.Filter(m, f)
 }
 
-// Map is a thread-safe function that returns a new map that contains
-// each of the elements of the input map m mutated by the specified function.
-// This function can be used to invert a map.
+// Map transforms each map entry under a read lock and returns a new mapped result.
 func Map[M ~map[K]V, K, J comparable, V, U any](mux threadsafe.RLocker, m M, f func(K, V) (J, U)) map[J]U {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -128,9 +123,7 @@ func Map[M ~map[K]V, K, J comparable, V, U any](mux threadsafe.RLocker, m M, f f
 	return maputil.Map(m, f)
 }
 
-// Reduce is a thread-safe function that applies the reducing function f
-// to each element of the input map m, and returns the value of the last call to f.
-// The first parameter of the reducing function f is initialized with init.
+// Reduce folds map entries under a read lock starting from init.
 func Reduce[M ~map[K]V, K comparable, V, U any](mux threadsafe.RLocker, m M, init U, f func(K, V, U) U) U {
 	mux.RLock()
 	defer mux.RUnlock()
@@ -138,7 +131,7 @@ func Reduce[M ~map[K]V, K comparable, V, U any](mux threadsafe.RLocker, m M, ini
 	return maputil.Reduce(m, init, f)
 }
 
-// Invert is a thread-safe function that returns a new map were keys and values are swapped.
+// Invert returns a new map with keys and values swapped, under a read lock.
 func Invert[M ~map[K]V, K, V comparable](mux threadsafe.RLocker, m M) map[V]K {
 	mux.RLock()
 	defer mux.RUnlock()

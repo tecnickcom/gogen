@@ -10,12 +10,23 @@ import (
 	"github.com/tecnickcom/gogen/pkg/sfcache"
 )
 
-// Cache is a wrapper for the SecretsManager client in the AWS SDK.
+// Cache provides TTL and single-flight caching for AWS Secrets Manager lookups.
 type Cache struct {
 	cache *sfcache.Cache[string]
 }
 
-// New creates a new instance of the AWS SecretsManager cache.
+// New constructs a Secrets Manager cache with single-flight lookups and TTL-based storage.
+//
+// It addresses two common production problems: repeated network latency from
+// fetching the same secret on every call, and duplicate upstream requests when
+// many goroutines request an expired key at the same time.
+//
+// Key features:
+//   - fixed-size cache capacity via size to bound memory use;
+//   - TTL-driven refresh via ttl to keep rotated secrets up to date;
+//   - option-based AWS and client customization for real or mocked backends.
+//
+// The returned Cache is safe for concurrent use.
 func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cache, error) {
 	cfg, err := loadConfig(ctx, opts...)
 	if err != nil {
@@ -40,11 +51,15 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 	}, nil
 }
 
-// GetSecretData retrieves the data of the specified secret key (SecretId).
-// Duplicate calls for the same key will wait for the first external call to complete (single-flight).
-// It also handles the case where the cache entry is removed or updated during the wait.
-// The function returns the cached value if available; otherwise, it performs a new external call.
-// If the external call is successful, it updates the cache with the newly obtained value.
+// GetSecretData returns the full Secrets Manager response for key.
+//
+// On cache hit, it serves data from memory. On cache miss or expiry, one
+// goroutine performs the upstream GetSecretValue call while concurrent callers
+// for the same key wait and share that result (single-flight behavior).
+//
+// This reduces latency variance, avoids API bursts, and provides a single
+// entry point when callers need metadata in GetSecretValueOutput in addition to
+// the secret payload.
 func (c *Cache) GetSecretData(ctx context.Context, key string) (*awssm.GetSecretValueOutput, error) {
 	val, err := c.cache.Lookup(ctx, key)
 	if err != nil {
@@ -54,9 +69,11 @@ func (c *Cache) GetSecretData(ctx context.Context, key string) (*awssm.GetSecret
 	return val.(*awssm.GetSecretValueOutput), nil //nolint:forcetypeassert
 }
 
-// GetSecretBinary retrieves the decrypted binary value of the specified secret key (SecretId).
-// If the secret is stored as a string, it will be converted to a byte slice.
-// Uses: GetSecretData.
+// GetSecretBinary returns key as bytes, regardless of how it is stored in AWS.
+//
+// If the secret is stored as SecretString, the value is converted to []byte;
+// otherwise SecretBinary is returned directly. This gives callers a uniform
+// binary-oriented API for downstream decoding or decryption workflows.
 func (c *Cache) GetSecretBinary(ctx context.Context, key string) ([]byte, error) {
 	val, err := c.GetSecretData(ctx, key)
 	if err != nil {
@@ -70,9 +87,11 @@ func (c *Cache) GetSecretBinary(ctx context.Context, key string) ([]byte, error)
 	return val.SecretBinary, nil
 }
 
-// GetSecretString retrieves the decrypted string value of the specified secret key (SecretId).
-// If the secret is stored as a binary, it will be converted to a string.
-// Uses: GetSecretData.
+// GetSecretString returns key as text, regardless of how it is stored in AWS.
+//
+// If the secret is stored as SecretBinary, the bytes are converted to string;
+// otherwise SecretString is returned directly. This simplifies application code
+// that expects textual secrets such as DSNs, API keys, or tokens.
 func (c *Cache) GetSecretString(ctx context.Context, key string) (string, error) {
 	val, err := c.GetSecretData(ctx, key)
 	if err != nil {
@@ -86,17 +105,26 @@ func (c *Cache) GetSecretString(ctx context.Context, key string) (string, error)
 	return string(val.SecretBinary), nil
 }
 
-// Len returns the number of items in the cache.
+// Len reports the current number of cached entries.
+//
+// It is useful for observability and capacity tuning when choosing cache size
+// and TTL values for workload patterns.
 func (c *Cache) Len() int {
 	return c.cache.Len()
 }
 
-// Reset clears the whole cache.
+// Reset removes all cached entries.
+//
+// Use it after broad secret rotation events or test setup/teardown when a
+// full cache invalidation is preferred over key-by-key removal.
 func (c *Cache) Reset() {
 	c.cache.Reset()
 }
 
-// Remove removes the cache entry for the specified key.
+// Remove evicts key from the cache.
+//
+// This allows targeted invalidation after rotating a single secret without
+// disrupting other hot entries.
 func (c *Cache) Remove(key string) {
 	c.cache.Remove(key)
 }

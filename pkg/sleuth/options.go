@@ -4,38 +4,38 @@ import (
 	"time"
 )
 
-// Option is the interface that allows to set client options.
+// Option customizes Sleuth client configuration.
 type Option func(c *Client)
 
-// WithTimeout overrides the default request timeout.
+// WithTimeout overrides default request timeout.
 func WithTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
 		c.timeout = timeout
 	}
 }
 
-// WithPingTimeout overrides the default ping timeout.
+// WithPingTimeout overrides default health-check timeout.
 func WithPingTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
 		c.pingTimeout = timeout
 	}
 }
 
-// WithHTTPClient overrides the default HTTP client.
+// WithHTTPClient injects a custom HTTP client implementation.
 func WithHTTPClient(hc HTTPClient) Option {
 	return func(c *Client) {
 		c.httpClient = hc
 	}
 }
 
-// WithRetryAttempts overrides the default HTTP client.
+// WithRetryAttempts overrides retry attempt count for write operations.
 func WithRetryAttempts(attempts uint) Option {
 	return func(c *Client) {
 		c.retryAttempts = attempts
 	}
 }
 
-// WithRetryDelay sets the delay to apply after the first failed attempt.
+// WithRetryDelay sets base delay for retrier backoff configuration.
 func WithRetryDelay(value time.Duration) Option {
 	return func(c *Client) {
 		c.retryDelay = value

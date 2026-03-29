@@ -99,7 +99,7 @@ func KeypadDigit(r rune) (int, bool) {
 	return keypadAlphaToDigit(r)
 }
 
-// keypadAlphaToDigit converts the input alphabetical rune to a number corresponding to a standard phone keypad.
+// keypadAlphaToDigit maps uppercase ASCII letters to ITU E.161 keypad digits.
 func keypadAlphaToDigit(r rune) (int, bool) {
 	switch r {
 	case 'A', 'B', 'C':
@@ -148,7 +148,7 @@ func KeypadNumber(num string) []int {
 
 // KeypadNumberString converts a string to a keypad digit string.
 //
-// It is a convenience wrapper around [KeypadNumber] that joins the resulting
+// It calls [KeypadNumber] and joins the resulting
 // digit slice into a plain string (e.g. "18003569377"), suitable for storage,
 // display, or passing directly to a dialler. Non-keypad characters are skipped
 // just as in [KeypadNumber].

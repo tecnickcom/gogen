@@ -61,9 +61,7 @@ import (
 	"unicode/utf8"
 )
 
-// Chunk slices the input text block string s into substrings of maximum byte size at the closest separator.
-// Account for Unicode strings to avoid splitting multi-byte characters.
-// Newlines characters are applied first.
+// Chunk splits text block into substrings of max size at newline/separator boundaries, trimming whitespace and returning at most n chunks.
 //
 //nolint:gocognit
 func Chunk(s string, size, n int) []string {
@@ -101,8 +99,7 @@ func Chunk(s string, size, n int) []string {
 	return ret
 }
 
-// ChunkLine slices a string line into substrings of maximum byte size at the closest unicode space separator.
-// Account for Unicode strings to avoid splitting multy-byte characters.
+// ChunkLine splits single line into substrings of max byte size at UTF-8 boundaries, preferring whitespace/punctuation separators; returns at most n chunks.
 //
 //nolint:gocognit,gocyclo,cyclop
 func ChunkLine(s string, size, n int) []string {

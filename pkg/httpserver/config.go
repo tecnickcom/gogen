@@ -26,13 +26,13 @@ import (
 // timeoutMessage is the message used for timeout responses.
 const timeoutMessage = "TIMEOUT"
 
-// RedactFn is an alias for a redact function.
+// RedactFn redacts sensitive values from logged text payloads.
 type RedactFn func(s string) string
 
-// IndexHandlerFunc is a type alias for the route index function.
+// IndexHandlerFunc builds an index handler from the registered route list.
 type IndexHandlerFunc func([]Route) http.HandlerFunc
 
-// GetPublicIPFunc is a type alias for function to get public IP of the service.
+// GetPublicIPFunc resolves the service public IP address.
 type GetPublicIPFunc func(context.Context) (string, error)
 
 // GetPublicIPDefaultFunc returns the GetPublicIP function for a default ipify client.

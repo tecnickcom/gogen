@@ -164,7 +164,7 @@ const (
 	DefaultMaxPasswordLength = 4096
 )
 
-// Params contains the parameters for hashing the password.
+// Params contains the Argon2id parameters and limits used for password hashing.
 type Params struct {
 	// Algo is the algorithm used to hash the password.
 	// It corresponds to Type y=2.
@@ -209,9 +209,9 @@ type Params struct {
 	rnd *random.Rnd
 }
 
-// Hashed contains the hashed password key and hashing parameters.
+// Hashed stores a derived key together with the parameters needed to verify it.
 type Hashed struct {
-	// Params contains the hashing parameters.
+	// Params are the Argon2 parameters used to derive Key.
 	Params *Params `json:"P"`
 
 	// Salt is the password salt (Nonce S) of length Params.SaltLen.

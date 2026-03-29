@@ -8,7 +8,8 @@ import (
 // Option is the interface that allows to set the options.
 type Option func(c *Retrier) error
 
-// WithRetryIfFn set the function used to decide when retry.
+// WithRetryIfFn customizes the retry condition predicate.
+// Returns error if the function is nil.
 func WithRetryIfFn(retryIfFn RetryIfFn) Option {
 	return func(r *Retrier) error {
 		if retryIfFn == nil {
@@ -21,7 +22,8 @@ func WithRetryIfFn(retryIfFn RetryIfFn) Option {
 	}
 }
 
-// WithAttempts set the maximum number of retries.
+// WithAttempts customizes the maximum number of retry attempts.
+// Returns error if attempts < 1.
 func WithAttempts(attempts uint) Option {
 	return func(r *Retrier) error {
 		if attempts < 1 {
@@ -34,7 +36,8 @@ func WithAttempts(attempts uint) Option {
 	}
 }
 
-// WithDelay set the delay after the first failed attempt.
+// WithDelay customizes the base delay after the first failed attempt.
+// Returns error if delay < 1 nanosecond.
 func WithDelay(delay time.Duration) Option {
 	return func(r *Retrier) error {
 		if int64(delay) < 1 {
@@ -47,9 +50,8 @@ func WithDelay(delay time.Duration) Option {
 	}
 }
 
-// WithDelayFactor set the multiplication factor to get the successive delay value.
-// A delay factor greater than 1 means an exponential delay increase.
-// if the delay factor is 2 and the first delay is 1, then the delays will be: [1, 2, 4, 8, ...].
+// WithDelayFactor customizes the exponential backoff multiplier (factor > 1 for exponential growth).
+// Returns error if delayFactor < 1.
 func WithDelayFactor(delayFactor float64) Option {
 	return func(r *Retrier) error {
 		if delayFactor < 1 {
@@ -62,8 +64,8 @@ func WithDelayFactor(delayFactor float64) Option {
 	}
 }
 
-// WithJitter sets the maximum random Jitter time between retries.
-// This is useful to avoid the Thundering herd problem (https://en.wikipedia.org/wiki/Thundering_herd_problem).
+// WithJitter customizes the maximum random jitter added to each retry delay to avoid thundering-herd.
+// Returns error if jitter < 1 nanosecond.
 func WithJitter(jitter time.Duration) Option {
 	return func(r *Retrier) error {
 		if int64(jitter) < 1 {
@@ -76,7 +78,8 @@ func WithJitter(jitter time.Duration) Option {
 	}
 }
 
-// WithTimeout sets the timeout applied to each function call via context.
+// WithTimeout customizes the per-attempt timeout applied via context.WithTimeout().
+// Returns error if timeout < 1 nanosecond.
 func WithTimeout(timeout time.Duration) Option {
 	return func(r *Retrier) error {
 		if int64(timeout) < 1 {

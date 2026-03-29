@@ -74,7 +74,7 @@ import (
 // LookupFunc is the generic function signature for external lookup calls.
 type LookupFunc[K comparable] func(ctx context.Context, key K) (any, error)
 
-// entry represents a cache entry for a given key.
+// entry stores cached value state for a single key.
 type entry struct {
 	// wait for each duplicate lookup call for the same key.
 	wait chan struct{}
@@ -89,7 +89,7 @@ type entry struct {
 	val any
 }
 
-// Cache represents a cache for items.
+// Cache is a generic, size-bounded single-flight cache with TTL expiration.
 type Cache[K comparable] struct {
 	// keymap maps a key name to an item.
 	keymap map[K]*entry
@@ -107,11 +107,8 @@ type Cache[K comparable] struct {
 	size int
 }
 
-// New creates a new single-flight cache of the specified size and TTL.
-// The lookup function performs the external call for each cache miss.
-// The size parameter determines the maximum number of entries that can be cached (min = 1).
-// If the size is less than or equal to zero, the cache will have a default size of 1.
-// The ttl parameter specifies the time-to-live for each cached entry.
+// New constructs a single-flight cache with the specified lookup function, max entries, and time-to-live.
+// Capacity defaults to 1 if size <= 0; duplicate in-flight requests for the same key wait for the first result.
 func New[K comparable](lookupFn LookupFunc[K], size int, ttl time.Duration) *Cache[K] {
 	if size <= 0 {
 		size = 1
@@ -126,7 +123,7 @@ func New[K comparable](lookupFn LookupFunc[K], size int, ttl time.Duration) *Cac
 	}
 }
 
-// Len returns the number of items in the cache.
+// Len returns the current number of entries in the cache.
 func (c *Cache[K]) Len() int {
 	c.mux.RLock()
 	defer c.mux.RUnlock()
@@ -134,7 +131,7 @@ func (c *Cache[K]) Len() int {
 	return len(c.keymap)
 }
 
-// Reset clears the whole cache.
+// Reset clears all entries from the cache.
 func (c *Cache[K]) Reset() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
@@ -142,7 +139,7 @@ func (c *Cache[K]) Reset() {
 	c.keymap = make(map[K]*entry, c.size)
 }
 
-// Remove removes the cache entry for the specified key.
+// Remove deletes the cache entry for the specified key.
 func (c *Cache[K]) Remove(key K) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
@@ -150,12 +147,8 @@ func (c *Cache[K]) Remove(key K) {
 	delete(c.keymap, key)
 }
 
-// Lookup performs a lookup for the given key.
-// Duplicate lookup calls for the same key will wait for the first lookup to complete (single-flight).
-// This function uses a mutex lock to ensure thread safety.
-// It also handles the case where the cache entry is removed or updated during the wait.
-// The function returns the cached value if available; otherwise, it performs a new lookup.
-// If the external lookup call is successful, it updates the cache with the newly obtained value.
+// Lookup retrieves the value for a key, performing single-flight deduplication for concurrent requests.
+// Returns cached value if not expired; coalesces duplicate in-flight requests; evicts old/expired entries on capacity.
 //
 //nolint:gocognit
 func (c *Cache[K]) Lookup(ctx context.Context, key K) (any, error) {

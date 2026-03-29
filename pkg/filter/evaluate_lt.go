@@ -9,7 +9,8 @@ type lt struct {
 	ref float64
 }
 
-// newLT returns an Evaluator that checks if a value is less than the reference.
+// newLT constructs a less-than evaluator from a reference numeric value.
+// Returns error if r cannot be converted to float64.
 func newLT(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {
@@ -19,10 +20,7 @@ func newLT(r any) (Evaluator, error) {
 	return &lt{ref: v}, nil
 }
 
-// Evaluate returns whether the actual value is less than the reference.
-// It converts numerical values implicitly before comparison.
-// Returns the lenlths comparison for Array, Map, Slice or String.
-// Returns false if the value is nil.
+// Evaluate returns true if the numeric value is less than reference, or collection length is less than reference for arrays/maps/slices/strings.
 func (e *lt) Evaluate(v any) bool {
 	v = convertValue(v)
 

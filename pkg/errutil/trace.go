@@ -5,7 +5,10 @@ import (
 	"runtime"
 )
 
-// Trace annotates the error message with the filename, line number, and function name.
+// Trace wraps err with caller file, line, and function metadata.
+//
+// It returns nil when err is nil. The original error is wrapped with %w so
+// errors.Is and errors.As continue to work.
 func Trace(err error) error {
 	if err == nil {
 		return nil

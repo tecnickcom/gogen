@@ -56,7 +56,7 @@ const (
 	okMessage = "OK"
 )
 
-// Response wraps data into a JSend compliant response.
+// Response wraps payload data in a JSend-compatible response envelope.
 type Response struct {
 	// Program is the application name.
 	Program string `json:"program"`
@@ -86,14 +86,17 @@ type Response struct {
 	Data any `json:"data"`
 }
 
-// AppInfo is a struct containing data to enrich the JSendX response.
+// AppInfo contains application metadata used to enrich JSendX responses.
 type AppInfo struct {
-	ProgramName    string
+	// ProgramName is the application name.
+	ProgramName string
+	// ProgramVersion is the application semantic version.
 	ProgramVersion string
+	// ProgramRelease is the application build/release identifier.
 	ProgramRelease string
 }
 
-// RouterArgs extra arguments for the router.
+// RouterArgs contains optional extra arguments for the HTTP router setup.
 type RouterArgs struct {
 	// TraceIDHeaderName is the Trace ID header name.
 	TraceIDHeaderName string
@@ -102,7 +105,7 @@ type RouterArgs struct {
 	RedactFunc httpserver.RedactFn
 }
 
-// Wrap sends an Response object.
+// Wrap builds a [Response] for statusCode using info metadata and data payload.
 func Wrap(statusCode int, info *AppInfo, data any) *Response {
 	now := time.Now().UTC()
 
@@ -124,7 +127,7 @@ type JSXResp struct {
 	httpResp *httputil.HTTPResp
 }
 
-// NewJSXResp returns a new Response object.
+// NewJSXResp returns a new [JSXResp] instance.
 func NewJSXResp(h *httputil.HTTPResp) *JSXResp {
 	if h == nil {
 		h = httputil.NewHTTPResp(slog.Default())
@@ -135,12 +138,12 @@ func NewJSXResp(h *httputil.HTTPResp) *JSXResp {
 	}
 }
 
-// Send sends a JSON respoonse wrapped in a JSendX container.
+// Send writes a JSON response wrapped in the JSendX envelope.
 func (jr *JSXResp) Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppInfo, data any) {
 	jr.httpResp.SendJSON(ctx, w, statusCode, Wrap(statusCode, info, data))
 }
 
-// DefaultNotFoundHandlerFunc http handler called when no matching route is found.
+// DefaultNotFoundHandlerFunc returns the default handler used when no route matches.
 func (jr *JSXResp) DefaultNotFoundHandlerFunc(info *AppInfo) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +152,7 @@ func (jr *JSXResp) DefaultNotFoundHandlerFunc(info *AppInfo) http.HandlerFunc {
 	)
 }
 
-// DefaultMethodNotAllowedHandlerFunc http handler called when a request cannot be routed.
+// DefaultMethodNotAllowedHandlerFunc returns the default handler used when a route exists but the method is not allowed.
 func (jr *JSXResp) DefaultMethodNotAllowedHandlerFunc(info *AppInfo) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +161,7 @@ func (jr *JSXResp) DefaultMethodNotAllowedHandlerFunc(info *AppInfo) http.Handle
 	)
 }
 
-// DefaultPanicHandlerFunc http handler to handle panics recovered from http handlers.
+// DefaultPanicHandlerFunc returns the default handler for recovered panics.
 func (jr *JSXResp) DefaultPanicHandlerFunc(info *AppInfo) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +170,7 @@ func (jr *JSXResp) DefaultPanicHandlerFunc(info *AppInfo) http.HandlerFunc {
 	)
 }
 
-// DefaultIndexHandler returns the route index in JSendX format.
+// DefaultIndexHandler returns an index handler that renders routes in JSendX format.
 func (jr *JSXResp) DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFunc {
 	return func(routes []httpserver.Route) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +180,7 @@ func (jr *JSXResp) DefaultIndexHandler(info *AppInfo) httpserver.IndexHandlerFun
 	}
 }
 
-// DefaultIPHandler returns the route ip in JSendX format.
+// DefaultIPHandler returns a handler that resolves and returns the public IP in JSendX format.
 func (jr *JSXResp) DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
@@ -191,21 +194,21 @@ func (jr *JSXResp) DefaultIPHandler(info *AppInfo, fn httpserver.GetPublicIPFunc
 	}
 }
 
-// DefaultPingHandler returns a ping request in JSendX format.
+// DefaultPingHandler returns a ping handler that responds in JSendX format.
 func (jr *JSXResp) DefaultPingHandler(info *AppInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jr.Send(r.Context(), w, http.StatusOK, info, okMessage)
 	}
 }
 
-// DefaultStatusHandler returns the server status in JSendX format.
+// DefaultStatusHandler returns a status handler that responds in JSendX format.
 func (jr *JSXResp) DefaultStatusHandler(info *AppInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jr.Send(r.Context(), w, http.StatusOK, info, okMessage)
 	}
 }
 
-// HealthCheckResultWriter returns a new healthcheck result writer.
+// HealthCheckResultWriter returns a [healthcheck.ResultWriter] that emits JSendX responses.
 func (jr *JSXResp) HealthCheckResultWriter(info *AppInfo) healthcheck.ResultWriter {
 	return func(ctx context.Context, w http.ResponseWriter, statusCode int, data any) {
 		jr.Send(ctx, w, statusCode, info, data)

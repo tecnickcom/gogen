@@ -19,13 +19,13 @@ const (
 	defaultUserAgent = "gogen.passwordpwned/1"
 )
 
-// HTTPClient contains the function to perform the actual HTTP request.
+// HTTPClient is the minimal HTTP transport used by [Client].
 type HTTPClient interface {
 	// Do sends an HTTP request and returns an HTTP response.
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Client is a configured HIBP Pwned Passwords API client.
+// Client queries the HIBP Pwned Passwords API using the k-Anonymity range endpoint.
 // Create one with [New]; the zero value is not usable.
 type Client struct {
 	httpClient    HTTPClient
@@ -37,7 +37,7 @@ type Client struct {
 	userAgent     string
 }
 
-// defaultClient creates a client with default settings.
+// defaultClient returns a client preconfigured with package defaults.
 func defaultClient() *Client {
 	return &Client{
 		timeout:       defaultTimeout,
@@ -78,12 +78,13 @@ func New(opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// HealthCheck performs a status check on this service.
+// HealthCheck reports backend readiness for this client.
+// The HIBP range API has no dedicated ping endpoint, so this method currently returns nil.
 func (c *Client) HealthCheck(_ context.Context) error {
 	return nil
 }
 
-// newHTTPRetrier creates a new HTTP retrier instance.
+// newHTTPRetrier builds a read-oriented retrier for range endpoint requests.
 func (c *Client) newHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 	//nolint:wrapcheck
 	return httpretrier.New(

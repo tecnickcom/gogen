@@ -75,7 +75,7 @@ type StringKey struct {
 	key uint64
 }
 
-// New encode (hash) input strings into a uint64 key.
+// New constructs deterministic FarmHash64 key from normalized input strings (whitespace/case/Unicode normalized).
 func New(fields ...string) *StringKey {
 	var b bytes.Buffer
 
@@ -89,17 +89,17 @@ func New(fields ...string) *StringKey {
 	return &StringKey{key: farmhash64.FarmHash64(nb)}
 }
 
-// Key returns a uint64 key.
+// Key returns raw uint64 key value.
 func (sk *StringKey) Key() uint64 {
 	return sk.key
 }
 
-// String returns a variable-length string key.
+// String returns variable-length base-36 string representation of key.
 func (sk *StringKey) String() string {
 	return strconv.FormatUint(sk.key, 36)
 }
 
-// Hex returns a fixed-length 16 digits hexadecimal string key.
+// Hex returns fixed 16-character lowercase hexadecimal representation of key, zero-padded.
 func (sk *StringKey) Hex() string {
 	s := strconv.FormatUint(sk.key, 16)
 

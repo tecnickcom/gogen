@@ -44,7 +44,9 @@ import (
 // randReader is the default random number generator.
 var randReader io.Reader //nolint:gochecknoglobals
 
-// newAESGCM creates a new AES-GCM cipher.AEAD instance with the specified key.
+// newAESGCM creates an AES-GCM AEAD from key.
+//
+// key must be a valid AES key length (16, 24, or 32 bytes).
 func newAESGCM(key []byte) (cipher.AEAD, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -54,8 +56,10 @@ func newAESGCM(key []byte) (cipher.AEAD, error) {
 	return cipher.NewGCM(block) //nolint:wrapcheck
 }
 
-// Encrypt encrypts the byte-slice input msg with the specified key.
-// The key argument must be either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// Encrypt seals msg with AES-GCM and prepends the random nonce.
+//
+// key must be 16, 24, or 32 bytes for AES-128/192/256.
+// The output is self-contained: nonce || ciphertext.
 func Encrypt(key, msg []byte) ([]byte, error) {
 	aesgcm, err := newAESGCM(key)
 	if err != nil {
@@ -70,9 +74,9 @@ func Encrypt(key, msg []byte) ([]byte, error) {
 	return aesgcm.Seal(nonce, nonce, msg, nil), nil
 }
 
-// Decrypt decrypts a byte-slice data encrypted with the Encrypt function.
-// The key argument must be the same used to encrypt the data:
-// either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// Decrypt opens a nonce-prefixed AES-GCM payload produced by Encrypt.
+//
+// key must match the key used during encryption.
 func Decrypt(key, msg []byte) ([]byte, error) {
 	aesgcm, err := newAESGCM(key)
 	if err != nil {
@@ -87,8 +91,7 @@ func Decrypt(key, msg []byte) ([]byte, error) {
 	return aesgcm.Open(nil, msg[:ns], msg[ns:], nil) //nolint:wrapcheck
 }
 
-// byteEncryptEncoded encrypts the input data with the specified key and returns a base64 byte slice.
-// The key argument must be either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// byteEncryptEncoded encrypts data and returns Base64-encoded ciphertext bytes.
 func byteEncryptEncoded(key []byte, data []byte) ([]byte, error) {
 	msg, err := Encrypt(key, data)
 	if err != nil {
@@ -101,9 +104,7 @@ func byteEncryptEncoded(key []byte, data []byte) ([]byte, error) {
 	return dst, nil
 }
 
-// byteDecryptEncoded decrypts a byte-slice message produced with the byteEncryptEncoded function.
-// The key argument must be the same used to encrypt the data:
-// either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// byteDecryptEncoded decodes Base64 payload bytes and decrypts them.
 func byteDecryptEncoded(key, msg []byte) ([]byte, error) {
 	dst := make([]byte, base64.StdEncoding.DecodedLen(len(msg)))
 
@@ -115,9 +116,9 @@ func byteDecryptEncoded(key, msg []byte) ([]byte, error) {
 	return Decrypt(key, dst[:n])
 }
 
-// ByteEncryptAny encrypts the input data with the specified key and returns a base64 byte slice.
-// The input data is serialized using gob, encrypted with the Encrypt method and encoded as base64.
-// The key argument must be either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// ByteEncryptAny gob-encodes data, encrypts it, and returns Base64 bytes.
+//
+// This helper is useful for encrypting arbitrary Go values for transport.
 func ByteEncryptAny(key []byte, data any) ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -129,10 +130,9 @@ func ByteEncryptAny(key []byte, data any) ([]byte, error) {
 	return byteEncryptEncoded(key, buf.Bytes())
 }
 
-// ByteDecryptAny decrypts a byte-slice message produced with the ByteEncryptAny function to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
-// The key argument must be the same used to encrypt the data:
-// either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// ByteDecryptAny decrypts Base64 bytes produced by ByteEncryptAny into data.
+//
+// data must be a pointer to the destination type.
 func ByteDecryptAny(key, msg []byte, data any) error {
 	dec, err := byteDecryptEncoded(key, msg)
 	if err != nil {
@@ -147,7 +147,7 @@ func ByteDecryptAny(key, msg []byte, data any) error {
 	return nil
 }
 
-// EncryptAny wraps the ByteEncryptAny function to return a string instead of a byte slice.
+// EncryptAny wraps ByteEncryptAny and returns a string payload.
 func EncryptAny(key []byte, data any) (string, error) {
 	b, err := ByteEncryptAny(key, data)
 	if err != nil {
@@ -157,14 +157,14 @@ func EncryptAny(key []byte, data any) (string, error) {
 	return string(b), nil
 }
 
-// DecryptAny wraps the ByteDecryptAny function to accept a msg string instead of a byte slice.
+// DecryptAny wraps ByteDecryptAny for string input payloads.
 func DecryptAny(key []byte, msg string, data any) error {
 	return ByteDecryptAny(key, []byte(msg), data)
 }
 
-// ByteEncryptSerializeAny encrypts the input data with the specified key and returns a base64 byte slice.
-// The input data is serialized using json, encrypted with the Encrypt method and encoded as base64.
-// The key argument must be either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// ByteEncryptSerializeAny JSON-encodes data, encrypts it, and returns Base64 bytes.
+//
+// Use this helper for cross-language payloads where JSON interoperability is required.
 func ByteEncryptSerializeAny(key []byte, data any) ([]byte, error) {
 	buf := &bytes.Buffer{}
 
@@ -176,10 +176,9 @@ func ByteEncryptSerializeAny(key []byte, data any) ([]byte, error) {
 	return byteEncryptEncoded(key, buf.Bytes())
 }
 
-// ByteDecryptSerializeAny decrypts a byte-slice message produced with the ByteEncryptSerializeAny function to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
-// The key argument must be the same used to encrypt the data:
-// either 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
+// ByteDecryptSerializeAny decrypts Base64 bytes into JSON-decoded data.
+//
+// data must be a pointer to the destination type.
 func ByteDecryptSerializeAny(key, msg []byte, data any) error {
 	dec, err := byteDecryptEncoded(key, msg)
 	if err != nil {
@@ -194,7 +193,7 @@ func ByteDecryptSerializeAny(key, msg []byte, data any) error {
 	return nil
 }
 
-// EncryptSerializeAny wraps the ByteEncrypSerializetAny function to return a string instead of a byte slice.
+// EncryptSerializeAny wraps ByteEncryptSerializeAny and returns a string payload.
 func EncryptSerializeAny(key []byte, data any) (string, error) {
 	b, err := ByteEncryptSerializeAny(key, data)
 	if err != nil {
@@ -204,7 +203,7 @@ func EncryptSerializeAny(key []byte, data any) (string, error) {
 	return string(b), nil
 }
 
-// DecryptSerializeAny wraps the ByteDecryptSerializeAny function to accept a msg string instead of a byte slice.
+// DecryptSerializeAny wraps ByteDecryptSerializeAny for string input payloads.
 func DecryptSerializeAny(key []byte, msg string, data any) error {
 	return ByteDecryptSerializeAny(key, []byte(msg), data)
 }

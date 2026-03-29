@@ -15,7 +15,7 @@ type SlogHookHandler struct {
 	hookFn HookFunc
 }
 
-// NewSlogHookHandler adds a hook function to the slog Handler.
+// NewSlogHookHandler wraps an slog.Handler with a hook function invoked for each log record.
 func NewSlogHookHandler(h slog.Handler, f HookFunc) *SlogHookHandler {
 	return &SlogHookHandler{
 		Handler: h,
@@ -23,8 +23,7 @@ func NewSlogHookHandler(h slog.Handler, f HookFunc) *SlogHookHandler {
 	}
 }
 
-// Handle intercepts the log record, modifies the message, and then passes
-// it to the underlying handler.
+// Handle intercepts the log record, invokes the hook, then passes the record to the underlying handler.
 func (h SlogHookHandler) Handle(ctx context.Context, record slog.Record) error {
 	h.hookFn(record.Level, record.Message)
 	return h.Handler.Handle(ctx, record) //nolint:wrapcheck

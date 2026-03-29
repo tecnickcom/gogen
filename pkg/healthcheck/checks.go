@@ -8,13 +8,17 @@ import (
 	"time"
 )
 
-// HTTPClient contains the function that performs the actual HTTP request.
+// HTTPClient is the minimal transport used by HTTP-based health checks.
 type HTTPClient interface {
 	// Do performs the HTTP request.
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// CheckHTTPStatus checks if the given HTTP request responds with the expected status code.
+// CheckHTTPStatus probes an HTTP endpoint and validates its response status.
+//
+// The check runs with a per-call timeout, supports optional request mutation,
+// and returns an error for transport failures or mismatched status codes.
+// This helper is ideal for upstream dependency checks in readiness endpoints.
 func CheckHTTPStatus(
 	ctx context.Context,
 	httpClient HTTPClient,

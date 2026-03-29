@@ -37,13 +37,13 @@ import (
 	"github.com/tecnickcom/gogen/pkg/enumbitmap"
 )
 
-// IDByName type maps strings to integers IDs.
+// IDByName maps enum names to numeric IDs.
 type IDByName map[string]int
 
 // NameByID maps integers to string names.
 type NameByID map[int]string
 
-// EnumCache handles name and id value mapping.
+// EnumCache stores bidirectional enum mappings (name<->ID).
 type EnumCache struct {
 	sync.RWMutex
 
@@ -51,7 +51,9 @@ type EnumCache struct {
 	name NameByID
 }
 
-// New returns a new empty EnumCache.
+// New creates an empty thread-safe enum cache.
+//
+// The cache supports bidirectional name/id lookups and bitmask conversions.
 func New() *EnumCache {
 	return &EnumCache{
 		id:   make(IDByName),
@@ -59,7 +61,9 @@ func New() *EnumCache {
 	}
 }
 
-// Set a single id-name key-value.
+// Set stores a single enum mapping pair.
+//
+// Existing values for id or name are overwritten.
 func (ec *EnumCache) Set(id int, name string) {
 	ec.Lock()
 	defer ec.Unlock()
@@ -68,7 +72,9 @@ func (ec *EnumCache) Set(id int, name string) {
 	ec.id[name] = id
 }
 
-// SetAllIDByName sets all the specified enumeration ID values indexed by Name.
+// SetAllIDByName bulk-loads enum values from name-to-id input.
+//
+// It is useful when parsing static definitions keyed by symbolic names.
 func (ec *EnumCache) SetAllIDByName(enum IDByName) {
 	ec.Lock()
 	defer ec.Unlock()
@@ -79,7 +85,9 @@ func (ec *EnumCache) SetAllIDByName(enum IDByName) {
 	}
 }
 
-// SetAllNameByID sets all the specified enumeration Name values indexed by ID.
+// SetAllNameByID bulk-loads enum values from id-to-name input.
+//
+// It is useful when loading rows from storage keyed by numeric IDs.
 func (ec *EnumCache) SetAllNameByID(enum NameByID) {
 	ec.Lock()
 	defer ec.Unlock()
@@ -90,7 +98,9 @@ func (ec *EnumCache) SetAllNameByID(enum NameByID) {
 	}
 }
 
-// ID returns the numerical ID associated to the given name.
+// ID returns the numeric ID associated with name.
+//
+// It returns an error when name is not present.
 func (ec *EnumCache) ID(name string) (int, error) {
 	ec.RLock()
 	defer ec.RUnlock()
@@ -103,7 +113,9 @@ func (ec *EnumCache) ID(name string) (int, error) {
 	return id, nil
 }
 
-// Name returns the name associated with the given numerical ID.
+// Name returns the symbolic name associated with id.
+//
+// It returns an error when id is not present.
 func (ec *EnumCache) Name(id int) (string, error) {
 	ec.RLock()
 	defer ec.RUnlock()
@@ -116,7 +128,9 @@ func (ec *EnumCache) Name(id int) (string, error) {
 	return name, nil
 }
 
-// SortNames returns a list of sorted names.
+// SortNames returns all cached names in ascending lexical order.
+//
+// This is useful for deterministic output and tests.
 func (ec *EnumCache) SortNames() []string {
 	ec.RLock()
 	defer ec.RUnlock()
@@ -131,7 +145,9 @@ func (ec *EnumCache) SortNames() []string {
 	return sorted
 }
 
-// SortIDs returns a list of sorted IDs.
+// SortIDs returns all cached IDs in ascending numeric order.
+//
+// This is useful for deterministic output and tests.
 func (ec *EnumCache) SortIDs() []int {
 	ec.RLock()
 	defer ec.RUnlock()
@@ -146,8 +162,9 @@ func (ec *EnumCache) SortIDs() []int {
 	return sorted
 }
 
-// DecodeBinaryMap decodes a int binary map into a list of string names.
-// The EnumCache must contain the mapping between the bit values and the names.
+// DecodeBinaryMap expands a bitmask value into enum names.
+//
+// The cache must contain bit-value IDs (1<<n) mapped to names.
 func (ec *EnumCache) DecodeBinaryMap(v int) ([]string, error) {
 	ec.RLock()
 	defer ec.RUnlock()
@@ -155,8 +172,9 @@ func (ec *EnumCache) DecodeBinaryMap(v int) ([]string, error) {
 	return enumbitmap.BitMapToStrings(ec.name, v) //nolint:wrapcheck
 }
 
-// EncodeBinaryMap encode a list of string names into a int binary map.
-// The EnumCache must contain the mapping between the bit values and the names.
+// EncodeBinaryMap combines enum names into a bitmask value.
+//
+// The cache must contain bit-value IDs (1<<n) mapped to names.
 func (ec *EnumCache) EncodeBinaryMap(s []string) (int, error) {
 	ec.RLock()
 	defer ec.RUnlock()

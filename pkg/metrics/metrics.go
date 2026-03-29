@@ -96,45 +96,45 @@ type Client interface {
 // allowing instrumentation calls to remain in place without side effects.
 type Default struct{}
 
-// SqlOpen delegates to sql.Open without additional instrumentation.
+// SqlOpen opens a database connection, optionally with driver-level instrumentation.
 func (c *Default) SqlOpen(driverName, dsn string) (*sql.DB, error) {
 	return sql.Open(driverName, dsn) //nolint:wrapcheck
 }
 
-// InstrumentDB is a no-op and returns nil.
+// InstrumentDB attaches instrumentation to an existing DB instance (no-op in Default).
 func (c *Default) InstrumentDB(_ string, _ *sql.DB) error {
 	return nil
 }
 
-// InstrumentHandler returns handler unchanged.
+// InstrumentHandler wraps an inbound handler to collect request metrics, returning handler unchanged in Default.
 func (c *Default) InstrumentHandler(_ string, handler http.HandlerFunc) http.Handler {
 	return handler
 }
 
-// InstrumentRoundTripper returns next unchanged.
+// InstrumentRoundTripper wraps an outbound transport to collect request metrics, returning next unchanged in Default.
 func (c *Default) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
 	return next
 }
 
-// MetricsHandlerFunc returns a minimal handler that responds with "OK".
+// MetricsHandlerFunc returns the HTTP handler for the /metrics endpoint or equivalent.
 func (c *Default) MetricsHandlerFunc() http.HandlerFunc {
 	// Returns "OK" by default.
 	return func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`OK`)) }
 }
 
-// IncLogLevelCounter is a no-op.
+// IncLogLevelCounter increments a counter by log severity level (no-op in Default).
 func (c *Default) IncLogLevelCounter(_ string) {
 	// Do nothing.
 	_ = 0
 }
 
-// IncErrorCounter is a no-op.
+// IncErrorCounter increments an application error counter partitioned by task, operation, and code (no-op in Default).
 func (c *Default) IncErrorCounter(_, _, _ string) {
 	// Do nothing.
 	_ = 0
 }
 
-// Close is a no-op and returns nil.
+// Close flushes or tears down backend resources (no-op in Default).
 func (c *Default) Close() error {
 	return nil
 }

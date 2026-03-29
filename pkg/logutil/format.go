@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// LogFormat represents the logging output format.
+// LogFormat selects how log records are encoded for output.
 type LogFormat int8
 
 const (
@@ -14,7 +14,8 @@ const (
 	FormatConsole LogFormat = 1  // Prints the logs in a human friendly format.
 )
 
-// ParseFormat converts a string to a log format.
+// ParseFormat converts a string ("json", "console", "none"/"discard"/"noop") to a log format.
+// Returns error for unrecognized input.
 func ParseFormat(f string) (LogFormat, error) {
 	switch strings.ToLower(f) {
 	case "json":
@@ -28,7 +29,7 @@ func ParseFormat(f string) (LogFormat, error) {
 	return FormatNone, fmt.Errorf("invalid log format %q", f)
 }
 
-// ValidFormat returns true if the log format is valid.
+// ValidFormat reports whether the given log format is recognized.
 func ValidFormat(f LogFormat) bool {
 	switch f {
 	case FormatNone, FormatJSON, FormatConsole:

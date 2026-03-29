@@ -69,7 +69,8 @@ type DescStats[V typeutil.Number] struct {
 	Variance float64 `json:"variance"`
 }
 
-// Stats returns descriptive statistics parameters to summarize the input data set.
+// Stats computes a DescStats summary for a numeric slice including count, sum, min/max, range, mode, mean, median, and shape metrics.
+// Returns error if the slice is empty.
 func Stats[S ~[]V, V typeutil.Number](s S) (*DescStats[V], error) {
 	n := len(s)
 	if n < 1 {
@@ -103,7 +104,7 @@ func Stats[S ~[]V, V typeutil.Number](s S) (*DescStats[V], error) {
 	return ds, nil
 }
 
-// statsCenter calculates Min, Max, Mode, ModeFreq, Range, Mean and Median.
+// statsCenter computes min, max, mode/frequency, range, mean, and median.
 func statsCenter[S ~[]V, V typeutil.Number](ds *DescStats[V], s, ord S, n int, nf float64) {
 	freq := 1
 
@@ -143,7 +144,7 @@ func statsCenter[S ~[]V, V typeutil.Number](ds *DescStats[V], s, ord S, n int, n
 	statsMedian(ds, ord, n)
 }
 
-// statsMedian calculates Median.
+// statsMedian computes the median (50th percentile) of the sorted data.
 func statsMedian[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, n int) {
 	midpos := n / 2
 	ds.Median = float64(ord[midpos])
@@ -153,8 +154,7 @@ func statsMedian[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, n int) {
 	}
 }
 
-// statsVariability calculates Entropy, MeanDev, Varianceand  StdDev.
-// It must be called after statsCenter().
+// statsVariability computes entropy, mean deviation, variance, and standard deviation (requires statsCenter to be called first).
 func statsVariability[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf float64) {
 	sum := float64(ds.Sum)
 
@@ -175,8 +175,7 @@ func statsVariability[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf flo
 	ds.StdDev = math.Sqrt(ds.Variance)
 }
 
-// statsShape calculates Skewness and ExKurtosis.
-// It must be called after statsVariability().
+// statsShape computes skewness and excess kurtosis (requires statsVariability to be called first).
 func statsShape[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf float64) {
 	if nf < 3 {
 		return

@@ -72,17 +72,17 @@ import (
 // ExecFunc is the type of the function to be executed inside a SQL Transaction.
 type ExecFunc func(ctx context.Context, tx *sqlx.Tx) error
 
-// DB is the interface which represents the database driver.
+// DB defines the transaction entry point required by [Exec] and [ExecWithOptions].
 type DB interface {
 	BeginTxx(ctx context.Context, opts *sql.TxOptions) (*sqlx.Tx, error)
 }
 
-// Exec executes the specified function inside a SQL transaction.
+// Exec executes function inside sqlx transaction with automatic rollback on error and guarded cleanup.
 func Exec(ctx context.Context, db DB, run ExecFunc) error {
 	return ExecWithOptions(ctx, db, run, nil)
 }
 
-// ExecWithOptions executes the specified function inside a SQL transaction.
+// ExecWithOptions executes function in sqlx transaction with custom isolation level or read-only option; returns joined errors if commit/rollback both fail.
 func ExecWithOptions(ctx context.Context, db DB, run ExecFunc, opts *sql.TxOptions) (err error) {
 	var committed bool
 

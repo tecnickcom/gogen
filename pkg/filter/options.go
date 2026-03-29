@@ -4,15 +4,12 @@ import (
 	"errors"
 )
 
-// Option is the function that allows to set configuration options.
+// Option configures a [Processor] instance.
 type Option func(p *Processor) error
 
-// WithFieldNameTag allows to use the field names specified by the tag instead of the original struct names.
-//
-// Note that this is evaluated against the value before the first comma in the field definition.
-// For example if a field is defined as: `json:my_field,omitempty`, the evaluated tag value is `my_field`.
-//
-// Returns an error if the tag is empty.
+// WithFieldNameTag configures field lookup to use the given struct tag instead of field names.
+// Evaluates the tag value before the first comma (e.g., "json:my_field,omitempty" → "my_field").
+// Returns error if tag is empty.
 func WithFieldNameTag(tag string) Option {
 	return func(p *Processor) error {
 		if tag == "" {
@@ -25,7 +22,8 @@ func WithFieldNameTag(tag string) Option {
 	}
 }
 
-// WithQueryFilterKey sets the query parameter key that Processor.ParseURLQuery() looks for.
+// WithQueryFilterKey customizes the URL query parameter key that ParseURLQuery() searches for.
+// Returns error if key is empty.
 func WithQueryFilterKey(key string) Option {
 	return func(p *Processor) error {
 		if key == "" {
@@ -38,10 +36,8 @@ func WithQueryFilterKey(key string) Option {
 	}
 }
 
-// WithMaxRules sets the maximum number of rules to pass to the Processor.Apply() function without errors.
-// If this option is not set, it defaults to 3.
-//
-// Return an error if rulemax is less than 1.
+// WithMaxRules sets the maximum permitted rule count to limit evaluation runtime cost.
+// Defaults to 3 if not set. Returns error if rulemax < 1.
 func WithMaxRules(rulemax uint) Option {
 	return func(p *Processor) error {
 		if rulemax < 1 {
@@ -54,7 +50,8 @@ func WithMaxRules(rulemax uint) Option {
 	}
 }
 
-// WithMaxResults sets the maximum length of the slice returned by Apply() and ApplySubset().
+// WithMaxResults sets the maximum returned-element count for Apply() and ApplySubset().
+// Returns error if resmax < 1 or resmax > MaxResults.
 func WithMaxResults(resmax uint) Option {
 	return func(p *Processor) error {
 		if resmax < 1 {

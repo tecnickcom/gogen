@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CaptureOutput hijacks and captures stderr and stdout for testing the given function.
+// CaptureOutput captures stdout, stderr, and default logger output while fn runs.
 func CaptureOutput(t *testing.T, fn func()) string {
 	t.Helper()
 

@@ -11,7 +11,8 @@ type evalContains struct {
 	ref string
 }
 
-// newContains returns an Evaluator that checks if a string contains the reference substring.
+// newContains constructs a substring-match evaluator from a reference string.
+// Returns error if r is not a string.
 func newContains(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {
@@ -21,8 +22,7 @@ func newContains(r any) (Evaluator, error) {
 	return &evalContains{ref: str}, nil
 }
 
-// Evaluate returns whether the input value contains the reference string.
-// It returns false if the input value is not a string.
+// Evaluate returns true if the input string contains the reference substring, false if input is not a string.
 func (e *evalContains) Evaluate(v any) bool {
 	s, ok := v.(string)
 	if !ok {

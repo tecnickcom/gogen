@@ -90,7 +90,7 @@ type InCountryData struct {
 	Groups []InPrefixGroup `json:"groups"`
 }
 
-// InData is a type alias for a map of country Alpha-2 codes to InCountryData.
+// InData maps country alpha-2 codes to their dialing metadata.
 type InData = map[string]*InCountryData
 
 // GeoInfo stores geographical information of a phone number.
@@ -128,19 +128,21 @@ type NumInfo struct {
 	Geo []*GeoInfo `json:"geo"`
 }
 
-// PrefixData is a type alias for a map of phone number prefixes to NumData.
+// PrefixData maps normalized dialing prefixes to number metadata.
 type PrefixData = map[string]*NumInfo
 
-// Data is the main data structure that stores phone number prefixes and their
-// information.
+// Data stores numbering metadata and prefix indexes used for longest-prefix lookups.
 type Data struct {
 	enumNumberType [8]string
 	enumAreaType   [6]string
 	trie           *numtrie.Node[NumInfo]
 }
 
-// New initialize the search trie with the given data.
-// If data is nil, the embedded default dataset is used.
+// New builds a prefix resolver backed by a longest-prefix trie.
+//
+// If data is nil, the embedded default numbering dataset is loaded.
+// Precomputing trie indexes at construction keeps NumberInfo lookups fast and
+// deterministic for mixed-length international prefixes.
 func New(data InData) *Data {
 	d := &Data{}
 
@@ -155,8 +157,11 @@ func New(data InData) *Data {
 	return d
 }
 
-// NumberInfo returns the number type and geographical information for the given
-// phone number prefix.
+// NumberInfo resolves a phone number or prefix into typed geographic metadata.
+//
+// The lookup uses longest-prefix matching, so callers can pass either full
+// numbers or partial prefixes and still obtain the most specific available
+// mapping.
 //
 // NOTE: see the "github.com/tecnickcom/gogen/pkg/countrycode" package to get the
 // country information from the Alpha2 code.
@@ -170,7 +175,10 @@ func (d *Data) NumberInfo(num string) (*NumInfo, error) {
 	return data, nil
 }
 
-// NumberType returns the string representation of the number type.
+// NumberType returns the label for a numeric prefix-type code.
+//
+// It converts compact integer values into readable type names for APIs,
+// logging, and analytics outputs.
 func (d *Data) NumberType(t int) (string, error) {
 	if t < 0 || t >= len(d.enumNumberType) {
 		return "", fmt.Errorf("invalid number type %d", t)
@@ -179,7 +187,9 @@ func (d *Data) NumberType(t int) (string, error) {
 	return d.enumNumberType[t], nil
 }
 
-// AreaType returns the string representation of the area type.
+// AreaType returns the label for a numeric area-type code.
+//
+// It translates stored integer codes into stable human-readable category names.
 func (d *Data) AreaType(t int) (string, error) {
 	if t < 0 || t >= len(d.enumAreaType) {
 		return "", fmt.Errorf("invalid area type %d", t)
@@ -188,7 +198,7 @@ func (d *Data) AreaType(t int) (string, error) {
 	return d.enumAreaType[t], nil
 }
 
-// loadEnums initializes the enumeration arrays.
+// loadEnums initializes canonical labels for number and area type codes.
 func (d *Data) loadEnums() {
 	d.enumNumberType = [...]string{
 		"",
@@ -211,7 +221,10 @@ func (d *Data) loadEnums() {
 	}
 }
 
-// insertPrefix inserts a phone number prefix and its information into the trie.
+// insertPrefix inserts or merges prefix metadata into the trie.
+//
+// When a prefix already exists, geographic entries are merged so multiple
+// countries/areas can be represented for shared numbering spaces.
 func (d *Data) insertPrefix(prefix string, info *NumInfo) {
 	v, status := d.trie.Get(prefix)
 
@@ -226,7 +239,10 @@ func (d *Data) insertPrefix(prefix string, info *NumInfo) {
 	d.trie.Add(prefix, info)
 }
 
-// insertGroups inserts all phone number prefix groups for a country into the trie.
+// insertGroups expands country group definitions into trie prefixes.
+//
+// Each group becomes one or more prefix entries that carry number type and
+// geographic annotations.
 func (d *Data) insertGroups(a2 string, cdata *InCountryData) {
 	for _, g := range cdata.Groups {
 		groupInfo := &NumInfo{
@@ -251,7 +267,10 @@ func (d *Data) insertGroups(a2 string, cdata *InCountryData) {
 	}
 }
 
-// loadData loads the phone number prefixes and their data into the trie.
+// loadData constructs trie nodes from the input numbering dataset.
+//
+// It inserts one root country-calling-code entry per country and then appends
+// optional group-level prefixes for more specific matches.
 func (d *Data) loadData(data InData) {
 	d.trie = numtrie.New[NumInfo]()
 

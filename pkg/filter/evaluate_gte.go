@@ -9,7 +9,8 @@ type gte struct {
 	ref float64
 }
 
-// newGTE returns an Evaluator that checks if a value is greater than or equal to the reference.
+// newGTE constructs a greater-than-or-equal evaluator from a reference numeric value.
+// Returns error if r cannot be converted to float64.
 func newGTE(r any) (Evaluator, error) {
 	v, err := convertFloatValue(r)
 	if err != nil {
@@ -19,10 +20,7 @@ func newGTE(r any) (Evaluator, error) {
 	return &gte{ref: v}, nil
 }
 
-// Evaluate returns whether the actual value is greater than or equal the reference.
-// It converts numerical values implicitly before comparison.
-// Returns the lengths comparison for Array, Map, Slice or String.
-// Returns false if the value is nil.
+// Evaluate returns true if the numeric value is >= reference, or collection length is >= reference for arrays/maps/slices/strings.
 func (e *gte) Evaluate(v any) bool {
 	v = convertValue(v)
 

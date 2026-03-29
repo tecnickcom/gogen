@@ -51,14 +51,9 @@ const (
 	traceIDName = "trace_id"
 )
 
-// NewLogger builds and installs a slog default logger backed by zerolog.
-//
-// The supplied [logutil.Config] controls output format, output writer,
-// severity threshold, common attributes, optional hook callback, and trace ID
-// enrichment.
-//
-// The returned logger is also set as the process-wide slog default via
-// slog.SetDefault.
+// NewLogger constructs a slog.Logger backed by zerolog, configured via logutil.Config.
+// Applies format selection, attributes, trace-ID injection, hooks, and level mapping.
+// Sets the returned logger as the process-wide slog default.
 func NewLogger(cfg *logutil.Config) *slog.Logger {
 	w := writerByFormat(cfg.Format, cfg.Out)
 
@@ -95,8 +90,7 @@ func NewLogger(cfg *logutil.Config) *slog.Logger {
 	return sl
 }
 
-// writerByFormat returns the output writer implementation for the selected
-// log format.
+// writerByFormat returns the zerolog output writer for the specified format (JSON, console, or discard).
 func writerByFormat(f logutil.LogFormat, w io.Writer) io.Writer {
 	switch f {
 	case logutil.FormatJSON:

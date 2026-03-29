@@ -2,10 +2,13 @@ package errutil
 
 import "errors"
 
-// ErrorFunc is a function type that returns an error.
+// ErrorFunc is a deferred cleanup/action callback that may return an error.
 type ErrorFunc func() error
 
-// JoinFnError appends the error returned by fn to the error pointed to by err.
+// JoinFnError executes fn and joins its error into *err.
+//
+// This helper is intended for defer/cleanup paths where secondary failures
+// should be preserved without overwriting a primary error.
 func JoinFnError(err *error, fn ErrorFunc) {
 	*err = errors.Join(*err, fn())
 }

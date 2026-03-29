@@ -2,7 +2,7 @@ package jirasrv
 
 import "github.com/tecnickcom/gogen/pkg/timeutil"
 
-// Comment represents a comment on a Jira issue.
+// Comment models a Jira issue comment payload.
 // Ref.: https://docs.atlassian.com/software/jira/docs/api/REST/9.17.0
 type Comment struct {
 	Self         string                               `json:"self"`
@@ -17,7 +17,7 @@ type Comment struct {
 	Properties   []EntityProperty                     `json:"properties,omitempty"`
 }
 
-// User represents a Jira user.
+// User describes a Jira account reference returned by comment endpoints.
 type User struct {
 	Self        string            `json:"self"`
 	Name        string            `json:"name"`
@@ -29,7 +29,7 @@ type User struct {
 	TimeZone    string            `json:"timeZone"`
 }
 
-// Visibility represents the visibility of a comment in a Jira issue.
+// Visibility defines comment audience restrictions (for example group or role).
 type Visibility struct {
 	Type  string `json:"type"` // "group" or "role"
 	Value string `json:"value"`

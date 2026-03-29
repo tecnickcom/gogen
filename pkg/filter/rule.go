@@ -42,9 +42,9 @@ const (
 	TypeGTE = ">="
 )
 
-// Rule is an individual filter that can be evaluated against any value.
+// Rule defines one filter expression evaluated against an input value.
 type Rule struct {
-	// Field is a dot separated selector that is used to target a specific field of the evaluated value.
+	// Field is a dot-separated selector used to target a specific field of the evaluated value.
 	//
 	// * "Age" will select the Age field of a structure
 	// * "Address.Country" will select the Country subfield of the Address structure
@@ -64,9 +64,8 @@ type Rule struct {
 	eval Evaluator
 }
 
-// Evaluate returns whether the value matches the rule or not.
-//
-// Returns an error if the Type is invalid, a misconfiguration (e.g. invalid regexp) or the value is invalid (e.g. evaluating an int with a regexp).
+// Evaluate determines if the value matches the rule, with lazy-initialization of the type-specific evaluator.
+// Returns error for invalid Type, misconfiguration (e.g. invalid regexp), or type mismatch (e.g. regexp on int).
 func (r *Rule) Evaluate(value any) (bool, error) {
 	if r.eval == nil {
 		var err error

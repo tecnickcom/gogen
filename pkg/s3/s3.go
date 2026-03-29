@@ -1,5 +1,5 @@
 /*
-Package s3 provides a lightweight wrapper around the AWS SDK v2 S3 client for
+Package s3 provides lightweight helpers built on the AWS SDK v2 S3 client for
 common bucket object operations.
 
 The package focuses on pragmatic day-to-day workflows:

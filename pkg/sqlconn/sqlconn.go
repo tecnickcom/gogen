@@ -128,9 +128,7 @@ func (cfg *config) connect(ctx context.Context) (*SQLConn, error) {
 	return &c, nil
 }
 
-// New attempts to connect to a SQL database and returns a SQLConn instance.
-// The driver can be left as empty sring and set with the WithDefaultDriver() option.
-// For the DSN format please refer to the database driver package documentation.
+// New constructs SQL connection with connection pool tuning, health checks, and graceful shutdown orchestration.
 func New(ctx context.Context, driver, dsn string, opts ...Option) (*SQLConn, error) {
 	cfg, err := newConfig(driver, dsn, opts...)
 	if err != nil {
@@ -140,16 +138,14 @@ func New(ctx context.Context, driver, dsn string, opts ...Option) (*SQLConn, err
 	return cfg.connect(ctx)
 }
 
-// Connect attempts to connect to a SQL database using a url connection string
-// in the format <DRIVER>://<DSN>.
-// See also the function New to set driver and DSN directly.
+// Connect parses URL format "<DRIVER>://<DSN>" and delegates to New for connection creation.
 func Connect(ctx context.Context, url string, opts ...Option) (*SQLConn, error) {
 	driver, dsn := parseConnectionURL(url)
 
 	return New(ctx, driver, dsn, opts...)
 }
 
-// DB returns a database connection from the pool.
+// DB returns current database connection from pool; may be nil after Shutdown().
 func (c *SQLConn) DB() *sql.DB {
 	c.dbLock.RLock()
 	defer c.dbLock.RUnlock()
@@ -157,7 +153,7 @@ func (c *SQLConn) DB() *sql.DB {
 	return c.db
 }
 
-// HealthCheck performs a health check of the database connection.
+// HealthCheck verifies database connectivity with ping and validation query, respecting ping timeout.
 func (c *SQLConn) HealthCheck(ctx context.Context) error {
 	c.dbLock.RLock()
 	defer c.dbLock.RUnlock()
@@ -172,8 +168,7 @@ func (c *SQLConn) HealthCheck(ctx context.Context) error {
 	return c.cfg.checkConnectionFunc(ctx, c.db)
 }
 
-// Shutdown closes the database and prevents new queries from starting.
-// It waits for all queries that have started processing on the server to finish.
+// Shutdown gracefully closes database connection, preventing new queries and updating shutdown wait group.
 func (c *SQLConn) Shutdown(_ context.Context) error {
 	c.cfg.logger.Debug("shutting down sql connection")
 

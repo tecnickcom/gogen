@@ -24,13 +24,13 @@ const (
 	regexPatternHealthcheck = "Deployment - Not Found"
 )
 
-// HTTPClient contains the function to perform the actual HTTP request.
+// HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
 	// Do sends an HTTP request and returns an HTTP response.
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Client represents the config options required by this client.
+// Client sends deployment/change/impact events to the Sleuth API.
 type Client struct {
 	httpClient                  HTTPClient
 	baseURL                     *url.URL
@@ -48,8 +48,7 @@ type Client struct {
 	customMetricURLFormat       string
 }
 
-// New creates a new client instance.
-// Example for addr: "https://app.sleuth.io/api/1"
+// New constructs a Sleuth API client with validation, retry defaults, and URL templates for the provided org.
 func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 	baseURL, err := url.Parse(addr)
 	if err != nil {
@@ -97,10 +96,7 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// HealthCheck performs a status check on this service.
-// Note: sleuth.io API currently does not provide a ping endpoint,
-// so we check if we are getting the right error using the
-// correct API Key and inexistent deployment ID.
+// HealthCheck validates API access by executing a controlled request and verifying Sleuth's expected 404 response pattern.
 func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
@@ -144,7 +140,7 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	return nil
 }
 
-// httpPostRequest prepare an HTTP request encoding the payload as JSON.
+// httpPostRequest builds an authenticated JSON POST request for Sleuth endpoints.
 func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*http.Request, error) {
 	buffer := &bytes.Buffer{}
 
@@ -164,7 +160,7 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 	return r, nil
 }
 
-// sendRequest sends a request to the Sleuth API.
+// sendRequest validates payload, executes request with retrier, and enforces HTTP 200 success.
 func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) (err error) {
 	verr := c.valid.ValidateStructCtx(ctx, request)
 	if verr != nil {
@@ -197,36 +193,31 @@ func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, r
 	return nil
 }
 
-// SendDeployRegistration register a deployment with Sleuth.
+// SendDeployRegistration registers a deployment event with Sleuth.
 func (c *Client) SendDeployRegistration(ctx context.Context, request *DeployRegistrationRequest) error {
 	urlStr := fmt.Sprintf(c.deployRegistrationURLFormat, request.Deployment)
 	return sendRequest[DeployRegistrationRequest](ctx, c, urlStr, request)
 }
 
-// SendManualChange register a manual change with Sleuth.
-// Manual changes are any changes not tracked by source code, feature flags,
-// or any other type of change not supported by Sleuth.
+// SendManualChange registers a manual change not tracked by source-control-based integrations.
 func (c *Client) SendManualChange(ctx context.Context, request *ManualChangeRequest) error {
 	urlStr := fmt.Sprintf(c.manualChangeURLFormat, request.Project)
 	return sendRequest[ManualChangeRequest](ctx, c, urlStr, request)
 }
 
-// SendCustomIncidentImpactRegistration register Custom Incident Impact values.
-// Allows to submit custom incident impact values to Sleuth to get Failure Rate and MTTR values.
+// SendCustomIncidentImpactRegistration submits custom incident impact values used by Sleuth failure-rate and MTTR metrics.
 func (c *Client) SendCustomIncidentImpactRegistration(ctx context.Context, request *CustomIncidentImpactRegistrationRequest) error {
 	urlStr := fmt.Sprintf(c.customIncidentURLFormat, request.Project, request.Environment, request.ImpactSource, c.apiKey)
 	return sendRequest[CustomIncidentImpactRegistrationRequest](ctx, c, urlStr, request)
 }
 
-// SendCustomMetricImpactRegistration register Custom Metric Impact values.
-// Allows to submit custom metric impact values to Sleuth.
-// Sleuth will perform anomaly detection on these values and they will inform the health of the deployments.
+// SendCustomMetricImpactRegistration submits custom metric impact values for Sleuth anomaly detection and deployment health.
 func (c *Client) SendCustomMetricImpactRegistration(ctx context.Context, request *CustomMetricImpactRegistrationRequest) error {
 	urlStr := fmt.Sprintf(c.customMetricURLFormat, request.ImpactID)
 	return sendRequest[CustomMetricImpactRegistrationRequest](ctx, c, urlStr, request)
 }
 
-// newWriteHTTPRetrier creates a new HTTP retrier for write requests.
+// newWriteHTTPRetrier creates a write-oriented HTTP retrier using configured attempt count.
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 	//nolint:wrapcheck
 	return httpretrier.New(

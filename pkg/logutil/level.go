@@ -23,9 +23,8 @@ const (
 	LevelTrace     LogLevel = -8 // (+) Additional Trace level when supported.
 )
 
-// ParseLevel converts syslog standard level strings to log/slog levels.
-// Syslog uses eight severity levels, ranging from 0 (Emergency) to 7 (Debug).
-// The lower the number, the higher the priority.
+// ParseLevel converts syslog-style level strings ("0"-"7", syslog names, or "trace") to log levels.
+// Returns error for unrecognized input.
 func ParseLevel(l string) (LogLevel, error) {
 	switch strings.ToLower(l) {
 	// 0 - Emergency - System is unusable
@@ -60,7 +59,7 @@ func ParseLevel(l string) (LogLevel, error) {
 	return LevelDebug, fmt.Errorf("invalid log level %q", l)
 }
 
-// ValidLevel returns true if the log level is valid.
+// ValidLevel reports whether the given log level is recognized.
 func ValidLevel(l LogLevel) bool {
 	switch l {
 	case LevelEmergency, LevelAlert, LevelCritical, LevelError, LevelWarning, LevelNotice, LevelInfo, LevelDebug, LevelTrace:
@@ -70,7 +69,7 @@ func ValidLevel(l LogLevel) bool {
 	}
 }
 
-// LevelName returns the name associated with the specified level.
+// LevelName returns the string name of the specified log level (e.g., "error", "debug").
 //
 //nolint:cyclop
 func LevelName(l LogLevel) string {

@@ -10,27 +10,27 @@ import (
 	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
-// SrvOptionFunc is an alias for this service option function.
+// SrvOptionFunc aliases an AWS SDK S3 service option mutator.
 type SrvOptionFunc = func(*s3.Options)
 
-// Option is a type to allow setting custom client options.
+// Option applies a configuration change to the internal S3 client settings.
 type Option func(*cfg)
 
-// WithAWSOptions allows to add an arbitrary AWS options.
+// WithAWSOptions appends awsopt options used to build aws.Config.
 func WithAWSOptions(opt awsopt.Options) Option {
 	return func(c *cfg) {
 		c.awsOpts = append(c.awsOpts, opt...)
 	}
 }
 
-// WithSrvOptionFuncs allows to specify specific options.
+// WithSrvOptionFuncs appends service-specific s3.Options mutators.
 func WithSrvOptionFuncs(opt ...SrvOptionFunc) Option {
 	return func(c *cfg) {
 		c.srvOptFns = append(c.srvOptFns, opt...)
 	}
 }
 
-// WithEndpointMutable sets a mutable endpoint.
+// WithEndpointMutable sets BaseEndpoint while allowing SDK endpoint behavior to remain mutable.
 func WithEndpointMutable(url string) Option {
 	return WithSrvOptionFuncs(
 		func(o *s3.Options) {
@@ -39,7 +39,7 @@ func WithEndpointMutable(url string) Option {
 	)
 }
 
-// WithEndpointImmutable sets an immutable endpoint.
+// WithEndpointImmutable installs a fixed EndpointResolverV2 for deterministic endpoint routing.
 func WithEndpointImmutable(url string) Option {
 	return WithSrvOptionFuncs(
 		func(o *s3.Options) {
@@ -48,12 +48,12 @@ func WithEndpointImmutable(url string) Option {
 	)
 }
 
-// endpointResolver is a custom endpoint resolver.
+// endpointResolver resolves all S3 requests to a fixed endpoint URL.
 type endpointResolver struct {
 	url string
 }
 
-// ResolveEndpoint resolves the endpoint to the specified URL.
+// ResolveEndpoint parses and returns the configured fixed endpoint URL.
 func (r *endpointResolver) ResolveEndpoint(_ context.Context, _ s3.EndpointParameters) (
 	sep.Endpoint,
 	error,

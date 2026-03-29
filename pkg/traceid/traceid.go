@@ -86,7 +86,7 @@ var regexValidID = regexp.MustCompile(regexPatternValidID)
 // ctxKey is used to store the trace ID in the context.
 type ctxKey struct{}
 
-// NewContext stores the trace ID value in the context if not already present.
+// NewContext stores the trace ID value in the context if not already present, making it safe to call at multiple layers.
 func NewContext(ctx context.Context, id string) context.Context {
 	if _, ok := ctx.Value(ctxKey{}).(string); ok {
 		return ctx
@@ -95,8 +95,7 @@ func NewContext(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, ctxKey{}, id)
 }
 
-// FromContext returns the trace ID associated with the context.
-// If no trace ID is associated, then the default value returned.
+// FromContext retrieves the trace ID from context, returning the defaultValue if not found.
 func FromContext(ctx context.Context, defaultValue string) string {
 	if v, ok := ctx.Value(ctxKey{}).(string); ok {
 		return v
@@ -105,9 +104,7 @@ func FromContext(ctx context.Context, defaultValue string) string {
 	return defaultValue
 }
 
-// SetHTTPRequestHeaderFromContext set the trace ID HTTP Request Header with the value retrieved from the context.
-// If the traceid is not found in the context, then the default value is set.
-// Returns the set ID.
+// SetHTTPRequestHeaderFromContext retrieves the trace ID from context and sets it onto the HTTP request header, validating it first; returns the ID that was set.
 func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, header, defaultValue string) string {
 	id := FromContext(ctx, defaultValue)
 	r.Header.Set(header, id)
@@ -115,8 +112,7 @@ func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, heade
 	return id
 }
 
-// FromHTTPRequestHeader retrieves the trace ID from an HTTP Request.
-// If not found the default value is returned instead.
+// FromHTTPRequestHeader extracts the trace ID from the HTTP request header and validates it with regex pattern ^[0-9A-Za-z\-\_\.]{1,64}$; returns defaultValue if invalid or missing.
 func FromHTTPRequestHeader(r *http.Request, header, defaultValue string) string {
 	id := r.Header.Get(header)
 

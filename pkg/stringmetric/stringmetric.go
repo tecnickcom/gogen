@@ -58,13 +58,7 @@ for free-text names).
 */
 package stringmetric
 
-// DLDistance calculates the Damerau-Levenshtein edit distance between two
-// strings. It provides the distance between two strings as the minimum number
-// of operations required to change one string into the other. The operations
-// include insertions, deletions, substitutions, and transpositions of two
-// adjacent characters.
-//
-// Ref.: https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
+// DLDistance computes Damerau-Levenshtein edit distance between two rune-based strings, counting insertion/deletion/substitution/transposition operations.
 func DLDistance(sa, sb string) int {
 	if sa == sb {
 		return 0

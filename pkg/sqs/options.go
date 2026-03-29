@@ -10,27 +10,27 @@ import (
 	"github.com/tecnickcom/gogen/pkg/awsopt"
 )
 
-// SrvOptionFunc is an alias for this service option function.
+// SrvOptionFunc aliases an AWS SDK SQS service option mutator.
 type SrvOptionFunc = func(*sqs.Options)
 
-// Option is a type to allow setting custom client options.
+// Option applies a configuration change to the internal SQS client settings.
 type Option func(*cfg)
 
-// WithAWSOptions allows to add an arbitrary AWS options.
+// WithAWSOptions appends awsopt options used to build aws.Config.
 func WithAWSOptions(opt awsopt.Options) Option {
 	return func(c *cfg) {
 		c.awsOpts = append(c.awsOpts, opt...)
 	}
 }
 
-// WithSrvOptionFuncs allows to specify specific options.
+// WithSrvOptionFuncs appends service-level sqs.Options mutators.
 func WithSrvOptionFuncs(opt ...SrvOptionFunc) Option {
 	return func(c *cfg) {
 		c.srvOptFns = append(c.srvOptFns, opt...)
 	}
 }
 
-// WithEndpointMutable sets a mutable endpoint.
+// WithEndpointMutable sets BaseEndpoint while preserving SDK endpoint mutability.
 func WithEndpointMutable(url string) Option {
 	return WithSrvOptionFuncs(
 		func(o *sqs.Options) {
@@ -39,7 +39,7 @@ func WithEndpointMutable(url string) Option {
 	)
 }
 
-// WithEndpointImmutable sets an immutable endpoint.
+// WithEndpointImmutable installs a fixed EndpointResolverV2 for deterministic endpoint routing.
 func WithEndpointImmutable(url string) Option {
 	return WithSrvOptionFuncs(
 		func(o *sqs.Options) {
@@ -48,12 +48,12 @@ func WithEndpointImmutable(url string) Option {
 	)
 }
 
-// endpointResolver is a custom endpoint resolver for SQS.
+// endpointResolver resolves all SQS requests to a fixed endpoint URL.
 type endpointResolver struct {
 	url string
 }
 
-// ResolveEndpoint resolves the endpoint for SQS.
+// ResolveEndpoint parses and returns the configured fixed endpoint URL.
 func (r *endpointResolver) ResolveEndpoint(_ context.Context, _ sqs.EndpointParameters) (
 	sep.Endpoint,
 	error,
@@ -66,7 +66,7 @@ func (r *endpointResolver) ResolveEndpoint(_ context.Context, _ sqs.EndpointPara
 	return sep.Endpoint{URI: *u}, nil
 }
 
-// WithWaitTimeSeconds overrides the default duration (in seconds) for which the call waits for a message to arrive in the queue before returning.
+// WithWaitTimeSeconds sets long-poll wait duration in seconds for ReceiveMessage calls.
 // Values range: 0 to 20 seconds.
 func WithWaitTimeSeconds(t int32) Option {
 	return func(c *cfg) {
@@ -74,7 +74,7 @@ func WithWaitTimeSeconds(t int32) Option {
 	}
 }
 
-// WithVisibilityTimeout overrides the default duration (in seconds) that the received messages are hidden from subsequent retrieve requests after being retrieved by a ReceiveMessage request.
+// WithVisibilityTimeout sets message invisibility duration in seconds after receive.
 // Values range: 0 to 43200. Maximum: 12 hours.
 func WithVisibilityTimeout(t int32) Option {
 	return func(c *cfg) {
@@ -82,17 +82,15 @@ func WithVisibilityTimeout(t int32) Option {
 	}
 }
 
-// WithMessageEncodeFunc allow to replace DefaultMessageEncodeFunc.
-// This function used by SendData() to encode and serialize the input data to a string compatible with SQS.
+// WithMessageEncodeFunc overrides the serializer used by SendData.
 func WithMessageEncodeFunc(f TEncodeFunc) Option {
 	return func(c *cfg) {
 		c.messageEncodeFunc = f
 	}
 }
 
-// WithMessageDecodeFunc allow to replace DefaultMessageDecodeFunc().
-// This function used by ReceiveData() to decode a message encoded with messageEncodeFunc to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// WithMessageDecodeFunc overrides the deserializer used by ReceiveData.
+// The data argument passed to ReceiveData must be a pointer to the expected type.
 func WithMessageDecodeFunc(f TDecodeFunc) Option {
 	return func(c *cfg) {
 		c.messageDecodeFunc = f

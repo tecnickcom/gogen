@@ -23,12 +23,12 @@ const (
 	failService        = "Apps/Integrations/APIs"
 )
 
-// HTTPClient contains the function to perform the actual HTTP request.
+// HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Client is the implementation of the service client.
+// Client sends Slack webhook messages and performs Slack status health checks.
 type Client struct {
 	httpClient    HTTPClient
 	address       string
@@ -42,9 +42,8 @@ type Client struct {
 	channel       string
 }
 
-// New creates a new instance of the Slack service client.
-// The arguments other than "addr" (Slack Webhook URL) are optional,
-// they can be set in the Webhook configuration or in each individual message.
+// New constructs a Slack webhook client with defaults for timeout, retries, and optional message metadata.
+// Parameters other than addr are optional defaults that can be overridden per Send call.
 func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*Client, error) {
 	address, err := url.Parse(addr)
 	if err != nil {
@@ -74,13 +73,13 @@ func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*C
 	return c, nil
 }
 
-// status represents the response from the health check endpoint.
+// status models Slack status API response payload used by HealthCheck.
 type status struct {
 	Status   string         `json:"status"`
 	Services map[int]string `json:"services,omitempty"`
 }
 
-// HealthCheck performs a status check on this service.
+// HealthCheck verifies Slack status endpoint availability and checks for active API/app incidents.
 func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
@@ -121,7 +120,7 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	return nil
 }
 
-// Message contains the message payload.
+// message is the outgoing webhook payload schema.
 type message struct {
 	Text      string `json:"text"`
 	Username  string `json:"username,omitempty"`
@@ -130,8 +129,7 @@ type message struct {
 	Channel   string `json:"channel,omitempty"`
 }
 
-// Send a message accounting for the default values.
-// The arguments after "text" can be left empty to get the default values.
+// Send posts a message to Slack webhook, using client defaults for empty metadata arguments.
 func (c *Client) Send(ctx context.Context, text, username, iconEmoji, iconURL, channel string) error {
 	reqData := &message{
 		Text:      text,
@@ -144,7 +142,7 @@ func (c *Client) Send(ctx context.Context, text, username, iconEmoji, iconURL, c
 	return c.sendData(ctx, reqData)
 }
 
-// sendData sends the specified data.
+// sendData serializes and posts the webhook payload with retry and status validation.
 func (c *Client) sendData(ctx context.Context, reqData *message) (err error) {
 	reqBody, _ := json.Marshal(reqData) //nolint:errchkjson
 
@@ -176,7 +174,7 @@ func (c *Client) sendData(ctx context.Context, reqData *message) (err error) {
 	return nil
 }
 
-// newWriteHTTPRetrier creates a new HTTP retrier for write requests.
+// newWriteHTTPRetrier builds the write-oriented retrier for webhook delivery.
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 	//nolint:wrapcheck
 	return httpretrier.New(

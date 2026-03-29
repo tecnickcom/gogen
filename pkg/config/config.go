@@ -198,7 +198,13 @@ type remoteSourceConfig struct {
 	Data string `mapstructure:"remoteConfigData" validate:"required_if=Provider envar,omitempty,base64"`
 }
 
-// Load populates the configuration parameters.
+// Load builds cfg from defaults, local config, environment, and optional remote sources.
+//
+// It is the package entry point that standardizes startup configuration loading
+// so applications avoid duplicating Viper wiring and precedence logic.
+//
+// The function applies the documented merge order, unmarshals into cfg, and
+// executes cfg.Validate before returning.
 func Load(cmdName, configDir, envPrefix string, cfg Configuration) error {
 	localViper := viper.New()
 	remoteViper := viper.New()
@@ -206,7 +212,11 @@ func Load(cmdName, configDir, envPrefix string, cfg Configuration) error {
 	return loadConfig(localViper, remoteViper, cmdName, configDir, envPrefix, cfg)
 }
 
-// loadConfig loads the configuration.
+// loadConfig performs the full configuration pipeline for cfg.
+//
+// It loads local values, overlays optional remote values, then validates the
+// final typed configuration. Splitting this logic keeps Load simple while
+// allowing deterministic unit testing with mocked Viper instances.
 func loadConfig(localViper, remoteViper Viper, cmdName, configDir, envPrefix string, cfg Configuration) error {
 	remoteSourceCfg, err := loadLocalConfig(localViper, cmdName, configDir, envPrefix, cfg)
 	if err != nil {
@@ -226,7 +236,12 @@ func loadConfig(localViper, remoteViper Viper, cmdName, configDir, envPrefix str
 	return nil
 }
 
-// loadLocalConfig returns the local configuration parameters.
+// loadLocalConfig initializes defaults and loads local configuration state.
+//
+// It configures default values, search paths, environment bindings for remote
+// source selection, and reads the local config file into v. It then unmarshals
+// only remote-source settings into remoteSourceConfig so remote loading can be
+// resolved in a separate step.
 func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configuration) (*remoteSourceConfig, error) {
 	// set default remote configuration values
 	v.SetDefault(keyRemoteConfigProvider, defaultRemoteConfigProvider)
@@ -286,7 +301,14 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 	return &rsCfg, nil
 }
 
-// loadRemoteConfig returns the remote configuration parameters.
+// loadRemoteConfig overlays remote-source data and unmarshals into cfg.
+//
+// It starts from local defaults/values, applies environment overrides, loads
+// optional remote configuration depending on provider, and finally unmarshals
+// into the application struct.
+//
+// This staged merge model gives developers predictable precedence and clear
+// separation between local and remote concerns.
 func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix string, cfg Configuration) error {
 	for _, k := range lv.AllKeys() {
 		rv.SetDefault(k, lv.Get(k))
@@ -323,8 +345,10 @@ func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix stri
 	return nil
 }
 
-// loadFromEnvVarSource loads the configuration data from an environment variable.
-// The data must be base64-encoded.
+// loadFromEnvVarSource reads base64-encoded JSON configuration from env data.
+//
+// It supports the providerEnvVar mode, enabling fully file-less deployments
+// where configuration is injected through environment variables.
 func loadFromEnvVarSource(v Viper, rc *remoteSourceConfig, envPrefix string) error {
 	if rc.Data == "" {
 		return validationError(rc.Provider, envPrefix, keyRemoteConfigData)
@@ -338,7 +362,12 @@ func loadFromEnvVarSource(v Viper, rc *remoteSourceConfig, envPrefix string) err
 	return v.ReadConfig(bytes.NewReader(data)) //nolint:wrapcheck
 }
 
-// loadFromRemoteSource loads the configuration data from a remote source or service.
+// loadFromRemoteSource reads configuration from a remote provider backend.
+//
+// Depending on whether SecretKeyring is set, it registers either a secure or
+// non-secure remote provider with Viper and then fetches remote config data.
+// This enables centralized configuration management systems without changing
+// application-level config decoding code.
 func loadFromRemoteSource(v Viper, rc *remoteSourceConfig, envPrefix string) error {
 	if rc.Endpoint == "" {
 		return validationError(rc.Provider, envPrefix, keyRemoteConfigEndpoint)
@@ -363,7 +392,11 @@ func loadFromRemoteSource(v Viper, rc *remoteSourceConfig, envPrefix string) err
 	return v.ReadRemoteConfig() //nolint:wrapcheck
 }
 
-// configureSearchPath sets the directory paths to search in order for a local configuration file.
+// configureSearchPath registers local config lookup directories in search order.
+//
+// If configDir is provided, it is checked first, then standard fallback paths
+// are appended. This gives callers explicit control while preserving sensible
+// defaults for local development and system installs.
 func configureSearchPath(v Viper, cmdName, configDir string) {
 	var configSearchPath []string
 
@@ -384,7 +417,10 @@ func configureSearchPath(v Viper, cmdName, configDir string) {
 	}
 }
 
-// validationError returns a validation error.
+// validationError formats a consistent missing-variable error for providers.
+//
+// It produces an actionable message that includes provider name and the exact
+// expected environment variable key.
 func validationError(provider, envPrefix, varName string) error {
 	return fmt.Errorf("%s config provider requires %s_%s to be set", provider, strings.ToUpper(envPrefix), strings.ToUpper(varName))
 }

@@ -74,7 +74,7 @@ type Binder interface {
 	BindHTTP(ctx context.Context) []Route
 }
 
-// NopBinder returns a simple no-operation binder.
+// NopBinder returns no-operation binder that supplies no custom routes to router.
 func NopBinder() Binder {
 	return &nopBinder{}
 }
@@ -93,7 +93,7 @@ type HTTPServer struct {
 	listener   net.Listener
 }
 
-// New configures new HTTP server.
+// New constructs HTTP server with router, middleware, default operational routes, TLS, and graceful shutdown orchestration.
 func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error) {
 	cfg := defaultConfig()
 
@@ -135,8 +135,7 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 		nil
 }
 
-// StartServerCtx starts the current server and return without blocking.
-// This ignore the context passed to the New() method.
+// StartServerCtx starts server in background goroutine with context-aware shutdown support.
 func (h *HTTPServer) StartServerCtx(ctx context.Context) {
 	// wait for shutdown signal or context cancelation
 	go func() { //nolint:gosec
@@ -164,13 +163,12 @@ func (h *HTTPServer) StartServerCtx(ctx context.Context) {
 	h.cfg.logger.Info("listening for http requests")
 }
 
-// StartServer starts the current server and return without blocking.
+// StartServer starts server in background using context from New().
 func (h *HTTPServer) StartServer() {
 	h.StartServerCtx(h.ctx)
 }
 
-// Shutdown gracefully shuts down the server without interrupting any active connections.
-// Wraps the standard net/http/Server_Shutdown method.
+// Shutdown gracefully shuts down server with timeout enforcement; wraps net/http Server.Shutdown().
 func (h *HTTPServer) Shutdown(ctx context.Context) error {
 	h.cfg.logger.Debug("shutting down http server")
 

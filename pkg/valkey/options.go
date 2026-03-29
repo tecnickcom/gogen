@@ -1,34 +1,30 @@
 package valkey
 
-// Option is a type to allow setting custom client options.
+// Option customizes client configuration.
 type Option func(*cfg)
 
-// WithMessageEncodeFunc allow to replace DefaultMessageEncodeFunc.
-// This function used by SendData() to encode and serialize the input data to a string.
+// WithMessageEncodeFunc overrides the encoder used by SendData and SetData.
 func WithMessageEncodeFunc(f TEncodeFunc) Option {
 	return func(c *cfg) {
 		c.messageEncodeFunc = f
 	}
 }
 
-// WithMessageDecodeFunc allow to replace DefaultMessageDecodeFunc().
-// This function used by ReceiveData() to decode a message encoded with messageEncodeFunc to the provided data object.
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// WithMessageDecodeFunc overrides the decoder used by ReceiveData and GetData.
 func WithMessageDecodeFunc(f TDecodeFunc) Option {
 	return func(c *cfg) {
 		c.messageDecodeFunc = f
 	}
 }
 
-// WithChannels sets the channels to subscribe to and receive data from.
+// WithChannels sets Pub/Sub channels subscribed at client creation time.
 func WithChannels(channels ...string) Option {
 	return func(c *cfg) {
 		c.channels = channels
 	}
 }
 
-// WithValkeyClient overrides the default Valkey client.
-// This function is mainly used for testing.
+// WithValkeyClient injects an existing Valkey client, primarily for testing.
 func WithValkeyClient(vkclient VKClient) Option {
 	return func(c *cfg) {
 		c.vkclient = vkclient

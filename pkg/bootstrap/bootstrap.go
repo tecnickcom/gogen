@@ -98,8 +98,18 @@ import (
 	"github.com/tecnickcom/gogen/pkg/logutil"
 )
 
-// Bootstrap is the function in charge of configuring the core components
-// of an application and handling the lifecycle of its context.
+// Bootstrap initializes core service infrastructure and manages process lifecycle.
+//
+// It solves the repeated startup/shutdown orchestration problem by centralizing
+// context setup, logger and metrics creation, application binding, signal
+// handling, and graceful termination in one call.
+//
+// The function applies options, validates configuration, invokes bindFn to wire
+// dependants, waits for shutdown signals, broadcasts a shutdown event to all
+// listeners, then waits for dependant completion up to the configured timeout.
+//
+// The main benefit is predictable service lifecycle behavior with less
+// boilerplate and fewer shutdown edge-case bugs.
 func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	cfg := defaultConfig()
 
@@ -173,7 +183,10 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	return nil
 }
 
-// syncWaitGroupTimeout adds a timeout to the sync.WaitGroup.Wait().
+// syncWaitGroupTimeout waits for wg completion with an upper time bound.
+//
+// It prevents shutdown from hanging forever when a dependant goroutine fails to
+// signal completion, and logs whether shutdown completed normally or timed out.
 func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *slog.Logger) {
 	wait := make(chan struct{})
 

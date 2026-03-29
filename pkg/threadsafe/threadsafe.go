@@ -47,10 +47,10 @@ import (
 	"sync"
 )
 
-// Locker is an interface that implements the Lock and Unlock methods.
+// Locker defines exclusive lock semantics with Lock and Unlock methods.
 type Locker sync.Locker
 
-// RLocker is an interface that implements the RLock and RUnlock methods.
+// RLocker defines shared read-lock semantics with RLock and RUnlock methods.
 type RLocker interface {
 	RLock()
 	RUnlock()

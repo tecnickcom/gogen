@@ -103,7 +103,9 @@ type countryKeyElem struct {
 	tld       uint16 // 10 bit TLD
 }
 
-// decodeCountryKey decodes a uint64 CountryKey into its country data elements.
+// decodeCountryKey unpacks a uint64 country key into its component fields.
+//
+// It is the inverse operation of encodeCountryKey.
 func decodeCountryKey(key uint64) *countryKeyElem {
 	return &countryKeyElem{
 		status:    uint8((key & bitMaskStatus) >> bitPosStatus),
@@ -117,8 +119,9 @@ func decodeCountryKey(key uint64) *countryKeyElem {
 	}
 }
 
-// encodeCountryKey encodes the country data into a uint64.
-// The returned Country key is an RNCK, see:
+// encodeCountryKey packs country fields into a compact uint64 key.
+//
+// The returned key follows the RNCK approach, see:
 // "Reversible Numeric Composite Key (RNCK), N Asuni - arXiv preprint arXiv:2306.04353, 2023".
 func (e *countryKeyElem) encodeCountryKey() uint64 {
 	return ((uint64(e.status&bitMaskValStatus) << bitPosStatus) |
@@ -131,7 +134,9 @@ func (e *countryKeyElem) encodeCountryKey() uint64 {
 		(uint64(e.tld&bitMaskValTLD) << bitPosTLD))
 }
 
-// charOffset returns the character offset (1-26) for the given byte and offset.
+// charOffset converts an ASCII letter into a 1..26 alphabet index.
+//
+// offset selects uppercase or lowercase normalization.
 func charOffset(b byte, offset uint16) (uint16, error) {
 	c := (uint16(b) - offset)
 	if c < 1 || c > 26 { // A-Z or a-z
@@ -141,17 +146,17 @@ func charOffset(b byte, offset uint16) (uint16, error) {
 	return c, nil
 }
 
-// charOffsetUpper returns the character offset (1-26) for the given uppercase byte (A-Z).
+// charOffsetUpper converts an uppercase ASCII letter (A-Z) to 1..26.
 func charOffsetUpper(b byte) (uint16, error) {
 	return charOffset(b, chrOffsetUpper)
 }
 
-// charOffsetLower returns the character offset (1-26) for the given lowercase byte (a-z).
+// charOffsetLower converts a lowercase ASCII letter (a-z) to 1..26.
 func charOffsetLower(b byte) (uint16, error) {
 	return charOffset(b, chrOffsetLower)
 }
 
-// encodeAlpha2 encodes a 2-uppercase-character alpha-2 code (AA to ZZ) into a uint16.
+// encodeAlpha2 encodes a two-letter uppercase alpha-2 code into uint16 bits.
 func encodeAlpha2(s string) (uint16, error) {
 	if len(s) != 2 {
 		return 0, errInvalidLength
@@ -170,7 +175,7 @@ func encodeAlpha2(s string) (uint16, error) {
 	return ((c1 << bitPosChar1) | (c0 << bitPosChar0)), nil
 }
 
-// decodeAlpha2 decodes a uint16 into a 2-uppercase-character alpha-2 code.
+// decodeAlpha2 decodes a packed alpha-2 uint16 value into text.
 func decodeAlpha2(code uint16) string {
 	return string([]byte{
 		byte(((code & bitMaskChar1) >> bitPosChar1) + chrOffsetUpper),
@@ -178,7 +183,7 @@ func decodeAlpha2(code uint16) string {
 	})
 }
 
-// encodeAlpha3 encodes a 3-uppercase-character alpha-3 code (AAA to ZZZ) into a uint16.
+// encodeAlpha3 encodes a three-letter uppercase alpha-3 code into uint16 bits.
 func encodeAlpha3(s string) (uint16, error) {
 	if len(s) != 3 {
 		return 0, errInvalidLength
@@ -202,7 +207,7 @@ func encodeAlpha3(s string) (uint16, error) {
 	return ((c2 << bitPosChar2) | (c1 << bitPosChar1) | (c0 << bitPosChar0)), nil
 }
 
-// decodeAlpha3 decodes a uint16 into a 3-uppercase-character alpha-3 code.
+// decodeAlpha3 decodes a packed alpha-3 uint16 value into text.
 func decodeAlpha3(code uint16) string {
 	return string([]byte{
 		byte(((code & bitMaskChar2) >> bitPosChar2) + chrOffsetUpper),
@@ -211,7 +216,7 @@ func decodeAlpha3(code uint16) string {
 	})
 }
 
-// encodeTLD encodes a 2-lowercase-character TLD code (aa to zz) into a uint16.
+// encodeTLD encodes a two-letter lowercase TLD into uint16 bits.
 func encodeTLD(s string) (uint16, error) {
 	if len(s) != 2 {
 		return 0, errInvalidLength
@@ -230,7 +235,7 @@ func encodeTLD(s string) (uint16, error) {
 	return ((c1 << bitPosChar1) | (c0 << bitPosChar0)), nil
 }
 
-// decodeTLD decodes a uint16 into a 2-lowercase-character TLD code.
+// decodeTLD decodes a packed TLD uint16 value into text.
 func decodeTLD(code uint16) string {
 	return string([]byte{
 		byte(((code & bitMaskChar1) >> bitPosChar1) + chrOffsetLower),
@@ -238,7 +243,7 @@ func decodeTLD(code uint16) string {
 	})
 }
 
-// encodeNumeric encodes a 3-digit numeric code (000 to 999) into a uint16.
+// encodeNumeric parses and encodes a three-digit numeric country code.
 func encodeNumeric(s string) (uint16, error) {
 	if len(s) != 3 {
 		return 0, errInvalidLength

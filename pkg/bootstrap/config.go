@@ -12,16 +12,16 @@ import (
 	"github.com/tecnickcom/gogen/pkg/metrics"
 )
 
-// CreateLoggerFunc creates a new logger.
+// CreateLoggerFunc constructs the root logger used by Bootstrap.
 type CreateLoggerFunc func() *slog.Logger
 
-// CreateMetricsClientFunc creates a new metrics client.
+// CreateMetricsClientFunc constructs the metrics backend used by Bootstrap.
 type CreateMetricsClientFunc func() (metrics.Client, error)
 
-// BindFunc represents the function responsible to wire up all components of the application.
+// BindFunc wires application components using the prepared context, logger, and metrics client.
 type BindFunc func(context.Context, *slog.Logger, metrics.Client) error
 
-// config represents the bootstrap configuration.
+// config stores runtime settings used by Bootstrap.
 type config struct {
 	// context is the application context.
 	context context.Context //nolint:containedctx
@@ -45,7 +45,10 @@ type config struct {
 	shutdownSignalChan chan struct{}
 }
 
-// defaultConfig returns the default configuration.
+// defaultConfig returns the baseline bootstrap configuration.
+//
+// It provides production-safe defaults so callers can start with zero options
+// and override only the pieces they need.
 func defaultConfig() *config {
 	return &config{
 		context:                 context.Background(),
@@ -58,22 +61,32 @@ func defaultConfig() *config {
 	}
 }
 
-// defaultCreateLogger creates a default logger.
+// defaultCreateLogger returns the process default slog logger.
+//
+// This keeps bootstrap usable without mandatory logger setup.
 func defaultCreateLogger() *slog.Logger {
 	return slog.Default()
 }
 
-// defaultCreateMetricsClient creates a default metrics client.
+// defaultCreateMetricsClientFunc returns the default no-op metrics client.
+//
+// It allows bootstrap to run even when no external metrics backend is
+// configured, while preserving the same metrics.Client integration points.
 func defaultCreateMetricsClientFunc() (metrics.Client, error) {
 	return &metrics.Default{}, nil
 }
 
-// newLogger returs a nes slog logger with the logConfig settings.
+// newLogger builds a slog logger from c.logConfig.
+//
+// It is selected automatically when WithLogConfig is used.
 func (c *config) newLogger() *slog.Logger {
 	return logsrv.NewLogger(c.logConfig)
 }
 
-// validate the configuration.
+// validate checks that required configuration fields are usable.
+//
+// It fails fast before service startup so invalid lifecycle dependencies are
+// caught early rather than during shutdown-critical paths.
 func (c *config) validate() error {
 	if c.context == nil {
 		return errors.New("context is required")

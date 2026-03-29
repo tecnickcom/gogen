@@ -14,19 +14,19 @@ import (
 // TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
 type TDecodeFunc func(ctx context.Context, msg []byte, data any) error
 
-// consumerClient defines the minimal interface we need from kafka.Consumer.
+// consumerClient captures the minimal consumer API used by [Consumer].
 type consumerClient interface {
 	ReadMessage(duration time.Duration) (*kafka.Message, error)
 	Close() error
 }
 
-// Consumer represents a wrapper around kafka.Consumer.
+// Consumer reads and decodes messages from a configured Confluent Kafka consumer.
 type Consumer struct {
 	cfg    *config
 	client consumerClient
 }
 
-// NewConsumer creates a new instance of Consumer.
+// NewConsumer constructs a Kafka consumer subscribed to topics for the given group ID.
 func NewConsumer(urls, topics []string, groupID string, opts ...Option) (*Consumer, error) {
 	cfg := defaultConfig()
 
@@ -54,12 +54,12 @@ func NewConsumer(urls, topics []string, groupID string, opts ...Option) (*Consum
 	return &Consumer{cfg: cfg, client: consumer}, nil
 }
 
-// Close cleans up Consumer's internal resources.
+// Close releases consumer resources and closes the underlying Kafka client.
 func (c *Consumer) Close() error {
 	return c.client.Close() //nolint:wrapcheck
 }
 
-// Receive reads one message from the Kafka; is blocked if no messages in the queue.
+// Receive reads one Kafka message and blocks until one is available.
 func (c *Consumer) Receive() ([]byte, error) {
 	msg, err := c.client.ReadMessage(-1)
 	if err != nil {
@@ -69,13 +69,13 @@ func (c *Consumer) Receive() ([]byte, error) {
 	return msg.Value, nil
 }
 
-// DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// DefaultMessageDecodeFunc is the default ReceiveData deserializer using encode.ByteDecode.
+// The data argument must be a pointer to the expected message type.
 func DefaultMessageDecodeFunc(_ context.Context, msg []byte, data any) error {
 	return encode.ByteDecode(msg, data) //nolint:wrapcheck
 }
 
-// ReceiveData retrieves a message from the queue and extract its content in the data.
+// ReceiveData receives a message and decodes it into data via the configured decode function.
 func (c *Consumer) ReceiveData(ctx context.Context, data any) error {
 	message, err := c.Receive()
 	if err != nil {

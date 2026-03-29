@@ -11,7 +11,8 @@ type evalRegexp struct {
 	rxp *regexp.Regexp
 }
 
-// newRegexp creates a new regexp evaluator from the given rule value.
+// newRegexp constructs a regex-match evaluator from a reference regex pattern.
+// Returns error if r is not a string or if the pattern fails to compile.
 func newRegexp(r any) (Evaluator, error) {
 	str, ok := r.(string)
 	if !ok {
@@ -26,8 +27,7 @@ func newRegexp(r any) (Evaluator, error) {
 	return &evalRegexp{rxp: reg}, nil
 }
 
-// Evaluate returns whether the input value matches the reference regular expression.
-// It returns false if the input value is not a string.
+// Evaluate returns true if the input string matches the reference regex, false if input is not a string.
 func (e *evalRegexp) Evaluate(v any) bool {
 	s, ok := convertStringValue(v)
 	if !ok {

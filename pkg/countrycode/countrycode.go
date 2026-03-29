@@ -63,7 +63,11 @@ type CountryData struct {
 	TLD                    string `json:"tld"`
 }
 
-// countryByAlpha2ID returns the country data for the given alpha-2 internal ID.
+// countryByAlpha2ID materializes a full CountryData record from an internal alpha-2 ID.
+//
+// It is the core decoder used by all public lookup methods. The function maps
+// compact internal keys back into developer-friendly fields (codes, names,
+// region hierarchy, status, and TLD) so callers work with normalized data.
 func (d *Data) countryByAlpha2ID(a2 uint16) (*CountryData, error) {
 	ck, err := d.countryKeyByAlpha2ID(a2)
 	if err != nil {
@@ -123,7 +127,10 @@ func (d *Data) countryByAlpha2ID(a2 uint16) (*CountryData, error) {
 	return cd, nil
 }
 
-// EnumStatus returns the status codes and names.
+// EnumStatus returns all assignment-status names mapped to their numeric code strings.
+//
+// This is useful for UI dropdowns, validation tables, and API metadata where
+// callers need discoverable status values.
 func (d *Data) EnumStatus() map[string]string {
 	m := make(map[string]string, len(d.dStatusByID))
 
@@ -134,7 +141,9 @@ func (d *Data) EnumStatus() map[string]string {
 	return m
 }
 
-// EnumRegion returns the region codes and names.
+// EnumRegion returns all region names mapped to their M49-style region codes.
+//
+// It provides a canonical region catalog for filtering and reporting flows.
 func (d *Data) EnumRegion() map[string]string {
 	m := make(map[string]string, len(d.dRegionByID))
 
@@ -145,7 +154,9 @@ func (d *Data) EnumRegion() map[string]string {
 	return m
 }
 
-// EnumSubRegion returns the sub-region codes and names.
+// EnumSubRegion returns all sub-region names mapped to their codes.
+//
+// This gives callers a stable reference set for sub-region filtering.
 func (d *Data) EnumSubRegion() map[string]string {
 	m := make(map[string]string, len(d.dSubRegionByID))
 
@@ -156,7 +167,10 @@ func (d *Data) EnumSubRegion() map[string]string {
 	return m
 }
 
-// EnumIntermediateRegion returns the intermediate-region codes and names.
+// EnumIntermediateRegion returns all intermediate-region names mapped to their codes.
+//
+// This supports finer-grained geographic grouping where region/sub-region are
+// not specific enough.
 func (d *Data) EnumIntermediateRegion() map[string]string {
 	m := make(map[string]string, len(d.dIntermediateRegionByID))
 
@@ -167,7 +181,10 @@ func (d *Data) EnumIntermediateRegion() map[string]string {
 	return m
 }
 
-// CountryByAlpha2Code returns the country data for the given ISO-3166 Alpha-2 code (e.g. "IT" for Italy).
+// CountryByAlpha2Code returns country metadata for an ISO-3166 alpha-2 code.
+//
+// Example: "IT" resolves to Italy. This is the fastest lookup path when
+// upstream systems already use alpha-2 identifiers.
 func (d *Data) CountryByAlpha2Code(alpha2 string) (*CountryData, error) {
 	a2, err := encodeAlpha2(alpha2)
 	if err != nil {
@@ -177,7 +194,10 @@ func (d *Data) CountryByAlpha2Code(alpha2 string) (*CountryData, error) {
 	return d.countryByAlpha2ID(a2)
 }
 
-// CountryByAlpha3Code returns the country data for the given ISO-3166 Alpha-3 code (e.g. "ITA" for Italy).
+// CountryByAlpha3Code returns country metadata for an ISO-3166 alpha-3 code.
+//
+// Example: "ITA" resolves to Italy. The function bridges alpha-3 identifiers
+// to the package's unified country record.
 func (d *Data) CountryByAlpha3Code(alpha3 string) (*CountryData, error) {
 	a3, err := encodeAlpha3(alpha3)
 	if err != nil {
@@ -192,7 +212,10 @@ func (d *Data) CountryByAlpha3Code(alpha3 string) (*CountryData, error) {
 	return d.countryByAlpha2ID(a2)
 }
 
-// CountryByNumericCode returns the country data for the given ISO-3166 Numeric code (e.g. "380" for Italy).
+// CountryByNumericCode returns country metadata for an ISO-3166 numeric code.
+//
+// Example: "380" resolves to Italy. This is useful when integrating with
+// systems that store numeric ISO identifiers.
 func (d *Data) CountryByNumericCode(num string) (*CountryData, error) {
 	nid, err := encodeNumeric(num)
 	if err != nil {
@@ -207,7 +230,9 @@ func (d *Data) CountryByNumericCode(num string) (*CountryData, error) {
 	return d.countryByAlpha2ID(a2)
 }
 
-// countriesByAlpha2IDs returns a list of countries for the given list of alpha-2 internal IDs.
+// countriesByAlpha2IDs expands internal alpha-2 IDs into CountryData records.
+//
+// It is a shared helper for multi-country query methods.
 func (d *Data) countriesByAlpha2IDs(a2s []uint16) ([]*CountryData, error) {
 	cds := make([]*CountryData, 0, len(a2s))
 
@@ -223,8 +248,9 @@ func (d *Data) countriesByAlpha2IDs(a2s []uint16) ([]*CountryData, error) {
 	return cds, nil
 }
 
-// countriesByRegionID returns a list of countries in the given region internal ID (0-5).
-// See EnumRegion() for a list of valid region IDs.
+// countriesByRegionID returns countries for an internal region ID.
+//
+// See EnumRegion for the region catalog exposed to callers.
 func (d *Data) countriesByRegionID(id uint8) ([]*CountryData, error) {
 	a2s, err := d.alpha2IDsByRegionID(id)
 	if err != nil {
@@ -234,8 +260,9 @@ func (d *Data) countriesByRegionID(id uint8) ([]*CountryData, error) {
 	return d.countriesByAlpha2IDs(a2s)
 }
 
-// CountriesByRegionCode returns a list of countries in the given region code (e.g. "150" for Europe).
-// See EnumRegion() for a list of valid region codes.
+// CountriesByRegionCode returns countries belonging to a region code.
+//
+// Example: "150" returns Europe. See EnumRegion for valid codes.
 func (d *Data) CountriesByRegionCode(code string) ([]*CountryData, error) {
 	id, err := d.regionIDByCode(code)
 	if err != nil {
@@ -245,8 +272,9 @@ func (d *Data) CountriesByRegionCode(code string) ([]*CountryData, error) {
 	return d.countriesByRegionID(id)
 }
 
-// CountriesByRegionName returns a list of countries in the given region name (e.g. "Europe").
-// See EnumRegion() for a list of valid region names.
+// CountriesByRegionName returns countries belonging to a region name.
+//
+// Example: "Europe". See EnumRegion for valid names.
 func (d *Data) CountriesByRegionName(name string) ([]*CountryData, error) {
 	id, err := d.regionIDByName(name)
 	if err != nil {
@@ -256,8 +284,9 @@ func (d *Data) CountriesByRegionName(name string) ([]*CountryData, error) {
 	return d.countriesByRegionID(id)
 }
 
-// countriesBySubRegionID returns a list of countries in the given sub-region internal ID (0-17).
-// See EnumSubRegion() for a list of valid sub-region IDs.
+// countriesBySubRegionID returns countries for an internal sub-region ID.
+//
+// See EnumSubRegion for the sub-region catalog exposed to callers.
 func (d *Data) countriesBySubRegionID(id uint8) ([]*CountryData, error) {
 	a2s, err := d.alpha2IDsBySubRegionID(id)
 	if err != nil {
@@ -267,8 +296,9 @@ func (d *Data) countriesBySubRegionID(id uint8) ([]*CountryData, error) {
 	return d.countriesByAlpha2IDs(a2s)
 }
 
-// CountriesBySubRegionCode returns a list of countries in the given sub-region code (e.g. "039" for Southern Europe).
-// See EnumSubRegion() for a list of valid sub-region codes.
+// CountriesBySubRegionCode returns countries belonging to a sub-region code.
+//
+// Example: "039" returns Southern Europe. See EnumSubRegion for valid codes.
 func (d *Data) CountriesBySubRegionCode(code string) ([]*CountryData, error) {
 	id, err := d.subRegionIDByCode(code)
 	if err != nil {
@@ -278,8 +308,9 @@ func (d *Data) CountriesBySubRegionCode(code string) ([]*CountryData, error) {
 	return d.countriesBySubRegionID(id)
 }
 
-// CountriesBySubRegionName returns a list of countries in the given sub-region name (e.g. "Southern Europe").
-// See EnumSubRegion() for a list of valid sub-region names.
+// CountriesBySubRegionName returns countries belonging to a sub-region name.
+//
+// Example: "Southern Europe". See EnumSubRegion for valid names.
 func (d *Data) CountriesBySubRegionName(name string) ([]*CountryData, error) {
 	id, err := d.subRegionIDByName(name)
 	if err != nil {
@@ -289,8 +320,9 @@ func (d *Data) CountriesBySubRegionName(name string) ([]*CountryData, error) {
 	return d.countriesBySubRegionID(id)
 }
 
-// countriesByIntermediateRegionID returns a list of countries in the given intermediate region internal ID (0-7).
-// See EnumIntermediateRegion() for a list of valid intermediate region IDs.
+// countriesByIntermediateRegionID returns countries for an internal intermediate-region ID.
+//
+// See EnumIntermediateRegion for the catalog exposed to callers.
 func (d *Data) countriesByIntermediateRegionID(id uint8) ([]*CountryData, error) {
 	a2s, err := d.alpha2IDsByIntermediateRegionID(id)
 	if err != nil {
@@ -300,8 +332,9 @@ func (d *Data) countriesByIntermediateRegionID(id uint8) ([]*CountryData, error)
 	return d.countriesByAlpha2IDs(a2s)
 }
 
-// CountriesByIntermediateRegionCode returns a list of countries in the given intermediate region code (e.g. "014" for Eastern Africa).
-// See EnumIntermediateRegion() for a list of valid intermediate region codes.
+// CountriesByIntermediateRegionCode returns countries in an intermediate-region code.
+//
+// Example: "014" returns Eastern Africa. See EnumIntermediateRegion for valid codes.
 func (d *Data) CountriesByIntermediateRegionCode(code string) ([]*CountryData, error) {
 	id, err := d.intermediateRegionIDByCode(code)
 	if err != nil {
@@ -311,8 +344,9 @@ func (d *Data) CountriesByIntermediateRegionCode(code string) ([]*CountryData, e
 	return d.countriesByIntermediateRegionID(id)
 }
 
-// CountriesByIntermediateRegionName returns a list of countries in the given intermediate region name (e.g. "Eastern Africa").
-// See EnumIntermediateRegion() for a list of valid intermediate region names.
+// CountriesByIntermediateRegionName returns countries in an intermediate-region name.
+//
+// Example: "Eastern Africa". See EnumIntermediateRegion for valid names.
 func (d *Data) CountriesByIntermediateRegionName(name string) ([]*CountryData, error) {
 	id, err := d.intermediateRegionIDByName(name)
 	if err != nil {
@@ -322,8 +356,9 @@ func (d *Data) CountriesByIntermediateRegionName(name string) ([]*CountryData, e
 	return d.countriesByIntermediateRegionID(id)
 }
 
-// CountriesByStatusID returns a list of countries with the given status ID (0-6).
-// See EnumStatus() for a list of valid status IDs.
+// CountriesByStatusID returns countries that match an internal status ID.
+//
+// See EnumStatus for status names and code values.
 func (d *Data) CountriesByStatusID(id uint8) ([]*CountryData, error) {
 	a2s, err := d.alpha2IDsByStatusID(id)
 	if err != nil {
@@ -333,8 +368,9 @@ func (d *Data) CountriesByStatusID(id uint8) ([]*CountryData, error) {
 	return d.countriesByAlpha2IDs(a2s)
 }
 
-// CountriesByStatusName returns a list of countries with the given status name (e.g. "Officially assigned").
-// See EnumStatus() for a list of valid status names.
+// CountriesByStatusName returns countries that match a status name.
+//
+// Example: "Officially assigned". See EnumStatus for valid names.
 func (d *Data) CountriesByStatusName(name string) ([]*CountryData, error) {
 	id, err := d.statusIDByName(name)
 	if err != nil {
@@ -344,7 +380,10 @@ func (d *Data) CountriesByStatusName(name string) ([]*CountryData, error) {
 	return d.CountriesByStatusID(id)
 }
 
-// CountriesByTLD returns a list of countries with the given TLD (top-level domain) code (e.g. "it" for Italy).
+// CountriesByTLD returns countries associated with a top-level domain code.
+//
+// Example: "it" resolves to Italy. This is useful for domain-based heuristics
+// and enrichment pipelines.
 func (d *Data) CountriesByTLD(tld string) ([]*CountryData, error) {
 	code, err := encodeTLD(tld)
 	if err != nil {
@@ -359,9 +398,11 @@ func (d *Data) CountriesByTLD(tld string) ([]*CountryData, error) {
 	return d.countriesByAlpha2IDs(a2s)
 }
 
-// countryKey returns the internal binary representation for the given country data.
-// This function can be used to rebuild the internal binary data from the exported data.
-// It returns the internal Aplha2 ID and the CountryKey.
+// countryKey encodes CountryData into the compact internal country key format.
+//
+// It is used when loading custom datasets so external records can be converted
+// into the same binary representation as embedded defaults. The return values
+// are the encoded alpha-2 ID and the packed country key.
 func (d *Data) countryKey(data *CountryData) (uint16, uint64, error) {
 	status, err := d.statusIDByName(data.Status)
 	if err != nil {

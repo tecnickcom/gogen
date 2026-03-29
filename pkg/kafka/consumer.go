@@ -23,7 +23,7 @@ type consumerClient interface {
 	Close() error
 }
 
-// Consumer represents a wrapper around kafka.Consumer.
+// Consumer reads messages from a Kafka topic with pluggable decoding.
 type Consumer struct {
 	cfg     *config
 	client  consumerClient
@@ -31,8 +31,8 @@ type Consumer struct {
 	brokers []string
 }
 
-// NewConsumer creates a new instance of Consumer.
-// Please call the HealthCheck() method to check if the connection is working.
+// NewConsumer constructs a Kafka consumer for a topic and consumer group with optional tuning.
+// Call HealthCheck() to verify broker/topic connectivity before beginning receives.
 func NewConsumer(brokers []string, topic, groupID string, opts ...Option) (*Consumer, error) {
 	cfg := defaultConfig()
 
@@ -72,7 +72,7 @@ func NewConsumer(brokers []string, topic, groupID string, opts ...Option) (*Cons
 	}, nil
 }
 
-// Close cleans up Consumer's internal resources.
+// Close releases Consumer's resources and closes the broker connection.
 func (c *Consumer) Close() error {
 	err := c.client.Close()
 	if err != nil {
@@ -82,7 +82,7 @@ func (c *Consumer) Close() error {
 	return nil
 }
 
-// Receive reads one message from the Kafka; blocks if there are no messages in the queue.
+// Receive reads one message from the Kafka broker, blocking until a message arrives or context cancels.
 func (c *Consumer) Receive(ctx context.Context) ([]byte, error) {
 	msg, err := c.client.ReadMessage(ctx)
 	if err != nil {
@@ -92,7 +92,7 @@ func (c *Consumer) Receive(ctx context.Context) ([]byte, error) {
 	return msg.Value, nil
 }
 
-// HealthCheck checks if the consumer is working.
+// HealthCheck verifies broker reachability by attempting partition lookup on all configured brokers.
 func (c *Consumer) HealthCheck(ctx context.Context) error {
 	var errors error
 
@@ -108,13 +108,13 @@ func (c *Consumer) HealthCheck(ctx context.Context) error {
 	return fmt.Errorf("unable to connect to Kafka: %w", errors)
 }
 
-// DefaultMessageDecodeFunc is the default function to decode a message for ReceiveData().
-// The value underlying data must be a pointer to the correct type for the next data item received.
+// DefaultMessageDecodeFunc is the default ReceiveData() deserializer, using encode.ByteDecode.
+// The data argument must be a pointer matching the type of the decoded message.
 func DefaultMessageDecodeFunc(_ context.Context, msg []byte, data any) error {
 	return encode.ByteDecode(msg, data) //nolint:wrapcheck
 }
 
-// ReceiveData retrieves a message from the queue and extract its content in the data.
+// ReceiveData reads a message and decodes it into the provided data argument using the configured decoder.
 func (c *Consumer) ReceiveData(ctx context.Context, data any) error {
 	message, err := c.Receive(ctx)
 	if err != nil {

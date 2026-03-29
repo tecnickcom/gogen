@@ -21,13 +21,13 @@ const (
 	defaultPingTimeout = 15 * time.Second
 )
 
-// HTTPClient contains the function to perform the actual HTTP request.
+// HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
 	// Do executes the HTTP request.
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Client represents the config options required by this client.
+// Client sends deployment and incident webhook events to DevLake.
 type Client struct {
 	httpClient             HTTPClient
 	baseURL                *url.URL
@@ -43,8 +43,13 @@ type Client struct {
 	incidentCloseURLFormat string
 }
 
-// New creates a new client instance.
-// Example for addr: "https://app.devlake.invalid"
+// New creates a DevLake webhook client with validation and retry defaults.
+//
+// It solves repetitive integration setup by centralizing base URL parsing,
+// bearer-token authentication, payload validation, endpoint URL construction,
+// and default network timeouts/retry policy.
+//
+// Example addr: "https://app.devlake.invalid".
 func New(addr, apiKey string, opts ...Option) (*Client, error) {
 	baseURL, err := url.Parse(addr)
 	if err != nil {
@@ -86,7 +91,10 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 	return c, nil
 }
 
-// HealthCheck performs a status check on this service.
+// HealthCheck verifies that the DevLake API endpoint is reachable and healthy.
+//
+// The request uses pingTimeout and returns an error for transport failures,
+// timeout failures, or non-200 responses.
 func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
@@ -115,7 +123,10 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	return nil
 }
 
-// httpPostRequest prepare an HTTP request encoding the payload as JSON.
+// httpPostRequest builds an authenticated JSON POST request.
+//
+// It encodes request as JSON and attaches standard JSON and bearer-token
+// headers expected by the DevLake webhook API.
 func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*http.Request, error) {
 	buffer := &bytes.Buffer{}
 
@@ -135,7 +146,10 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 	return r, nil
 }
 
-// sendRequest sends a request to the DevLake API.
+// sendRequest validates, retries, and submits a webhook payload to DevLake.
+//
+// The function performs struct validation, creates a JSON POST request, applies
+// write-safe retry behavior, and enforces a successful HTTP 200 response.
 func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) (err error) {
 	err = c.valid.ValidateStructCtx(ctx, request)
 	if err != nil {
@@ -174,19 +188,28 @@ func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, r
 	return nil
 }
 
-// SendDeployment register a deployment with DevLake.
+// SendDeployment submits a deployment event to DevLake.
+//
+// It validates request and posts it to the deployment webhook endpoint scoped
+// by ConnectionID.
 func (c *Client) SendDeployment(ctx context.Context, request *DeploymentRequest) error {
 	urlStr := fmt.Sprintf(c.deploymentRegURLFormat, request.ConnectionID)
 	return sendRequest[DeploymentRequest](ctx, c, urlStr, request)
 }
 
-// SendIncident register an incident with DevLake.
+// SendIncident submits an incident event to DevLake.
+//
+// It validates request and posts it to the incident webhook endpoint scoped by
+// ConnectionID.
 func (c *Client) SendIncident(ctx context.Context, request *IncidentRequest) error {
 	urlStr := fmt.Sprintf(c.incidentRegURLFormat, request.ConnectionID)
 	return sendRequest[IncidentRequest](ctx, c, urlStr, request)
 }
 
-// SendIncidentClose closes an incident with DevLake.
+// SendIncidentClose sends an incident-close event for an existing incident.
+//
+// It validates the close request and calls the dedicated close endpoint using
+// ConnectionID and IssueKey.
 func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequestClose) error {
 	err := c.valid.ValidateStructCtx(ctx, request)
 	if err != nil {
@@ -198,6 +221,9 @@ func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequest
 	return sendRequest[IncidentRequest](ctx, c, urlStr, nil)
 }
 
+// newWriteHTTPRetrier creates the retrier used by write webhook requests.
+//
+// It applies write-safe retry rules and the configured attempt count.
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 	//nolint:wrapcheck
 	return httpretrier.New(
