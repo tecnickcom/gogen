@@ -50,7 +50,10 @@ const (
 	labelTask      = "task"
 )
 
-// Client represents the state type of this client.
+// Client is a Prometheus-backed implementation of the shared metrics
+// interface.
+//
+// Construct it with [New].
 type Client struct {
 	registry                          *prometheus.Registry
 	handlerOpts                       promhttp.HandlerOpts
@@ -70,7 +73,11 @@ type Client struct {
 	collectorErrorCode                *prometheus.CounterVec
 }
 
-// New creates a new metrics instance with default collectors.
+// New creates a metrics client and registers default collectors.
+//
+// Defaults include Go/process collectors plus inbound/outbound HTTP and
+// application error collectors. Options can be used to tune handler behavior,
+// histogram buckets, or register additional collectors.
 func New(opts ...Option) (*Client, error) {
 	c := initClient()
 
@@ -101,12 +108,14 @@ func initClient() *Client {
 	}
 }
 
-// SqlOpen wraps sql.Open.
+// SqlOpen delegates to sql.Open.
+// Prometheus database metrics are attached separately via [Client.InstrumentDB].
 func (c *Client) SqlOpen(driverName, dsn string) (*sql.DB, error) {
 	return sql.Open(driverName, dsn) //nolint:wrapcheck
 }
 
-// InstrumentDB wraps a sql.DB to collect metrics.
+// InstrumentDB registers SQL stats collectors for db under the provided dbName
+// label set.
 func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
 	coll := sqlstats.NewStatsCollector(dbName, db)
 	return c.registry.Register(coll) //nolint:wrapcheck
@@ -125,7 +134,10 @@ func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.H
 	return h
 }
 
-// InstrumentRoundTripper is a middleware that wraps the provided http.RoundTripper to observe the request result with default metrics.
+// InstrumentRoundTripper wraps next with outbound HTTP client instrumentation.
+//
+// It records request counts, durations, and in-flight requests grouped by
+// method and status code labels.
 func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
 	next = promhttp.InstrumentRoundTripperCounter(c.collectorOutboundRequests, next)
 	next = promhttp.InstrumentRoundTripperDuration(c.collectorOutboundRequestsDuration, next)
@@ -134,7 +146,8 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 	return next
 }
 
-// MetricsHandlerFunc returns an http handler function to serve the metrics endpoint.
+// MetricsHandlerFunc returns the HTTP handler used to expose Prometheus
+// metrics from the internal registry.
 func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
 	h := promhttp.HandlerFor(c.registry, c.handlerOpts)
 	return promhttp.InstrumentMetricHandler(c.registry, h).ServeHTTP
@@ -158,7 +171,10 @@ func (c *Client) IncErrorCounter(task, operation, code string) {
 		}).Inc()
 }
 
-// Close method.
+// Close releases client resources.
+//
+// There are no active resources to close in this implementation; Close returns
+// nil for interface compatibility.
 func (c *Client) Close() error {
 	return nil
 }

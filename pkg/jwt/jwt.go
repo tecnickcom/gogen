@@ -1,10 +1,68 @@
 /*
-Package jwt provides simple wrapper functions for managing basic JWT
-Authentication with username/password credentials.
+Package jwt provides an HTTP-oriented JWT authentication helper for
+username/password login flows.
 
-The package is designed to be used in conjunction with the net/http package in
-the Go standard library. It includes functions for handling login, renewal, and
-authorization of JWT tokens.
+# Problem
+
+Most services need the same authentication building blocks: validate user
+credentials, issue short-lived signed JWTs, authorize protected endpoints from
+an Authorization header, and optionally renew tokens near expiration. Wiring
+this repeatedly across handlers is error-prone and often leads to inconsistent
+claim handling and response behavior.
+
+# Solution
+
+This package wraps the core flow in a small API compatible with net/http:
+
+  - [JWT.LoginHandler]: validates credentials and issues signed JWTs.
+  - [JWT.RenewHandler]: renews a valid token only when it is close to expiry.
+  - [JWT.IsAuthorized]: validates bearer tokens for protected handlers.
+
+The verifier/issuer is backed by github.com/golang-jwt/jwt/v5 and password
+checks use bcrypt.
+
+# Authentication Flow
+
+ 1. The login endpoint decodes JSON credentials (`username`, `password`).
+ 2. A user-provided [UserHashFn] retrieves the bcrypt hash for the user.
+ 3. The password is verified with bcrypt.CompareHashAndPassword.
+ 4. On success, a JWT is signed with configured claims and returned as text.
+ 5. Downstream handlers validate `Authorization: Bearer <token>` via
+    [JWT.IsAuthorized] or [JWT.RenewHandler].
+
+# Claims and Defaults
+
+By default the package issues short-lived HMAC-signed tokens with:
+  - expiration: [DefaultExpirationTime] (5 minutes)
+  - renew window: [DefaultRenewTime] (30 seconds before expiry)
+  - header name: [DefaultAuthorizationHeader] (`Authorization`)
+
+Issued tokens include standard registered claims (`exp`, `iat`, `nbf`, `jti`)
+and support optional `iss`, `sub`, and `aud` via options.
+
+# Extension Points
+
+Functional options allow custom behavior without replacing core handlers:
+  - response output customization ([WithSendResponseFn])
+  - token/header settings ([WithExpirationTime], [WithRenewTime],
+    [WithAuthorizationHeader], [WithSigningMethod])
+  - claim metadata ([WithClaimIssuer], [WithClaimSubject], [WithClaimAudience])
+  - logger customization ([WithLogger])
+
+# Security Notes
+
+  - Keep signing keys secret and sufficiently random.
+  - Return uniform error messages for invalid credentials to avoid account
+    enumeration (the default login path already does this).
+  - Use HTTPS so bearer tokens are never exposed in transit.
+  - Configure short expiration windows and renew thresholds appropriate for your
+    threat model.
+
+# Benefits
+
+This package gives services a concise, production-oriented JWT auth layer that
+fits naturally into net/http while remaining configurable for real-world
+requirements.
 */
 package jwt
 

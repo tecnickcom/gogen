@@ -1,31 +1,62 @@
 /*
-Package sfcache provides a simple, local, thread-safe, fixed-size cache for
-expensive lookups with single-flight deduplication.
+Package sfcache provides a local, thread-safe, fixed-size cache for expensive
+lookups with single-flight deduplication.
 
-This package solves the common problem of repeated slow or costly external
-calls by caching result values for a configurable duration. When multiple
-clients request the same key concurrently, sfcache ensures only one lookup
-executes and all duplicate callers receive the same result.
+# Problem
 
-Key Features:
-  - fixed-size local cache with explicit entry capacity to avoid unbounded
-    memory growth
-  - thread-safe access with internal sync, so callers do not need external
-    locking
-  - single-flight behavior: duplicate concurrent lookups for the same key wait
-    on the first in-flight request instead of triggering redundant work
-  - TTL-based expiration so stale entries are automatically refreshed on the
-    next miss
-  - manual Remove and Reset operations for explicit cache control
+Services that repeatedly fetch the same external value (DNS, secrets, remote
+metadata, API responses) often suffer from duplicated work under concurrency.
+Without coordination, multiple goroutines can trigger identical slow lookups at
+the same time, increasing latency, cost, and upstream load.
 
-Why this matters:
-  - reduces repeated network, database, or computation cost for the same key
-  - improves throughput for high-concurrency workloads by collapsing duplicate
-    requests
-  - keeps memory bounded with a predictable maximum number of stored entries
+sfcache solves this by combining TTL caching, bounded memory, and in-flight
+request coalescing for identical keys.
 
-Use sfcache whenever your service needs cached external values, but also
-requires safe concurrent access and efficient duplicate-request handling.
+# How It Works
+
+Create a cache with [New], providing:
+
+  - a [LookupFunc] that performs the external lookup,
+  - a maximum entry count (`size`),
+  - a time-to-live (`ttl`) for successful values.
+
+On [Cache.Lookup]:
+
+ 1. If a non-expired entry exists, the cached value is returned immediately.
+ 2. If the key is being resolved by another goroutine, duplicate callers wait
+    and receive that same result (single-flight behavior).
+ 3. On miss or expiry, one lookup function call is executed and its result is
+    stored in cache.
+ 4. If cache capacity is reached, eviction removes an expired entry first, or
+    otherwise the oldest entry by expiration timestamp.
+
+# Key Features
+
+  - Fixed-size local cache with explicit capacity to avoid unbounded memory
+    growth.
+  - Internal synchronization for safe concurrent access without external locks.
+  - Single-flight request collapsing for duplicate in-flight lookups.
+  - TTL-based freshness with automatic refresh on next miss after expiry.
+  - Explicit cache control via [Cache.Remove] and [Cache.Reset].
+
+# Why It Matters
+
+  - Reduces repeated network, database, or compute cost for hot keys.
+  - Improves throughput in high-concurrency workloads by collapsing duplicate
+    calls.
+  - Keeps memory usage predictable with bounded capacity.
+
+# Usage
+
+	cache := sfcache.New(func(ctx context.Context, key string) (any, error) {
+	    return fetchRemoteValue(ctx, key)
+	}, 256, 5*time.Minute)
+
+	v, err := cache.Lookup(ctx, "customer:123")
+	if err != nil {
+	    return err
+	}
+	_ = v
 
 Example applications in this repository include:
   - github.com/tecnickcom/gogen/pkg/awssecretcache

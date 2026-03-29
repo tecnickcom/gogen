@@ -1,20 +1,44 @@
 /*
-Package httpreverseproxy provides a reusable HTTP reverse proxy wrapper.
+Package httpreverseproxy provides a reusable reverse-proxy client built on top
+of net/http/httputil.ReverseProxy.
 
-It solves the problem of forwarding incoming requests to upstream servers while
-standardizing logging, error handling, and proxy behavior across services.
+# Problem
 
-The package wraps the standard net/http/httputil ReverseProxy (or equivalent)
-and adds the common plumbing needed for production proxies.
+Service gateways and edge handlers often need to forward requests to upstream
+services while preserving consistent forwarding semantics, transport setup, and
+error observability. Rebuilding this plumbing for each proxy endpoint leads to
+drift and duplicated maintenance.
 
-Top features:
-- request forwarding with upstream response proxying
-- centralized logging and error handling
-- middleware-friendly proxy configuration
+# Solution
 
-Benefits:
-- reduce boilerplate when building reverse proxy endpoints
-- keep proxy behavior consistent across services
-- improve observability of proxied traffic
+This package wraps ReverseProxy behind a focused [Client] API:
+  - [New] configures proxy behavior from an upstream base address.
+  - [Client.ForwardRequest] forwards incoming HTTP requests to the target.
+
+When no custom rewrite function is provided, requests are rewritten to the
+configured upstream URL and the wildcard `path` segment is forwarded as the
+proxied path. Standard `X-Forwarded-*` headers are set automatically.
+
+# Features
+
+  - Rewrite-based upstream routing with sensible defaults.
+  - Pluggable reverse proxy instance via [WithReverseProxy].
+  - Pluggable HTTP transport client via [WithHTTPClient].
+  - Structured proxy error logging with request metadata and response timing.
+  - Default error handler returning HTTP 502 Bad Gateway on upstream failures.
+  - Middleware-friendly forwarding entry point for integration with routers.
+
+# Observability Behavior
+
+The default error handler logs request method/path/query/URI, trace ID,
+response code/status, request/response timing, and the underlying proxy error.
+If request start time is present in context (via httputil request-time helpers),
+response duration is computed from it.
+
+# Benefits
+
+httpreverseproxy reduces reverse-proxy boilerplate, keeps forwarding behavior
+consistent across services, and improves operational visibility of upstream
+failures.
 */
 package httpreverseproxy

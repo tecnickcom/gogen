@@ -25,7 +25,8 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Client represents the config options required by the Accounts client.
+// Client is a configured HIBP Pwned Passwords API client.
+// Create one with [New]; the zero value is not usable.
 type Client struct {
 	httpClient    HTTPClient
 	timeout       time.Duration
@@ -48,7 +49,16 @@ func defaultClient() *Client {
 	}
 }
 
-// New creates a new client instance.
+// New creates a [Client] with the given options applied over sensible defaults.
+//
+// Defaults:
+//   - API URL:        https://api.pwnedpasswords.com
+//   - Timeout:        30 s
+//   - User-Agent:     gogen.passwordpwned/1
+//   - Retry attempts: httpretrier.DefaultAttempts
+//
+// Use [WithURL], [WithTimeout], [WithHTTPClient], [WithUserAgent],
+// [WithRetryAttempts], or [WithRetryDelay] to override individual settings.
 func New(opts ...Option) (*Client, error) {
 	c := defaultClient()
 

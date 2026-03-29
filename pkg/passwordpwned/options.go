@@ -7,7 +7,8 @@ import (
 // Option is the interface that allows to set client options.
 type Option func(c *Client)
 
-// WithURL overrides the default service base URL.
+// WithURL overrides the default HIBP API base URL (default: https://api.pwnedpasswords.com).
+// Useful for routing requests through a self-hosted mirror or a test server.
 func WithURL(addr string) Option {
 	return func(c *Client) {
 		c.apiURL = addr
@@ -35,7 +36,7 @@ func WithHTTPClient(hc HTTPClient) Option {
 	}
 }
 
-// WithRetryAttempts overrides the default HTTP client.
+// WithRetryAttempts sets the maximum number of HTTP retry attempts for transient errors.
 func WithRetryAttempts(attempts uint) Option {
 	return func(c *Client) {
 		c.retryAttempts = attempts

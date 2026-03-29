@@ -1,13 +1,77 @@
 /*
-Package random contains a collection of utility functions for generating random
-numbers and strings.
+Package random provides utility functions for generating random bytes, numeric
+identifiers, UID/UUID values, hexadecimal/base36 IDs, and configurable random
+strings.
 
-The random number generator uses the crypto/rand package as the default, but it
-can be customized by using the WithReader option.
+# Problem
 
-The RandString function, which generates random strings, uses a default
-character set that includes digits, uppercase and lowercase letters, and
-symbols. However, it can be customized by using the WithCharByteMap option.
+Application code frequently needs random values for IDs, tokens, test fixtures,
+or temporary credentials. Repeatedly wiring secure randomness, string encoding,
+and character-set mapping at call sites is error-prone and inconsistent.
+
+This package centralizes those patterns in one small API.
+
+# Randomness Source
+
+By default, [New] uses [crypto/rand.Reader], which is suitable for
+security-sensitive randomness. A custom [io.Reader] can be supplied directly to
+[New] for testing or specialized environments.
+
+For [Rnd.RandUint32] and [Rnd.RandUint64], if secure random byte generation
+fails, the implementation falls back to math/rand/v2 to keep call sites
+non-failing. This makes those helpers resilient but less suitable for strict
+cryptographic guarantees when fallback occurs.
+
+# What It Provides
+
+  - [Rnd.RandomBytes] for raw random byte slices.
+  - [Rnd.RandUint32] and [Rnd.RandUint64] for random integers.
+  - [Rnd.RandHex64] for fixed-length 16-char hexadecimal IDs.
+  - [Rnd.RandString64] for compact base-36 IDs.
+  - [Rnd.RandString] for random strings of length n using a configurable
+    byte-to-character map.
+  - [Rnd.UID64] for time-aware 64-bit unique identifiers ([TUID64]) with
+    [TUID64.Hex] and [TUID64.String] formats.
+  - [Rnd.UID128] for time+random 128-bit unique identifiers ([TUID128]) with
+    [TUID128.Hex] and [TUID128.String] formats.
+  - [Rnd.UUIDv7] for RFC 9562 UUID version 7 values ([UUID]).
+
+# Character Map Customization
+
+[Rnd.RandString] uses a default map containing digits, uppercase/lowercase
+letters, and symbols. You can override it with [WithByteToCharMap].
+
+  - Empty map input restores the default map.
+  - Maps longer than 256 bytes are truncated to 256.
+
+# Usage
+
+	r := random.New(nil) // default: crypto/rand.Reader
+
+	id := r.RandHex64()
+	short := r.RandString64()
+	_ = id
+	_ = short
+
+	pwd, err := r.RandString(24)
+	if err != nil {
+	    return err
+	}
+	_ = pwd
+
+	uid64 := r.UID64()
+	uid128 := r.UID128()
+	uuid := r.UUIDv7()
+	_ = uid64.Hex()
+	_ = uid128.String()
+	_ = uuid.String()
+
+	alphaNum := []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	r2 := random.New(nil, random.WithByteToCharMap(alphaNum))
+	_, _ = r2.RandString(16)
+
+This package is ideal for Go services that need convenient, reusable random
+value generation with sensible secure defaults and explicit customization.
 */
 package random
 

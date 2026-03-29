@@ -6,19 +6,23 @@ It solves the problem of compactly representing sets of named flags using a
 single integer, while still allowing easy conversion back to human-readable
 values.
 
-Each bit corresponds to a unique enumeration value. The package supports up to
-32 bits (33 distinct values including NONE), making it suitable for small set
-flags and feature toggles.
+Each bit corresponds to a unique enumeration value. The package processes up to
+32 bit positions (1<<0 through 1<<31), making it suitable for compact flag sets
+and feature toggles.
 
 Top features:
-- convert string slices to bitmap integers
-- convert bitmap integers back to string slices
-- detect unknown enum values and return clear errors
+
+  - convert string slices to bitmap integers with StringsToBitMap
+  - convert bitmap integers back to string slices with BitMapToStrings
+  - report unknown names or bit positions with clear aggregated errors
+  - preserve partial conversion results even when unknown values are found
+    (useful for tolerant parsing and diagnostics)
 
 Benefits:
-- compact in-memory and storage representation for enum sets
-- easy interoperability with bitmask-based APIs
-- safe conversion that preserves decoding errors for invalid values
+
+  - compact in-memory and storage representation for enum sets
+  - easy interoperability with bitmask-based APIs and database fields
+  - predictable conversion behavior for both strict and best-effort workflows
 
 Example with 8 bits:
 

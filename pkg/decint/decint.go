@@ -7,9 +7,24 @@ fixed-precision decimal values without using floating-point arithmetic for
 storage or comparison.
 
 Decint is designed for values with at most six decimal places, and it stores
-those values as integers to avoid rounding issues and preserve exactness.
+those values as integers (scaled by 1e6) to preserve deterministic behavior in
+comparisons, serialization, and transport.
+
+Top features:
+
+- bidirectional conversion between float64/string and scaled int64 or uint64
+- fixed six-decimal output formatting for stable text representation
+- explicit parse errors for invalid numeric strings
+- published safe range constants (MaxInt and MaxFloat) for boundary checks
+- unsigned conversion helpers that clamp non-positive values to zero
+
+Implementation note:
+
+  - float-to-integer conversion uses scale-and-cast semantics, which truncates
+    extra fractional digits toward zero instead of rounding.
 
 Key benefits:
+
 - deterministic decimal handling for currency, rates, and small amounts
 - safe integer representation up to 2^53 with 6 decimal digits
 - simplified serialization and comparison of fixed-precision values

@@ -1,8 +1,70 @@
 /*
-Package sqlconn provides a simple way to connect to a SQL database and manage
-the connection. It is based on the database/sql package and provides a way to
-perform a health check on the connection. This packages also provide a way to
-gracefully shutdown the connection when the application is shutting down.
+Package sqlconn solves the boilerplate and lifecycle complexity of managing a
+database/sql connection in long-running Go services.
+
+# Problem
+
+Opening a SQL connection in production is more than calling sql.Open: services
+must apply pool limits, verify connectivity, expose health checks, and close
+the connection gracefully on shutdown signals. When every service reimplements
+this flow, behavior drifts and shutdown/health edge cases become hard to reason
+about.
+
+sqlconn provides a small, configurable connection manager that standardizes
+this pattern.
+
+# How It Works
+
+  - [New] creates a connection from explicit `driver` and `dsn` values.
+  - [Connect] accepts a URL-like string in the form `<DRIVER>://<DSN>` and
+    delegates to [New]. If only the DSN is provided, a driver can be supplied
+    via [WithDefaultDriver].
+  - On successful connect, pool settings are applied (`max idle/open`, idle
+    time, lifetime), and a goroutine waits for either context cancellation or a
+    shutdown signal channel.
+  - When shutdown is triggered, [SQLConn.Shutdown] closes the underlying
+    database handle, updates the shared shutdown wait group, and prevents
+    further use by setting the internal DB pointer to nil.
+
+# Key Features
+
+  - Configurable connection pipeline via options:
+    [WithConnectFunc], [WithCheckConnectionFunc], [WithSQLOpenFunc].
+  - Pool tuning support:
+    [WithConnMaxIdleCount], [WithConnMaxIdleTime], [WithConnMaxLifetime],
+    [WithConnMaxOpen].
+  - Built-in health check through [SQLConn.HealthCheck], using a ping timeout
+    ([WithPingTimeout]) and a basic validation query (`SELECT 1`).
+  - Graceful shutdown integration for application lifecycles with
+    [WithShutdownSignalChan] and [WithShutdownWaitGroup].
+  - Logger integration with [WithLogger] for lifecycle diagnostics.
+
+# Benefits
+
+  - Consistent SQL connection behavior across services.
+  - Safer startup/shutdown handling with fewer resource-leak risks.
+  - Better testability through injectable open/connect/check functions.
+  - Clear integration points for health endpoints and service orchestration.
+
+# Usage
+
+	c, err := sqlconn.Connect(
+	    ctx,
+	    "mysql://user:pass@tcp(localhost:3306)/appdb",
+	    sqlconn.WithDefaultDriver("mysql"),
+	)
+	if err != nil {
+	    return err
+	}
+
+	if err := c.HealthCheck(ctx); err != nil {
+	    return err
+	}
+
+	defer c.Shutdown(ctx)
+
+This package is ideal for Go applications that need a pragmatic, reusable
+database/sql connection lifecycle abstraction with health and shutdown support.
 */
 package sqlconn
 

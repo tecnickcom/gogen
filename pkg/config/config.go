@@ -1,89 +1,66 @@
 /*
-Package config handles the configuration of a program. The configuration
-contains the set of initial parameter settings that are read at runtime by the
-program.
+Package config provides a production-ready configuration bootstrap for Go
+services built on top of Viper.
 
-This package allows plugging a fully-fledged configuration system into an
-application, taking care of the boilerplate code, common settings, configuration
-loading, and validation.
+The package solves a common problem in service development: keeping
+configuration loading predictable across local development, CI, and deployment,
+without repeating boilerplate in every application.
 
-Different configuration sources can be used during development, debugging,
-testing, or deployment. The configuration can be loaded from a local file,
-environment variables, or a remote configuration provider (e.g., Consul, etcd,
-etcd3, Firestore, NATS).
+It centralizes:
+  - default values
+  - local file discovery
+  - environment overrides
+  - optional remote configuration providers
+  - final schema validation
 
-This is a Viper-based implementation of the configuration model described in the
-following article:
-  - Nicola Asuni, 2014-09-13, "Software Configuration",
-    https://technick.net/guides/software/software_configuration/
+An application integrates by implementing Configuration:
+  - SetDefaults(v Viper) to register application-specific defaults
+  - Validate() error to enforce final constraints
 
-# Configuration Loading Strategy:
+This is a Viper-based implementation of the configuration model described in:
+Nicola Asuni, 2014-09-13, "Software Configuration"
+https://technick.net/guides/software/software_configuration/
 
-To achieve maximum flexibility, the different configuration entry points are
-coordinated in the following sequence (1 has the lowest priority and 5 has the
-highest):
+# Configuration load order
 
- 1. In the "myprog" program, the configuration parameters are defined as a data
-    structure that can be easily mapped to and from a JSON object (or any other
-    format supported by Viper like TOML, YAML, and HCL). Each structure
-    parameter is annotated with the "mapstructure" and "validate" tags to define
-    the name mapping and the validation rules. The parameters are initialized
-    with constant default values.
+The effective configuration is built in this order (later steps override earlier
+ones):
+ 1. Built-in defaults from this package (log and shutdown settings), plus
+    application defaults from SetDefaults.
+ 2. Local config file (default: config.json) searched in:
+    ./, $HOME/.<cmdName>/, /etc/<cmdName>/
+    and optionally an explicit configDir (if provided).
+ 3. Environment variables for remote source selection:
+    <PREFIX>_REMOTECONFIGPROVIDER,
+    <PREFIX>_REMOTECONFIGENDPOINT,
+    <PREFIX>_REMOTECONFIGPATH,
+    <PREFIX>_REMOTECONFIGSECRETKEYRING,
+    <PREFIX>_REMOTECONFIGDATA.
+ 4. Remote configuration loading, when configured:
+    - provider "envvar": decodes base64 JSON from REMOTECONFIGDATA
+    - other providers: uses Viper remote backends (for example consul, etcd,
+    etcd3, firestore, nats), optionally with a secret keyring
+ 5. Environment variables are also applied on the final Viper instance, so they
+    can override file/remote values (useful for secrets and runtime overrides).
+ 6. Validate() is called on the final decoded config struct.
 
- 2. The program attempts to load the local "config.json" configuration file, and
-    as soon as one is found, it overwrites the default values previously set.
+# Why this matters
 
-    The configuration file is searched in the following ordered directories
-    based on the Linux Filesystem Hierarchy Standard (FHS):
+Top features for developers:
+  - Predictable precedence model: easy to reason about which value wins.
+  - Remote provider support: move configuration out of local files when needed.
+  - Sensible shared defaults: common log and shutdown settings are ready to use.
+  - Validation hook: fail fast on invalid runtime configuration.
+  - Testability: Viper is abstracted behind an interface for easy mocking.
 
-    - ./
+# Benefits
 
-    - ~/.myprog/
+Using this package reduces startup/config code in each service, improves
+configuration consistency across environments, and keeps configuration behavior
+explicit and auditable.
 
-    - /etc/myprog/
-
- 3. The program attempts to load the environmental variables that define the
-    remote configuration system. If found, it overwrites the corresponding
-    configuration parameters:
-
-    - [ENVIRONMENT VARIABLE NAME] → [CONFIGURATION PARAMETER NAME]
-
-    - MYPROG_REMOTECONFIGPROVIDER → remoteConfigProvider
-
-    - MYPROG_REMOTECONFIGENDPOINT → remoteConfigEndpoint
-
-    - MYPROG_REMOTECONFIGPATH → remoteConfigPath
-
-    - MYPROG_REMOTECONFIGSECRETKEYRING → remoteConfigSecretKeyring
-
-    - MYPROG_REMOTECONFIGDATA → remoteConfigData
-
- 4. If the "remoteConfigProvider" parameter is not empty, the program attempts
-    to load the configuration data from the specified source. This can be any
-    remote source supported by the Viper library (e.g., Consul, etcd, etcd3,
-    Firestore, NATS). The configuration source can also be the
-    "MYPROG_REMOTECONFIGDATA" environment variable as base64-encoded JSON when
-    "MYPROG_REMOTECONFIGPROVIDER" is set to "envvar".
-    Environment variables take precedence over configuration files.
-    This is useful to populate secret values from environment variables.
-
- 5. Any specified command-line argument overwrites the corresponding
-    configuration parameter.
-
- 6. The configuration parameters are validated via the Validate() function.
-
-# Example:
-
-  - An implementation example of this configuration package can be found in
-    examples/service/internal/cli/config.go Note that the "log",
-    "shutdown_timeout", and "remoteConfig" parameters are defined in this
-    package as they are common to all programs.
-
-  - The configuration file format of the example service is defined by
-    examples/service/resources/etc/gogenexample/config.schema.json
-
-  - The default configuration file of the example service is defined by
-    examples/service/resources/etc/gogenexample/config.json
+For a complete implementation example, see:
+examples/service/internal/cli/config.go
 */
 package config
 

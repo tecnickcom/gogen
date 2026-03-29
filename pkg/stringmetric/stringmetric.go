@@ -1,9 +1,60 @@
 /*
-Package stringmetric provides functions to calculate string metrics, also known
-as string similarity metrics or string distance functions.
+Package stringmetric provides string distance functions for approximate text
+matching, comparison, and fuzzy search.
 
-A string metric measures the distance ("inverse similarity") between two text
-strings for approximate string matching, comparison, and fuzzy string searching.
+This package currently implements the Damerau-Levenshtein edit distance via
+[DLDistance], which measures the minimum number of edit operations required to
+transform one string into another.
+
+# Problem
+
+Exact string equality is too strict for many real-world tasks: user input
+contains typos, transposed characters, missing letters, or small variations in
+formatting. Systems that need "close enough" matching (search suggestions,
+deduplication, record linkage, typo-tolerant lookups) require a metric that
+quantifies how different two strings are.
+
+# What It Computes
+
+[DLDistance] returns an integer distance where:
+
+  - 0 means the strings are identical.
+  - Higher values mean less similarity.
+  - Allowed operations are insertion, deletion, substitution, and adjacent
+    transposition.
+
+The implementation is rune-based (not byte-based), so it handles Unicode text
+correctly and does not break on multi-byte UTF-8 characters.
+
+# Why Damerau-Levenshtein
+
+Compared to plain Levenshtein distance, Damerau-Levenshtein treats adjacent
+character swaps as a single edit (for example "act" vs "cat"), which better
+matches common human typing errors and usually yields more intuitive fuzzy-match
+scores.
+
+# Implementation Notes
+
+The algorithm uses dynamic programming with:
+
+  - an alphabet index map for tracking prior rune positions,
+  - a distance matrix initialized with sentinel boundaries,
+  - transition costs for substitution, insertion, deletion, and transposition.
+
+This delivers deterministic O(|a|*|b|) time complexity and matrix-based memory
+usage suitable for short-to-medium strings typical in API, search, and
+validation workflows.
+
+# Usage
+
+	d := stringmetric.DLDistance("a cat", "a act") // 1 (adjacent transposition)
+	if d <= 2 {
+	    // treat as likely typo match
+	}
+
+Use the returned distance as a ranking signal or apply a threshold tuned to
+your domain (for example strict thresholds for identifiers, looser thresholds
+for free-text names).
 */
 package stringmetric
 

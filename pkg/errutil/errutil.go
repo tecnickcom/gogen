@@ -1,19 +1,27 @@
 /*
-Package errutil provides helpers for creating and inspecting errors in Go
-applications.
+Package errutil provides small, reusable helpers for consistent error handling in
+Go applications.
 
-It solves the problem of repeated error-handling patterns by consolidating common
-error utilities into a shared package, making error wrapping and classification
-more consistent.
+Many Go services repeat the same error-handling patterns: appending cleanup
+errors, enriching failures with call-site context, and preserving compatibility
+with the standard errors API. This package centralizes those patterns so teams
+can keep error paths concise and predictable.
 
 Top features:
-- central place for reusable error helper functions
-- improved readability for error-handling code
-- support for standardized error wrapping and inspection
+
+  - Trace annotates an error with runtime caller metadata (file, line, function)
+    while preserving the original error with %w wrapping. This gives developers
+    immediate debugging context without losing errors.Is/errors.As behavior.
+  - JoinFnError executes an error-producing function and joins its result into an
+    existing error value using errors.Join. This is useful for defer/cleanup logic
+    where secondary failures must not overwrite the primary error.
+  - Nil-safe behavior: Trace(nil) returns nil, and JoinFnError naturally supports
+    nil and non-nil combinations through errors.Join semantics.
 
 Benefits:
-- avoid boilerplate error utilities across services
-- make error-handling behavior easier to reason about
-- simplify migration to Go's native error inspection patterns
+
+  - reduces boilerplate in error-return and defer paths
+  - improves observability and diagnosis of production failures
+  - encourages idiomatic Go error composition based on errors.Join and %w
 */
 package errutil

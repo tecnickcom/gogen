@@ -1,28 +1,57 @@
 /*
-Package httpserver defines a configurable default HTTP server with common routes
-and production-ready options.
+Package httpserver provides a configurable, production-oriented HTTP server
+bootstrap for Go services.
 
-It solves the problem of bootstrapping a web service with sane defaults for
-health, metrics, and observability while still allowing application-specific
-routes to be registered.
+# Problem
 
-Optional common routes are defined in routes.go and include:
-  - /ip: Returns the public IP address of the service instance.
-  - /metrics: Returns Prometheus-compatible metrics (default and custom).
-  - /ping: Returns a simple liveness check.
-  - /pprof: Exposes pprof profiling data.
-  - /status: Aggregates health status for the service and external dependencies.
+Starting a robust HTTP service usually requires repetitive infrastructure code:
+listener setup, route registration, middleware chaining, panic/404/405
+handling, request timeouts, TLS wiring, graceful shutdown, and optional
+observability endpoints. Implementing this independently in each service leads
+to inconsistency and duplicated maintenance effort.
 
-Top features:
-- configurable server lifecycle and graceful shutdown
-- common middleware and route wiring
-- observability-focused default endpoints
-- pluggable route binder interface
+# Solution
 
-Benefits:
-- reduce boilerplate when creating HTTP services
-- keep default routes consistent across projects
-- simplify integration with health and metrics tooling
+This package defines a reusable server assembly with:
+  - option-driven configuration ([New] + functional [Option]s)
+  - pluggable route binding via [Binder]
+  - configurable default route set for operational endpoints
+  - shared middleware application model
+  - graceful shutdown orchestration via context and/or signal channel
+
+Custom service routes are supplied by a [Binder], while default routes can be
+enabled selectively (or all at once) through options.
+
+# Default Operational Routes
+
+When enabled, the built-in route set includes:
+  - /ip: returns the service public IP (via ipify integration)
+  - /metrics: returns metrics payload (501 by default unless replaced)
+  - /ping: lightweight liveness endpoint
+  - /pprof/*option: pprof profiling endpoints
+  - /status: service health endpoint
+  - / (index): generated route index
+
+# Features
+
+  - Graceful lifecycle control: non-blocking start, context-aware shutdown,
+    configurable shutdown timeout, external wait-group and signal integration.
+  - Router defaults: standardized not-found, method-not-allowed, and panic
+    handlers with structured logging.
+  - Middleware pipeline: common middleware (logger/timeout) plus global and
+    per-route middleware composition.
+  - Observability integration: trace-id propagation hooks, HTTP data redaction,
+    and optional pprof/metrics/status routes.
+  - Transport flexibility: plain TCP or TLS listener creation from cert/key
+    material.
+  - Safe defaults with extensibility: overridable handlers and server
+    parameters for production customization.
+
+# Benefits
+
+httpserver reduces service bootstrap boilerplate, enforces consistent runtime
+behavior across projects, and accelerates delivery of HTTP services with
+operational best practices built in.
 
 For a usage example, refer to examples/service/internal/cli/bind.go.
 */

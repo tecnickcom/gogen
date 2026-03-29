@@ -5,7 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// Option is the interface that allows to set client options.
+// Option configures a [Client] during [New].
 type Option func(c *Client) error
 
 // WithHandlerOpts sets the options how to serve metrics via an http.Handler.
@@ -17,14 +17,16 @@ func WithHandlerOpts(opts promhttp.HandlerOpts) Option {
 	}
 }
 
-// WithCollector register a new generic collector.
+// WithCollector registers an additional Prometheus collector in the client's
+// registry.
 func WithCollector(m prometheus.Collector) Option {
 	return func(c *Client) error {
 		return c.registry.Register(m)
 	}
 }
 
-// WithInboundRequestSizeBuckets set the buckets size in bytes for the inbound requests.
+// WithInboundRequestSizeBuckets sets histogram buckets (in bytes) for inbound
+// HTTP request size metrics.
 func WithInboundRequestSizeBuckets(buckets []float64) Option {
 	return func(c *Client) error {
 		c.inboundRequestSizeBuckets = buckets
@@ -32,7 +34,8 @@ func WithInboundRequestSizeBuckets(buckets []float64) Option {
 	}
 }
 
-// WithInboundResponseSizeBuckets set the buckets size in bytes for the inbound response.
+// WithInboundResponseSizeBuckets sets histogram buckets (in bytes) for inbound
+// HTTP response size metrics.
 func WithInboundResponseSizeBuckets(buckets []float64) Option {
 	return func(c *Client) error {
 		c.inboundResponseSizeBuckets = buckets
@@ -40,7 +43,8 @@ func WithInboundResponseSizeBuckets(buckets []float64) Option {
 	}
 }
 
-// WithInboundRequestDurationBuckets set the buckets size in seconds for the inbound requests duration.
+// WithInboundRequestDurationBuckets sets histogram buckets (in seconds) for
+// inbound HTTP request duration metrics.
 func WithInboundRequestDurationBuckets(buckets []float64) Option {
 	return func(c *Client) error {
 		c.inboundRequestDurationBuckets = buckets
@@ -48,7 +52,8 @@ func WithInboundRequestDurationBuckets(buckets []float64) Option {
 	}
 }
 
-// WithOutboundRequestDurationBuckets set the buckets size in seconds for the outbound requests duration.
+// WithOutboundRequestDurationBuckets sets histogram buckets (in seconds) for
+// outbound HTTP request duration metrics.
 func WithOutboundRequestDurationBuckets(buckets []float64) Option {
 	return func(c *Client) error {
 		c.outboundRequestDurationBuckets = buckets

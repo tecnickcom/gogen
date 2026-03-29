@@ -3,23 +3,27 @@ Package enumdb loads enumeration sets from relational database tables into
 thread-safe enum caches.
 
 It solves the problem of bootstrapping application enum metadata from database
-reference tables and makes it easy to build in-memory mappings for ID-to-name
-and name-to-ID lookup.
+reference tables and building in-memory ID-to-name and name-to-ID lookup maps
+at service startup.
 
 This package is designed for tables where each row represents a single enum value
-with a numeric primary key column named "id" and a unique string column named
-"name".
+with values that can be scanned into (id int, name string). In practice, this
+usually corresponds to a numeric primary key column named "id" and a unique
+string column named "name".
 
 Top features:
-- load multiple enum tables with a single database connection
-- build github.com/tecnickcom/gogen/pkg/enumcache.EnumCache instances
-- preserve enum mappings for fast runtime lookup
-- ensure simple SQL-driven enum initialization for services
+
+- load multiple enum tables in one call by passing a map of table name to SQL query
+- build github.com/tecnickcom/gogen/pkg/enumcache.EnumCache instances per table
+- provide fast runtime lookups in both directions through enumcache APIs
+- wrap query, scan, and row-iteration failures with contextual errors for easier debugging
+- close statements and rows safely, joining close errors with main execution errors
 
 Benefits:
-- reduce enum duplication across database and application code
-- keep enum lookup logic centralized and predictable
-- simplify startup loading of reference data for feature flags, states, and types
+
+  - reduce enum duplication across database and application code
+  - keep enum lookup logic centralized and predictable
+  - simplify startup loading of reference data such as feature flags, states, and types
 
 Example of a MySQL database table that can be used with this package:
 

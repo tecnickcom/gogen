@@ -63,7 +63,10 @@ type TraceProviderFunc = func(ctx context.Context, res *sdkresource.Resource) *s
 // MetricProviderFunc is a function that returns an SDK Metr Provider.
 type MetricProviderFunc = func(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider
 
-// Client represents the state type of this client.
+// Client is an OpenTelemetry-backed implementation of the shared metrics
+// interface.
+//
+// Create it with [New].
 type Client struct {
 	propagator          propagation.TextMapPropagator
 	resFn               SDKResourceFunc
@@ -77,12 +80,16 @@ type Client struct {
 	collectorErrorCode  metric.Int64Counter
 }
 
-// New creates a new metrics instance.
-// The name can be also set via the OTEL_SERVICE_NAME environment variable.
-// The service can be also set via the OTEL_SERVICE_VERSION environment variable.
-// The deployment environment can be set via the OTEL_DEPLOYMENT_ENVIRONMENT_NAME environment variable.
-// The parameters can be also set as OTEL_RESOURCE_ATTRIBUTES environment variables attributes:
-// service.name, service.version, deployment.environment.name.
+// New creates an OpenTelemetry metrics/tracing client and installs global OTel
+// providers.
+//
+// name and version can also be provided via environment variables:
+// OTEL_SERVICE_NAME and OTEL_SERVICE_VERSION.
+// deployment.environment.name can be provided via
+// OTEL_DEPLOYMENT_ENVIRONMENT_NAME.
+//
+// The same attributes can also be supplied through OTEL_RESOURCE_ATTRIBUTES
+// using keys: service.name, service.version, deployment.environment.name.
 func New(ctx context.Context, name, version string, opts ...Option) (*Client, error) {
 	c := initClient()
 
@@ -145,12 +152,15 @@ func defRegisterDBStatsMetrics(db *sql.DB, opts ...otelsql.Option) (metric.Regis
 	return otelsql.RegisterDBStatsMetrics(db, opts...) //nolint:wrapcheck
 }
 
-// InstrumentHandler returns the input handler.
+// InstrumentHandler wraps handler with OpenTelemetry HTTP server
+// instrumentation using the configured meter provider.
 func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
 	return otelhttp.NewHandler(handler, path, otelhttp.WithMeterProvider(c.meterProvider))
 }
 
-// InstrumentRoundTripper returns the input Roundtripper.
+// InstrumentRoundTripper wraps next with OpenTelemetry HTTP client
+// instrumentation.
+// If next is nil, http.DefaultTransport is used.
 func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
 	if next == nil {
 		next = http.DefaultTransport
@@ -159,9 +169,10 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 	return otelhttp.NewTransport(next)
 }
 
-// MetricsHandlerFunc returns an http handler function.
-// NOTE: OpenTelemetry metrics are typically exported via exporters.
-// The handler will return just "OK".
+// MetricsHandlerFunc returns a minimal health-style handler.
+//
+// OpenTelemetry metrics are exported by configured exporters, so this endpoint
+// does not expose a scrape payload and simply returns "OK".
 func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`OK`)) }
 }
@@ -189,12 +200,14 @@ func (c *Client) IncErrorCounter(task, operation, code string) {
 	)
 }
 
-// Close invokes shutdown cleanup functions registered during setup.
+// Close runs all registered shutdown callbacks using context.TODO().
+//
+// Use [Client.CloseCtx] when an explicit shutdown deadline is required.
 func (c *Client) Close() error {
 	return c.CloseCtx(context.TODO())
 }
 
-// CloseCtx invokes context-aware shutdown cleanup functions registered during setup.
+// CloseCtx runs all registered shutdown callbacks with ctx, joining any errors.
 func (c *Client) CloseCtx(ctx context.Context) error {
 	var err error
 

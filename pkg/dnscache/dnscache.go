@@ -9,18 +9,23 @@ so repeated DNS lookups for the same host return cached results and only one
 outstanding lookup is performed at a time.
 
 Key features:
+
   - fixed-size in-memory cache with configurable capacity
   - per-entry TTL expiry to keep DNS data fresh
   - thread-safe access for concurrent goroutines
   - single-flight behavior so duplicate lookups share one network request
   - optional custom net.Resolver support with sensible default behavior
-  - DialContext helper that resolves host names before dialing addresses
+  - DialContext helper that resolves host names and tries each returned IP until
+    one connection succeeds
 
 Why it matters:
+
   - reduces DNS resolution latency for repeated host names
   - lowers load on upstream resolvers and avoids query storms
   - keeps memory usage predictable with a capped entry count
   - makes DNS-heavy applications more resilient under concurrency
+  - provides a practical http.Transport DialContext replacement for DNS-aware
+    clients
 
 Use this package in any Go service that performs frequent DNS lookups or needs
 an efficient, safe cache for host resolution.

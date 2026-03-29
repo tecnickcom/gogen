@@ -1,12 +1,78 @@
 /*
-Package paging provides utilities to handle pagination.
+Package paging computes all pagination metadata — current page, total pages,
+previous/next page numbers, and SQL OFFSET/LIMIT values — from three inputs:
+current page number, page size, and total item count.
 
-The Paging struct represents the pagination information and is automatically
-populated by the New function.
+# Problem
+
+Paginating API responses and database queries requires the same arithmetic
+repeatedly: clamping out-of-range page numbers, computing total pages with
+correct ceiling division, deriving OFFSET for SQL, and determining safe
+previous/next page links that never go below 1 or above the last page.
+Getting any one of these details wrong produces broken navigation links,
+off-by-one errors in SQL queries, or panics on empty result sets.
+
+# Solution
+
+[New] accepts the three caller-supplied values and returns a fully populated
+[Paging] struct in a single call. Out-of-range inputs are clamped automatically
+so callers never need to guard against zero page sizes or page numbers beyond
+the last page:
+
+	p := paging.New(currentPage, pageSize, totalItems)
+	// p.Offset and p.PageSize are ready for use in a SQL LIMIT/OFFSET clause.
+	// p.PreviousPage and p.NextPage are safe to embed in a JSON response.
+
+For cases where only SQL values are needed:
+
+	offset, limit := paging.ComputeOffsetAndLimit(currentPage, pageSize)
+
+# Features
+
+  - Single-call API: [New] computes every pagination field at once — no manual
+    arithmetic required in application code.
+  - Safe input clamping: page numbers below 1 are raised to 1; page numbers
+    beyond the last page are clamped to [Paging.TotalPages]; page sizes below
+    1 are raised to 1. Callers can pass raw query-string values directly.
+  - Correct ceiling division: total-page calculation uses integer ceiling
+    division so the last partial page is never lost.
+  - Boundary-safe navigation: [Paging.PreviousPage] is always >= 1 and
+    [Paging.NextPage] is always <= [Paging.TotalPages], making them safe to
+    embed in API responses and hypermedia links without further validation.
+  - SQL-ready offset: [Paging.Offset] is the zero-based row offset for use
+    directly in a SQL OFFSET clause.
+  - JSON-serialisable: all [Paging] fields carry json struct tags, so the
+    struct can be returned as part of an API envelope without a separate DTO.
+  - Lightweight SQL helper: [ComputeOffsetAndLimit] provides the two SQL
+    values without constructing a full [Paging] struct.
+  - Zero dependencies: uses only the Go standard library.
+
+# Example
+
+For 17 items displayed 5 per page, navigating to page 3:
+
+	p := paging.New(3, 5, 17)
+	// p.CurrentPage  == 3
+	// p.PageSize     == 5
+	// p.TotalItems   == 17
+	// p.TotalPages   == 4
+	// p.PreviousPage == 2
+	// p.NextPage     == 4
+	// p.Offset       == 10  (used as SQL OFFSET)
+
+# Benefits
+
+This package eliminates repetitive, error-prone pagination arithmetic from
+application and data-access code, providing safe, consistent pagination
+metadata in a single import.
 */
 package paging
 
-// Paging contains the paging information.
+// Paging holds all pagination metadata derived from a current-page number,
+// a page size, and a total item count. All fields are JSON-serialisable and
+// ready to embed in an API response envelope.
+//
+// Use [New] to construct a populated instance; do not fill fields manually.
 type Paging struct {
 	// CurrentPage is the current page number starting from 1.
 	CurrentPage uint `json:"page"`
@@ -30,7 +96,16 @@ type Paging struct {
 	Offset uint `json:"offset"`
 }
 
-// New returns a new paging information instance.
+// New computes all pagination metadata from currentPage, pageSize, and
+// totalItems and returns a fully populated [Paging] value.
+//
+// Input clamping:
+//   - pageSize < 1 is raised to 1.
+//   - currentPage < 1 is raised to 1.
+//   - currentPage > TotalPages is clamped to TotalPages.
+//
+// This means callers can pass raw URL query-string values without prior
+// validation and always receive a coherent, in-bounds result.
 func New(currentPage, pageSize, totalItems uint) Paging {
 	pageSize = minPageSize(pageSize)
 	totalPages := computeTotalPages(totalItems, pageSize)
@@ -47,7 +122,12 @@ func New(currentPage, pageSize, totalItems uint) Paging {
 	}
 }
 
-// ComputeOffsetAndLimit computes the OFFSET (zero based) and LIMIT values to be used with SQL queries.
+// ComputeOffsetAndLimit returns the zero-based SQL OFFSET and the LIMIT
+// (page size) for the given currentPage and pageSize.
+//
+// This is a lightweight alternative to [New] when only the two SQL values
+// are needed and the full [Paging] metadata is not required.
+// Both inputs are clamped to a minimum of 1.
 func ComputeOffsetAndLimit(currentPage, pageSize uint) (uint, uint) {
 	currentPage = minCurrentPage(currentPage)
 	pageSize = minPageSize(pageSize)

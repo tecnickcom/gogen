@@ -1,11 +1,63 @@
 /*
-Package periodic provides a way to execute a given function periodically at a
-specified time interval.
+Package periodic schedules a task function to run repeatedly at a fixed
+interval, with optional random jitter and a per-invocation context timeout.
 
-It allows for the configuration of a maximum random jitter time between each
-function call and a timeout applied to each function call via Context. The
-jitter is useful for avoiding the Thundering herd problem
-(https://en.wikipedia.org/wiki/Thundering_herd_problem).
+# Problem
+
+Background workers that poll an external resource, flush a cache, or emit
+heartbeats are common in production services. Implementing them correctly
+requires handling context cancellation, per-call timeouts, graceful shutdown,
+and the thundering-herd problem when many instances restart simultaneously.
+Writing this loop from scratch every time is repetitive and error-prone.
+
+# Solution
+
+[New] constructs a [Periodic] scheduler from an interval, a jitter ceiling, a
+per-call timeout, and a [TaskFn]. [Periodic.Start] runs the task in a dedicated
+goroutine and [Periodic.Stop] shuts it down cleanly:
+
+	p, err := periodic.New(
+		30*time.Second,  // run every 30 s
+		5*time.Second,   // add up to 5 s of random jitter
+		10*time.Second,  // each call gets a 10 s deadline
+		myTask,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	p.Start(ctx)
+	defer p.Stop()
+
+# Features
+
+  - Fixed interval with random jitter: the actual pause between calls is
+    interval + rand(0, jitter), spreading load across a fleet and avoiding
+    the thundering-herd problem
+    (https://en.wikipedia.org/wiki/Thundering_herd_problem).
+  - Per-call timeout: each [TaskFn] invocation receives a [context.Context]
+    derived from the parent with an independent deadline, preventing a single
+    slow call from blocking the scheduler.
+  - Context-aware shutdown: [Periodic.Start] accepts a parent context;
+    canceling it (or calling [Periodic.Stop]) stops the loop after the
+    current task invocation returns — no goroutine leaks.
+  - Eager first execution: the first call fires after ~1 ns so the task runs
+    immediately on start rather than waiting for the first full interval.
+  - Simple API: three methods ([New], [Periodic.Start], [Periodic.Stop]) and
+    one function type ([TaskFn]) cover the entire surface area.
+
+# Constraints
+
+  - interval must be > 0.
+  - jitter must be >= 0 (pass 0 to disable jitter entirely).
+  - timeout must be > 0.
+  - task must not be nil.
+
+# Benefits
+
+This package eliminates the recurring boilerplate of ticker-based background
+loops in Go services, providing built-in jitter, cancellation, and timeout
+handling in a minimal, dependency-free implementation.
 */
 package periodic
 
@@ -16,10 +68,15 @@ import (
 	"time"
 )
 
-// TaskFn is the type of function to be periodically executed.
+// TaskFn is the signature of the function executed on each tick.
+// The context passed in carries the deadline configured via the timeout
+// parameter of [New]. Implementations should respect context cancellation
+// and return promptly when ctx.Done() is closed.
 type TaskFn func(context.Context)
 
-// Periodic instance.
+// Periodic schedules a [TaskFn] to run repeatedly at a configurable interval.
+// Create one with [New], start it with [Periodic.Start], and stop it with
+// [Periodic.Stop]. The zero value is not usable; always use [New].
 type Periodic struct {
 	interval   int64         // Time in nanoseconds between two successive calls.
 	jitter     int64         // Maximum random Jitter time between each function call.
@@ -30,9 +87,18 @@ type Periodic struct {
 	cancel     context.CancelFunc
 }
 
-// New creates a new Periodic instance.
-// The jitter parameter is the maximum random Jitter time between each function call.
-// This is useful to avoid the Thundering herd problem (https://en.wikipedia.org/wiki/Thundering_herd_problem).
+// New creates and validates a new [Periodic] scheduler.
+//
+// Parameters:
+//   - interval: the base duration between successive task invocations; must be > 0.
+//   - jitter:   upper bound of a uniformly distributed random delay added to
+//     interval after each call; must be >= 0. Pass 0 to disable jitter.
+//   - timeout:  deadline applied to each individual task call via a derived
+//     [context.Context]; must be > 0.
+//   - task:     the [TaskFn] to execute on each tick; must not be nil.
+//
+// New returns an error if any parameter fails its constraint. Call
+// [Periodic.Start] on the returned instance to begin execution.
 func New(interval time.Duration, jitter time.Duration, timeout time.Duration, task TaskFn) (*Periodic, error) {
 	intervalNs := int64(interval)
 	if intervalNs < 1 {
@@ -61,7 +127,12 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 	}, nil
 }
 
-// Start the periodic execution.
+// Start begins the periodic execution loop in a new goroutine.
+//
+// The first task invocation fires almost immediately (after ~1 ns). Subsequent
+// invocations are scheduled at interval + rand(0, jitter) after each call
+// completes. The loop exits when ctx is canceled or [Periodic.Stop] is called.
+// Start must not be called more than once on the same [Periodic] instance.
 func (p *Periodic) Start(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	p.cancel = cancel
@@ -69,8 +140,11 @@ func (p *Periodic) Start(ctx context.Context) {
 	go p.loop(ctx)
 }
 
-// Stop the periodic execution.
-// It may block until the last running function returns.
+// Stop cancels the execution loop.
+//
+// It signals the goroutine started by [Periodic.Start] to exit and may block
+// briefly until the currently running task invocation returns. It is safe to
+// call Stop multiple times or before Start.
 func (p *Periodic) Stop() {
 	if p.cancel != nil {
 		p.cancel()

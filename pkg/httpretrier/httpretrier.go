@@ -1,23 +1,55 @@
 /*
-Package httpretrier provides configurable retry logic for HTTP requests.
+Package httpretrier provides configurable retry execution for outbound HTTP
+requests.
 
-It solves the problem of transient network failures and unreliable remote
-services by allowing requests to be retried automatically according to
-application-defined conditions.
+# Problem
 
-The retry function can inspect any part of the returned http.Response and error,
-and the default behavior retries only on transport-level failures.
+Remote dependencies fail in transient ways (timeouts, connection resets,
+temporary 5xx/429 responses). Without a consistent retry strategy, callers
+either fail too aggressively or duplicate ad hoc retry loops with different
+policies across services.
 
-Top features:
-- customizable retry conditions based on response and error
-- built-in retry helpers for read and write request patterns
-- exponential backoff with jitter
-- configurable max attempts, initial delay, and delay multiplier
+# Solution
 
-Benefits:
-- improve robustness of outbound HTTP calls
-- eliminate duplicated retry logic across services
-- reduce the risk of retry storms with jitter and bounded attempts
+This package wraps an [HTTPClient] with retry orchestration driven by a
+pluggable [RetryIfFn].
+
+[HTTPRetrier.Do] executes a request up to a bounded number of attempts,
+applying delay growth and jitter between retries. The retry decision function
+receives both `*http.Response` and `error`, enabling policy decisions based on
+transport failures and/or HTTP status codes.
+
+# Built-in Retry Policies
+
+Predefined helpers are provided for common semantics:
+  - [RetryIfForReadRequests] for idempotent reads (e.g. GET)
+  - [RetryIfForWriteRequests] for state-changing writes (e.g. POST/PUT/PATCH)
+  - [RetryIfFnByHTTPMethod] to select one of the above from method name
+
+The default policy retries only when `err != nil`.
+
+# Backoff Behavior
+
+Delay progression is configurable via:
+  - attempts cap ([WithAttempts])
+  - initial delay ([WithDelay])
+  - multiplicative delay factor ([WithDelayFactor])
+  - random jitter ceiling ([WithJitter])
+
+This produces bounded exponential-style backoff with randomization, helping
+reduce synchronized retry storms.
+
+# Request Body Replay
+
+When a request has a body and retries are needed, the retrier relies on
+`Request.GetBody` to recreate the body stream for subsequent attempts. If
+GetBody is unavailable or fails, retries cannot continue and Do returns an
+error.
+
+# Benefits
+
+httpretrier standardizes retry behavior for HTTP clients, improving resilience
+while keeping retry policies explicit, testable, and reusable across services.
 */
 package httpretrier
 

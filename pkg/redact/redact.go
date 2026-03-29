@@ -1,8 +1,47 @@
 /*
-Package redact contains utility functions to obscure sensitive data.
+Package redact provides lightweight, regex-based redaction utilities for
+obscuring sensitive data before logging or debugging output is emitted.
 
-This package is useful for logging and debugging, where sensitive data should
-not be exposed.
+# Problem
+
+Operational logs and diagnostics often include raw HTTP headers, JSON payloads,
+or URL-encoded form data. Without sanitization, these records can leak secrets
+such as credentials, tokens, API keys, session identifiers, personal data, or
+payment details. This package offers a fast, simple redaction pass that can be
+applied at log boundaries.
+
+# What It Redacts
+
+[HTTPData] applies multiple redaction rules in sequence:
+
+  - Authorization headers (`Authorization: ...`), preserving header name while
+    replacing the value.
+  - JSON key/value pairs where the key name contains secret-like substrings
+    (authentication/session, crypto markers, legal-signing, financial, and PII
+    keyword groups).
+  - URL-encoded key/value pairs with matching sensitive key names.
+  - Credit-card-like numeric patterns bounded by non-word separators.
+
+All matched sensitive values are replaced with a constant marker so output
+remains structurally useful while hiding private content.
+
+# Key Features
+
+  - Single-call redaction API for common HTTP-style payloads.
+  - Broad keyword families to catch many real-world secret field names.
+  - Preserves surrounding structure to keep logs searchable and debuggable.
+  - No external dependencies beyond the standard regexp package.
+
+# Usage
+
+	safe := redact.HTTPData(rawHTTPPayload)
+	logger.Info("request", "payload", safe)
+
+# Important Notes
+
+This package is best-effort pattern redaction, not a formal data-loss
+prevention system. Always treat output as potentially sensitive and combine this
+with least-privilege logging practices and structured logging controls.
 */
 package redact
 

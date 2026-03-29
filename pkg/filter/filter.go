@@ -1,24 +1,52 @@
 /*
-Package filter provides generic rule-based filtering capabilities for struct
-slices.
+Package filter provides declarative, rule-based filtering for in-memory slices.
 
-It solves the problem of applying dynamic, declarative filters to in-memory
-data without writing custom loop logic for each data type.
+# Problem
 
-Filters are expressed as a slice of rule groups or as JSON, where the outer
-slice is combined with AND semantics and each inner slice is combined with OR
-semantics.
+API endpoints frequently need to apply client-driven filters to server-side
+collections (for example, after parsing a `filter=` query parameter). Handwritten
+loop logic is repetitive, hard to validate, and difficult to keep consistent
+across data models.
 
-A common use case is parsing a URL query string from a client request and
-applying the resulting filter to server-side data before serialization.
+# Solution
 
-Top features:
-- JSON-friendly rule syntax for client-driven filtering
-- nested AND/OR semantics for expressive queries
-- field path support for nested struct values
-- runtime validation and rule count limits for safer filtering
+This package evaluates structured [Rule] expressions against slice elements and
+filters the slice in place.
 
-Example:
+Rules are grouped as `[][]Rule` with boolean semantics:
+  - outer slice: AND
+  - inner slice: OR
+
+So `[A, [B, C], D]` evaluates as `A AND (B OR C) AND D`.
+
+Rules can be supplied directly or parsed from JSON via [ParseJSON], and query
+parameter payloads can be loaded with [Processor.ParseURLQuery].
+
+# Key Features
+
+  - JSON-friendly filtering grammar for client-provided filters.
+  - Rich comparison operators: regexp, equality/equal-fold, prefix/suffix,
+    contains, and numeric/string ordering (<, <=, >, >=).
+  - Optional negation prefix (`!`) for every operator.
+  - Dot-path field selection for nested struct fields
+    (for example `address.country`).
+  - Optional struct-tag based field lookup via [WithFieldNameTag].
+  - In-place filtering with pagination-style controls via [Processor.ApplySubset]
+    (offset + length), plus total-match count.
+  - Rule and result limits ([WithMaxRules], [WithMaxResults]) to constrain
+    runtime cost.
+  - Reflection-path caching for repeated evaluations on the same types.
+
+# Important Behavior
+
+  - The slice argument for [Processor.Apply] / [Processor.ApplySubset] must be a
+    pointer to a slice and is modified in place.
+  - Missing fields are treated as a non-match (filtered out) rather than an
+    error.
+  - ParseURLQuery returns nil rules when the configured query key is missing or
+    empty.
+
+# Example
 
 The following pretty-printed JSON:
 
@@ -56,22 +84,29 @@ The equivalent logic is:
 
 	((name==doe OR age<=42) AND (address.country match "EN" or "FR"))
 
-Supported rule types are listed in rule.go:
+# Available Rule Types
 
-  - "regexp" : matches the value against a reference regular expression.
-  - "=="     : Equal to - matches exactly the reference value.
-  - "="      : Equal fold - matches when strings, interpreted as UTF-8, are equal under simple Unicode case-folding, which is a more general form of case-insensitivity. For example "AB" will match "ab".
-  - "^="     : Starts with - (strings only) matches when the value begins with the reference string.
-  - "=$"     : Ends with - (strings only) matches when the value ends with the reference string.
-  - "~="     : Contains - (strings only) matches when the reference string is a sub-string of the value.
-  - "<"      : Less than - matches when the value is less than the reference.
-  - "<="     : Less than or equal to - matches when the value is less than or equal the reference.
-  - ">"      : Greater than - matches when the value is greater than reference.
-  - ">="     : Greater than or equal to - matches when the value is greater than or equal the reference.
+Supported rule types are:
 
-Every rule type can be prefixed with the symbol "!" to get the negated value.
-For example "!==" is equivalent to "Not Equal", matching values that are
+  - `regexp` : matches the value against a reference regular expression.
+  - `==`     : Equal to - matches exactly the reference value.
+  - `=`      : Equal fold - matches when strings, interpreted as UTF-8, are equal under simple Unicode case-folding, which is a more general form of case-insensitivity. For example `AB` will match `ab`.
+  - `^=`     : Starts with - (strings only) matches when the value begins with the reference string.
+  - `=$`     : Ends with - (strings only) matches when the value ends with the reference string.
+  - `~=`     : Contains - (strings only) matches when the reference string is a sub-string of the value.
+  - `<`      : Less than - matches when the value is less than the reference.
+  - `<=`     : Less than or equal to - matches when the value is less than or equal the reference.
+  - `>`      : Greater than - matches when the value is greater than reference.
+  - `>=`     : Greater than or equal to - matches when the value is greater than or equal the reference.
+
+Every rule type can be prefixed with the symbol `!` to get the negated value.
+For example `!==` is equivalent to "Not Equal", matching values that are
 different.
+
+# Benefits
+
+filter enables expressive, validated, and reusable filtering logic for API and
+application layers while minimizing repetitive per-type query code.
 */
 package filter
 

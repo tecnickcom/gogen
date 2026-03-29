@@ -1,14 +1,70 @@
 /*
-Package retrier provides the ability to automatically repeat a user-defined
-function based on the error status.
+Package retrier provides a configurable retry engine for executing a task
+function with backoff, jitter, and per-attempt timeouts.
 
-The default behavior is to retry in case of any error.
+# Problem
 
-This package provides a ready-made DefaultRetryIf function that can be used for
-most cases. Additionally, it allows to set the maximum number of retries, the
-delay after the first failed attempt, the time multiplication factor to
-determine the successive delay value, and the jitter used to introduce
-randomness and avoid request collisions.
+Transient failures are common in distributed systems (temporary network issues,
+short-lived upstream overload, brief lock/contention windows). Retrying can
+dramatically improve success rates, but ad hoc retry loops often miss important
+details such as cancellation propagation, bounded attempts, timeout isolation
+per attempt, and jitter to avoid synchronized retry storms.
+
+This package centralizes those concerns in a reusable retrier implementation.
+
+# How It Works
+
+[New] creates a [Retrier] with defaults, or with custom [Option] values.
+[Retrier.Run] then executes a [TaskFn] according to configured retry rules:
+
+ 1. Execute the task with a per-attempt timeout context.
+ 2. Evaluate the result with a retry predicate ([RetryIfFn]).
+ 3. Stop when attempts are exhausted or retry is not required.
+ 4. Otherwise schedule the next attempt after delay + random jitter.
+ 5. Increase delay by the configured multiplication factor for successive
+    retries.
+
+The run loop always respects parent context cancellation.
+
+# Defaults
+
+  - attempts: [DefaultAttempts] (4)
+  - initial delay: [DefaultDelay] (1s)
+  - delay factor: [DefaultDelayFactor] (2)
+  - jitter: [DefaultJitter] (1ms)
+  - per-attempt timeout: [DefaultTimeout] (1s)
+  - retry condition: [DefaultRetryIf] (retry on any non-nil error)
+
+# Key Features
+
+  - Pluggable retry condition via [WithRetryIfFn].
+  - Bounded retry count via [WithAttempts].
+  - Configurable delay, exponential factor, and jitter via [WithDelay],
+    [WithDelayFactor], and [WithJitter].
+  - Per-attempt timeout isolation via [WithTimeout].
+  - Context-aware cancellation for clean shutdown behavior.
+
+# Usage
+
+	r, err := retrier.New(
+	    retrier.WithAttempts(5),
+	    retrier.WithDelay(200*time.Millisecond),
+	    retrier.WithDelayFactor(2),
+	    retrier.WithJitter(25*time.Millisecond),
+	)
+	if err != nil {
+	    return err
+	}
+
+	err = r.Run(ctx, func(ctx context.Context) error {
+	    return callExternalService(ctx)
+	})
+	if err != nil {
+	    return err
+	}
+
+This package is ideal for retrying idempotent or safe-to-repeat operations in
+networked and high-concurrency Go services.
 */
 package retrier
 

@@ -1,28 +1,46 @@
 /*
-Package countryphone provides fast geographical lookup for phone number prefixes.
+Package countryphone resolves international phone number prefixes into
+country and regional metadata.
 
-It solves the problem of mapping an international telephone number to the
-country and regional dialing metadata that developers need for validation,
-formatting, routing, and analytics.
+It addresses a common backend problem: mapping a dialed number (or prefix) to
+structured geographic and number-type information that can be used for
+validation, formatting, routing, fraud controls, and analytics.
 
-Country phone codes are defined by the International Telecommunication Union
-(ITU) in ITU-T recommendations E.123 and E.164.
+The package models country calling code behavior defined by the International
+Telecommunication Union (ITU), including the ITU-T E.123 and E.164 numbering
+recommendations.
 
-This package stores default prefix data in a prefix trie for fast longest-prefix
-matching, while still allowing callers to replace the default dataset with a
-custom dataset.
+# How it works
 
-Top features:
-- prefix-based phone number lookup with longest-match semantics
-- support for country calling code, national prefix groups, and area metadata
-- explicit number and area type enums for safer interpretation
-- custom dataset injection for non-standard or updated dialing plans
+countryphone indexes prefix data in a trie and performs longest-prefix lookup.
+This gives fast reads and deterministic matches for variable-length numbering
+plans. The default dataset is embedded, and callers can provide custom data
+through New when they need provider-specific or updated plans.
 
-Benefits:
-  - standardize phone prefix resolution across services
-  - improve performance for bulk and realtime lookup workflows
-  - make it easy to combine phone geography with ISO country data from
-    github.com/tecnickcom/gogen/pkg/countrycode
+Top features
+
+  - Longest-prefix matching for accurate geographic resolution across mixed
+    prefix lengths.
+  - Rich metadata output via NumInfo and GeoInfo, including country code,
+    area/group name, and typed classifications.
+  - Stable enum helpers (NumberType and AreaType) that convert integer types
+    into readable labels.
+  - Custom dataset injection using InData, InCountryData, and InPrefixGroup,
+    so teams can adapt to private numbering rules without forking package code.
+
+Why this matters
+
+  - Consistent prefix resolution across services reduces subtle routing and
+    validation bugs.
+  - Trie-based lookup is efficient for both single-request APIs and bulk
+    processing pipelines.
+  - The data model composes naturally with country metadata from
+    github.com/tecnickcom/gogen/pkg/countrycode.
+
+# Typical usage
+
+Create a resolver with New, then call NumberInfo for a prefix or full number.
+When no prefix matches, NumberInfo returns an error.
 */
 package countryphone
 

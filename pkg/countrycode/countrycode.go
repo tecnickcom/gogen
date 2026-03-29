@@ -1,30 +1,45 @@
 /*
 Package countrycode provides fast, reusable access to ISO-3166 country metadata.
 
-It solves the common problem of translating country codes into structured country
-information and selecting countries by region, sub-region, intermediate region,
-status, or top-level domain.
+It solves a common backend need: translating country identifiers into
+normalized, structured records and selecting countries by geographic hierarchy,
+assignment status, or top-level domain.
 
 CountryData includes:
-- ISO-3166 alpha-2, alpha-3, and numeric codes
-- English and French country names
-- region, sub-region, and intermediate region names and codes
-- assignment status and top-level domain (TLD)
+  - ISO-3166 alpha-2, alpha-3, and numeric codes
+  - English and French country names
+  - region, sub-region, and intermediate region names and codes
+  - assignment status and top-level domain (TLD)
 
-New(nil) returns a Data object built from embedded default data sourced from
-ISO-3166, the CIA World Factbook, United Nations M49, and Wikipedia. Custom
-country datasets are also supported by passing your own slice of CountryData.
+# Data sources and initialization
 
-Top features:
-- lookup by Alpha-2, Alpha-3, Numeric code, or TLD
-- enumerations for region, sub-region, intermediate region, and status
-- country filtering by region/name/status/TLD
-- compact internal representation for fast lookups and small memory use
+New(nil) builds a Data instance from embedded defaults sourced from ISO-3166,
+the CIA World Factbook, United Nations M49, and Wikipedia. New also accepts a
+custom []CountryData dataset when applications need private overrides, curated
+subsets, or pinned metadata snapshots.
 
-Benefits:
-- standardize country metadata across codebases
-- simplify validation, enrichment, and reporting workflows
-- keep geographic lookups efficient in APIs and batch processing
+Top features
+
+  - Direct lookup by Alpha-2, Alpha-3, Numeric code, and TLD.
+  - Region/status enumerations through EnumRegion, EnumSubRegion,
+    EnumIntermediateRegion, and EnumStatus.
+  - Country list queries by region/sub-region/intermediate region, status,
+    and TLD for filtering and reporting workflows.
+  - Compact internal encoding optimized for quick lookups and low memory usage.
+
+Why this matters
+
+  - Standardizes country metadata handling across services and teams.
+  - Reduces repeated parsing and mapping logic in validation/enrichment paths.
+  - Keeps geographic lookups efficient for both request/response APIs and
+    batch data pipelines.
+
+# Typical usage
+
+Create a resolver with New, then retrieve a single country with
+CountryByAlpha2Code, CountryByAlpha3Code, or CountryByNumericCode, or fetch
+filtered sets using CountriesByRegionCode, CountriesByStatusName, and related
+query methods.
 */
 package countrycode
 

@@ -21,8 +21,10 @@ func WithSaltLen(v uint32) Option {
 	}
 }
 
-// WithTime (t) is the default number of passes (iterations) over the memory.
-// It must be an integer value from 1 to 2^(32)-1.
+// WithTime sets the Argon2id time cost: the number of passes over memory.
+// Higher values increase resistance to brute-force attacks at the cost of
+// hashing latency. Must be >= 1 (minimum enforced automatically).
+// OWASP recommends tuning so that hashing takes 0.5–1 s on target hardware.
 func WithTime(v uint32) Option {
 	return func(ph *Params) {
 		ph.Time = max(minTime, v)
@@ -48,16 +50,18 @@ func WithThreads(v uint8) Option {
 	}
 }
 
-// WithMinPasswordLength overwrites the default maximum length of the input password (Message string P).
-// It must have a length not greater than 2^(32)-1 bytes.
+// WithMinPasswordLength sets the minimum accepted password length in bytes.
+// Passwords shorter than this are rejected by [Params.PasswordHash] before
+// any CPU-intensive computation, enforcing password policy at zero cost.
 func WithMinPasswordLength(v uint32) Option {
 	return func(ph *Params) {
 		ph.minPLen = v
 	}
 }
 
-// WithMaxPasswordLength overwrites the default maximum length of the input password (Message string P).
-// It must have a length not greater than 2^(32)-1 bytes.
+// WithMaxPasswordLength sets the maximum accepted password length in bytes.
+// Passwords longer than this are rejected before hashing, preventing
+// denial-of-service attacks via extremely long input strings.
 func WithMaxPasswordLength(v uint32) Option {
 	return func(ph *Params) {
 		ph.maxPLen = v

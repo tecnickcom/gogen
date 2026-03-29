@@ -2,24 +2,30 @@
 Package enumcache provides thread-safe storage and lookup for enumeration name
 and ID mappings.
 
-It solves the problem of maintaining consistent bidirectional enum mappings in
-concurrent applications, including support for bitmask-based enum sets via
-binary maps.
+It solves the problem of maintaining reusable bidirectional enum mappings in
+concurrent applications, including support for bitmask-based enum sets.
 
 The cache is useful when you need fast mapping from string names to integer IDs
-and back again, and it also supports encoding/decoding enum bitmaps when the
-underlying values represent flag combinations.
+and back again. It also supports encoding and decoding enum bitmaps when enum
+IDs represent bit flags.
+
+Typical usage is set-once, read-many: populate entries during startup using Set,
+SetAllIDByName, or SetAllNameByID, then perform lookups from application code.
 
 Top features:
-- concurrent-safe name-to-ID and ID-to-name lookup
-- bulk population helpers for enum definitions
-- sorted enumeration retrieval for predictable output
-- binary-map encoding and decoding via github.com/tecnickcom/gogen/pkg/enumbitmap
+
+  - concurrent-safe name-to-ID and ID-to-name lookup with sync.RWMutex protection
+  - bulk population helpers for loading enum definitions from code or external sources
+  - deterministic sorted retrieval with SortNames and SortIDs for logs, output, and tests
+  - binary-map encoding and decoding via github.com/tecnickcom/gogen/pkg/enumbitmap
+    for flag-style enum values
+  - explicit error returns when IDs or names are missing, improving caller control
 
 Benefits:
-- keep enum mappings centralized and thread-safe
-- reduce duplication of lookup logic across services
-- simplify support for feature flags and bitmask enums
+
+  - keep enum mappings centralized and thread-safe
+  - reduce duplication of lookup logic across services
+  - simplify support for feature flags and bitmask enums
 */
 package enumcache
 

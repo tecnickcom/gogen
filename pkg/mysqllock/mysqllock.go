@@ -1,35 +1,67 @@
 /*
-Package mysqllock provides a distributed locking mechanism that leverages
-MySQL's internal functions.
+Package mysqllock provides process-distributed mutual exclusion using MySQL's
+named lock primitives GET_LOCK and RELEASE_LOCK.
 
-This package allows you to acquire and release locks using MySQL's GET_LOCK and
-RELEASE_LOCK functions. It provides a MySQLLock struct that represents a locker
-and has methods for acquiring and releasing locks.
+# Problem
 
-Example usage:
+When multiple application instances (or background workers) run concurrently,
+some operations must execute at most once cluster-wide: scheduled jobs,
+idempotent migrations, reconciliation tasks, or cache rebuilds. Coordinating
+this with in-memory mutexes is impossible across processes, and introducing a
+separate lock service can add operational complexity.
 
-	// Create a new MySQLLock instance
-	db, err := sql.Open("mysql", "user:password@tcp(localhost:3306)/database")
+# Solution
+
+This package uses MySQL's built-in named locks to provide a simple distributed
+lock API around an existing database dependency. [MySQLLock.Acquire] requests a
+lock by key and returns a [ReleaseFunc] that must be called to release it.
+
+Usage:
+
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-	    log.Fatal(err)
+		log.Fatal(err)
 	}
 	defer db.Close()
-	lock := mysqllock.New(db)
 
-	// Acquire a lock
-	releaseFunc, err := lock.Acquire(context.Background(), "my_lock_key", 10*time.Second)
+	locker := mysqllock.New(db)
+	release, err := locker.Acquire(ctx, "daily-reconciliation", 10*time.Second)
 	if err != nil {
-	    log.Fatal(err)
-	}
-	defer releaseFunc()
+		if errors.Is(err, mysqllock.ErrTimeout) {
+			// Another instance is holding the lock.
+			return
+		}
 
-	// Perform locked operations
-
-	// Release the lock
-	err = releaseFunc()
-	if err != nil {
-	    log.Fatal(err)
+		log.Fatal(err)
 	}
+	defer func() {
+		if err := release(); err != nil {
+			log.Printf("failed to release lock: %v", err)
+		}
+	}()
+
+	// Perform the critical section while lock is held.
+
+# Features
+
+  - Single-call acquisition API: [MySQLLock.Acquire] returns a release closure,
+    so lock lifetime is easy to scope with defer.
+  - Explicit timeout handling: [ErrTimeout] is returned when GET_LOCK does not
+    acquire the lock within the requested timeout.
+  - Dedicated lock connection: each successful lock acquisition is tied to a
+    dedicated SQL connection, matching MySQL's lock semantics.
+  - Connection keep-alive: a periodic query keeps the lock-owning connection
+    active for long-running critical sections.
+  - Context-aware acquisition: caller context controls acquisition cancellation.
+  - Zero external dependencies at runtime: relies only on database/sql and
+    MySQL lock functions.
+
+# Behavior Notes
+
+The lock key namespace is per MySQL server instance. Use stable, descriptive
+keys (for example, "service:job:daily-reconciliation"). Always call the
+returned [ReleaseFunc], ideally with defer, to avoid holding locks longer than
+intended.
 */
 package mysqllock
 
@@ -41,14 +73,17 @@ import (
 	"time"
 )
 
-// ReleaseFunc is an alias for a release lock function.
+// ReleaseFunc releases an acquired lock and its associated SQL connection.
+//
+// It is returned by [MySQLLock.Acquire]. Callers should invoke it exactly once,
+// typically using defer immediately after successful acquisition.
 type ReleaseFunc func() error
 
 var (
-	// ErrTimeout is an error when the lock is not acquired within the timeout.
+	// ErrTimeout indicates that GET_LOCK did not acquire the lock before timeout.
 	ErrTimeout = errors.New("acquire lock timeout")
 
-	// ErrFailed is an error when the lock is not acquired.
+	// ErrFailed indicates a non-timeout lock acquisition failure.
 	ErrFailed = errors.New("failed to acquire a lock")
 )
 
@@ -65,17 +100,40 @@ const (
 	keepAliveSQLQuery = "SELECT 1"
 )
 
-// MySQLLock represents a locker.
+// MySQLLock acquires and releases MySQL named locks through a sql.DB pool.
+//
+// Create instances with [New].
 type MySQLLock struct {
 	db *sql.DB
 }
 
-// New creates a new instance of the locker.
+// New creates a [MySQLLock] bound to db.
+//
+// The provided db must be configured for MySQL and kept open for the full
+// lifetime of lock operations.
 func New(db *sql.DB) *MySQLLock {
 	return &MySQLLock{db: db}
 }
 
-// Acquire attempts to acquire a database lock.
+// Acquire attempts to acquire a named MySQL lock.
+//
+// On success, it returns a [ReleaseFunc] that releases the lock by calling
+// RELEASE_LOCK on the same SQL connection that acquired it.
+//
+// Parameters:
+//   - ctx controls lock acquisition and connection retrieval.
+//   - key is the lock name in MySQL's global named-lock namespace.
+//   - timeout is passed to GET_LOCK in whole seconds (fractional parts are
+//     truncated).
+//
+// Returns:
+//   - (release, nil) on success; release must be called by the caller.
+//   - (nil, [ErrTimeout]) if acquisition times out.
+//   - (nil, [ErrFailed]) on non-timeout lock acquisition failure.
+//   - (nil, err) for transport/query/scan errors.
+//
+// A keep-alive goroutine is started after successful acquisition to keep the
+// lock-owning connection active until release is called.
 //
 //nolint:contextcheck,nonamedreturns
 func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Duration) (rf ReleaseFunc, err error) {

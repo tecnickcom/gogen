@@ -1,87 +1,115 @@
 /*
-Package passwordhash implements a practical model to create and verify a
-password hashes using a strong one-way hashing algorithm.
+Package passwordhash provides OWASP-compliant password hashing and verification
+using the Argon2id algorithm (RFC 9106), with an optional AES-GCM encryption
+layer (peppered hashing) for defense in depth.
 
-The model implements the best advice of OWASP Password Storage Cheat
+# Problem
+
+Storing passwords securely is one of the most critical and most frequently
+mishandled tasks in application development. MD5, SHA-1, and even bcrypt are
+either broken or insufficient against modern GPU-based attacks. Choosing the
+correct algorithm, tuning its parameters, generating a cryptographically random
+salt, and encoding everything into a portable, self-describing format — all
+without introducing subtle timing-attack vulnerabilities — requires deep
+cryptographic knowledge most teams would rather not reinvent.
+
+# Solution
+
+This package encapsulates the full OWASP Password Storage Cheat Sheet
 (https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
-with specific default settings (parameters) and encoding format. Is uses the
-Argon2id algorithm (https://www.rfc-editor.org/info/rfc9106) as implemented in
-the golang.org/x/crypto/argon2 package.
+recommendations into two method pairs on a single [Params] configuration object:
 
-The implementation is based on available standard cryptographic libraries,
-enforcing standard settings, and the way parameters and salt are encoded
-alongside the hashed password.
+	p := passwordhash.New() // sensible OWASP defaults
 
-Password Storage Object
+	// Hash a password for storage.
+	hash, err := p.PasswordHash(plaintext)
 
-  - The input password is checked for min/max length. This prevents any
-    computation if these requirements are not met.
+	// Verify a login attempt.
+	ok, err := p.PasswordVerify(plaintext, hash)
 
-  - The input password is hashed using the Argon2id algorithm with some default
-    parameters and a random salt. Argon2id is currently the best recommendation
-    from OWASP and it is a variant of Argon2 that provides a balanced approach
-    to resisting both side-channel (Argon2i) and GPU-based (Argon2d) attacks.
+For deployments that store a secret pepper outside the database, the encrypted
+variants add an AES-GCM layer on top of the Argon2id hash:
 
-  - The hashed password is then encoded as base64 and added as a "K" field in a
-    JSON object, alongside the Argon2id parameters and base64 encoded salt.
+	hash, err := p.EncryptPasswordHash(pepper, plaintext)
+	ok, err  := p.EncryptPasswordVerify(pepper, plaintext, hash)
 
-  - The JSON object is then encoded as a base64 string ready for storage.
+# Storage Format
 
-Example:
+The hashed password is stored as a base64-encoded JSON object that is fully
+self-describing: it embeds the algorithm name, version, all Argon2id tuning
+parameters, the random salt, and the derived key. This makes the stored value
+portable across languages and systems, and allows parameters to be upgraded
+without invalidating existing hashes.
 
-	Password: "Test-Password-01234"
+Example JSON (before base64 encoding):
 
 	{
-	  "P": { < Argon2id parameters.
-	    "A": "argon2id", < Name of the hashing algorithm (always "argon2id").
-	    "V": 19,         < Argon2id algorithm version (0x13).
-	    "K": 32,         < Length of the returned byte-slice that can be used as a cryptographic key.
-	    "S": 16,         < Length of the random password salt.
-	    "T": 3,          < Number of passes over the memory.
-	    "M": 65536,      < Size of the memory in KiB.
-	    "P": 16          < Number of threads used by the hashing algorithm.
+	  "P": {
+	    "A": "argon2id",  // algorithm name (always "argon2id")
+	    "V": 19,          // Argon2id version (0x13)
+	    "K": 32,          // derived key length in bytes
+	    "S": 16,          // salt length in bytes
+	    "T": 3,           // time cost (passes over memory)
+	    "M": 65536,       // memory cost in KiB
+	    "P": 16           // parallelism (threads)
 	  },
-	  "S": "wQYm4bfktbHq2omIwFu+4Q==", < base64-encoded random salt of "P.S" length.
-	  "K": "aU8hO900Odq6aKtWiWz3RW9ygn734liJaPtM6ynvkYI=" < base64-encoded Argon2id password hash.
+	  "S": "wQYm4bfktbHq2omIwFu+4Q==",                       // base64 random salt
+	  "K": "aU8hO900Odq6aKtWiWz3RW9ygn734liJaPtM6ynvkYI="   // base64 Argon2id hash
 	}
 
-While other serialization methods are available, JSON and base64 have been
-chosen for their extraordinary portability and compatibility with multiple
-systems and programming languages. The proposed JSON schema is such that it can
-be easily adapted to other hashing algorithms if required.
+The final stored value is the base64 encoding of the above JSON (~200 bytes).
 
-NOTE: Custom parameters should be agreed for production following the
-recommendations at:
-https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-argon2-04#section-4 The
-current reference implementation uses recommended and sensible values by
-default.
+# Features
 
-The JSON object is then encoded as base64 string for storage (200 bytes in this
-example):
+  - Argon2id algorithm: resists both side-channel (Argon2i) and GPU-based
+    (Argon2d) attacks — the current OWASP top recommendation (RFC 9106,
+    https://www.rfc-editor.org/info/rfc9106).
+  - Cryptographically random salt: a fresh salt is generated for every hash,
+    preventing rainbow-table and pre-computation attacks.
+  - Constant-time comparison: final hash comparison uses [crypto/subtle],
+    preventing timing side-channel attacks.
+  - Self-describing storage format: algorithm, version, and all parameters
+    travel with the hash; no separate migration table is needed when tuning
+    changes.
+  - Optional pepper encryption: [Params.EncryptPasswordHash] and
+    [Params.EncryptPasswordVerify] wrap the Argon2id hash in AES-GCM using a
+    key stored outside the database, so a DB leak alone is insufficient to
+    mount an offline attack.
+  - Input length guards: passwords are rejected before any CPU-intensive
+    computation if they fall outside the configured min/max length, preventing
+    denial-of-service via extremely long inputs.
+  - Tunable via functional options: [WithTime], [WithMemory], [WithThreads],
+    [WithKeyLen], [WithSaltLen], [WithMinPasswordLength], and
+    [WithMaxPasswordLength] let each deployment match the OWASP parameter
+    guidance for its hardware profile.
+  - Portable format: JSON + base64 storage can be decoded by any language with
+    standard libraries, enabling cross-platform password verification.
 
-	eyJQIjp7IkEiOiJhcmdvbjJpZCIsIlYiOjE5LCJLIjozMiwiUyI6MTYsIlQiOjMsIk0iOjY1NTM2LCJQIjoxNn0sIlMiOiJ3UVltNGJma3RiSHEyb21Jd0Z1KzRRPT0iLCJLIjoiYVU4aE85MDBPZHE2YUt0V2lXejNSVzl5Z243MzRsaUphUHRNNnludmtZST0ifQo=
+# Verification Flow
 
-Password Verification
+ 1. Decode the stored base64 string to retrieve the JSON object.
+ 2. Unmarshal the JSON to recover algorithm, version, parameters, and salt.
+ 3. Validate that the stored algorithm and version match the library.
+ 4. Re-derive the key from the candidate password using the stored parameters
+    and salt.
+ 5. Compare the derived key against the stored key with [crypto/subtle.ConstantTimeCompare]
+    to prevent timing attacks.
 
-  - The hashed password object string is retrieved from the storage and it is
-    decoded using base64.
+# Parameter Tuning
 
-  - The resulting JSON is also decoded (unmarshalled) to access the fields
-    values.
+The defaults (T=3, M=64 MiB, P=NumCPU) follow OWASP and RFC 9106 §4
+(https://datatracker.ietf.org/doc/html/rfc9106#section-4) recommendations.
+For production deployments, benchmark [Params.PasswordHash] on representative
+hardware and adjust via [WithTime], [WithMemory], and [WithThreads] so that
+hashing takes 0.5–1 s under your expected load.
 
-  - The field P.A (name of the hashing algorithm) is compared with the one in
-    the library to ensure we are using the correct algorithm.
+# Benefits
 
-  - The field P.V (algorithm version) is compared with the one in the library to
-    ensure we are using the correct version.
-
-  - The provided live password is hashed using the same Argon2id algorithm with
-    the parameters extracted from the JSON.
-
-  - The hash of the live password is compared with the one retrieved from the
-    JSON P.K field. The time taken for the comparison is a function of the
-    length of the slices and is independent of the contents. This prevents
-    timing attacks.
+This package delivers a complete, OWASP-compliant password security layer in a
+single import: correct algorithm, safe defaults, timing-attack-resistant
+comparison, optional pepper support, and a portable self-describing storage
+format — letting application code focus on business logic rather than
+cryptographic plumbing.
 */
 package passwordhash
 
@@ -210,7 +238,22 @@ func defaultParams() *Params {
 	}
 }
 
-// New creates a new instance of Params with the provided options applied.
+// New creates a [Params] instance with OWASP-recommended Argon2id defaults,
+// then applies any provided [Option] functions.
+//
+// Defaults:
+//   - Algorithm:       argon2id (RFC 9106)
+//   - KeyLen:          32 bytes
+//   - SaltLen:         16 bytes
+//   - Time:            3 passes
+//   - Memory:          64 MiB
+//   - Threads:         runtime.NumCPU() clamped to [1, 255]
+//   - MinPasswordLen:  8 characters
+//   - MaxPasswordLen:  4096 characters
+//
+// Use [WithTime], [WithMemory], [WithThreads], [WithKeyLen], [WithSaltLen],
+// [WithMinPasswordLength], and [WithMaxPasswordLength] to tune for your
+// hardware profile before deploying to production.
 func New(opts ...Option) *Params {
 	ph := defaultParams()
 
@@ -223,10 +266,17 @@ func New(opts ...Option) *Params {
 	return ph
 }
 
-// PasswordHash generates a hashed password using the provided password string.
-// It generates a random salt of length ph.SaltLen and uses the argon2id algorithm
-// to hash the password with the salt, using the parameters specified in ph.
-// The resulting hashed password, the salt and the parameters are returned as a json encoded as a base64 string.
+// PasswordHash hashes password using Argon2id and returns a portable,
+// self-describing base64-encoded JSON string suitable for long-term storage.
+//
+// A cryptographically random salt of length [Params.SaltLen] is generated for
+// each call, so two hashes of the same password will always differ.
+// The returned string embeds the algorithm, version, all tuning parameters,
+// the salt, and the derived key — everything needed for future verification.
+//
+// Returns an error if password is shorter than MinPasswordLength or longer
+// than MaxPasswordLength, or if random salt generation fails.
+// Use [Params.PasswordVerify] to verify stored hashes.
 func (ph *Params) PasswordHash(password string) (string, error) {
 	data, err := ph.passwordHashData(password)
 	if err != nil {
@@ -236,8 +286,17 @@ func (ph *Params) PasswordHash(password string) (string, error) {
 	return encode.Serialize(data) //nolint:wrapcheck
 }
 
-// PasswordVerify verifies if a given password matches a hashed password generated with the PasswordHash method.
-// It returns true if the password matches the hashed password, otherwise false.
+// PasswordVerify checks whether password matches a hash produced by
+// [Params.PasswordHash].
+//
+// The stored hash is decoded, its algorithm and version are validated, the
+// candidate password is re-hashed with the stored parameters and salt, and
+// the result is compared using [crypto/subtle.ConstantTimeCompare] to prevent
+// timing attacks.
+//
+// Returns (true, nil) on a successful match, (false, nil) on a non-match, or
+// (false, err) if the hash string is malformed or uses an incompatible
+// algorithm/version.
 func (ph *Params) PasswordVerify(password, hash string) (bool, error) {
 	data := &Hashed{}
 
@@ -249,8 +308,15 @@ func (ph *Params) PasswordVerify(password, hash string) (bool, error) {
 	return ph.passwordVerifyData(password, data)
 }
 
-// EncryptPasswordHash extends the PasswordHash method by encrypting the password hash using the provided key (pepper).
-// As the key is not stored along the password hash, it provides an additional layer of protection.
+// EncryptPasswordHash hashes password with Argon2id and then encrypts the
+// resulting hash object with AES-GCM using key as the pepper.
+//
+// Because the pepper is stored separately from the database (e.g. in a secrets
+// manager or HSM), an attacker who obtains the database alone cannot perform
+// an offline dictionary attack — the ciphertext is opaque without the key.
+//
+// The returned string is a base64-encoded AES-GCM ciphertext. Use
+// [Params.EncryptPasswordVerify] with the same key to verify.
 func (ph *Params) EncryptPasswordHash(key []byte, password string) (string, error) {
 	data, err := ph.passwordHashData(password)
 	if err != nil {
@@ -260,7 +326,12 @@ func (ph *Params) EncryptPasswordHash(key []byte, password string) (string, erro
 	return encrypt.EncryptSerializeAny(key, data) //nolint:wrapcheck
 }
 
-// EncryptPasswordVerify extends the PasswordVerify method by decrypting the password hash using the provided key (pepper).
+// EncryptPasswordVerify decrypts the hash produced by [Params.EncryptPasswordHash]
+// using key, then verifies password against the decrypted Argon2id hash.
+//
+// Returns (true, nil) on a successful match, (false, nil) on a non-match, or
+// (false, err) if decryption fails (wrong key, tampered ciphertext) or the
+// inner hash is malformed.
 func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool, error) {
 	data := &Hashed{}
 

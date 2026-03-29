@@ -1,9 +1,83 @@
 /*
-Package validator provides a simple and extensible field validation mechanism
-for structs and individual fields based on tags.
+Package validator solves two recurring problems with struct validation in Go
+services: the gap in domain-specific validation rules missing from general
+libraries, and the cost of turning raw validation errors into user-readable
+messages. It wraps https://github.com/go-playground/validator — the de-facto
+standard validation library — and layers a curated set of custom rules,
+a template-based error translation engine, and a clean functional-options API
+on top.
 
-It wraps the https://github.com/go-playground/validator package and includes new
-custom validation rules and a simpler error translation mechanism.
+# Problem
+
+go-playground/validator is comprehensive but generic. Production services
+typically need a handful of domain rules (E.164 phone numbers, US EINs, ZIP
+codes, RFC-3339 dates) that are not in the upstream library, and they need
+validation errors that read as human sentences rather than raw tag names.
+Wiring those two concerns together for every service is boilerplate this
+package eliminates.
+
+# How It Works
+
+[New] creates a [Validator] using a variadic list of [Option] values:
+
+ 1. An upstream vt.Validate instance is created and held internally.
+ 2. Options register field-name tag aliases, custom validation functions,
+    custom type functions, and error message templates on that instance.
+ 3. [Validator.ValidateStruct] (or its context-aware twin
+    [Validator.ValidateStructCtx]) runs the upstream validator and transforms
+    any [vt.ValidationErrors] into a [go.uber.org/multierr] aggregate of
+    typed [Error] values, each carrying the failed tag, parameter, namespace,
+    field name, kind, and the translated human-readable message.
+
+Tag groups joined by "|" are iterated individually so each OR-branch failure
+produces an independent, meaningful error.
+
+# Key Features
+
+  - Human-readable errors: [WithErrorTemplates] maps any validation tag to an
+    html/template string. Templates receive an [Error] value, giving access to
+    the namespace, field name, tag, parameter, kind, and actual value.
+    [ErrorTemplates] returns a ready-to-use map covering every built-in
+    go-playground/validator tag.
+  - Custom domain rules: [CustomValidationTags] registers eight production-ready
+    validators not in the upstream library:
+  - falseif — conditional negation combinator
+  - e164noplus — E.164 phone number without the leading '+'
+  - ein — US Employer Identification Number (12-3456789 or 123456789)
+  - zipcode — US ZIP code (12345 or 12345-6789)
+  - usstate — two-letter US state code (including DC)
+  - usterritory — two-letter US territory code (AS, GU, MP, PR, VI)
+  - datetime_rfc3339 — strict RFC-3339 datetime
+  - datetime_rfc3339_relaxed — RFC-3339 with space instead of 'T'
+  - Field-name aliasing: [WithFieldNameTag] (commonly set to "json") makes
+    error namespaces use the serialized field names that API consumers actually
+    see, not the internal Go struct field names.
+  - Extensible: [WithCustomValidationTags] and [WithCustomTypeFunc] expose the
+    full upstream registration API for project-specific rules.
+  - Structured errors: every failure is an [Error] struct, not a plain string,
+    enabling programmatic error categorisation and localisation downstream.
+
+# Usage
+
+	v, err := validator.New(
+	    validator.WithFieldNameTag("json"),
+	    validator.WithCustomValidationTags(validator.CustomValidationTags()),
+	    validator.WithErrorTemplates(validator.ErrorTemplates()),
+	)
+	if err != nil {
+	    return err
+	}
+
+	type Address struct {
+	    Phone   string `json:"phone"    validate:"required,e164noplus"`
+	    ZIP     string `json:"zip"      validate:"required,zipcode"`
+	    State   string `json:"state"    validate:"required,usstate"`
+	}
+
+	err = v.ValidateStruct(Address{Phone: "12345", ZIP: "bad", State: "XX"})
+	// err is a multierr containing one *Error per failed field,
+	// each with a message like:
+	//   "phone must be a valid E.164 formatted phone number without the leading '+' symbol"
 */
 package validator
 

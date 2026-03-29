@@ -5,7 +5,11 @@ import (
 	"github.com/tecnickcom/gogen/pkg/logutil"
 )
 
-// SlogLevel converts a zerolog level into an slog one.
+// SlogLevel maps a zerolog severity level to the corresponding logutil/slog
+// severity level.
+//
+// This is primarily used by hook callbacks so hook consumers can reason in the
+// same severity vocabulary used by logutil.
 //
 //nolint:cyclop
 func SlogLevel(l zerolog.Level) logutil.LogLevel {

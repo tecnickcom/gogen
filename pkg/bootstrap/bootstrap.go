@@ -1,8 +1,84 @@
 /*
-Package bootstrap provides a simple way to bootstrap an application with managed
-configuration, logging, metrics, application context, and shutdown signals.
+Package bootstrap solves the repetitive, error-prone problem of wiring together
+the core infrastructure of a Go service: context lifecycle, structured logging,
+metrics collection, OS signal handling, and graceful shutdown — all with a single
+function call.
 
-For an implementation example see in order:
+# Problem
+
+Every long-running Go service needs the same boilerplate: create a context,
+configure a logger, initialize metrics, wire up components, listen for SIGTERM,
+and coordinate a clean shutdown without dropping in-flight work. Doing this
+correctly — with timeouts, WaitGroups, and proper signal handling — is
+repetitive and easy to get wrong. This package encapsulates that pattern once,
+tested and production-ready.
+
+# How It Works
+
+The entry point is [Bootstrap]. It accepts a [BindFunc] — the caller-supplied
+function that wires up all application-specific components — plus a variadic
+list of [Option] values that tune the runtime behavior:
+
+ 1. A cancellable [context.Context] is created and threaded through the entire
+    application via BindFunc.
+ 2. A [metrics.Client] is created (Prometheus by default) and passed to BindFunc.
+ 3. A [*slog.Logger] is created and passed to BindFunc.
+    If a [logutil.Config] is provided with [WithLogConfig], the logger
+    automatically emits a metrics counter for every log line, broken down by
+    level — giving instant observability into error rates.
+ 4. BindFunc is called. This is where the caller registers HTTP servers,
+    database connections, background workers, etc.
+ 5. Bootstrap blocks until it receives os.Interrupt, SIGTERM, or SIGINT, or
+    until the context is canceled externally.
+ 6. A shutdown signal is broadcast on the shared channel
+    (see [WithShutdownSignalChan]) so every registered dependent can start its
+    own teardown.
+ 7. Bootstrap waits for all dependants to finish via a [sync.WaitGroup]
+    (see [WithShutdownWaitGroup]), bounded by a configurable timeout
+    (see [WithShutdownTimeout]) to prevent hanging indefinitely.
+
+# Key Features
+
+  - Single-function API: one call handles the entire lifecycle.
+  - Functional options pattern: zero mandatory configuration; override only
+    what you need via [WithContext], [WithLogConfig], [WithLogger],
+    [WithCreateLoggerFunc], [WithCreateMetricsClientFunc],
+    [WithShutdownTimeout], [WithShutdownWaitGroup], and [WithShutdownSignalChan].
+  - Automatic log-level metrics: when a [logutil.Config] is supplied, every
+    log emission increments a labeled counter, enabling SLO-style alerting on
+    error log rates without extra instrumentation.
+  - Graceful shutdown with timeout: dependants (HTTP servers, consumers, …)
+    communicate completion through a shared [sync.WaitGroup]; Bootstrap honors
+    a deadline so a stuck goroutine can never block the process forever.
+  - Testable by design: [WithContext] lets tests inject a cancellable context
+    to drive the shutdown path without sending real OS signals.
+
+# Usage
+
+Wire your application in a [BindFunc] and pass it to [Bootstrap]:
+
+	func bind(ctx context.Context, l *slog.Logger, m metrics.Client) error {
+	    // register HTTP servers, workers, DB connections, etc.
+	    return nil
+	}
+
+	func main() {
+	    shutdownWG := &sync.WaitGroup{}
+	    shutdownCh := make(chan struct{})
+
+	    err := bootstrap.Bootstrap(
+	        bind,
+	        bootstrap.WithLogConfig(logutil.DefaultConfig()),
+	        bootstrap.WithShutdownTimeout(30*time.Second),
+	        bootstrap.WithShutdownWaitGroup(shutdownWG),
+	        bootstrap.WithShutdownSignalChan(shutdownCh),
+	    )
+	    if err != nil {
+	        log.Fatal(err)
+	    }
+	}
+
+For a complete, runnable implementation see — in order:
   - examples/service/cmd/main.go
   - examples/service/internal/cli/cli.go
   - examples/service/internal/cli/bind.go

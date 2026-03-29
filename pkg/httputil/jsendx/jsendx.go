@@ -1,25 +1,42 @@
 /*
-Package jsendx implements an extended JSend response model for HTTP APIs.
+Package jsendx implements an extended JSend response envelope for HTTP APIs.
 
-It solves the problem of inconsistent response envelopes by wrapping all HTTP
-response payloads in a predictable JSON structure enriched with application
-metadata.
+# Problem
 
-This package adds fields such as program name, version, release, timestamp, and
-status metadata on top of the JSend convention, making responses easier to
-consume and debug in REST-style applications.
+API handlers often return heterogeneous payload shapes, making client code
+harder to implement and operational debugging harder to automate. Teams usually
+need one predictable JSON envelope for both success and error responses, plus
+application metadata useful for traceability.
 
-Top features:
-  - consistent response envelope for success and error payloads
-  - automatic enrichment with application metadata
-  - reusable default handlers for not-found, method-not-allowed, panic, and index
-    responses
-  - easy integration with existing HTTP and healthcheck workflows
+# Solution
 
-Benefits:
-- simplify API client implementation with predictable response structure
-- reduce response formatting boilerplate
-- improve observability and traceability of API responses
+This package wraps all payloads in a consistent [Response] schema that extends
+JSend with runtime metadata:
+  - program name, version, and release
+  - RFC3339 datetime and Unix-nanosecond timestamp
+  - HTTP code/message and JSend status projection
+  - arbitrary response data payload
+
+The [JSXResp] helper integrates with [github.com/tecnickcom/gogen/pkg/httputil]
+to send wrapped JSON responses and includes ready-to-use default handlers for
+common service endpoints and router fallbacks.
+
+# Features
+
+  - Uniform response envelope for 2xx/4xx/5xx outputs.
+  - Automatic metadata enrichment through [AppInfo].
+  - Prebuilt handler factories for not-found, method-not-allowed, panic,
+    index, ping, status, and public-IP endpoints.
+  - Direct adapter for healthcheck result writing via
+    [JSXResp.HealthCheckResultWriter].
+  - Compatibility with gogen HTTP server abstractions
+    ([httpserver.IndexHandlerFunc], [healthcheck.ResultWriter]).
+
+# Benefits
+
+jsendx standardizes API response contracts across handlers, reduces repetitive
+response formatting code, and improves observability/debuggability for both
+humans and API clients.
 */
 package jsendx
 

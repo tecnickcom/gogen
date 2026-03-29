@@ -1,10 +1,88 @@
 /*
-Package sleuth provides a basic client for the official Sleuth.io API. It allows
-to register deployments, manual changes, custom incident impact, and custom
-metric impact.
+Package sleuth provides a focused Go client for the Sleuth.io API, covering the
+most common write-side integrations used for delivery metrics and operational
+signal ingestion.
 
-This package is based on the Sleuth API documentation available at:
+This package supports four Sleuth workflows:
+
+  - deployment registration,
+  - manual change registration,
+  - custom incident impact registration,
+  - custom metric impact registration.
+
+Sleuth API reference:
 https://help.sleuth.io/sleuth-api
+
+# Problem
+
+Integrating with Sleuth directly from raw HTTP calls involves repeated
+boilerplate: endpoint formatting, authorization headers, JSON encoding,
+request validation, retry handling, and response status checks. Recreating this
+logic in each service increases maintenance cost and makes behavior inconsistent
+across deployments.
+
+This package centralizes that integration logic behind a typed client and
+request models.
+
+# How It Works
+
+[New] initializes a [Client] with base URL, org slug, and API key, then builds
+the endpoint URL templates used by each API action.
+
+For each send operation:
+
+ 1. The request struct is validated using gogen's validator package and the
+    tag rules declared on fields.
+ 2. The payload is JSON-encoded and sent as an authenticated HTTP POST
+    (`Authorization: apikey <key>`).
+ 3. The request is executed through a write-oriented HTTP retrier.
+ 4. Non-200 responses are returned as errors with status details.
+
+Health checks are implemented using Sleuth's documented behavior in absence of a
+dedicated ping endpoint: the client performs a controlled registration call and
+verifies expected 404 semantics and response content.
+
+# Key Features
+
+  - Typed request models with validation tags for safer API inputs.
+  - End-to-end helpers:
+    [Client.SendDeployRegistration], [Client.SendManualChange],
+    [Client.SendCustomIncidentImpactRegistration],
+    [Client.SendCustomMetricImpactRegistration].
+  - Built-in authentication and JSON header management.
+  - Configurable client behavior via options:
+    [WithHTTPClient], [WithTimeout], [WithPingTimeout],
+    [WithRetryAttempts], [WithRetryDelay].
+  - Health-check API through [Client.HealthCheck] for readiness/liveness flows.
+
+# Benefits
+
+  - Faster and more consistent Sleuth integrations across services.
+  - Reduced API misuse risk through validated typed payloads.
+  - Better resilience to transient HTTP failures via retry support.
+  - Cleaner application code by delegating protocol and endpoint details.
+
+# Usage
+
+	c, err := sleuth.New("https://app.sleuth.io/api/1", "my-org", apiKey)
+	if err != nil {
+	    return err
+	}
+
+	if err := c.HealthCheck(ctx); err != nil {
+	    return err
+	}
+
+	err = c.SendDeployRegistration(ctx, &sleuth.DeployRegistrationRequest{
+	    Deployment: "my-service",
+	    Sha:        "abcdef1234567890abcdef1234567890abcdef12",
+	})
+	if err != nil {
+	    return err
+	}
+
+This package is ideal for Go services that need a lightweight, production-ready
+Sleuth API adapter without hand-writing HTTP integration code.
 */
 package sleuth
 

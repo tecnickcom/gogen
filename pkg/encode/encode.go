@@ -8,19 +8,23 @@ formats and decoding them back without losing structure or introducing unsafe
 byte streams.
 
 The package supports two main modes:
+
 - Gob + Base64 encoding for arbitrary Go values
 - JSON + Base64 encoding for interoperable text-based payloads
 
 Top features:
-- encode/decode helpers for strings, byte slices, buffers, and streams
-- consistent Base64 wrapping to keep binary payloads safe for text channels
-- explicit error wrapping for easier debugging
-- small API surface that works with any serializable Go value
+
+- encode/decode helpers for strings, byte slices, buffers, and io.Reader/io.Writer flows
+- consistent Base64 wrapping to keep binary payloads safe for text-only channels
+- explicit error wrapping at encode/decode/serialize/deserialize boundaries
+- parallel API families for Gob (Encode/Decode) and JSON (Serialize/Deserialize)
+- support for arbitrary serializable Go values, with clear failures for unsupported types
 
 Benefits:
-- reduce boilerplate for common serialization flows
-- avoid accidental misuse of raw binary in text-only transports
-- simplify data exchange between services and storage layers
+
+  - reduce boilerplate for common serialization flows
+  - avoid accidental misuse of raw binary in text-only transports
+  - simplify data exchange between services and storage layers
 */
 package encode
 

@@ -40,7 +40,9 @@ const (
 	labelTime         = "time"
 )
 
-// Client represents the state type of this client.
+// Client is a StatsD-backed implementation of the shared metrics interface.
+//
+// Construct it with [New].
 type Client struct {
 	statsd      *statsd.Client
 	prefix      string        // StatsD client's string prefix that will be used in every bucket name.
@@ -49,7 +51,13 @@ type Client struct {
 	flushPeriod time.Duration // How often the StatsD client's buffer is flushed.
 }
 
-// New creates a new metrics instance with default collectors.
+// New creates a StatsD metrics client with defaults, then applies options.
+//
+// Defaults:
+//   - network: udp
+//   - address: :8125
+//   - prefix:  ""
+//   - flush:   100 ms
 func New(opts ...Option) (*Client, error) {
 	c := defaultClient()
 
@@ -82,12 +90,13 @@ func defaultClient() *Client {
 	}
 }
 
-// SqlOpen wraps sql.Open.
+// SqlOpen delegates to sql.Open.
+// StatsD does not instrument database/sql at the driver level in this package.
 func (c *Client) SqlOpen(driverName, dsn string) (*sql.DB, error) {
 	return sql.Open(driverName, dsn) //nolint:wrapcheck
 }
 
-// InstrumentDB wraps a sql.DB to collect metrics - [NOT IMPLEMENTED].
+// InstrumentDB is currently a no-op for the StatsD backend.
 func (c *Client) InstrumentDB(_ string, _ *sql.DB) error {
 	return nil
 }
@@ -117,7 +126,10 @@ func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.H
 	})
 }
 
-// InstrumentRoundTripper is a middleware that wraps the provided http.RoundTripper to observe the request result with default metrics.
+// InstrumentRoundTripper wraps next to emit outbound HTTP metrics.
+//
+// For successful requests it records in/out counters, status counts, and
+// request duration timing grouped by method and status code.
 func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
 	return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 		t := c.statsd.NewTiming()
@@ -138,8 +150,10 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 	})
 }
 
-// MetricsHandlerFunc returns an http handler function to serve the metrics endpoint.
-// This is not used for the StatsD implementation as the metrics are directly sent to the StatsD server.
+// MetricsHandlerFunc returns an HTTP handler for a metrics endpoint.
+//
+// StatsD is push-based in this implementation, so the handler always responds
+// with HTTP 501 Not Implemented.
 func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		status := http.StatusNotImplemented
@@ -157,7 +171,7 @@ func (c *Client) IncErrorCounter(task, operation, code string) {
 	c.statsd.Increment(labelError + labelSeparator + task + labelSeparator + operation + labelSeparator + code)
 }
 
-// Close method.
+// Close flushes and closes the underlying StatsD client.
 func (c *Client) Close() error {
 	c.statsd.Close()
 	return nil

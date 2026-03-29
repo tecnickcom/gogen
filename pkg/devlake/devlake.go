@@ -1,6 +1,28 @@
 /*
-Package devlake provides a basic client for the DevLake Webhook API.
-It allows to register deployments and incidents.
+Package devlake provides a Go client for the DevLake Webhook API.
+
+It solves the problem of sending deployment and incident lifecycle events from
+Go services to DevLake in a consistent, validated, and retry-capable way.
+
+The package includes typed request models for deployments, deployment commits,
+incident creation, and incident close operations, with validation tags aligned
+to expected webhook payload constraints.
+
+Top features:
+
+- strongly typed request payloads for deployment and incident webhook endpoints
+- client helpers for SendDeployment, SendIncident, and SendIncidentClose
+- request validation before network calls using field/tag-based constraints
+- health check support for validating API reachability
+- configurable timeouts, retry attempts, and custom HTTP client injection
+- bearer-token authenticated JSON requests with contextual error wrapping
+
+Benefits:
+
+  - reduces boilerplate for posting DevLake webhook events from application code
+  - catches malformed payloads early, before expensive remote calls
+  - improves reliability under transient failures via retrier integration
+  - keeps integration logic centralized and easy to maintain across services
 
 This package is based on the DevLake Webhook API documentation available at:
 https://devlake.apache.org/docs/Plugins/webhook/

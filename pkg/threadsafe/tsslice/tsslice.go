@@ -1,9 +1,58 @@
 /*
-Package tsslice provides a collection of generic thread-safe Go slice utility
-functions that can be safely used across multiple goroutines.
+Package tsslice solves the common concurrency problem of safely operating on
+Go slices shared across multiple goroutines without repeating lock boilerplate
+around every access.
 
-The provided functions are intended to simplify the process of working with
-slices in a thread-safe manner.
+# Problem
+
+Slices are lightweight and ubiquitous, but concurrent reads and writes to shared
+slice state can cause data races and undefined behavior. In practice, teams end
+up duplicating `Lock`/`Unlock` and `RLock`/`RUnlock` blocks around simple
+operations (set, get, append, transform), making code noisy and increasing the
+chance of forgetting synchronization on one code path.
+
+tsslice provides lock-aware generic helpers that keep synchronization explicit
+and consistent while preserving the ergonomics of slice utility operations.
+
+# How It Works
+
+Each function takes both the slice and a lock interface from
+github.com/tecnickcom/gogen/pkg/threadsafe:
+
+  - write operations ([Set], [Append]) require [threadsafe.Locker] and use
+    exclusive `Lock`/`Unlock`.
+  - read and pure-transform operations ([Get], [Len], [Filter], [Map],
+    [Reduce]) require [threadsafe.RLocker] and use shared `RLock`/`RUnlock`.
+
+The helpers delegate functional operations to github.com/tecnickcom/gogen/pkg/sliceutil
+while enforcing synchronization around the read window.
+
+# Key Features
+
+  - Generic API for any slice type via `S ~[]E`.
+  - Clear separation of mutation vs read/transform lock requirements.
+  - Thread-safe functional utilities:
+    [Filter], [Map], and [Reduce] for expressive transformations on shared
+    slice state.
+  - Minimal adoption cost: compatible with standard [sync.RWMutex] and custom
+    lock implementations that satisfy the interfaces.
+
+# Usage
+
+	var (
+	    mu sync.RWMutex
+	    s  = []int{1, 2, 3}
+	)
+
+	tsslice.Set(&mu, s, 0, 10)
+	v := tsslice.Get(&mu, s, 1)
+	_ = v
+
+	tsslice.Append(&mu, &s, 4, 5)
+	even := tsslice.Filter(&mu, s, func(_ int, n int) bool { return n%2 == 0 })
+	total := tsslice.Reduce(&mu, s, 0, func(_ int, n int, acc int) int { return acc + n })
+	_ = even
+	_ = total
 
 See also: github.com/tecnickcom/gogen/pkg/threadsafe
 */

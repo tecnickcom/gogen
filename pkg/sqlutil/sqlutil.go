@@ -1,6 +1,58 @@
 /*
-Package sqlutil provides SQL utility functions.
-It includes functions for quoting identifiers and values in SQL queries.
+Package sqlutil solves a common SQL string-construction problem: safely quoting
+identifiers and string literals when generating query fragments dynamically.
+
+# Problem
+
+Applications that build SQL fragments at runtime often need to quote table,
+schema, and column identifiers, as well as string values. Doing this ad hoc
+across a codebase is error-prone and can lead to malformed SQL or inconsistent
+escaping behavior.
+
+sqlutil centralizes quoting behavior behind a small configurable API.
+
+# What It Provides
+
+[New] returns a configurable [SQLUtil] instance exposing:
+
+  - [SQLUtil.QuoteID] for quoting identifiers (schema/table/column names).
+  - [SQLUtil.QuoteValue] for quoting string literal values.
+
+The default implementation is mysql-like:
+
+  - identifiers are split by "." and each segment is wrapped in backticks,
+    with embedded backticks escaped as doubled backticks.
+  - values are wrapped in single quotes, with embedded single quotes doubled.
+  - control characters are escaped (`\0`, `\n`, `\r`, `\\`, `\Z`).
+
+# Customization
+
+Use options to adapt quoting rules for different SQL dialects:
+
+  - [WithQuoteIDFunc] replaces identifier quoting behavior.
+  - [WithQuoteValueFunc] replaces value quoting behavior.
+
+This allows Postgres/SQLite/other dialect-specific quoting while preserving the
+same calling pattern throughout the codebase.
+
+# Important Boundary
+
+This package is intended for quoting identifiers and string literals in dynamic
+query generation. It is not a replacement for prepared statements and query
+parameterization. Continue using placeholders and bound parameters for runtime
+data whenever possible.
+
+# Usage
+
+	u, err := sqlutil.New()
+	if err != nil {
+	    return err
+	}
+
+	col := u.QuoteID("users.email")      // `users`.`email`
+	val := u.QuoteValue("o'reilly")      // 'o''reilly'
+	query := "SELECT " + col + " FROM " + u.QuoteID("users") + " WHERE " + col + " = " + val
+	_ = query
 */
 package sqlutil
 

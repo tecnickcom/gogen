@@ -1,12 +1,72 @@
 /*
-Package awsopt provides functions to configure common AWS options for the
-official aws-sdk-go-v2 library.
+Package awsopt solves the repetitive wiring problem of configuring the
+aws-sdk-go-v2 library consistently across multiple AWS service clients. Rather
+than scattering [config.LoadOptionsFunc] calls throughout every package that
+talks to AWS, awsopt centralizes those options into a single composable
+[Options] slice that can be built once and handed to any AWS-based package in
+this library.
 
-These common options can be easily used with other AWS-based packages in this
-library:
-  - awssecretcache
-  - s3
-  - sqs
+# Problem
+
+Every aws-sdk-go-v2 client requires a loaded [aws.Config], and every project
+ends up writing the same region-detection boilerplate: check a hardcoded value,
+fall back to an environment variable, fall back to a default. When several
+packages (secrets, S3, SQS, …) each duplicate this logic, configuration drift
+and inconsistent behavior are inevitable. awsopt provides one canonical
+implementation shared by all of them.
+
+# How It Works
+
+[Options] is a typed slice of [config.LoadOptionsFunc] values. Options are
+accumulated with method calls and then materialized into an [aws.Config] via
+[Options.LoadDefaultConfig], which delegates to the standard
+[config.LoadDefaultConfig] from the SDK:
+
+ 1. Create an [Options] value (zero value is ready to use).
+ 2. Append options with [Options.WithAWSOption], [Options.WithRegion], or
+    [Options.WithRegionFromURL].
+ 3. Call [Options.LoadDefaultConfig] to obtain an [aws.Config] that can be
+    passed directly to any aws-sdk-go-v2 service constructor.
+
+# Key Features
+
+  - Composable options: [Options] is an append-friendly slice; options from
+    multiple sources can be merged before the config is loaded.
+  - Automatic region resolution: [Options.WithRegionFromURL] extracts the
+    AWS region from a standard amazonaws.com service endpoint URL
+    (protocol://service-code.region-code.amazonaws.com). When the URL does not
+    encode a region, it falls back through a well-defined precedence chain:
+    caller-supplied default → AWS_REGION env var → AWS_DEFAULT_REGION env var
+    → the built-in constant (us-east-2). This single function eliminates an
+    entire class of misconfiguration bugs.
+  - Escape hatch: [Options.WithAWSOption] accepts any [config.LoadOptionsFunc],
+    so every SDK option remains accessible without leaving the awsopt pattern.
+  - Zero dependencies beyond aws-sdk-go-v2: the package adds no third-party
+    dependencies of its own.
+
+# Integrated Packages
+
+awsopt is used as the AWS configuration layer by:
+  - [github.com/tecnickcom/gogen/pkg/awssecretcache]
+  - [github.com/tecnickcom/gogen/pkg/s3]
+  - [github.com/tecnickcom/gogen/pkg/sqs]
+
+# Usage
+
+	var opts awsopt.Options
+	opts.WithRegionFromURL("https://s3.eu-west-1.amazonaws.com", "")
+
+	awsCfg, err := opts.LoadDefaultConfig(ctx)
+	if err != nil {
+	    return err
+	}
+
+	// awsCfg is ready for any aws-sdk-go-v2 service client:
+	// s3.NewFromConfig(awsCfg), secretsmanager.NewFromConfig(awsCfg), …
+
+When consuming an awsopt-based package, pass additional options via the
+package's own WithAWSOptions helper so all AWS clients in the process share
+consistent configuration.
 */
 package awsopt
 

@@ -1,9 +1,60 @@
 /*
-Package tsmap provides a collection of generic thread-safe Go map utility
-functions that can be safely used between multiple goroutines.
+Package tsmap solves the common concurrency problem of safely operating on Go
+maps shared across multiple goroutines without repeatedly writing lock/unlock
+boilerplate at every call site.
 
-The provided functions are intended to simplify the process of working with maps
-in a thread-safe manner.
+# Problem
+
+Go maps are not safe for concurrent read/write access. Teams typically wrap each
+operation with a mutex, but this creates repetitive, error-prone code and makes
+it easy to forget a lock around one path. Generic map transformations such as
+filter, map, reduce, and invert are especially noisy when each operation also
+needs synchronization.
+
+tsmap provides lock-aware generic helpers that execute map operations under the
+appropriate lock contract from github.com/tecnickcom/gogen/pkg/threadsafe.
+
+# How It Works
+
+Every function receives both the map and a lock interface:
+
+  - write operations ([Set], [Delete]) require [threadsafe.Locker] and use
+    `Lock`/`Unlock`.
+  - read and pure-transform operations ([Get], [GetOK], [Len], [Filter], [Map],
+    [Reduce], [Invert]) require [threadsafe.RLocker] and use `RLock`/`RUnlock`.
+
+This design keeps synchronization policy explicit at the call site while
+providing a concise, reusable API.
+
+# Key Features
+
+  - Generic API for any map type: functions are parameterized over
+    `M ~map[K]V`, so they work with plain maps and named map types.
+  - Clear read/write lock separation: mutation helpers use exclusive locks,
+    query/transform helpers use read locks.
+  - Functional map utilities with safety built in:
+    [Filter], [Map], [Reduce], and [Invert] delegate to
+    github.com/tecnickcom/gogen/pkg/maputil while preserving thread safety via
+    the provided lock.
+  - Minimal adoption cost: works directly with standard [sync.RWMutex]
+    (or any compatible custom lock type) through interfaces.
+
+# Usage
+
+	var (
+	    mu sync.RWMutex
+	    m  = map[string]int{"a": 1, "b": 2}
+	)
+
+	tsmap.Set(&mu, m, "c", 3)
+	v, ok := tsmap.GetOK(&mu, m, "a")
+	_ = v
+	_ = ok
+
+	even := tsmap.Filter(&mu, m, func(_ string, n int) bool { return n%2 == 0 })
+	total := tsmap.Reduce(&mu, m, 0, func(_ string, n int, acc int) int { return acc + n })
+	_ = even
+	_ = total
 
 See also: github.com/tecnickcom/gogen/pkg/threadsafe
 */
