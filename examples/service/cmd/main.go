@@ -1,4 +1,3 @@
-// Package main is an example gogen service.
 package main
 
 // For Postgres use the driver:
@@ -26,6 +25,12 @@ var (
 // exitFn define tha exit function and can be overwritten for testing.
 var exitFn = os.Exit //nolint:gochecknoglobals
 
+// main initializes a safe default logger, builds the root CLI command, and
+// executes it as the process entry point.
+//
+// It ensures startup and command execution failures are reported with
+// structured context and explicit exit codes, which improves operability in
+// local runs, containers, and orchestration environments.
 func main() {
 	// set default logger
 	logattr := []logutil.Attr{

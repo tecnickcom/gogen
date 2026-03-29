@@ -80,7 +80,13 @@ type appConfig struct {
 	DB      cfgDatabases `mapstructure:"db"      validate:"required"`
 }
 
-// SetDefaults sets the default configuration values in Viper.
+// SetDefaults registers baseline configuration values used when no explicit
+// value is provided by files, remote providers, or environment variables.
+//
+// It solves a frequent service reliability issue: undefined runtime behavior
+// caused by missing configuration. By providing explicit defaults for server
+// endpoints, timeouts, external clients, and database pools, startup behavior
+// remains predictable across local, CI, and production environments.
 func (c *appConfig) SetDefaults(v config.Viper) {
 	v.SetDefault("enabled", true)
 
@@ -115,7 +121,12 @@ func (c *appConfig) SetDefaults(v config.Viper) {
 	v.SetDefault("db.read.timeout_ping", 1)
 }
 
-// Validate performs the validation of the configuration values.
+// Validate checks the loaded configuration against structural and semantic
+// rules before the service starts.
+//
+// This protects developers from late runtime failures by catching invalid
+// addresses, missing required fields, and unsupported values at startup,
+// producing field-aware validation errors tied to config keys.
 func (c *appConfig) Validate() error {
 	opts := []validator.Option{
 		validator.WithFieldNameTag(fieldTagName),

@@ -31,7 +31,11 @@ type Client struct {
 	collectorExample *prometheus.CounterVec
 }
 
-// New creates a new Client instance.
+// New creates a metrics client wrapper with service-specific collectors.
+//
+// It solves a common observability need: keeping custom application metrics
+// close to business events while still integrating with the shared gogen
+// metrics client.
 func New() *Client {
 	return &Client{
 		collectorExample: prometheus.NewCounterVec(
@@ -44,7 +48,11 @@ func New() *Client {
 	}
 }
 
-// CreateMetricsClientFunc returns the metrics Client.
+// CreateMetricsClientFunc constructs the underlying metrics client and
+// registers all custom collectors.
+//
+// This method is passed to bootstrap so metrics initialization stays
+// centralized and deterministic during startup.
 func (m *Client) CreateMetricsClientFunc() (metrics.Client, error) {
 	var err error
 
@@ -57,17 +65,26 @@ func (m *Client) CreateMetricsClientFunc() (metrics.Client, error) {
 	return m.libClient, err //nolint:wrapcheck
 }
 
-// IncExampleCounter is an example function to increment a counter.
+// IncExampleCounter increments the example counter for a given status code
+// label.
+//
+// Labeled counters help developers slice behavior by outcome category, which
+// is useful for dashboards and alerting.
 func (m *Client) IncExampleCounter(code string) {
 	m.collectorExample.With(prometheus.Labels{labelCode: code}).Inc()
 }
 
-// InstrumentDB wraps a sql.DB to collect metrics.
+// InstrumentDB instruments a SQL connection so query and connection pool
+// telemetry is exported with the provided database name.
+//
+// Wrapping DB handles with metrics is key to spotting saturation and latency
+// regressions before they become incidents.
 func (m *Client) InstrumentDB(dbName string, db *sql.DB) error {
 	return m.libClient.InstrumentDB(dbName, db) //nolint:wrapcheck
 }
 
-// SqlOpen wraps sql.Open.
+// SqlOpen opens a SQL database through the metrics client so returned handles
+// are compatible with the service instrumentation pipeline.
 func (m *Client) SqlOpen(driverName, dsn string) (*sql.DB, error) {
 	return m.libClient.SqlOpen(driverName, dsn) //nolint:wrapcheck
 }

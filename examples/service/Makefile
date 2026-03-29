@@ -591,6 +591,7 @@ gendoc:
 	--datasource config=./doc/src/config.json \
 	--template description=./doc/src/description.tmpl \
 	--template development=./doc/src/development.tmpl \
+	--template structure=./doc/src/structure.tmpl \
 	--template deployment=./doc/src/deployment.tmpl \
 	--file ./doc/src/README.tmpl \
 	--out README.md

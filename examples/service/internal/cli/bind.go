@@ -24,7 +24,24 @@ import (
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
-// bind is the entry point of the service, this is where the wiring of all components happens.
+// bind returns the bootstrap bind function that wires the full runtime graph.
+//
+// It solves the composition problem in service startup by centralizing how
+// handlers, clients, middleware, metrics, health checks, and servers are
+// connected.
+//
+// Top features for developers:
+//   - Builds shared outbound HTTP client options (logging, tracing,
+//     instrumentation) once and reuses them consistently.
+//   - Enables or disables optional components (service routes and databases)
+//     from configuration.
+//   - Starts monitoring, private, and public servers with consistent timeout,
+//     middleware, panic, and shutdown behavior.
+//   - Upgrades status reporting from default status to dependency-aware health
+//     checks when enabled.
+//
+// This gives a clear, extensible startup blueprint that keeps operational
+// behavior consistent as the service grows.
 //
 //nolint:gocognit,funlen
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.WaitGroup, sc chan struct{}) bootstrap.BindFunc {
@@ -169,6 +186,12 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 	}
 }
 
+// newDatabase creates, instruments, and health-checks a named SQL connection
+// so DB dependencies can be added with one reusable path.
+//
+// It standardizes connection pool options, startup ping behavior, metrics
+// instrumentation, and health integration, reducing the risk of divergent DB
+// setup between main/read or future database roles.
 func newDatabase(
 	ctx context.Context,
 	name string,

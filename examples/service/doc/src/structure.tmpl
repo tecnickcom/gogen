@@ -1,0 +1,104 @@
+The `examples/service` project is organized to keep runtime wiring, HTTP exposure, operational assets, and generated output clearly separated.
+That structure matters because it lets you extend the example without mixing application code, deployment assets, and generated artifacts in the same place.
+
+## Top Features
+
+* **Three-server runtime layout** via monitoring, private, and public HTTP endpoints.
+	Why it matters: it shows how to isolate operational traffic from internal and external APIs from day one.
+* **Configuration-first bootstrap** in `internal/cli`.
+	Why it matters: startup, logging, metrics, health checks, and graceful shutdown are all wired in one place, which keeps new features easier to add safely.
+* **Operational assets shipped with the codebase** in `resources`.
+	Why it matters: local development, integration tests, packaging, container builds, and service-manager integration stay reproducible.
+* **Generated documentation and artifacts kept separate** in `doc` and `target`.
+	Why it matters: developers can regenerate docs and build outputs without polluting source packages.
+
+## Root Folders
+
+| Folder | Function |
+| --- | --- |
+| `cmd` | Application entry point. Holds `main.go`, the executable startup flow, and package-level service documentation. |
+| `doc` | Project documentation sources and generated documentation assets. |
+| `internal` | Private application packages that wire configuration, handlers, metrics, and optional dependencies. |
+| `resources` | Runtime, packaging, database, dashboard, and test fixture assets used by developers, CI, and deployment workflows. |
+| `target` | Generated build outputs, reports, temporary test artifacts, and packaged files. |
+
+## Key Root-Level Files
+
+| Path | Function |
+| --- | --- |
+| `go.mod` | Defines the module and the service-specific dependency graph. |
+| `Makefile` | Main developer workflow entry point for build, test, documentation, and packaging commands. |
+| `docker-compose-local.yml` | Local development stack definition. |
+| `docker-compose-int.yml` | Integration-test stack definition. |
+| `dockerbuild.sh` | Helper script for Docker-oriented build flows. |
+| `openapi_public.yaml` | Public API contract for the externally exposed endpoints. |
+| `openapi_private.yaml` | Private API contract for internal endpoints. |
+| `openapi_monitoring.yaml` | Monitoring API contract for operational routes. |
+| `test.integration.Dockerfile` | Container image definition used by integration scenarios. |
+| `README.md` | Generated top-level project guide for developers and operators. |
+
+## Folder Breakdown
+
+### `cmd`
+
+This folder contains the executable boundary of the service.
+
+| Path | Function |
+| --- | --- |
+| `cmd/main.go` | Starts the program, builds the CLI, and handles process-level exit behavior. |
+| `cmd/doc.go` | High-level package documentation describing runtime topology and developer-facing features. |
+
+### `doc`
+
+This folder keeps the service documentation maintainable by separating templates from generated output.
+
+| Path | Function |
+| --- | --- |
+| `doc/src` | Source templates, config metadata, and schemas used to generate Markdown documentation. |
+| `doc/images` | Images referenced by the generated docs, such as the project logo. |
+| `doc/CONFIG.md` | Generated configuration reference for runtime settings. |
+
+### `internal`
+
+This folder contains the application-specific implementation details that should not be imported by external modules.
+
+| Folder | Function |
+| --- | --- |
+| `internal/cli` | Loads configuration, defines CLI flags, builds the dependency graph, and starts the service lifecycle. |
+| `internal/db` | Shared database abstractions used by the service wiring. |
+| `internal/httphandlerpriv` | Private API route definitions and handlers. |
+| `internal/httphandlerpub` | Public API route definitions and handlers. |
+| `internal/metrics` | Service-specific Prometheus collectors and instrumentation helpers layered on top of gogen metrics. |
+
+### `resources`
+
+This folder is the operational companion to the Go code.
+
+| Folder | Function |
+| --- | --- |
+| `resources/db` | Database bootstrap assets, users, and versioned migrations for MySQL and PostgreSQL. |
+| `resources/debian` | Debian packaging metadata and lifecycle scripts. |
+| `resources/docker` | Dockerfiles for development and runtime container images. |
+| `resources/etc` | Default configuration files, schemas, certificates layout, and init/systemd service definitions. |
+| `resources/grafana` | Ready-to-import dashboard definitions for observability. |
+| `resources/rpm` | RPM packaging specification and install layout. |
+| `resources/test` | Deterministic configs and fixtures for local, integration, and API-test scenarios. |
+| `resources/usr` | Files staged for installation into standard Unix package paths. |
+
+### `target`
+
+This folder is generated and is intended to be disposable.
+
+| Folder | Function |
+| --- | --- |
+| `target/binutil` | Helper binaries downloaded or built for developer and CI workflows. |
+| `target/report` | Generated reports such as test and coverage output. |
+| `target/test` | Temporary files produced during test execution. |
+| `target/usr` | Built install tree used for packaging and image assembly. |
+
+## Benefits Summary
+
+* Faster onboarding because each concern has an obvious home.
+* Safer feature work because bootstrap, handlers, and operational assets are separated cleanly.
+* Better operability because monitoring, packaging, and test resources are part of the project instead of tribal knowledge.
+* Easier extension because new routes, dependencies, and deployment assets fit into an existing structure instead of forcing a reorganization later.
