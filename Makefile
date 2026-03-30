@@ -46,6 +46,12 @@ endif
 # Add the GO binary dir in the PATH
 export PATH := $(GOPATH)/bin:$(PATH)
 
+# sed argument for in-place substitutions
+SEDINPLACE=-i
+ifeq ($(shell uname -s),Darwin)
+	SEDINPLACE=-i ''
+endif
+
 # Docker tag
 DOCKERTAG=$(VERSION)-$(RELEASE)
 
@@ -203,19 +209,19 @@ project:
 	@mkdir -p ./target/$(gogenexamplecvspath)/$(gogenexample)
 	@rm -rf ./target/$(gogenexamplecvspath)/$(gogenexample)/*
 	@cp -rf examples/service/. ./target/$(gogenexamplecvspath)/$(gogenexample)/
-	sed --in-place=.bak '/^replace /d' ./target/$(gogenexamplecvspath)/$(gogenexample)/go.mod
+	sed $(SEDINPLACE) '/^replace /d' ./target/$(gogenexamplecvspath)/$(gogenexample)/go.mod
 	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -regextype sed -regex '.*gogenexample.*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/gogenexample/$(gogenexample)/)"' \;
 	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -regextype sed -regex '.*GOGENEXAMPLE.*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/GOGENEXAMPLE/$(GOGENEXAMPLE)/)"' \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexampleshortdesc|$(gogenexampleshortdesc)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexamplelongdesc|$(gogenexamplelongdesc)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexampleauthor|$(gogenexampleauthor)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexampleemail|$(gogenexampleemail)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexamplecvspath|$(gogenexamplecvspath)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexampleprojectlink|$(gogenexampleprojectlink)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexampleowner|$(gogenexampleowner)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexamplevcsgit|$(gogenexamplevcsgit)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|gogenexample|$(gogenexample)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed --in-place=.bak "s|GOGENEXAMPLE|$(GOGENEXAMPLE)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleshortdesc|$(gogenexampleshortdesc)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexamplelongdesc|$(gogenexamplelongdesc)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleauthor|$(gogenexampleauthor)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleemail|$(gogenexampleemail)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexamplecvspath|$(gogenexamplecvspath)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleprojectlink|$(gogenexampleprojectlink)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleowner|$(gogenexampleowner)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexamplevcsgit|$(gogenexamplevcsgit)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexample|$(gogenexample)|g" {} \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|GOGENEXAMPLE|$(GOGENEXAMPLE)|g" {} \;
 
 # Run all tests and static analysis tools
 .PHONY: qa
@@ -257,15 +263,15 @@ updateall: updatego updatelint updatemod
 updatego:
 	$(eval LAST_GO_TOOLCHAIN=$(shell curl -s https://go.dev/dl/ | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64\.tar\.gz' | head -n 1 | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+'))
 	$(eval LAST_GO_VERSION=$(shell echo ${LAST_GO_TOOLCHAIN} | grep -oE '[0-9]+\.[0-9]+'))
-	sed --in-place=.bak "s|^go [0-9]*\.[0-9]*.*$$|go ${LAST_GO_VERSION}|g" go.mod
-	sed --in-place=.bak "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod
+	sed $(SEDINPLACE) "s|^go [0-9]*\.[0-9]*.*$$|go ${LAST_GO_VERSION}|g" go.mod
+	sed $(SEDINPLACE) "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod
 	cd examples/service && make updatego
 
 # Update linter version
 .PHONY: updatelint
 updatelint:
 	$(eval LAST_GOLANGCILINT_VERSION=$(shell curl -sL https://github.com/golangci/golangci-lint/releases/latest | sed -n 's/.*<title>Release \(v[0-9]*\.[0-9]*\.[0-9]*\).*/\1/p'))
-	sed --in-place=.bak "s|^GOLANGCILINTVERSION=v[0-9]*\.[0-9]*\.[0-9]*$$|GOLANGCILINTVERSION=${LAST_GOLANGCILINT_VERSION}|g" Makefile
+	sed $(SEDINPLACE) "s|^GOLANGCILINTVERSION=v[0-9]*\.[0-9]*\.[0-9]*$$|GOLANGCILINTVERSION=${LAST_GOLANGCILINT_VERSION}|g" Makefile
 	cd examples/service && make updatelint
 
 # Update dependencies
@@ -278,7 +284,7 @@ updatemod: mod
 # Set the gogen version in the example go.mod
 .PHONY: version
 version:
-	sed --in-place=.bak "s|github.com/tecnickcom/gogen v.*$$|github.com/tecnickcom/gogen v$(VERSION)|" examples/service/go.mod
+	sed $(SEDINPLACE) "s|github.com/tecnickcom/gogen v.*$$|github.com/tecnickcom/gogen v$(VERSION)|" examples/service/go.mod
 
 # Increase the patch number in the VERSION file
 .PHONY: versionup

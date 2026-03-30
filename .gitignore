@@ -1,10 +1,10 @@
+___*.md
+.idea
 *.bak
 *.temp
 *.test
 *.tmp
-.idea
 /Dockerfile
 golangci-lint
 target
 vendor
-resources/hugo

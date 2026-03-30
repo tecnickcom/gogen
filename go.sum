@@ -931,10 +931,10 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
-github.com/tecnickcom/farmhash64 v1.9.68 h1:uBcf2NVw9gggR5eQmOr4qkGW2gzo93kyN4LCVdrXWIA=
-github.com/tecnickcom/farmhash64 v1.9.68/go.mod h1:1QYKPzGl2nUBSiChtn263M5nZkdVxTgbOhs1UAZd5DA=
-github.com/tecnickcom/statsd v1.0.67 h1:YWezJ46tCEIB3KcMQhCqucGmrBdO6WkHyfE/GauLZS0=
-github.com/tecnickcom/statsd v1.0.67/go.mod h1:72jfnxMryOG+PAUadT9X2lh89AXnMZppGZiek5MxUeY=
+github.com/tecnickcom/farmhash64 v1.9.69 h1:rpJSDuF2YQr1aSGeWA2VO2kSw7tkM04zyEO3ovtFhVw=
+github.com/tecnickcom/farmhash64 v1.9.69/go.mod h1:1QYKPzGl2nUBSiChtn263M5nZkdVxTgbOhs1UAZd5DA=
+github.com/tecnickcom/statsd v1.0.68 h1:H5Wk4EM3zpTF2uaGutpIPWEeE2tK6tm0uPhyX14B+nU=
+github.com/tecnickcom/statsd v1.0.68/go.mod h1:72jfnxMryOG+PAUadT9X2lh89AXnMZppGZiek5MxUeY=
 github.com/testcontainers/testcontainers-go v0.33.0 h1:zJS9PfXYT5O0ZFXM2xxXfk4J5UMw/kRiISng037Gxdw=
 github.com/testcontainers/testcontainers-go v0.33.0/go.mod h1:W80YpTa8D5C3Yy16icheD01UTDu+LmXIA2Keo+jWtT8=
 github.com/testcontainers/testcontainers-go/modules/compose v0.33.0 h1:PyrUOF+zG+xrS3p+FesyVxMI+9U+7pwhZhyFozH3jKY=
