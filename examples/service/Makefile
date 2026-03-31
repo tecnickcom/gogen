@@ -302,7 +302,8 @@ define make_retry
 	done ; exit $${ret}
 endef
 
-# Display general help about this command
+# --- MAKE TARGETS ---
+
 .PHONY: help
 help:
 	@echo ""
@@ -310,67 +311,32 @@ help:
 	@echo "GOPATH=$(GOPATH)"
 	@echo "The following commands are available:"
 	@echo ""
-	@echo "  make apitest       : Execute API tests"
-	@echo "  make build         : Compile the application"
-	@echo "  make buildall      : Full build and test sequence"
-	@echo "  make clean         : Remove any build artifact"
-	@echo "  make confcheck     : Check the configuration files"
-	@echo "  make coverage      : Generate the coverage report"
-	@echo "  make dbuild        : Build everything inside a Docker container"
-	@echo "  make deb           : Build a DEB package"
-	@echo "  make deps          : Get dependencies"
-	@echo "  make docker        : Build a scratch docker container to run this service"
-	@echo "  make dockerpromote : Promote docker image from  DEV to PROD reporitory"
-	@echo "  make dockerpush    : Push docker container to a remote repository"
-	@echo "  make dockertest    : Test the newly built docker container"
-	@echo "  make localenvstart : Start a local docker compose environment for manual testing"
-	@echo "  make localenvstop  : Stop the local docker compose environment"
-	@echo "  make format        : Format the source code"
-	@echo "  make gendoc        : Generate static documentation from /doc/src"
-	@echo "  make generate      : Generate go code automatically"
-	@echo "  make install       : Install this application"
-	@echo "  make linter        : Check code against multiple linters"
-	@echo "  make mod           : Download dependencies"
-	@echo "  make openapitest   : Test the OpenAPI specification"
-	@echo "  make qa            : Run all tests and static analysis tools"
-	@echo "  make rpm           : Build an RPM package"
-	@echo "  make test          : Run unit tests"
-	@echo "  make updateall     : Update everything"
-	@echo "  make updatego      : Update Go version"
-	@echo "  make updatelint    : Update golangci-lint version"
-	@echo "  make updatemod     : Update dependencies"
-	@echo "  make versionup     : Increase the patch number in the VERSION file"
+	@awk '/^## /{desc=substr($$0,4)} /^\.PHONY:/{if(NF>1) {target=$$2; if(desc) printf "  make %-15s: %s\n",target,desc; desc=""}}' Makefile
 	@echo ""
-	@echo "Use DEVMODE=LOCAL for human friendly output."
-	@echo ""
-	@echo "To test and build everything from scratch:"
-	@echo "    DEVMODE=LOCAL make format clean mod deps gendoc generate qa build docker dockertest"
-	@echo "or use the shortcut:"
+	@echo "To test and build everything from scratch, use the shortcut:"
 	@echo "    make x"
 	@echo ""
 
 # Alias for help target
 all: help
 
-# Alias to test and build everything from scratch
+## Test and build everything from scratch
 .PHONY: x
 x:
 	DEVMODE=LOCAL make format clean mod deps gendoc generate qa build docker dockertest
 
-# Run venom tests (https://github.com/ovh/venom)
+## Execute API tests
 .PHONY: apitest
 apitest:
 	$(MAKE) venomtest API_TEST_DIR=monitoring API_TEST_URL=${GOGENEXAMPLE_MONITORING_URL} API_TEST_FILE=api.yaml
 	$(MAKE) venomtest API_TEST_DIR=private API_TEST_URL=${GOGENEXAMPLE_PRIVATE_URL} API_TEST_FILE=${API_TEST_FILE}
 	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${GOGENEXAMPLE_PUBLIC_URL} API_TEST_FILE=${API_TEST_FILE}
 
-# Full build and test sequence
-# You may want to change this and remove the options you don't need
-#buildall: deps qa rpm deb bz2 crossbuild
+## Full build and test sequence
 .PHONY: buildall
 buildall: build qa docker
 
-# Compile the application
+## Compile the application
 .PHONY: build
 build:
 	CGO_ENABLED=0 $(GOBUILDENV) \
@@ -379,23 +345,23 @@ build:
 	-ldflags '-w -s -X main.programVersion=${VERSION} -X main.programRelease=${RELEASE} -extldflags "-fno-PIC ${STATIC_FLAG}"' \
 	-o ./target/${BINPATH}$(PROJECT) $(CMDDIR)
 
-# Remove any build artifact
+## Remove any build artifact
 .PHONY: clean
 clean:
 	rm -rf $(TARGETDIR)
 
-# Validate JSON configuration files against the JSON schema
+## Check the configuration files
 .PHONY: confcheck
 confcheck:
 	${CONFCHECKCMD} resources/test/etc/${PROJECT}/config.json
 	${CONFCHECKCMD} resources/etc/${PROJECT}/config.json
 
-# Generate the coverage report
+## Generate the coverage report
 .PHONY: coverage
 coverage: ensuretarget
 	$(GO) tool cover -html=$(TARGETDIR)/report/coverage.out -o $(TARGETDIR)/report/coverage.html
 
-# Build everything inside a Docker container
+### Build everything inside a Docker container
 .PHONY: dbuild
 dbuild: clean ensuretarget dockerdev
 	@echo 0 > $(TARGETDIR)/make.exit
@@ -403,7 +369,7 @@ dbuild: clean ensuretarget dockerdev
 	@exit `cat $(TARGETDIR)/make.exit`
 
 
-# Build the DEB package for Debian-like Linux distributions
+## Build a DEB package
 .PHONY: deb
 deb:
 	rm -rf $(PATHDEBPKG)
@@ -439,16 +405,16 @@ endif
 	echo "embedded-library $(BINPATH)$(PROJECT): libyaml" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
 	cd $(PATHDEBPKG)/$(PKGNAME)-$(VERSION) && debuild -us -uc
 
-# Get the test dependencies
+## Get dependencies
 .PHONY: deps
 deps: ensuretarget
 	curl --silent --show-error --fail --location "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
 
-# Build a docker container to run this service
+## Build a scratch docker container to run this service
 .PHONY: docker
 docker: dockerdir dockerbuild dockerdb
 
-# Build the docker container in the target/DOCKER directory
+### Build the docker container in the target/DOCKER directory
 .PHONY: dockerbuild
 dockerbuild:
 	$(DOCKER) build \
@@ -456,7 +422,7 @@ dockerbuild:
 	--tag=${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest \
 	$(PATHDOCKERPKG)
 
-# Generate the FlyWay container to update the database
+### Generate the FlyWay container to update the database
 .PHONY: dockerdb
 dockerdb:
 	cd resources/db && \
@@ -468,19 +434,19 @@ dockerdb:
 	--tag=${LCVENDOR}/${PROJECT}_db:latest \
 	.
 
-# Delete the Docker image
+### Delete the Docker image
 .PHONY: dockerdelete
 dockerdelete:
 	$(DOCKER) rmi -f `docker images "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX)" -q`
 
-# Build a base development Docker image
+### Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
 ifeq ($(DEPLOY_ENV),int)
 	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT}:dev --file ./resources/docker/Dockerfile.dev ./resources/docker/
 endif
 
-# Create the directory with docker files to be packaged
+## Create the directory with docker files to be packaged
 .PHONY: dockerdir
 dockerdir:
 ifneq ($(GOOSARCH),linuxamd64)
@@ -494,7 +460,7 @@ endif
 	$(MAKE) installssl DESTDIR=$(PATHDOCKERPKG)
 	cp resources/docker/Dockerfile.run $(PATHDOCKERPKG)/Dockerfile
 
-# Login into Docker AWS ECR
+## Login into Docker AWS ECR
 .PHONY: ecrlogin
 ecrlogin:
 ifeq ($(ECR_REGISTRY),)
@@ -508,7 +474,7 @@ else
 endif
 endif
 
-# Promote docker image from DEV to PROD
+## Promote docker image from DEV to PROD repository
 .PHONY: dockerpromote
 dockerpromote:
 	$(MAKE) ecrlogin ECR_PROFILE="${ECR_PROFILE_PULL}" ECR_REGISTRY=${DOCKER_REGISTRY_PULL}
@@ -518,7 +484,7 @@ dockerpromote:
 	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)"
 	$(DOCKER) rmi -f `docker images "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)" -q`
 
-# Push docker container to the remote repository
+## Push docker container to a remote repository
 .PHONY: dockerpush
 dockerpush:
 	$(MAKE) ecrlogin ECR_PROFILE="${ECR_PROFILE_PUSH}" ECR_REGISTRY=${DOCKER_REGISTRY_PUSH}
@@ -527,22 +493,22 @@ dockerpush:
 	$(DOCKER) tag "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX):latest" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):latest"
 
-# Start a local docker compose environment for manual testing.
+## Start a local docker compose environment for manual testing
 .PHONY: localenvstart
 localenvstart:
 	make dcenvup DEPLOY_ENV=local
 
-# Stop and remove the local docker compose environment.
+## Stop the local docker compose environment
 .PHONY: localenvstop
 localenvstop:
 	make dcenvdown DEPLOY_ENV=local
 
-# Test the newly built docker container
+## Test the newly built docker container
 .PHONY: dockertest
 dockertest:
 	make dcenvup dcenvdown DEPLOY_ENV=int
 
-# Start a docker-compose environment.
+## Start a docker-compose environment
 .PHONY: dcenvup
 dcenvup: dockerenvcfg dockerdev
 	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/${DOCKERIZEVERSION}/dockerize-linux-amd64-${DOCKERIZEVERSION}.tar.gz | tar -xz -C $(BINUTIL)
@@ -556,38 +522,38 @@ else
 endif
 	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml logs
 
-# Stop a docker-compose environment.
+## Stop a docker-compose environment
 .PHONY: dcenvdown
 dcenvdown:
 	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml down --rmi local --volumes --remove-orphans || true
 	@exit `cat $(TARGETDIR)/make.exit`
 
-# Run the integration tests; locally we need to execute 'build' and 'docker' targets first
+## Configure environment for docker-compose integration tests
 .PHONY: dockerenvcfg
 dockerenvcfg: ensuretarget
 	@echo "GOGENEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gogenexample.cfg.env
 	@echo "GOGENEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/$(DEPLOY_ENV)/gogenexample/config.json | base64 | tr -d \\n)" >> $(TARGETDIR)/gogenexample.cfg.env
 
-# Create the trget directories if missing
+## Create the target directories if missing
 .PHONY: ensuretarget
 ensuretarget:
 	@mkdir -p $(TARGETDIR)/test
 	@mkdir -p $(TARGETDIR)/report
 	@mkdir -p $(BINUTIL)
 
-# Format the source code
+## Format the source code
 .PHONY: format
 format:
 	@find $(CMDDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
 	@find $(SRCDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
 
-# Generate test mocks
+## Generate go code automatically
 .PHONY: generate
 generate:
 	rm -f internal/mocks/*.go
 	$(GO) generate $(GOPKGS)
 
-# Generate static documentation
+## Generate static documentation from /doc/src
 .PHONY: gendoc
 gendoc:
 	yq --input-format yaml --output-format json < doc/src/config.yaml . > doc/src/config.json
@@ -602,7 +568,7 @@ gendoc:
 	--file ./doc/src/README.tmpl \
 	--out README.md
 
-# Install this application
+## Install this application
 .PHONY: install
 install: uninstall
 	mkdir -p $(PATHINSTBIN)
@@ -636,7 +602,7 @@ ifneq ($(strip $(MANPATH)),)
 endif
 	echo 'nonroot:*:65532:65532:nonroot:/nonexistent:/bin/false' > $(DESTDIR)/etc/passwd
 
-# Install TLS root CA certificates
+## Install TLS root CA certificates
 .PHONY: installssl
 installssl:
 ifneq ($(strip $(SSLCONFIGPATH)),)
@@ -655,40 +621,40 @@ ifneq ($(strip $(SSLCONFIGPATH)),)
 	find $(PATHINSTSSLCFG) -type f -exec chmod 644 {} \;
 endif
 
-# Execute multiple linter tools
+## Check code against multiple linters
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
 	$(GOLANGCILINT) run --max-issues-per-linter 0 --max-same-issues 0 $(CMDDIR)/... $(SRCDIR)/...
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
-# Download dependencies
+## Download dependencies
 .PHONY: mod
 mod: gotools
 	$(GO) mod download all
 
-# Test the OpenAPI specification against the real deployed service
+## Test the OpenAPI specification
 .PHONY: openapitest
 openapitest:
 	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
 	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_PRIVATE_URL} OPENAPI_FILE=openapi_private.yaml
 	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_PUBLIC_URL} OPENAPI_FILE=openapi_public.yaml
 
-# Ping the deployed service to check if the correct deployed container is alive
+## Ping the deployed service
 .PHONY: ping
 ping:
 	if [ "200_$(VERSION)_$(RELEASE)_" != "$(shell curl --silent --insecure '$(GOGENEXAMPLE_MONITORING_URL)/ping' | jq -r '.code,.version,.release' | tr '\n' '_')" ]; then exit 1; fi
 
-# Run all tests and static analysis tools
+## Run all tests and static analysis tools
 .PHONY: qa
 qa: linter confcheck test coverage
 
-# Retry the ping command automatically (try 60 times every 5 sec = 5 min max)
+## Retry the ping command automatically
 .PHONY: rping
 rping:
 	$(call make_retry,ping,60,5)
 
-# Build the RPM package for RedHat-like Linux distributions
+## Build an RPM package
 .PHONY: rpm
 rpm:
 	rm -rf $(PATHRPMPKG)
@@ -708,7 +674,7 @@ rpm:
 	--define "_manpath /$(MANPATH)" \
 	-bb resources/rpm/rpm.spec
 
-# Test the OpenAPI specification against the real deployed service
+## Test the OpenAPI specification against the real deployed service
 .PHONY: schemathesistest
 schemathesistest:
 	schemathesis run \
@@ -718,7 +684,7 @@ schemathesistest:
 	--url='${API_TEST_URL}' \
 	${OPENAPI_FILE}
 
-# Run the unit tests
+## Run unit tests
 .PHONY: test
 test: ensuretarget
 	@echo -e "\n\n>>> START: Unit Tests <<<\n\n"
@@ -733,7 +699,7 @@ test: ensuretarget
 	-v $(GOPKGS) $(TESTEXTRACMD)
 	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
 
-# Get the go tools
+## Get the go tools
 .PHONY: gotools
 gotools:
 	$(GO) get -tool go.uber.org/mock/mockgen@latest
@@ -742,17 +708,17 @@ gotools:
 	$(GO) install github.com/mikefarah/yq/v4@latest
 	$(GO) install github.com/santhosh-tekuri/jsonschema/cmd/jv@latest
 
-# Remove all installed files (excluding configuration files)
+## Remove all installed files (excluding configuration files)
 .PHONY: uninstall
 uninstall:
 	rm -rf $(PATHINSTBIN)$(PROJECT)
 	rm -rf $(PATHINSTDOC)
 
-# Update everything
+## Update everything
 .PHONY: updateall
 updateall: updatego updatelint updatemod
 
-# Update go version
+## Update Go version
 .PHONY: updatego
 updatego:
 	$(eval LAST_GO_TOOLCHAIN=$(shell curl -s https://go.dev/dl/ | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64\.tar\.gz' | head -n 1 | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+'))
@@ -760,19 +726,19 @@ updatego:
 	sed $(SEDINPLACE) "s|^go [0-9]*\.[0-9]*.*$$|go ${LAST_GO_VERSION}|g" go.mod
 	sed $(SEDINPLACE) "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod
 
-# Update linter version
+## Update golangci-lint version
 .PHONY: updatelint
 updatelint:
 	$(eval LAST_GOLANGCILINT_VERSION=$(shell curl -sL https://github.com/golangci/golangci-lint/releases/latest | sed -n 's/.*<title>Release \(v[0-9]*\.[0-9]*\.[0-9]*\).*/\1/p'))
 	sed $(SEDINPLACE) "s|^GOLANGCILINTVERSION=v[0-9]*\.[0-9]*\.[0-9]*$$|GOLANGCILINTVERSION=${LAST_GOLANGCILINT_VERSION}|g" Makefile
 
-# Update dependencies
+## Update dependencies
 .PHONY: updatemod
 updatemod: mod
 	$(GO) get -t -u ./... && \
 	go mod tidy -compat=$(shell sed -n -E 's/^go ([0-9]+\.[0-9]+).*/\1/p' go.mod)
 
-# Run venom tests (https://github.com/ovh/venom)
+## Run venom tests
 .PHONY: venomtest
 venomtest:
 	@mkdir -p $(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR)
@@ -784,7 +750,7 @@ venomtest:
 		--output-dir=$(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR) \
 		resources/test/venom/$(DEPLOY_ENV)/$(API_TEST_DIR)/$(API_TEST_FILE)
 
-# Increase the patch number in the VERSION file
+## Increase the patch number in the VERSION file
 .PHONY: versionup
 versionup:
 	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION
