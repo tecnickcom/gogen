@@ -27,7 +27,7 @@ Source documentation: [pkg.go.dev/github.com/tecnickcom/gogen](https://pkg.go.de
 4. [Package Catalog](#package-catalog)
 5. [Developers Quick Start](#developers-quick-start)
 6. [Running All Tests](#running-all-tests)
-7. [Web Service Project Example](#web-service-project-example)
+7. [How To Create a New Web Service](#web-service-project-example)
 8. [Contributing](#contributing)
 
 ## Why gogen
@@ -192,14 +192,144 @@ Or run tests/build inside Docker:
 make dbuild
 ```
 
-## Web Service Project Example
+## How To Create a New Web Service
 
 The directory `examples/service` contains a sample web service built with `gogen`.
 
-To scaffold a new project using `project.cfg`:
+To scaffold a new project:
+
+### Clone the gogen repository
 
 ```bash
-make project CONFIG=project.cfg
+$ git clone https://github.com/tecnickcom/gogen.git
+
+Cloning into 'gogen'...
+```
+
+### Move to the cloned project directory
+
+```bash
+$ cd gogen/
+```
+
+### List available Make targets
+
+```bash
+$ make
+
+# gogen Makefile.
+# GOPATH=/home/demo/GO
+# The following commands are available:
+#
+#   make x              : Test and build everything from scratch
+#   make clean          : Remove any build artifact
+#   make coverage       : Generate the coverage report
+#   make dbuild         : Build everything inside a Docker container
+#   make deps           : Get dependencies
+#   make dockerdev      : Build a base development Docker image
+#   make ensuretarget   : Create the target directories if missing
+#   make example        : Build and test the service example
+#   make format         : Format the source code
+#   make generate       : Generate Go code automatically
+#   make linter         : Check code against multiple linters
+#   make mod            : Download dependencies
+#   make project        : Generate a new project from the example using the data set via CONFIG=project.cfg
+#   make qa             : Run all tests and static analysis tools
+#   make tag            : Tag the Git repository
+#   make test           : Run unit tests
+#   make gotools        : Get the go tools
+#   make updateall      : Update everything
+#   make updatego       : Update Go version
+#   make updatelint     : Update golangci-lint version
+#   make updatemod      : Update dependencies
+#   make version        : Update this library version in the examples
+#   make versionup      : Increase the patch number in the VERSION file
+#
+# To run the full test and build flow from scratch, use:
+#     make x
+```
+
+### Run the full test and build pipeline
+
+```bash
+$ make x
+
+# DEVMODE=LOCAL make version format clean mod deps generate qa example
+
+# 1. make version       : Update this library version in the examples
+# 2. make format        : Format the source code
+# 3. make clean         : Remove any build artifact
+# 4. make mod           : Download dependencies
+# 5. make deps          : Get dependencies
+# 6. make generate      : Generate Go code automatically (test mocks)
+# 7. make qa            : Run all tests and static analysis tools
+    # 7.1. make linter      : Check the code with multiple linters (golangci/golangci-lint)
+    # 7.2. make test        : Run unit tests (go test)
+    # 7.3. make coverage    : Generate the coverage report (/target/report/coverage.html)
+# 8. make example       : Build and test the service example
+    # 8.1. make clean       : Remove any build artifact
+    # 8.2. make mod         : Download dependencies
+    # 8.3. make deps        : Get dependencies
+    # 8.4. make gendoc      : Generate static documentation from /doc/src (gomplate)
+    # 8.5. make generate    : Generate Go code automatically (test mocks)
+    # 8.6. make qa          : Run all tests and static analysis tools
+        # 8.6.1. make linter    : Check the code with multiple linters (golangci/golangci-lint)
+        # 8.6.2. make confcheck : Check the configuration files (jv)
+        # 8.6.3. make test      : Run unit tests (go test)
+        # 8.6.4. make coverage  : Generate the coverage report (target/report/coverage.html)
+    # 8.7. make build       : Compile the application (go build > target/usr/bin/gogenexample)
+```
+
+### Create a new project from the examples/service template
+
+#### Customize the project configuration file
+
+```bash
+$ cp project.cfg myproject.cfg
+
+$ nano myproject.cfg
+```
+
+#### Generate the project
+
+```bash
+$ make project CONFIG=myproject.cfg
+
+# Project created at target/github.com/test/dummy
+```
+
+#### Move the project to a new location
+
+```bash
+$ mv target/github.com/test/dummy ~/GO/src/myproject/
+```
+
+#### Run the full test suite on the new project
+
+```bash
+$ cd ~/GO/src/myproject/
+
+$ make x
+
+# DEVMODE=LOCAL make format clean mod deps gendoc generate qa build docker dockertest
+
+#  1. make format      : Format the source code
+#  2. make clean       : Remove any build artifact
+#  3. make mod         : Download dependencies
+#  4. make deps        : Get dependencies
+#  5. make gendoc      : Generate static documentation from /doc/src (gomplate)
+#  6. make generate    : Generate Go code automatically (test mocks)
+#  7. make qa          : Run all tests and static analysis tools
+    #  7.1. make linter    : Check the code with multiple linters (golangci/golangci-lint)
+    #  7.2. make confcheck : Check the configuration files (jv)
+    #  7.3. make test      : Run unit tests (go test)
+    #  7.4. make coverage  : Generate the coverage report (target/report/coverage.html)
+#  8. make build       : Compile the application (go build > target/usr/bin/gogenexample)
+#  9. make docker      : Build a scratch Docker container to run this service
+# 10. make dockertest  : Test the newly built Docker container in an ephemeral Docker Compose environment
+    # 10.1. DEPLOY_ENV=int make openapitest apitest
+        # 10.1.1. make openapitest : Test the OpenAPI specification with randomly generated Schemathesis tests
+        # 10.1.2. make apitest     : Execute API tests with venom
 ```
 
 ## Contributing
