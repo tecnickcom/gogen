@@ -110,6 +110,11 @@ func (c *Cache) DialContext(ctx context.Context, network, address string) (net.C
 	)
 
 	for _, ip := range ips {
+		if net.ParseIP(ip) == nil {
+			err = fmt.Errorf("invalid IP address: %s", ip)
+			continue
+		}
+
 		conn, err = dialer.DialContext(ctx, network, net.JoinHostPort(ip, port))
 		if err == nil {
 			return conn, nil
