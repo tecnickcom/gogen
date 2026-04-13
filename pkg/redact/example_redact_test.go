@@ -6,9 +6,8 @@ import (
 	"github.com/tecnickcom/gogen/pkg/redact"
 )
 
-func ExampleHTTPData() {
-	// example input data
-	data := `
+const (
+	testData = `
 GET /v1/version HTTP/1.1
 Host: test.redact.invalid
 User-Agent: Go-http-client/1.1
@@ -47,8 +46,11 @@ Token=SECRET
 	"JCB" : "3566002020360505"
 }
 `
+)
+
+func ExampleHTTPData() {
 	// redact input data
-	redactedData := redact.HTTPData(data)
+	redactedData := redact.HTTPData(testData)
 
 	fmt.Println(redactedData)
 
@@ -56,38 +58,102 @@ Token=SECRET
 	// GET /v1/version HTTP/1.1
 	// Host: test.redact.invalid
 	// User-Agent: Go-http-client/1.1
-	// Authorization: @~REDACTED~@
-	// authorization : @~REDACTED~@
+	// Authorization: ***
+	// authorization : ***
 	// X-GOGEN-Trace-Id: abcdef0123456789
 	// Accept-Encoding: gzip
 	//
-	// password=@~REDACTED~@
-	// test_password=@~REDACTED~@
-	// PASSWORD=@~REDACTED~@
-	// TEST_PASSWORD=@~REDACTED~@
-	// key=@~REDACTED~@
-	// test_key=@~REDACTED~@
-	// KEY=@~REDACTED~@
-	// TEST_KEY=@~REDACTED~@
-	// password=@~REDACTED~@&key=@~REDACTED~@
-	// alpha=beta&password=@~REDACTED~@&key=@~REDACTED~@&gamma=delta
-	// Token=@~REDACTED~@
+	// password=***
+	// test_password=***
+	// PASSWORD=***
+	// TEST_PASSWORD=***
+	// key=***
+	// test_key=***
+	// KEY=***
+	// TEST_KEY=***
+	// password=***&key=***
+	// alpha=beta&password=***&key=***&gamma=delta
+	// Token=***
 	//
 	// {
-	// 	"password": "@~REDACTED~@",
-	// 	"test_password": "@~REDACTED~@",
-	// 	"PASSWORD": "@~REDACTED~@",
-	// 	"TEST_PASSWORD": "@~REDACTED~@",
-	// 	"key": "@~REDACTED~@",
-	// 	"test_key": "@~REDACTED~@",
-	// 	"KEY": "@~REDACTED~@",
-	// 	"TEST_KEY": "@~REDACTED~@",
-	// 	"Token": "@~REDACTED~@",
-	// 	"Visa" : "@~REDACTED~@",
-	// 	"MasterCard" : "@~REDACTED~@",
-	// 	"American Express" : "@~REDACTED~@",
-	// 	"Diners Club" : "@~REDACTED~@",
-	// 	"Discover" : "@~REDACTED~@",
-	// 	"JCB" : "@~REDACTED~@"
+	// 	"password": "***",
+	// 	"test_password": "***",
+	// 	"PASSWORD": "***",
+	// 	"TEST_PASSWORD": "***",
+	// 	"key": "***",
+	// 	"test_key": "***",
+	// 	"KEY": "***",
+	// 	"TEST_KEY": "***",
+	// 	"Token": "***",
+	// 	"Visa" : "***",
+	// 	"MasterCard" : "***",
+	// 	"American Express" : "***",
+	// 	"Diners Club" : "***",
+	// 	"Discover" : "***",
+	// 	"JCB" : "***"
 	// }
+}
+
+func ExampleHTTPDataString() {
+	// redact input data
+	redactedData := redact.HTTPDataString([]byte(testData))
+
+	fmt.Println(redactedData)
+
+	// Output:
+	// GET /v1/version HTTP/1.1
+	// Host: test.redact.invalid
+	// User-Agent: Go-http-client/1.1
+	// Authorization: ***
+	// authorization : ***
+	// X-GOGEN-Trace-Id: abcdef0123456789
+	// Accept-Encoding: gzip
+	//
+	// password=***
+	// test_password=***
+	// PASSWORD=***
+	// TEST_PASSWORD=***
+	// key=***
+	// test_key=***
+	// KEY=***
+	// TEST_KEY=***
+	// password=***&key=***
+	// alpha=beta&password=***&key=***&gamma=delta
+	// Token=***
+	//
+	// {
+	// 	"password": "***",
+	// 	"test_password": "***",
+	// 	"PASSWORD": "***",
+	// 	"TEST_PASSWORD": "***",
+	// 	"key": "***",
+	// 	"test_key": "***",
+	// 	"KEY": "***",
+	// 	"TEST_KEY": "***",
+	// 	"Token": "***",
+	// 	"Visa" : "***",
+	// 	"MasterCard" : "***",
+	// 	"American Express" : "***",
+	// 	"Diners Club" : "***",
+	// 	"Discover" : "***",
+	// 	"JCB" : "***"
+	// }
+}
+
+func ExampleHTTPDataBytesInto() {
+	inputs := [][]byte{
+		[]byte("password=SECRET&reference=VISIBLE"),
+		[]byte("token=SECRET&note=PUBLIC"),
+	}
+
+	var dst []byte
+
+	for _, in := range inputs {
+		dst = redact.HTTPDataBytesInto(dst, in)
+		fmt.Println(string(dst))
+	}
+
+	// Output:
+	// password=***&reference=VISIBLE
+	// token=***&note=PUBLIC
 }
