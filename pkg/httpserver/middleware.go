@@ -70,7 +70,7 @@ func RequestInjectHandler(
 
 		if dbglog {
 			reqDump, _ := httputil.DumpRequest(r, true)
-			logger = logger.With(slog.String("request_dump", redactFn(string(reqDump))))
+			logger = logger.With(slog.String("request_dump", redactFn(reqDump)))
 		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))

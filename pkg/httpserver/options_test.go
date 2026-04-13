@@ -340,10 +340,10 @@ func TestWithRedactFn(t *testing.T) {
 
 	cfg := defaultConfig()
 
-	v := func(s string) string { return s + "test" }
+	v := func(b []byte) string { return string(b) + "test" }
 	err := WithRedactFn(v)(cfg)
 	require.NoError(t, err)
-	require.Equal(t, "alphatest", cfg.redactFn("alpha"))
+	require.Equal(t, "alphatest", cfg.redactFn([]byte("alpha")))
 }
 
 func TestWithMiddlewareFn(t *testing.T) {

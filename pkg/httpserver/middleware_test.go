@@ -54,7 +54,7 @@ func TestRequestInjectHandler_debug(t *testing.T) {
 	)
 	rnd := random.New(nil)
 
-	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, rnd, nextHandler)
+	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPDataString, rnd, nextHandler)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)
@@ -105,7 +105,7 @@ func TestRequestInjectHandler_info(t *testing.T) {
 
 	rnd := random.New(nil)
 
-	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPData, rnd, nextHandler)
+	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPDataString, rnd, nextHandler)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	handler.ServeHTTP(nil, req)

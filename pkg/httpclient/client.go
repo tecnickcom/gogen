@@ -32,7 +32,7 @@ func defaultClient() *Client {
 		},
 		traceIDHeaderName: traceid.DefaultHeader,
 		component:         "-",
-		redactFn:          redact.HTTPData,
+		redactFn:          redact.HTTPDataString,
 		logger:            slog.Default(),
 		rnd:               random.New(nil),
 	}
@@ -100,7 +100,7 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	if debug {
 		reqDump, errd := httputil.DumpRequestOut(r, true)
 		if errd == nil {
-			l = l.With(slog.String(c.logPrefix+"request", c.redactFn(string(reqDump))))
+			l = l.With(slog.String(c.logPrefix+"request", c.redactFn(reqDump)))
 		}
 	}
 
@@ -111,7 +111,7 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	if debug && resp != nil {
 		respDump, errd := httputil.DumpResponse(resp, true)
 		if errd == nil {
-			l = l.With(slog.String(c.logPrefix+"response", c.redactFn(string(respDump))))
+			l = l.With(slog.String(c.logPrefix+"response", c.redactFn(respDump)))
 		}
 	}
 

@@ -52,9 +52,9 @@ func TestWithRedactFn(t *testing.T) {
 	t.Parallel()
 
 	c := &Client{}
-	v := func(s string) string { return s + "test" }
+	v := func(b []byte) string { return string(b) + "test" }
 	WithRedactFn(v)(c)
-	require.Equal(t, "alphatest", c.redactFn("alpha"))
+	require.Equal(t, "alphatest", c.redactFn([]byte("alpha")))
 }
 
 func TestWithLogPrefix(t *testing.T) {

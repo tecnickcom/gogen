@@ -14,8 +14,8 @@ type InstrumentRoundTripper func(next http.RoundTripper) http.RoundTripper
 // DialContextFunc is an alias for a net.Dialer.DialContext function.
 type DialContextFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
-// RedactFn is an alias for a redact function.
-type RedactFn func(s string) string
+// RedactFn is an alias for a redact function that takes raw bytes and returns a redacted string.
+type RedactFn func(b []byte) string
 
 // Option is the interface that allows to set client options.
 type Option func(c *Client)

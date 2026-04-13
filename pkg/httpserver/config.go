@@ -26,8 +26,8 @@ import (
 // timeoutMessage is the message used for timeout responses.
 const timeoutMessage = "TIMEOUT"
 
-// RedactFn redacts sensitive values from logged text payloads.
-type RedactFn func(s string) string
+// RedactFn redacts sensitive values from logged byte payloads and returns a redacted string.
+type RedactFn func(b []byte) string
 
 // IndexHandlerFunc builds an index handler from the registered route list.
 type IndexHandlerFunc func([]Route) http.HandlerFunc
@@ -86,7 +86,7 @@ func defaultConfig() *config {
 		serverWriteTimeout:        1 * time.Minute,
 		shutdownTimeout:           30 * time.Second,
 		defaultEnabledRoutes:      nil,
-		redactFn:                  redact.HTTPData,
+		redactFn:                  redact.HTTPDataString,
 		middleware:                []MiddlewareFn{},
 		disableDefaultRouteLogger: make(map[DefaultRoute]bool, len(allDefaultRoutes())),
 		logger:                    logger,
