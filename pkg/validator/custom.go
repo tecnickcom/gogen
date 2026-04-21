@@ -128,9 +128,8 @@ func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool
 
 // hasNotValue returns true if the field has not the specified value.
 //
-//nolint:gocyclo,cyclop
+//nolint:gocyclo,cyclop,exhaustive
 func hasNotValue(value reflect.Value, kind reflect.Kind, paramValue string) bool {
-	//nolint:exhaustive
 	switch kind {
 	case reflect.String:
 		return value.String() != paramValue
