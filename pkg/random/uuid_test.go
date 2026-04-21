@@ -32,6 +32,45 @@ func TestUUIDv7_Byte(t *testing.T) {
 	require.Len(t, b, 36)
 }
 
+func TestUUIDv7_Format_Empty(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+	u := r.UUIDv7()
+
+	var b [36]byte
+
+	u.Format(&b)
+
+	require.Equal(t, u.String(), string(b[:]))
+	require.Len(t, b, 36)
+}
+
+func TestUUIDv7_Format_FillsBuffer(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+	u := r.UUIDv7()
+
+	var b [36]byte
+
+	u.Format(&b)
+
+	require.Equal(t, u.String(), string(b[:]))
+}
+
+func TestUUIDv7_Format_OverwriteBuffer(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+	u := r.UUIDv7()
+	b := [36]byte{'x'}
+
+	u.Format(&b)
+
+	require.Equal(t, u.String(), string(b[:]))
+}
+
 func TestUUIDv7_String(t *testing.T) {
 	t.Parallel()
 
