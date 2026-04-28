@@ -62,8 +62,7 @@ SSLCONFIGPATH=etc/ssl/
 CACERTPATH=/etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/ca-bundle.pem /etc/pki/tls/cacert.pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/ssl/cert.pem
 
 # Path for init script
-#INITPATH=etc/init.d/
-INITPATH=etc/systemd/system/
+INITPATH=usr/lib/systemd/system/
 
 # Path path for documentation
 DOCPATH=usr/share/doc/$(PKGNAME)/
@@ -399,10 +398,10 @@ ifneq ($(strip $(MANPATH)),)
 	echo $(MANPATH) >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).dirs
 	echo "$(MANPATH)* $(MANPATH)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/install
 endif
-	echo "statically-linked-binary usr/bin/$(PROJECT)" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
+	echo "statically-linked-binary [$(BINPATH)$(PROJECT)]" > $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
 	echo "new-package-should-close-itp-bug" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
-	echo "hardening-no-relro $(BINPATH)$(PROJECT)" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
-	echo "embedded-library $(BINPATH)$(PROJECT): libyaml" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
+	echo "hardening-no-relro [$(BINPATH)$(PROJECT)]" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
+	echo "embedded-library [$(BINPATH)$(PROJECT)]: libyaml" >> $(PATHDEBPKG)/$(PKGNAME)-$(VERSION)/debian/$(PKGNAME).lintian-overrides
 	cd $(PATHDEBPKG)/$(PKGNAME)-$(VERSION) && debuild -us -uc
 
 ## Get dependencies
@@ -586,7 +585,7 @@ ifneq ($(strip $(INITPATH)),)
 	mkdir -p $(PATHINSTINIT)
 	cp -rf ./resources/${INITPATH}* $(PATHINSTINIT)
 	find $(PATHINSTINIT) -type d -exec chmod 755 {} \;
-	find $(PATHINSTINIT) -type f -exec chmod 755 {} \;
+	find $(PATHINSTINIT) -type f -exec chmod 644 {} \;
 endif
 ifneq ($(strip $(CONFIGPATH)),)
 	mkdir -p $(PATHINSTCFG)

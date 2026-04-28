@@ -3,8 +3,6 @@
 
 set -e
 
-update-rc.d -f gogenexample remove
-
 #DEBHELPER#
 
 exit 0

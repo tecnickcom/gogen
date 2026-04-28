@@ -2,10 +2,11 @@ Source: ~#PKGNAME#~
 Maintainer: gogenexampleowner <gogenexampleemail>
 Section: utils
 Priority: optional
-Build-Depends: debhelper (>= 9), dh-golang
-Standards-Version: 3.9.7
+Build-Depends: debhelper-compat (= 13), dh-golang
+Standards-Version: 4.7.2
 Homepage: gogenexampleprojectlink
 Vcs-Git: gogenexamplevcsgit
+Vcs-Browser: gogenexamplevcsgit
 
 Package: ~#PKGNAME#~
 Provides: gogenexample

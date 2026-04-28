@@ -3,8 +3,6 @@
 
 set -e
 
-update-rc.d -f gogenexample defaults
-
 #DEBHELPER#
 
 exit 0
