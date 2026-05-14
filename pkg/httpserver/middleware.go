@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
+	"slices"
 	"time"
 
 	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
@@ -93,8 +94,8 @@ func LoggerMiddlewareFn(args MiddlewareArgs, next http.Handler) http.Handler {
 
 // ApplyMiddleware returns an http Handler with all middleware handler functions applied.
 func ApplyMiddleware(arg MiddlewareArgs, next http.Handler, middleware ...MiddlewareFn) http.Handler {
-	for i := len(middleware) - 1; i >= 0; i-- {
-		next = middleware[i](arg, next)
+	for _, v := range slices.Backward(middleware) {
+		next = v(arg, next)
 	}
 
 	return next

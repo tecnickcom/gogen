@@ -119,7 +119,7 @@ func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool
 	switch kind {
 	case reflect.Invalid:
 		return true
-	case reflect.Slice, reflect.Map, reflect.Ptr, reflect.Interface, reflect.Chan, reflect.Func:
+	case reflect.Slice, reflect.Map, reflect.Pointer, reflect.Interface, reflect.Chan, reflect.Func:
 		return value.IsNil()
 	}
 

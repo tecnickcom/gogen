@@ -200,7 +200,7 @@ func (p *Processor) ApplySubset(rules [][]Rule, slicePtr any, offset, length uin
 	}
 
 	vSlicePtr := reflect.ValueOf(slicePtr)
-	if vSlicePtr.Kind() != reflect.Ptr {
+	if vSlicePtr.Kind() != reflect.Pointer {
 		return 0, 0, fmt.Errorf("slicePtr should be a slice pointer but is %s", vSlicePtr.Type())
 	}
 

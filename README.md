@@ -6,8 +6,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/tecnickcom/gogen)](https://goreportcard.com/report/github.com/tecnickcom/gogen)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11517/badge)](https://www.bestpractices.dev/projects/11517)
 
-[![Donate via PayPal](https://img.shields.io/badge/donate-paypal-87ceeb.svg)](https://www.paypal.com/donate/?hosted_button_id=NZUEC5XS8MFBJ)
-Please consider supporting this project by making a donation via [PayPal](https://www.paypal.com/donate/?hosted_button_id=NZUEC5XS8MFBJ).
+[![Sponsor on GitHub](https://img.shields.io/badge/sponsor-github-EA4AAA.svg?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/tecnickcom)
+
+If this project is useful to you, please consider [supporting development via GitHub Sponsors](https://github.com/sponsors/tecnickcom).
 
 ![gogen logo](gogen_logo.png)
 
@@ -144,6 +145,7 @@ Why it matters: faster project bootstrap and clearer implementation reference.
 - [timeutil](pkg/timeutil) - Time and date utilities. `time`, `date utilities`
 - [traceid](pkg/traceid) - Trace ID generation and management. `tracing`, `ids`
 - [typeutil](pkg/typeutil) - Type conversion and utility functions. `type conversion`, `utilities`
+- [uhex](pkg/uhex) - Utilities for uppercase hexadecimal encoding and decoding. `hex`, `encoding`, `utilities`
 - [validator](pkg/validator) - Data validation utilities. `validation`, `utilities`
 - [valkey](pkg/valkey) - Wrapper client for interacting with valkey.io, an open-source in-memory data store. `data store`, `client`
 

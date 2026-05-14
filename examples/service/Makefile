@@ -155,7 +155,7 @@ GOFMT=$(shell which gofmt)
 GOTEST=$(GO) test
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
-GOLANGCILINTVERSION=v2.11.4
+GOLANGCILINTVERSION=v2.12.2
 DOCKERIZEVERSION=v0.9.2
 
 # Current operating system and architecture as one string.
@@ -407,7 +407,7 @@ endif
 ## Get dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl --silent --show-error --fail --location "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
+	curl --silent --show-error --fail --location "https://golangci-lint.run/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
 
 ## Build a scratch docker container to run this service
 .PHONY: docker
