@@ -51,20 +51,15 @@ This scaffolds a new web service from the provided configuration.
 
 ## Feature Highlights
 
-- Broad package coverage for day-to-day service needs  
-Why it matters: reduce dependency sprawl and avoid rewriting boilerplate utilities.
+- Broad package coverage for day-to-day service needs, reducing dependency sprawl and avoiding repeated boilerplate utility code.
 
-- Production-focused building blocks (HTTP, retries, observability, data stores, AWS)  
-Why it matters: ship services faster with less glue code.
+- Production-focused building blocks for HTTP, retries, observability, data stores, and AWS, helping teams ship services faster with less glue code.
 
-- Consistent conventions across packages  
-Why it matters: easier code reviews, simpler maintenance, and predictable APIs.
+- Consistent conventions across packages that make code reviews easier, maintenance simpler, and APIs more predictable.
 
-- Testing-first repository culture  
-Why it matters: safer refactoring and more reliable behavior over time.
+- A testing-first repository culture that supports safer refactoring and more reliable behavior over time.
 
-- Built-in project scaffolding and runnable example service  
-Why it matters: faster project bootstrap and clearer implementation reference.
+- Built-in project scaffolding and a runnable example service to speed up project bootstrap and provide a clearer implementation reference.
 
 ## Benefits Summary
 
