@@ -24,6 +24,10 @@ func (u TUID64) Hex() string {
 }
 
 // String returns the UID64 as a variable-length base-36 string.
+//
+// Unlike [TUID128.String], this encodes a single value and is therefore
+// unambiguous and round-trippable. It is, however, variable-length; callers
+// that need a fixed-width representation should use [TUID64.Hex].
 func (u TUID64) String() string {
 	return strconv.FormatUint(uint64(u), 36)
 }

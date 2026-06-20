@@ -121,10 +121,14 @@ func New(r io.Reader, opts ...Option) *Rnd {
 }
 
 // RandomBytes generates a slice of n random bytes, returning error if the reader fails.
+//
+// It uses [io.ReadFull] so the destination is always fully populated; a custom
+// [io.Reader] that returns a short read with a nil error is treated as an error
+// rather than silently truncating the randomness.
 func (r *Rnd) RandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 
-	_, err := r.reader.Read(b)
+	_, err := io.ReadFull(r.reader, b)
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate %d random bytes: %w", n, err)
 	}
@@ -158,6 +162,9 @@ func (r *Rnd) RandHex64() string {
 }
 
 // RandString64 returns a random 64-bit value as a variable-length base-36 string.
+//
+// It encodes a single value, so it is unambiguous, but it is variable-length;
+// callers that need a fixed-width hexadecimal form should use [Rnd.RandHex64].
 func (r *Rnd) RandString64() string {
 	return strconv.FormatUint(r.RandUint64(), 36)
 }

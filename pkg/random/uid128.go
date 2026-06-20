@@ -27,6 +27,12 @@ func (u TUID128) Hex() string {
 }
 
 // String returns the UID128 as a variable-length base-36 string (concatenated high and low parts).
+//
+// This form is intended for display only and is NOT guaranteed to be unique or
+// round-trippable: because both parts are variable-length and concatenated
+// without a separator, two distinct TUID128 values can map to the same string.
+// Callers that need a unique, collision-free, round-trippable representation
+// should use [TUID128.Hex], which is fixed-width.
 func (u TUID128) String() string {
 	return strconv.FormatUint(u.t, 36) + strconv.FormatUint(u.r, 36)
 }

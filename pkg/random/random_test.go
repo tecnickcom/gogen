@@ -2,11 +2,31 @@ package random
 
 import (
 	"errors"
+	"io"
 	"testing"
 	"testing/iotest"
 
 	"github.com/stretchr/testify/require"
 )
+
+// shortReader returns fewer bytes than requested with a nil error on the first
+// call, then reports EOF, simulating a custom io.Reader that performs partial
+// reads. It is used to verify that RandomBytes does not silently truncate
+// randomness when the underlying reader does not fully populate the buffer.
+type shortReader struct {
+	done bool
+}
+
+func (s *shortReader) Read(p []byte) (int, error) {
+	if s.done || len(p) == 0 {
+		return 0, io.EOF
+	}
+
+	s.done = true
+
+	// Populate only the first byte, leaving the rest of p untouched.
+	return 1, nil
+}
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -43,6 +63,16 @@ func TestRandomBytes(t *testing.T) {
 	b, err = re.RandomBytes(4)
 
 	require.Error(t, err)
+	require.Nil(t, b)
+
+	// A reader that returns a short read with a nil error must be treated as an
+	// error (io.ErrUnexpectedEOF) rather than silently truncating randomness.
+	rs := New(&shortReader{})
+
+	b, err = rs.RandomBytes(4)
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
 	require.Nil(t, b)
 }
 
