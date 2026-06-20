@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +14,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/random"
+	"github.com/tecnickcom/gogen/pkg/redact"
+	"github.com/tecnickcom/gogen/pkg/traceid"
 	"go.uber.org/mock/gomock"
 )
 
@@ -308,4 +313,145 @@ func Test_Serve_error(t *testing.T) {
 	}
 
 	h.serve()
+}
+
+func TestNew_setsIdleTimeout(t *testing.T) {
+	t.Parallel()
+
+	idle := 42 * time.Second
+	shutdownWG := &sync.WaitGroup{}
+
+	h, err := New(
+		t.Context(),
+		NopBinder(),
+		WithServerAddr(":31811"),
+		WithServerIdleTimeout(idle),
+		WithShutdownWaitGroup(shutdownWG),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, h)
+	require.Equal(t, idle, h.httpServer.IdleTimeout)
+
+	// Balance the single Shutdown decrement so the default wait group does not
+	// go negative (mirrors the Add(1) that StartServerCtx performs).
+	shutdownWG.Add(1)
+	require.NoError(t, h.Shutdown(t.Context()))
+}
+
+func TestShutdown_idempotent(t *testing.T) {
+	t.Parallel()
+
+	shutdownWG := &sync.WaitGroup{}
+
+	h, err := New(
+		t.Context(),
+		NopBinder(),
+		WithServerAddr(":31812"),
+		WithShutdownWaitGroup(shutdownWG),
+		WithShutdownTimeout(1*time.Second),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, h)
+
+	// Register one running server with the wait group.
+	shutdownWG.Add(1)
+
+	// Calling Shutdown multiple times must not panic and must decrement the
+	// wait group exactly once (otherwise Wait would unblock prematurely / the
+	// counter would go negative and panic).
+	require.NoError(t, h.Shutdown(t.Context()))
+	require.NoError(t, h.Shutdown(t.Context()))
+	require.NoError(t, h.Shutdown(t.Context()))
+
+	// The single internal decrement plus the manual Add(1) above must balance.
+	done := make(chan struct{})
+
+	go func() {
+		shutdownWG.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shutdownWaitGroup did not reach zero: decremented the wrong number of times")
+	}
+}
+
+func TestStartServerCtx_contextAlreadyCanceled(t *testing.T) {
+	t.Parallel()
+
+	shutdownWG := &sync.WaitGroup{}
+
+	h, err := New(
+		t.Context(),
+		NopBinder(),
+		WithServerAddr(":31813"),
+		WithShutdownWaitGroup(shutdownWG),
+		WithShutdownTimeout(1*time.Second),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, h)
+
+	// An already-canceled context must trigger the internal shutdown goroutine,
+	// which calls Shutdown once. The wait group must end up balanced even if the
+	// caller also invokes Shutdown manually (double path, single decrement).
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	h.StartServerCtx(ctx)
+
+	// Manual shutdown racing with the internal goroutine must be safe.
+	require.NoError(t, h.Shutdown(t.Context()))
+
+	done := make(chan struct{})
+
+	go func() {
+		shutdownWG.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("shutdownWaitGroup did not reach zero")
+	}
+}
+
+func TestRequestInjectHandler_concurrentLoggerIsolation(t *testing.T) {
+	t.Parallel()
+
+	const goroutines = 50
+
+	// The next handler asserts that the trace id propagated through the request
+	// context matches the per-request trace id header, proving the per-request
+	// logger/context is not shared/mutated across concurrent requests.
+	nextHandler := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		want := r.Header.Get(traceid.DefaultHeader)
+		got := traceid.FromContext(r.Context(), "")
+		assert.Equal(t, want, got, "trace id leaked across concurrent requests")
+	})
+
+	rnd := random.New(nil)
+	logger := slog.New(slog.DiscardHandler)
+	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPDataString, rnd, nextHandler)
+
+	var wg sync.WaitGroup
+
+	wg.Add(goroutines)
+
+	for i := range goroutines {
+		go func() {
+			defer wg.Done()
+
+			id := fmt.Sprintf("00000000-0000-7000-8000-%012d", i)
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+			req.Header.Set(traceid.DefaultHeader, id)
+
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+		}()
+	}
+
+	wg.Wait()
 }

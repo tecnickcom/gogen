@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"slices"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -50,6 +50,7 @@ type config struct {
 	serverReadHeaderTimeout     time.Duration
 	serverReadTimeout           time.Duration
 	serverWriteTimeout          time.Duration
+	serverIdleTimeout           time.Duration
 	shutdownTimeout             time.Duration
 	tlsConfig                   *tls.Config
 	defaultEnabledRoutes        []DefaultRoute
@@ -84,6 +85,7 @@ func defaultConfig() *config {
 		serverReadHeaderTimeout:   1 * time.Minute,
 		serverReadTimeout:         1 * time.Minute,
 		serverWriteTimeout:        1 * time.Minute,
+		serverIdleTimeout:         1 * time.Minute,
 		shutdownTimeout:           30 * time.Second,
 		defaultEnabledRoutes:      nil,
 		redactFn:                  redact.HTTPDataString,
@@ -115,20 +117,13 @@ func (c *config) isIndexRouteEnabled() bool {
 }
 
 // validateAddr checks if a http server bind address is valid.
+// The host part may be empty, a hostname, an IPv4 or a bracketed IPv6 address
+// (e.g. ":8080", "localhost:8080", "0.0.0.0:8080", "[::1]:8080").
 func validateAddr(addr string) error {
 	addrErr := fmt.Errorf("invalid http server address: %s", addr)
 
-	if !strings.Contains(addr, ":") {
-		return addrErr
-	}
-
-	parts := strings.Split(addr, ":")
-	if len(parts) != 2 {
-		return addrErr
-	}
-
-	port := parts[1]
-	if port == "" {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
 		return addrErr
 	}
 

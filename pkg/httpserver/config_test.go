@@ -76,6 +76,31 @@ func Test_validateAddr(t *testing.T) {
 			addr:    "0.0.0.0:8017",
 			wantErr: false,
 		},
+		{
+			name:    "valid address (ipv6 loopback)",
+			addr:    "[::1]:8080",
+			wantErr: false,
+		},
+		{
+			name:    "valid address (ipv6 unspecified)",
+			addr:    "[::]:8080",
+			wantErr: false,
+		},
+		{
+			name:    "invalid port zero",
+			addr:    ":0",
+			wantErr: true,
+		},
+		{
+			name:    "invalid missing port separator",
+			addr:    "localhost",
+			wantErr: true,
+		},
+		{
+			name:    "invalid bare ipv6 without brackets",
+			addr:    "::1:8080",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

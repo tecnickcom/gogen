@@ -60,10 +60,12 @@ package httpserver
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/tecnickcom/gogen/pkg/httputil"
 )
@@ -87,10 +89,11 @@ func (b *nopBinder) BindHTTP(_ context.Context) []Route { return nil }
 
 // HTTPServer defines the HTTP Server object.
 type HTTPServer struct {
-	cfg        *config
-	ctx        context.Context //nolint:containedctx
-	httpServer *http.Server
-	listener   net.Listener
+	cfg          *config
+	ctx          context.Context //nolint:containedctx
+	httpServer   *http.Server
+	listener     net.Listener
+	shutdownOnce sync.Once
 }
 
 // New constructs HTTP server with router, middleware, default operational routes, TLS, and graceful shutdown orchestration.
@@ -127,6 +130,7 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 				Handler:           cfg.router,
 				ReadHeaderTimeout: cfg.serverReadHeaderTimeout,
 				ReadTimeout:       cfg.serverReadTimeout,
+				IdleTimeout:       cfg.serverIdleTimeout,
 				TLSConfig:         cfg.tlsConfig,
 				WriteTimeout:      cfg.serverWriteTimeout,
 			},
@@ -137,6 +141,11 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 
 // StartServerCtx starts server in background goroutine with context-aware shutdown support.
 func (h *HTTPServer) StartServerCtx(ctx context.Context) {
+	// Register the running server with the wait group synchronously, before any
+	// goroutine (including the shutdown one) can decrement it. The matching
+	// decrement happens exactly once in Shutdown via sync.Once.
+	h.cfg.shutdownWaitGroup.Add(1)
+
 	// wait for shutdown signal or context cancelation
 	go func() { //nolint:gosec
 		select {
@@ -158,8 +167,6 @@ func (h *HTTPServer) StartServerCtx(ctx context.Context) {
 		h.serve()
 	}()
 
-	h.cfg.shutdownWaitGroup.Add(1)
-
 	h.cfg.logger.Info("listening for http requests")
 }
 
@@ -169,11 +176,17 @@ func (h *HTTPServer) StartServer() {
 }
 
 // Shutdown gracefully shuts down server with timeout enforcement; wraps net/http Server.Shutdown().
+// It is safe to call Shutdown any number of times and from multiple paths
+// (e.g. manually and via the internal context/signal goroutine): the wait group
+// is decremented exactly once.
 func (h *HTTPServer) Shutdown(ctx context.Context) error {
 	h.cfg.logger.Debug("shutting down http server")
 
 	err := h.httpServer.Shutdown(ctx)
-	h.cfg.shutdownWaitGroup.Add(-1)
+
+	h.shutdownOnce.Do(func() {
+		h.cfg.shutdownWaitGroup.Add(-1)
+	})
 
 	h.cfg.logger.With(slog.Any("error", err)).Debug("http server shutdown complete")
 
@@ -183,7 +196,7 @@ func (h *HTTPServer) Shutdown(ctx context.Context) error {
 // serve starts serving HTTP requests.
 func (h *HTTPServer) serve() {
 	err := h.httpServer.Serve(h.listener)
-	if err == http.ErrServerClosed {
+	if errors.Is(err, http.ErrServerClosed) {
 		h.cfg.logger.Debug("closed http server")
 		return
 	}

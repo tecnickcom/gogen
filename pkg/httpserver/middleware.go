@@ -55,7 +55,10 @@ func RequestInjectHandler(
 		ctx = libhttputil.WithRequestTime(ctx, reqTime)
 		ctx = traceid.NewContext(ctx, reqID)
 
-		logger = logger.With(
+		// Derive a per-request logger from the shared one. The captured logger
+		// must never be reassigned, otherwise concurrent requests would race on
+		// it and cross-attribute log fields.
+		reqLogger := logger.With(
 			slog.String(traceid.DefaultLogKey, reqID),
 			slog.Time("request_time", reqTime),
 			slog.String("request_method", r.Method),
@@ -67,21 +70,21 @@ func RequestInjectHandler(
 			slog.String("request_x_forwarded_for", r.Header.Get("X-Forwarded-For")),
 		)
 
-		dbglog := logger.Enabled(ctx, slog.LevelDebug)
+		dbglog := reqLogger.Enabled(ctx, slog.LevelDebug)
 
 		if dbglog {
 			reqDump, _ := httputil.DumpRequest(r, true)
-			logger = logger.With(slog.String("request_dump", redactFn(reqDump)))
+			reqLogger = reqLogger.With(slog.String("request_dump", redactFn(reqDump)))
 		}
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 
 		if dbglog {
-			logger.Debug("request")
+			reqLogger.Debug("request")
 			return
 		}
 
-		logger.Info("request")
+		reqLogger.Info("request")
 	}
 
 	return http.HandlerFunc(fn)

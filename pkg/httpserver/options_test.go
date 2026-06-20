@@ -96,6 +96,20 @@ func TestWithServerWriteTimeout(t *testing.T) {
 	require.Equal(t, v, cfg.serverWriteTimeout)
 }
 
+func TestWithServerIdleTimeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultConfig()
+
+	err := WithServerIdleTimeout(-1)(cfg)
+	require.Error(t, err)
+
+	v := 23 * time.Second
+	err = WithServerIdleTimeout(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, v, cfg.serverIdleTimeout)
+}
+
 func TestWithShutdownTimeout(t *testing.T) {
 	t.Parallel()
 

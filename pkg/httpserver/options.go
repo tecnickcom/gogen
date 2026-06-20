@@ -95,6 +95,20 @@ func WithServerWriteTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithServerIdleTimeout sets the maximum amount of time to wait for the next
+// request when keep-alives are enabled. If zero, there is no idle timeout.
+func WithServerIdleTimeout(timeout time.Duration) Option {
+	return func(cfg *config) error {
+		if timeout <= 0 {
+			return errors.New("invalid serverIdleTimeout")
+		}
+
+		cfg.serverIdleTimeout = timeout
+
+		return nil
+	}
+}
+
 // WithShutdownTimeout sets the shutdown timeout.
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
