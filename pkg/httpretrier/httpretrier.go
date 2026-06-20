@@ -56,7 +56,6 @@ package httpretrier
 import (
 	"context"
 	"fmt"
-	"io"
 	"math/rand"
 	"net/http"
 	"time"
@@ -74,6 +73,10 @@ const (
 
 	// DefaultJitter is the maximum random Jitter time between retries.
 	DefaultJitter = 100 * time.Millisecond
+
+	// DefaultMaxDelay is the default upper bound for the computed backoff delay
+	// (before jitter). It prevents the exponential growth from overflowing.
+	DefaultMaxDelay = 30 * time.Second
 )
 
 // RetryIfFn decides whether a request should be retried after a response/error.
@@ -86,15 +89,26 @@ type HTTPClient interface {
 }
 
 // HTTPRetrier applies configurable retry policies to HTTP requests.
+//
+// An HTTPRetrier holds only immutable configuration once constructed, so a
+// single instance can be safely shared across goroutines and used for
+// concurrent or overlapping [HTTPRetrier.Do] calls. All per-call mutable state
+// is kept in a separate [doState] value created inside Do.
 type HTTPRetrier struct {
+	delayFactor float64
+	delay       time.Duration
+	jitter      time.Duration
+	maxDelay    time.Duration
+	attempts    uint
+	retryIfFn   RetryIfFn
+	httpClient  HTTPClient
+}
+
+// doState holds all the mutable state for a single [HTTPRetrier.Do] call so
+// that a shared HTTPRetrier remains race-free across concurrent calls.
+type doState struct {
 	nextDelay         float64
-	delayFactor       float64
-	delay             time.Duration
-	jitter            time.Duration
-	attempts          uint
 	remainingAttempts uint
-	retryIfFn         RetryIfFn
-	httpClient        HTTPClient
 	timer             *time.Timer
 	resetTimer        chan time.Duration
 	cancel            context.CancelFunc
@@ -109,8 +123,8 @@ func defaultHTTPRetrier() *HTTPRetrier {
 		delay:       DefaultDelay,
 		delayFactor: DefaultDelayFactor,
 		jitter:      DefaultJitter,
+		maxDelay:    DefaultMaxDelay,
 		retryIfFn:   defaultRetryIf,
-		resetTimer:  make(chan time.Duration, 1),
 	}
 }
 
@@ -131,18 +145,26 @@ func New(httpClient HTTPClient, opts ...Option) (*HTTPRetrier, error) {
 }
 
 // Do executes request up to configured attempts with exponential delay and jitter between retries, applying retry decision function to each response.
+//
+// Do is safe for concurrent use: every call keeps its own mutable state in a
+// local [doState], so a single HTTPRetrier instance can be shared across
+// goroutines.
 func (c *HTTPRetrier) Do(r *http.Request) (*http.Response, error) {
-	c.nextDelay = float64(c.delay)
-	c.remainingAttempts = c.attempts
 	ctx, cancel := context.WithCancel(context.Background())
-	c.cancel = cancel
 
-	go c.retry(r)
+	state := &doState{
+		nextDelay:         float64(c.delay),
+		remainingAttempts: c.attempts,
+		resetTimer:        make(chan time.Duration, 1),
+		cancel:            cancel,
+	}
+
+	go c.retry(r, state)
 
 	// wait for completion
 	<-ctx.Done()
 
-	return c.doResponse, c.doError
+	return state.doResponse, state.doError
 }
 
 // defaultRetryIf is the default retry policy: returns true only when error is not nil (transport failures).
@@ -201,33 +223,35 @@ func RetryIfFnByHTTPMethod(httpMethod string) RetryIfFn {
 	return RetryIfForWriteRequests
 }
 
-func (c *HTTPRetrier) setTimer(d time.Duration) {
-	if !c.timer.Stop() {
+// setTimer stops and resets the per-call timer to the given duration.
+func (s *doState) setTimer(d time.Duration) {
+	if !s.timer.Stop() {
 		// make sure to drain timer channel before reset
 		select {
-		case <-c.timer.C:
+		case <-s.timer.C:
 		default:
 		}
 	}
 
-	c.timer.Reset(d)
+	s.timer.Reset(d)
 }
 
 // retry performs the retry logic.
-func (c *HTTPRetrier) retry(r *http.Request) {
-	defer c.cancel()
+func (c *HTTPRetrier) retry(r *http.Request, s *doState) {
+	defer s.cancel()
 
-	c.timer = time.NewTimer(1 * time.Nanosecond)
+	s.timer = time.NewTimer(1 * time.Nanosecond)
+	defer s.timer.Stop()
 
 	for {
 		select {
 		case <-r.Context().Done():
-			c.doError = fmt.Errorf("request context has been canceled: %w", r.Context().Err())
+			s.doError = fmt.Errorf("request context has been canceled: %w", r.Context().Err())
 			return
-		case d := <-c.resetTimer:
-			c.setTimer(d)
-		case <-c.timer.C:
-			if c.run(r) {
+		case d := <-s.resetTimer:
+			s.setTimer(d)
+		case <-s.timer.C:
+			if c.run(r, s) {
 				return
 			}
 		}
@@ -235,42 +259,52 @@ func (c *HTTPRetrier) retry(r *http.Request) {
 }
 
 // run performs a single attempt to execute the HTTP request.
-func (c *HTTPRetrier) run(r *http.Request) bool {
-	var (
-		bodyRC io.ReadCloser
-		err    error
-	)
+func (c *HTTPRetrier) run(r *http.Request, s *doState) bool {
+	s.doResponse, s.doError = c.httpClient.Do(r) //nolint:bodyclose
 
-	if r.GetBody != nil {
-		bodyRC, err = r.GetBody()
-		if err != nil {
-			c.doError = fmt.Errorf("error while reading request body: %w", err)
-			return true
-		}
-	}
-
-	c.doResponse, c.doError = c.httpClient.Do(r) //nolint:bodyclose
-
-	c.remainingAttempts--
-	if c.remainingAttempts == 0 || !c.retryIfFn(c.doResponse, c.doError) {
+	s.remainingAttempts--
+	if s.remainingAttempts == 0 || !c.retryIfFn(s.doResponse, s.doError) {
 		return true
 	}
 
-	if c.doError == nil {
+	// A retry will happen: prepare the body for the next attempt lazily so it is
+	// only opened (and therefore only needs closing) when actually required.
+	if r.GetBody != nil {
+		bodyRC, err := r.GetBody()
+		if err != nil {
+			s.doError = fmt.Errorf("error while reading request body: %w", err)
+			return true
+		}
+
+		r.Body = bodyRC
+	}
+
+	if s.doError == nil {
 		// we only close the body between attempts if there was no error
-		cerr := c.doResponse.Body.Close()
+		cerr := s.doResponse.Body.Close()
 		if cerr != nil {
-			c.doError = fmt.Errorf("error while closing response body: %w", cerr)
+			s.doError = fmt.Errorf("error while closing response body: %w", cerr)
 			return true
 		}
 	}
 
-	// set the original body for the next request
-	r.Body = bodyRC
-
-	c.resetTimer <- time.Duration(int64(c.nextDelay) + rand.Int63n(int64(c.jitter))) //nolint:gosec
-
-	c.nextDelay *= c.delayFactor
+	s.resetTimer <- c.nextRetryDelay(s)
 
 	return false
+}
+
+// nextRetryDelay computes the delay before the next retry, clamps the backoff
+// to the configured maximum (preventing overflow), adds random jitter, and
+// advances the exponential backoff state for the following attempt.
+func (c *HTTPRetrier) nextRetryDelay(s *doState) time.Duration {
+	delay := s.nextDelay
+	if maxDelay := float64(c.maxDelay); delay > maxDelay {
+		delay = maxDelay
+	}
+
+	d := time.Duration(int64(delay)) + time.Duration(rand.Int63n(int64(c.jitter))) //nolint:gosec
+
+	s.nextDelay *= c.delayFactor
+
+	return d
 }

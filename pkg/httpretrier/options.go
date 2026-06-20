@@ -72,3 +72,17 @@ func WithJitter(jitter time.Duration) Option {
 		return nil
 	}
 }
+
+// WithMaxDelay sets the upper bound for the computed exponential backoff delay
+// (before jitter), preventing unbounded growth and overflow (default 30s).
+func WithMaxDelay(maxDelay time.Duration) Option {
+	return func(r *HTTPRetrier) error {
+		if int64(maxDelay) < 1 {
+			return errors.New("max delay must be greater than zero")
+		}
+
+		r.maxDelay = maxDelay
+
+		return nil
+	}
+}

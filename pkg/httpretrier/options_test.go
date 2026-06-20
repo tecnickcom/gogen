@@ -98,3 +98,20 @@ func TestWithJitter(t *testing.T) {
 	err = WithJitter(v)(c)
 	require.Error(t, err)
 }
+
+func TestWithMaxDelay(t *testing.T) {
+	t.Parallel()
+
+	var v time.Duration
+
+	c := defaultHTTPRetrier()
+
+	v = 17 * time.Second
+	err := WithMaxDelay(v)(c)
+	require.NoError(t, err)
+	require.Equal(t, v, c.maxDelay)
+
+	v = 0
+	err = WithMaxDelay(v)(c)
+	require.Error(t, err)
+}

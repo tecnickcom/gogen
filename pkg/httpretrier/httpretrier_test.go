@@ -7,9 +7,11 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/testutil"
 	"go.uber.org/mock/gomock"
@@ -322,13 +324,13 @@ func TestHTTPRetrier_Do(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name                  string
-		setupMocks            func(mock *MockHTTPClient)
-		ctxTimeout            time.Duration
-		body                  io.Reader
-		wantRemainingAttempts uint
-		wantErr               bool
-		requestBodyError      bool
+		name             string
+		setupMocks       func(mock *MockHTTPClient)
+		ctxTimeout       time.Duration
+		body             io.Reader
+		wantStatus       int
+		wantErr          bool
+		requestBodyError bool
 	}{
 		{
 			name: "success at first attempt",
@@ -340,7 +342,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 				}
 				mock.EXPECT().Do(gomock.Any()).Return(rOK, nil)
 			},
-			wantRemainingAttempts: 3,
+			wantStatus: http.StatusOK,
 		},
 		{
 			name: "success at first attempt with body",
@@ -352,8 +354,8 @@ func TestHTTPRetrier_Do(t *testing.T) {
 				}
 				mock.EXPECT().Do(gomock.Any()).Return(rOK, nil)
 			},
-			body:                  bytes.NewReader([]byte(`some body`)),
-			wantRemainingAttempts: 3,
+			body:       bytes.NewReader([]byte(`some body`)),
+			wantStatus: http.StatusOK,
 		},
 		{
 			name: "success at third attempt after multiple retry conditions",
@@ -373,7 +375,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil)
 				mock.EXPECT().Do(gomock.Any()).Return(rOK, nil)
 			},
-			wantRemainingAttempts: 1,
+			wantStatus: http.StatusOK,
 		},
 		{
 			name: "fail all attempts",
@@ -387,7 +389,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 				mock.EXPECT().Do(gomock.Any()).Return(nil, errors.New("network error"))
 				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil).Times(3)
 			},
-			wantRemainingAttempts: 0,
+			wantStatus: http.StatusInternalServerError,
 		},
 		{
 			name: "request context timeout",
@@ -403,16 +405,21 @@ func TestHTTPRetrier_Do(t *testing.T) {
 					return rErr, nil
 				})
 			},
-			ctxTimeout:            100 * time.Millisecond,
-			wantRemainingAttempts: 3,
-			wantErr:               true,
+			ctxTimeout: 100 * time.Millisecond,
+			wantErr:    true,
 		},
 		{
-			name:                  "request body error",
-			requestBodyError:      true,
-			ctxTimeout:            100 * time.Millisecond,
-			wantRemainingAttempts: DefaultAttempts,
-			wantErr:               true,
+			name:             "request body error",
+			requestBodyError: true,
+			setupMocks: func(mock *MockHTTPClient) {
+				rErr := &http.Response{
+					Status:     http.StatusText(http.StatusInternalServerError),
+					StatusCode: http.StatusInternalServerError,
+					Body:       io.NopCloser(bytes.NewReader([]byte{})),
+				}
+				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil)
+			},
+			wantErr: true,
 		},
 		{
 			name: "close error",
@@ -424,8 +431,7 @@ func TestHTTPRetrier_Do(t *testing.T) {
 				}
 				mock.EXPECT().Do(gomock.Any()).Return(rErr, nil)
 			},
-			wantRemainingAttempts: 3,
-			wantErr:               true,
+			wantErr: true,
 		},
 	}
 
@@ -477,7 +483,11 @@ func TestHTTPRetrier_Do(t *testing.T) {
 			}
 
 			require.Equal(t, tt.wantErr, err != nil, "Do() error = %v, wantErr %v", err, tt.wantErr)
-			require.Equal(t, tt.wantRemainingAttempts, retrier.remainingAttempts, "Do() remainingAttempts = %v, wantRemainingAttempts %v", err, tt.wantErr)
+
+			if tt.wantStatus != 0 {
+				require.NotNil(t, resp, "Do() response should not be nil")
+				require.Equal(t, tt.wantStatus, resp.StatusCode, "Do() status = %v, wantStatus %v", resp.StatusCode, tt.wantStatus)
+			}
 		})
 	}
 }
@@ -485,12 +495,212 @@ func TestHTTPRetrier_Do(t *testing.T) {
 func TestHTTPRetrier_setTimer(t *testing.T) {
 	t.Parallel()
 
-	c := &HTTPRetrier{
+	s := &doState{
 		timer: time.NewTimer(1 * time.Millisecond),
 	}
 
 	time.Sleep(2 * time.Millisecond)
-	c.setTimer(2 * time.Millisecond)
+	s.setTimer(2 * time.Millisecond)
 
-	<-c.timer.C
+	<-s.timer.C
+}
+
+// flakyClient is a thread-safe [HTTPClient] used by the concurrency test. It
+// fails the first call of each goroutine with a transient error, then succeeds.
+type flakyClient struct {
+	mu       sync.Mutex
+	failNext map[*http.Request]bool
+}
+
+func newFlakyClient() *flakyClient {
+	return &flakyClient{failNext: make(map[*http.Request]bool)}
+}
+
+func (f *flakyClient) Do(req *http.Request) (*http.Response, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if !f.failNext[req] {
+		f.failNext[req] = true
+
+		return nil, errors.New("transient network error")
+	}
+
+	return &http.Response{
+		Status:     http.StatusText(http.StatusOK),
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader([]byte{})),
+	}, nil
+}
+
+// TestHTTPRetrier_Do_concurrent verifies that a single retrier instance shared
+// across goroutines handles overlapping Do calls without data races.
+func TestHTTPRetrier_Do_concurrent(t *testing.T) {
+	t.Parallel()
+
+	retrier, err := New(
+		newFlakyClient(),
+		WithRetryIfFn(RetryIfForReadRequests),
+		WithAttempts(3),
+		WithDelay(1*time.Millisecond),
+		WithDelayFactor(2),
+		WithJitter(1*time.Millisecond),
+	)
+	require.NoError(t, err)
+
+	const goroutines = 16
+
+	var wg sync.WaitGroup
+
+	wg.Add(goroutines)
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+
+			r, rerr := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", bytes.NewReader([]byte(`body`)))
+			assert.NoError(t, rerr)
+
+			resp, derr := retrier.Do(r)
+			assert.NoError(t, derr)
+
+			if resp != nil {
+				assert.Equal(t, http.StatusOK, resp.StatusCode)
+				assert.NoError(t, resp.Body.Close())
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+// TestHTTPRetrier_Do_bodyReplayOnRetry verifies the next-attempt body is opened
+// lazily from GetBody and reused across retries.
+func TestHTTPRetrier_Do_bodyReplayOnRetry(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	rErr := &http.Response{
+		Status:     http.StatusText(http.StatusInternalServerError),
+		StatusCode: http.StatusInternalServerError,
+		Body:       io.NopCloser(bytes.NewReader([]byte{})),
+	}
+	rOK := &http.Response{
+		Status:     http.StatusText(http.StatusOK),
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader([]byte{})),
+	}
+
+	mockHTTP.EXPECT().Do(gomock.Any()).Return(rErr, nil)
+	mockHTTP.EXPECT().Do(gomock.Any()).Return(rOK, nil)
+
+	var getBodyCalls int
+
+	r, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", bytes.NewReader([]byte(`payload`)))
+	require.NoError(t, err)
+
+	origGetBody := r.GetBody
+	r.GetBody = func() (io.ReadCloser, error) {
+		getBodyCalls++
+
+		return origGetBody()
+	}
+
+	retrier, err := New(
+		mockHTTP,
+		WithRetryIfFn(RetryIfForReadRequests),
+		WithAttempts(3),
+		WithDelay(1*time.Millisecond),
+		WithJitter(1*time.Millisecond),
+	)
+	require.NoError(t, err)
+
+	resp, err := retrier.Do(r)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, 1, getBodyCalls, "GetBody should be opened exactly once, only for the retry")
+}
+
+// TestHTTPRetrier_Do_contextCancelStopsTimer verifies that when the request
+// context is canceled mid-flight, Do returns an error and the per-call timer is
+// stopped (no leak, no panic).
+func TestHTTPRetrier_Do_contextCancelStopsTimer(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	mockHTTP.EXPECT().Do(gomock.Any()).DoAndReturn(func(_ *http.Request) (*http.Response, error) {
+		time.Sleep(200 * time.Millisecond)
+
+		return &http.Response{
+			Status:     http.StatusText(http.StatusInternalServerError),
+			StatusCode: http.StatusInternalServerError,
+			Body:       io.NopCloser(bytes.NewReader([]byte{})),
+		}, nil
+	}).AnyTimes()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	retrier, err := New(
+		mockHTTP,
+		WithRetryIfFn(RetryIfForReadRequests),
+		WithAttempts(5),
+		WithDelay(10*time.Millisecond),
+		WithJitter(1*time.Millisecond),
+	)
+	require.NoError(t, err)
+
+	resp, err := retrier.Do(r)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "request context has been canceled")
+}
+
+// TestHTTPRetrier_nextRetryDelay verifies the exponential backoff progression
+// and that the computed delay is clamped to the configured maximum.
+func TestHTTPRetrier_nextRetryDelay(t *testing.T) {
+	t.Parallel()
+
+	retrier, err := New(
+		http.DefaultClient,
+		WithDelay(100*time.Millisecond),
+		WithDelayFactor(2),
+		WithJitter(1), // 1ns ceiling: rand.Int63n(1) is always 0, so no jitter noise
+		WithMaxDelay(350*time.Millisecond),
+	)
+	require.NoError(t, err)
+
+	s := &doState{nextDelay: float64(retrier.delay)}
+
+	// 100ms -> not clamped
+	d1 := retrier.nextRetryDelay(s)
+	require.Equal(t, 100*time.Millisecond, d1)
+
+	// 200ms -> not clamped
+	d2 := retrier.nextRetryDelay(s)
+	require.Equal(t, 200*time.Millisecond, d2)
+
+	// 400ms computed, clamped to 350ms max
+	d3 := retrier.nextRetryDelay(s)
+	require.Equal(t, 350*time.Millisecond, d3)
+
+	// 800ms computed, still clamped to 350ms max
+	d4 := retrier.nextRetryDelay(s)
+	require.Equal(t, 350*time.Millisecond, d4)
 }
