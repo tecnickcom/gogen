@@ -87,7 +87,12 @@ var regexValidID = regexp.MustCompile(regexPatternValidID)
 type ctxKey struct{}
 
 // NewContext stores the trace ID value in the context if not already present, making it safe to call at multiple layers.
+// An empty ID is not stored, so that a later real ID is not shadowed by an earlier empty one.
 func NewContext(ctx context.Context, id string) context.Context {
+	if id == "" {
+		return ctx
+	}
+
 	if _, ok := ctx.Value(ctxKey{}).(string); ok {
 		return ctx
 	}
@@ -105,8 +110,14 @@ func FromContext(ctx context.Context, defaultValue string) string {
 }
 
 // SetHTTPRequestHeaderFromContext retrieves the trace ID from context and sets it onto the HTTP request header, validating it first; returns the ID that was set.
+// The outbound ID is validated against the pattern ^[0-9A-Za-z\-\_\.]{1,64}$ to prevent header injection; any value that does not match is replaced with defaultValue before being written.
 func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, header, defaultValue string) string {
 	id := FromContext(ctx, defaultValue)
+
+	if !regexValidID.MatchString(id) {
+		id = defaultValue
+	}
+
 	r.Header.Set(header, id)
 
 	return id

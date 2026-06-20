@@ -22,6 +22,23 @@ func TestNewContext(t *testing.T) {
 	require.Equal(t, ctx, ctx1)
 }
 
+func TestNewContextEmptyIDSkipped(t *testing.T) {
+	t.Parallel()
+
+	// an empty id must not be stored, so it does not shadow a later real id
+	base := t.Context()
+
+	ctxEmpty := NewContext(base, "")
+	require.Equal(t, base, ctxEmpty)
+
+	// the default value is still returned because nothing was stored
+	require.Equal(t, "default-720931", FromContext(ctxEmpty, "default-720931"))
+
+	// a subsequent real id is stored as expected
+	ctxReal := NewContext(ctxEmpty, "real-720932")
+	require.Equal(t, "real-720932", FromContext(ctxReal, "default-720933"))
+}
+
 func TestFromContext(t *testing.T) {
 	t.Parallel()
 
@@ -60,6 +77,34 @@ func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 	id2 := SetHTTPRequestHeaderFromContext(ctx, r2, DefaultHeader, DefaultValue)
 	require.NotEqual(t, DefaultValue, id2)
 	require.Equal(t, "test-904117", r2.Header.Get(DefaultHeader))
+}
+
+func TestSetHTTPRequestHeaderFromContextInvalidIDFallback(t *testing.T) {
+	t.Parallel()
+
+	// an invalid id stored in the context must not be written to the header;
+	// it must fall back to the (valid) default value to prevent header injection.
+	const injection = "valid\r\nX-Injected: evil"
+
+	ctx := NewContext(t.Context(), injection)
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	got := SetHTTPRequestHeaderFromContext(ctx, r, DefaultHeader, "fallback-771201")
+	require.Equal(t, "fallback-771201", got)
+	require.Equal(t, "fallback-771201", r.Header.Get(DefaultHeader))
+
+	// when both the context id and the default are invalid, the default is still
+	// used as-is (the regex check only swaps the id for the default).
+	ctx2 := NewContext(t.Context(), injection)
+
+	r2, err := http.NewRequestWithContext(ctx2, http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	got2 := SetHTTPRequestHeaderFromContext(ctx2, r2, DefaultHeader, DefaultValue)
+	require.Equal(t, DefaultValue, got2)
+	require.Equal(t, DefaultValue, r2.Header.Get(DefaultHeader))
 }
 
 func TestFromHTTPRequestHeader(t *testing.T) {
