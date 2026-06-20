@@ -387,6 +387,21 @@ func TestReceive(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name:    "callback never fires",
+			channel: "ch1",
+			message: "msg1",
+			mock: func(ctx context.Context, vkc *mock.Client) {
+				vkc.EXPECT().Receive(
+					ctx,
+					mock.Match("SUBSCRIBE", "ch1", "ch2"),
+					gomock.Any(),
+				).Do(func(_, _ any, _ func(message VKMessage)) {
+					// Return nil error without ever invoking the callback.
+				})
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

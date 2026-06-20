@@ -2,6 +2,7 @@ package valkey
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -117,12 +118,18 @@ func (c *Client) Send(ctx context.Context, channel string, message string) error
 // Receive returns the next raw Pub/Sub message as channel name and payload.
 func (c *Client) Receive(ctx context.Context) (string, string, error) {
 	data := VKMessage{}
+	received := false
 
 	err := c.vkclient.Receive(ctx, c.vkpubsub, func(msg VKMessage) {
 		data = msg
+		received = true
 	})
 	if err != nil {
 		return "", "", fmt.Errorf("error receiving message: %w", err)
+	}
+
+	if !received {
+		return "", "", errors.New("no message received")
 	}
 
 	return data.Channel, data.Message, nil
