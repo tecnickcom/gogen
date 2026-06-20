@@ -88,6 +88,9 @@ const (
 	awsDefaultRegion = "us-east-2"
 )
 
+// awsRegionFromURLRe is the precompiled region-extraction regexp (compiled once at package load).
+var awsRegionFromURLRe = regexp.MustCompile(awsRegionFromURLRegexp)
+
 // Options is a set of all AWS options to apply.
 type Options []config.LoadOptionsFunc
 
@@ -146,8 +149,7 @@ func (c *Options) WithRegionFromURL(url, defaultRegion string) {
 // When extraction fails, it returns the first available fallback region from
 // the precedence chain documented by WithRegionFromURL.
 func awsRegionFromURL(url, defaultRegion string) string {
-	re := regexp.MustCompile(awsRegionFromURLRegexp)
-	match := re.FindStringSubmatch(url)
+	match := awsRegionFromURLRe.FindStringSubmatch(url)
 
 	if len(match) > 1 {
 		return match[1]
