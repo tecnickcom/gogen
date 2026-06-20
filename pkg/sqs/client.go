@@ -15,9 +15,12 @@ import (
 
 // Internal constants used by SQS queue/metadata validation.
 const (
-	fifoSuffix          = ".fifo"
-	regexMessageGroupID = `^[[:graph:]]{1,128}$`
+	fifoSuffix                 = ".fifo"
+	regexPatternMessageGroupID = `^[[:graph:]]{1,128}$`
 )
+
+// regexMessageGroupID is the precompiled FIFO message-group-ID validator (compiled once at package load).
+var regexMessageGroupID = regexp.MustCompile(regexPatternMessageGroupID)
 
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
 type TEncodeFunc func(ctx context.Context, data any) (string, error)
@@ -79,8 +82,7 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 	var awsMsgGroupID *string
 
 	if strings.HasSuffix(queueURL, fifoSuffix) {
-		re := regexp.MustCompile(regexMessageGroupID)
-		if !re.MatchString(msgGroupID) {
+		if !regexMessageGroupID.MatchString(msgGroupID) {
 			return nil, errors.New("a valid msgGroupID is required for FIFO queue")
 		}
 
