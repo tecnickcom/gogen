@@ -46,7 +46,7 @@ func New(addr string, opts ...Option) (*Client, error) {
 
 		proxyURL, err := url.Parse(addr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid service address: %s", addr)
+			return nil, fmt.Errorf("invalid service address %q: %w", addr, err)
 		}
 
 		c.proxy.Rewrite = func(r *httputil.ProxyRequest) {
