@@ -172,7 +172,29 @@ func (d *Data) NumberInfo(num string) (*NumInfo, error) {
 		return nil, fmt.Errorf("no match for prefix %s", num)
 	}
 
-	return data, nil
+	// Return an independent copy so callers cannot mutate the cached trie state.
+	return cloneNumInfo(data), nil
+}
+
+// cloneNumInfo returns a deep copy of a NumInfo, including its GeoInfo entries.
+//
+// This isolates the cached trie state from callers and prevents aliasing
+// between distinct prefixes that may share underlying data.
+func cloneNumInfo(src *NumInfo) *NumInfo {
+	dst := &NumInfo{
+		Type: src.Type,
+	}
+
+	if src.Geo != nil {
+		dst.Geo = make([]*GeoInfo, len(src.Geo))
+
+		for i, g := range src.Geo {
+			gc := *g
+			dst.Geo[i] = &gc
+		}
+	}
+
+	return dst
 }
 
 // NumberType returns the label for a numeric prefix-type code.
@@ -229,14 +251,41 @@ func (d *Data) insertPrefix(prefix string, info *NumInfo) {
 	v, status := d.trie.Get(prefix)
 
 	if (status == numtrie.StatusMatchFull || status == numtrie.StatusMatchPartial) &&
-		(v != nil) && (len(v.Geo) > 0) {
+		(v != nil) && (v != info) && (len(v.Geo) > 0) {
 		// the node already exists > merge the data
 		if len(info.Geo) > 0 {
-			info.Geo = append(v.Geo, info.Geo...)
+			info.Geo = mergeGeo(v.Geo, info.Geo)
 		}
 	}
 
 	d.trie.Add(prefix, info)
+}
+
+// mergeGeo concatenates two GeoInfo slices while skipping duplicate entries.
+//
+// Deduplication is value-based so repeated or aliased prefixes do not produce
+// duplicated GeoInfo, while genuinely distinct areas (e.g. countries sharing a
+// calling code) are preserved.
+func mergeGeo(existing, added []*GeoInfo) []*GeoInfo {
+	merged := make([]*GeoInfo, 0, len(existing)+len(added))
+	seen := make(map[GeoInfo]struct{}, len(existing)+len(added))
+
+	appendUnique := func(geo []*GeoInfo) {
+		for _, g := range geo {
+			if _, ok := seen[*g]; ok {
+				continue
+			}
+
+			seen[*g] = struct{}{}
+
+			merged = append(merged, g)
+		}
+	}
+
+	appendUnique(existing)
+	appendUnique(added)
+
+	return merged
 }
 
 // insertGroups expands country group definitions into trie prefixes.
@@ -245,25 +294,33 @@ func (d *Data) insertPrefix(prefix string, info *NumInfo) {
 // geographic annotations.
 func (d *Data) insertGroups(a2 string, cdata *InCountryData) {
 	for _, g := range cdata.Groups {
-		groupInfo := &NumInfo{
-			Type: g.PrefixType,
-			Geo: []*GeoInfo{
-				{
-					Alpha2: a2,
-					Area:   g.Name,
-					Type:   g.Type,
-				},
-			},
-		}
-
 		if len(g.Prefixes) == 0 {
-			d.insertPrefix(cdata.CC, groupInfo)
+			d.insertPrefix(cdata.CC, newGroupInfo(a2, g))
 			continue
 		}
 
+		// Build an independent NumInfo/GeoInfo per prefix so that distinct
+		// prefixes never alias the same pointer in the trie.
 		for _, p := range g.Prefixes {
-			d.insertPrefix(p, groupInfo)
+			d.insertPrefix(p, newGroupInfo(a2, g))
 		}
+	}
+}
+
+// newGroupInfo builds a fresh NumInfo (with its own GeoInfo) for a group.
+//
+// Each call allocates independent state so distinct prefixes never share the
+// same pointer in the trie.
+func newGroupInfo(a2 string, g InPrefixGroup) *NumInfo {
+	return &NumInfo{
+		Type: g.PrefixType,
+		Geo: []*GeoInfo{
+			{
+				Alpha2: a2,
+				Area:   g.Name,
+				Type:   g.Type,
+			},
+		},
 	}
 }
 

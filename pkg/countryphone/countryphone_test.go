@@ -337,6 +337,119 @@ func TestData_NumberInfo_custom(t *testing.T) {
 	}
 }
 
+func TestData_NumberInfo_returnsIndependentCopy(t *testing.T) {
+	t.Parallel()
+
+	indata := InData{
+		"US": &InCountryData{
+			CC: "1",
+			Groups: []InPrefixGroup{
+				{
+					Name:       "Arizona",
+					Type:       1,
+					PrefixType: 1,
+					// Two sibling prefixes share the same group definition.
+					Prefixes: []string{"1480", "1602"},
+				},
+			},
+		},
+	}
+
+	data := New(indata)
+
+	require.NotNil(t, data)
+
+	// First lookup, then corrupt the returned value.
+	got1, err := data.NumberInfo("1480000")
+	require.NoError(t, err)
+	require.Len(t, got1.Geo, 1)
+
+	got1.Type = 99
+	got1.Geo[0].Alpha2 = "XX"
+	got1.Geo[0].Area = "MUTATED"
+	got1.Geo[0].Type = 99
+	got1.Geo = append(got1.Geo, &GeoInfo{Alpha2: "ZZ"})
+
+	// A subsequent lookup of the SAME prefix must be unaffected.
+	got1again, err := data.NumberInfo("1480000")
+	require.NoError(t, err)
+	require.Equal(t, 1, got1again.Type)
+	require.Len(t, got1again.Geo, 1)
+	require.Equal(t, "US", got1again.Geo[0].Alpha2)
+	require.Equal(t, "Arizona", got1again.Geo[0].Area)
+	require.Equal(t, 1, got1again.Geo[0].Type)
+
+	// A subsequent lookup of a SIBLING prefix must be unaffected.
+	got2, err := data.NumberInfo("1602000")
+	require.NoError(t, err)
+	require.Equal(t, 1, got2.Type)
+	require.Len(t, got2.Geo, 1)
+	require.Equal(t, "US", got2.Geo[0].Alpha2)
+	require.Equal(t, "Arizona", got2.Geo[0].Area)
+	require.Equal(t, 1, got2.Geo[0].Type)
+}
+
+func TestData_NumberInfo_noDuplicateGeoOnOverlappingPrefixes(t *testing.T) {
+	t.Parallel()
+
+	indata := InData{
+		"US": &InCountryData{
+			CC: "1",
+			Groups: []InPrefixGroup{
+				{
+					Name:       "Arizona",
+					Type:       1,
+					PrefixType: 1,
+					// The same prefix is listed twice within the group.
+					Prefixes: []string{"1480", "1480"},
+				},
+			},
+		},
+	}
+
+	data := New(indata)
+
+	require.NotNil(t, data)
+
+	got, err := data.NumberInfo("1480000")
+	require.NoError(t, err)
+	// A duplicated/overlapping prefix must not duplicate GeoInfo entries.
+	require.Len(t, got.Geo, 1)
+	require.Equal(t, "US", got.Geo[0].Alpha2)
+	require.Equal(t, "Arizona", got.Geo[0].Area)
+}
+
+func TestData_NumberInfo_nilGeoCopy(t *testing.T) {
+	t.Parallel()
+
+	indata := InData{
+		"US": &InCountryData{
+			CC: "1",
+			Groups: []InPrefixGroup{
+				{
+					Name:       "NoGeo",
+					Type:       1,
+					PrefixType: 2,
+					Prefixes:   []string{"1555"},
+				},
+			},
+		},
+	}
+
+	data := New(indata)
+
+	require.NotNil(t, data)
+
+	// Force a node whose stored value has a nil Geo slice to exercise the
+	// nil-guard inside the clone path.
+	data.trie.Add("1555", &NumInfo{Type: 3, Geo: nil})
+
+	got, err := data.NumberInfo("1555000")
+	require.NoError(t, err)
+	require.Equal(t, 3, got.Type)
+	require.Nil(t, got.Geo)
+}
+
 func TestData_NumberType(t *testing.T) {
 	t.Parallel()
 
