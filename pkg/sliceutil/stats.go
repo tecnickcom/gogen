@@ -14,6 +14,10 @@ type DescStats[V typeutil.Number] struct {
 	Count int `json:"count"`
 
 	// Entropy computes the Shannon entropy of a distribution.
+	// It is meaningful only for non-negative data with a positive sum, where the
+	// values can be interpreted as an unnormalized probability distribution.
+	// For data whose sum is not strictly positive (e.g. signed data, all zeros,
+	// or a zero/negative total) the entropy is reported as 0 to avoid NaN/Inf.
 	Entropy float64 `json:"entropy"`
 
 	// ExKurtosis is the population excess kurtosis of the data set.
@@ -155,8 +159,14 @@ func statsMedian[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, n int) {
 }
 
 // statsVariability computes entropy, mean deviation, variance, and standard deviation (requires statsCenter to be called first).
+//
+// Entropy treats the data as an unnormalized probability distribution and is
+// only well-defined for non-negative data with a strictly positive sum. When
+// the sum is not strictly positive the entropy is left at 0 to avoid NaN/Inf;
+// individual non-positive values are skipped for the same reason.
 func statsVariability[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf float64) {
 	sum := float64(ds.Sum)
+	entropyOK := sum > 0
 
 	for _, v := range ord {
 		vf := float64(v)
@@ -164,9 +174,9 @@ func statsVariability[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf flo
 		ds.MeanDev += d
 		ds.Variance += d * d
 
-		if v != 0 {
-			vf /= sum
-			ds.Entropy -= vf * math.Log(vf)
+		if entropyOK && vf > 0 {
+			p := vf / sum
+			ds.Entropy -= p * math.Log(p)
 		}
 	}
 
@@ -176,8 +186,10 @@ func statsVariability[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf flo
 }
 
 // statsShape computes skewness and excess kurtosis (requires statsVariability to be called first).
+// Skewness and excess kurtosis are undefined for constant data (zero standard
+// deviation); in that case they are left at 0 to avoid NaN/Inf.
 func statsShape[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf float64) {
-	if nf < 3 {
+	if nf < 3 || ds.StdDev == 0 {
 		return
 	}
 

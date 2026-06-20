@@ -1,6 +1,7 @@
 package sliceutil
 
 import (
+	"math"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -88,6 +89,103 @@ func TestStats(t *testing.T) {
 			}
 
 			require.True(t, cmp.Equal(tt.want, got, cmpopts.EquateApprox(0, 0.001)), got)
+		})
+	}
+}
+
+// requireFiniteStats asserts that every float64 field of a DescStats is finite.
+func requireFiniteStats[V interface {
+	~int | ~int64 | ~float64
+}](t *testing.T, ds *DescStats[V]) {
+	t.Helper()
+
+	for name, f := range map[string]float64{
+		"Entropy":    ds.Entropy,
+		"ExKurtosis": ds.ExKurtosis,
+		"Mean":       ds.Mean,
+		"MeanDev":    ds.MeanDev,
+		"Median":     ds.Median,
+		"Skewness":   ds.Skewness,
+		"StdDev":     ds.StdDev,
+		"Variance":   ds.Variance,
+	} {
+		require.Falsef(t, math.IsNaN(f), "field %s is NaN", name)
+		require.Falsef(t, math.IsInf(f, 0), "field %s is Inf", name)
+	}
+}
+
+func TestStatsIntZeroSumAndNegative(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		data []int
+	}{
+		{
+			name: "all zeros",
+			data: []int{0, 0, 0, 0},
+		},
+		{
+			name: "zero sum mixed sign",
+			data: []int{-5, 5, -3, 3},
+		},
+		{
+			name: "negative sum",
+			data: []int{-1, -2, -3, -4, -5},
+		},
+		{
+			name: "all negative",
+			data: []int{-10, -20, -30},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := Stats(tt.data)
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			// entropy is reported as 0 (not NaN/Inf) when the sum is not strictly positive
+			require.Zero(t, got.Entropy)
+			requireFiniteStats(t, got)
+		})
+	}
+}
+
+func TestStatsFloatDatasets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		data []float64
+	}{
+		{
+			name: "positive floats with positive sum",
+			data: []float64{1.5, 2.5, 3.5, 4.5},
+		},
+		{
+			name: "floats with zero sum",
+			data: []float64{-2.5, 2.5, -1.0, 1.0},
+		},
+		{
+			name: "floats with negative sum",
+			data: []float64{-1.5, -2.5, 0.5},
+		},
+		{
+			name: "mixed sign positive sum",
+			data: []float64{-1.0, 10.0, -2.0, 5.0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := Stats(tt.data)
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			requireFiniteStats(t, got)
 		})
 	}
 }
