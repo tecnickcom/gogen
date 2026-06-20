@@ -1,6 +1,7 @@
 package encrypt
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 	"testing/iotest"
@@ -8,18 +9,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest
-func TestEncrypt_RandError(t *testing.T) {
-	rr := randReader
+func TestEncryptWith_RandError(t *testing.T) {
+	t.Parallel()
 
-	defer func() { randReader = rr }()
+	failReader := iotest.ErrReader(errors.New("test-encrypt-randombytes-error"))
 
-	randReader = iotest.ErrReader(errors.New("test-encrypt-randombytes-error"))
-
-	enc, err := Encrypt([]byte("abcdefghijklmnop"), []byte("test"))
+	enc, err := EncryptWith([]byte("abcdefghijklmnop"), []byte("test"), WithRandReader(failReader))
 
 	require.Error(t, err)
 	require.Nil(t, enc)
+}
+
+func TestEncryptWith_CustomReader(t *testing.T) {
+	t.Parallel()
+
+	key := []byte("abcdefghijklmnop")
+	data := []byte("test")
+
+	enc, err := EncryptWith(key, data, WithRandReader(bytes.NewReader(make([]byte, 64))))
+
+	require.NoError(t, err)
+	require.NotNil(t, enc)
+
+	dec, err := Decrypt(key, enc)
+
+	require.NoError(t, err)
+	require.Equal(t, data, dec)
 }
 
 func TestEncryptDecrypt(t *testing.T) {

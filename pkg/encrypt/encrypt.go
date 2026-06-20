@@ -41,8 +41,31 @@ import (
 	"github.com/tecnickcom/gogen/pkg/random"
 )
 
-// randReader is the default random number generator.
-var randReader io.Reader //nolint:gochecknoglobals
+// config holds the resolved options for an encryption call.
+//
+// The zero value uses a nil random reader, which random.New interprets as
+// crypto/rand.Reader. This keeps Encrypt non-failing in production while
+// allowing tests to inject a deterministic or failing reader via Option,
+// without any runtime-mutated package global.
+type config struct {
+	randReader io.Reader
+}
+
+// Option customizes the behavior of EncryptWith.
+//
+// Options are additive: existing Encrypt/Decrypt signatures are unchanged and
+// always use the secure default reader (crypto/rand.Reader).
+type Option func(*config)
+
+// WithRandReader overrides the random source used to generate the AES-GCM nonce.
+//
+// It is primarily useful for tests that need a deterministic or failing reader.
+// Production code should rely on the default (crypto/rand.Reader) via Encrypt.
+func WithRandReader(r io.Reader) Option {
+	return func(c *config) {
+		c.randReader = r
+	}
+}
 
 // newAESGCM creates an AES-GCM AEAD from key.
 //
@@ -60,13 +83,27 @@ func newAESGCM(key []byte) (cipher.AEAD, error) {
 //
 // key must be 16, 24, or 32 bytes for AES-128/192/256.
 // The output is self-contained: nonce || ciphertext.
+// The nonce is generated from crypto/rand.Reader.
 func Encrypt(key, msg []byte) ([]byte, error) {
+	return EncryptWith(key, msg)
+}
+
+// EncryptWith behaves like Encrypt but accepts options that customize the
+// random source used for nonce generation (see WithRandReader).
+//
+// Without options it is identical to Encrypt and uses crypto/rand.Reader.
+func EncryptWith(key, msg []byte, opts ...Option) ([]byte, error) {
+	cfg := &config{}
+	for _, applyOpt := range opts {
+		applyOpt(cfg)
+	}
+
 	aesgcm, err := newAESGCM(key)
 	if err != nil {
 		return nil, err
 	}
 
-	nonce, err := random.New(randReader).RandomBytes(aesgcm.NonceSize())
+	nonce, err := random.New(cfg.randReader).RandomBytes(aesgcm.NonceSize())
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -151,7 +188,7 @@ func ByteDecryptAny(key, msg []byte, data any) error {
 func EncryptAny(key []byte, data any) (string, error) {
 	b, err := ByteEncryptAny(key, data)
 	if err != nil {
-		return "", fmt.Errorf("decrypt: %w", err)
+		return "", fmt.Errorf("encrypt: %w", err)
 	}
 
 	return string(b), nil
@@ -170,7 +207,7 @@ func ByteEncryptSerializeAny(key []byte, data any) ([]byte, error) {
 
 	err := json.NewEncoder(buf).Encode(data)
 	if err != nil {
-		return nil, fmt.Errorf("encode gob: %w", err)
+		return nil, fmt.Errorf("encode json: %w", err)
 	}
 
 	return byteEncryptEncoded(key, buf.Bytes())
@@ -187,7 +224,7 @@ func ByteDecryptSerializeAny(key, msg []byte, data any) error {
 
 	err = json.NewDecoder(bytes.NewBuffer(dec)).Decode(data)
 	if err != nil {
-		return fmt.Errorf("decode gob: %w", err)
+		return fmt.Errorf("decode json: %w", err)
 	}
 
 	return nil
@@ -197,7 +234,7 @@ func ByteDecryptSerializeAny(key, msg []byte, data any) error {
 func EncryptSerializeAny(key []byte, data any) (string, error) {
 	b, err := ByteEncryptSerializeAny(key, data)
 	if err != nil {
-		return "", fmt.Errorf("decrypt: %w", err)
+		return "", fmt.Errorf("encrypt: %w", err)
 	}
 
 	return string(b), nil
