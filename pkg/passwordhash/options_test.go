@@ -72,6 +72,15 @@ func TestWithMinPasswordLength(t *testing.T) {
 	require.Equal(t, v, c.minPLen)
 }
 
+func TestWithMinPasswordLength_clamp(t *testing.T) {
+	t.Parallel()
+
+	c := defaultParams()
+
+	WithMinPasswordLength(0)(c)
+	require.Equal(t, uint32(minPasswordLength), c.minPLen)
+}
+
 func TestWithMaxPasswordLength(t *testing.T) {
 	t.Parallel()
 

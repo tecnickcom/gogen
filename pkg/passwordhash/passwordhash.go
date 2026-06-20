@@ -158,10 +158,17 @@ const (
 	// DefaultMinPasswordLength is the default minimum length of the input password (Message string P).
 	// It must have a length not greater than 2^(32)-1 bytes.
 	DefaultMinPasswordLength = 8
+	minPasswordLength        = 1
 
 	// DefaultMaxPasswordLength is the default maximum length of the input password (Message string P).
 	// It must have a length not greater than 2^(32)-1 bytes.
 	DefaultMaxPasswordLength = 4096
+
+	// Valid AES pepper key lengths (in bytes) for the Encrypt* methods,
+	// corresponding to AES-128, AES-192, and AES-256.
+	aesKeyLen128 = 16
+	aesKeyLen192 = 24
+	aesKeyLen256 = 32
 )
 
 // Params contains the Argon2id parameters and limits used for password hashing.
@@ -311,6 +318,10 @@ func (ph *Params) PasswordVerify(password, hash string) (bool, error) {
 // EncryptPasswordHash hashes password with Argon2id and then encrypts the
 // resulting hash object with AES-GCM using key as the pepper.
 //
+// key is the AES pepper and must be a valid AES key length of 16, 24, or 32
+// bytes (for AES-128, AES-192, or AES-256 respectively); any other length
+// returns an error before hashing.
+//
 // Because the pepper is stored separately from the database (e.g. in a secrets
 // manager or HSM), an attacker who obtains the database alone cannot perform
 // an offline dictionary attack — the ciphertext is opaque without the key.
@@ -318,6 +329,11 @@ func (ph *Params) PasswordVerify(password, hash string) (bool, error) {
 // The returned string is a base64-encoded AES-GCM ciphertext. Use
 // [Params.EncryptPasswordVerify] with the same key to verify.
 func (ph *Params) EncryptPasswordHash(key []byte, password string) (string, error) {
+	err := validatePepperKey(key)
+	if err != nil {
+		return "", err
+	}
+
 	data, err := ph.passwordHashData(password)
 	if err != nil {
 		return "", err
@@ -329,18 +345,40 @@ func (ph *Params) EncryptPasswordHash(key []byte, password string) (string, erro
 // EncryptPasswordVerify decrypts the hash produced by [Params.EncryptPasswordHash]
 // using key, then verifies password against the decrypted Argon2id hash.
 //
+// key is the AES pepper and must be a valid AES key length of 16, 24, or 32
+// bytes (for AES-128, AES-192, or AES-256 respectively); any other length
+// returns an error before decryption.
+//
 // Returns (true, nil) on a successful match, (false, nil) on a non-match, or
 // (false, err) if decryption fails (wrong key, tampered ciphertext) or the
 // inner hash is malformed.
 func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool, error) {
+	err := validatePepperKey(key)
+	if err != nil {
+		return false, err
+	}
+
 	data := &Hashed{}
 
-	err := encrypt.DecryptSerializeAny(key, hash, data)
+	err = encrypt.DecryptSerializeAny(key, hash, data)
 	if err != nil {
 		return false, fmt.Errorf("unable to decode the hash string: %w", err)
 	}
 
 	return ph.passwordVerifyData(password, data)
+}
+
+// validatePepperKey checks that key is a valid AES key length (16, 24, or 32
+// bytes) before it is passed to the AES-GCM encryption layer. Validating up
+// front yields a clear, actionable error instead of a low-level cipher failure
+// surfacing deep inside the encrypt package after the password has been hashed.
+func validatePepperKey(key []byte) error {
+	switch len(key) {
+	case aesKeyLen128, aesKeyLen192, aesKeyLen256:
+		return nil
+	default:
+		return fmt.Errorf("pepper key must be 16, 24, or 32 bytes, got %d", len(key))
+	}
 }
 
 // passwordHashData generates a hashed password using the provided password string.

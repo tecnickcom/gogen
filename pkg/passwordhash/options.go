@@ -54,9 +54,11 @@ func WithThreads(v uint8) Option {
 // WithMinPasswordLength sets the minimum accepted password length in bytes.
 // Passwords shorter than this are rejected by [Params.PasswordHash] before
 // any CPU-intensive computation, enforcing password policy at zero cost.
+// The value is clamped to a minimum of 1 so the length guard can never be
+// silently disabled by passing 0.
 func WithMinPasswordLength(v uint32) Option {
 	return func(ph *Params) {
-		ph.minPLen = v
+		ph.minPLen = max(minPasswordLength, v)
 	}
 }
 

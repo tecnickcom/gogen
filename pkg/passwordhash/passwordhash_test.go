@@ -185,6 +185,55 @@ func Test_EncryptPasswordHash(t *testing.T) {
 	require.Empty(t, hash)
 }
 
+func Test_EncryptPasswordHash_invalidKeyLength(t *testing.T) {
+	t.Parallel()
+
+	p := New()
+
+	secret := "test-secret"
+
+	for _, badKey := range [][]byte{
+		nil,
+		[]byte(""),
+		[]byte("short"),
+		[]byte("012345678901234"),      // 15 bytes
+		[]byte("01234567890123456789"), // 20 bytes
+	} {
+		hash, err := p.EncryptPasswordHash(badKey, secret)
+
+		require.Error(t, err)
+		require.Empty(t, hash)
+		require.Contains(t, err.Error(), "pepper key must be 16, 24, or 32 bytes")
+	}
+}
+
+func Test_EncryptPasswordVerify_invalidKeyLength(t *testing.T) {
+	t.Parallel()
+
+	p := New()
+
+	secret := "test-secret"
+
+	validHash, err := p.EncryptPasswordHash([]byte("0123456789012345"), secret)
+
+	require.NoError(t, err)
+	require.NotEmpty(t, validHash)
+
+	for _, badKey := range [][]byte{
+		nil,
+		[]byte(""),
+		[]byte("short"),
+		[]byte("012345678901234"),      // 15 bytes
+		[]byte("01234567890123456789"), // 20 bytes
+	} {
+		ok, err := p.EncryptPasswordVerify(badKey, secret, validHash)
+
+		require.Error(t, err)
+		require.False(t, ok)
+		require.Contains(t, err.Error(), "pepper key must be 16, 24, or 32 bytes")
+	}
+}
+
 func Test_EncryptPasswordVerify(t *testing.T) {
 	t.Parallel()
 
