@@ -76,11 +76,23 @@ func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*C
 
 // status models Slack status API response payload used by HealthCheck.
 type status struct {
-	Status   string         `json:"status"`
+	Status string `json:"status"`
+
+	// Services models a specific (and possibly outdated) shape of the Slack
+	// status API response and may not match the current live API. The exported
+	// type is preserved for backward compatibility; callers needing richer
+	// incident data should verify the field against the current Slack status
+	// API (https://status.slack.com) and decode the response independently.
 	Services map[int]string `json:"services,omitempty"`
 }
 
 // HealthCheck verifies Slack status endpoint availability and checks for active API/app incidents.
+//
+// It models a specific (and possibly outdated) shape of the Slack status API
+// response via the status type. Because the live Slack status API may have
+// changed, callers needing richer or more reliable incident data should verify
+// the response shape against the current Slack status API and implement their
+// own check if necessary.
 func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.pingTimeout)
 	defer cancel()
