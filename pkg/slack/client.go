@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -95,6 +96,8 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	}
 
 	defer func() {
+		// Drain any remaining body so the connection can be reused by keep-alive.
+		_, _ = io.Copy(io.Discard, resp.Body)
 		err = errors.Join(err, resp.Body.Close())
 	}()
 
