@@ -41,6 +41,89 @@ func Test_New_Set_ID_Name(t *testing.T) {
 	require.Equal(t, "bravo", name)
 }
 
+func Test_Set_overwriteSameID_dropsStaleName(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.NotNil(t, ec)
+
+	ec.Set(1, "a")
+	ec.Set(1, "b")
+
+	// The reverse map must no longer resolve the stale name.
+	id, err := ec.ID("a")
+	require.Error(t, err)
+	require.Empty(t, id)
+
+	id, err = ec.ID("b")
+	require.NoError(t, err)
+	require.Equal(t, 1, id)
+
+	name, err := ec.Name(1)
+	require.NoError(t, err)
+	require.Equal(t, "b", name)
+
+	require.Equal(t, []string{"b"}, ec.SortNames())
+	require.Equal(t, []int{1}, ec.SortIDs())
+}
+
+func Test_Set_overwriteSameName_dropsStaleID(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.NotNil(t, ec)
+
+	ec.Set(1, "a")
+	ec.Set(2, "a")
+
+	// The forward map must no longer resolve the stale id.
+	name, err := ec.Name(1)
+	require.Error(t, err)
+	require.Empty(t, name)
+
+	name, err = ec.Name(2)
+	require.NoError(t, err)
+	require.Equal(t, "a", name)
+
+	id, err := ec.ID("a")
+	require.NoError(t, err)
+	require.Equal(t, 2, id)
+
+	require.Equal(t, []string{"a"}, ec.SortNames())
+	require.Equal(t, []int{2}, ec.SortIDs())
+}
+
+func Test_SetAll_overwrite_keepsMapsConsistent(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.NotNil(t, ec)
+
+	ec.Set(1, "a")
+	ec.SetAllNameByID(NameByID{1: "b"})
+	ec.SetAllIDByName(IDByName{"b": 2})
+
+	// After re-keying, no stale forward or reverse entry must remain.
+	require.Equal(t, []string{"b"}, ec.SortNames())
+	require.Equal(t, []int{2}, ec.SortIDs())
+
+	id, err := ec.ID("a")
+	require.Error(t, err)
+	require.Empty(t, id)
+
+	id, err = ec.ID("b")
+	require.NoError(t, err)
+	require.Equal(t, 2, id)
+
+	name, err := ec.Name(1)
+	require.Error(t, err)
+	require.Empty(t, name)
+
+	name, err = ec.Name(2)
+	require.NoError(t, err)
+	require.Equal(t, "b", name)
+}
+
 func Test_SetAllIDByName(t *testing.T) {
 	t.Parallel()
 

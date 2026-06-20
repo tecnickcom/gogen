@@ -63,13 +63,14 @@ func New() *EnumCache {
 
 // Set stores a single enum mapping pair.
 //
-// Existing values for id or name are overwritten.
+// Existing values for id or name are overwritten. When the id or name was
+// previously associated with a different counterpart, the stale reverse mapping
+// is removed so both directions stay consistent.
 func (ec *EnumCache) Set(id int, name string) {
 	ec.Lock()
 	defer ec.Unlock()
 
-	ec.name[id] = name
-	ec.id[name] = id
+	ec.set(id, name)
 }
 
 // SetAllIDByName bulk-loads enum values from name-to-id input.
@@ -80,8 +81,7 @@ func (ec *EnumCache) SetAllIDByName(enum IDByName) {
 	defer ec.Unlock()
 
 	for name, id := range enum {
-		ec.name[id] = name
-		ec.id[name] = id
+		ec.set(id, name)
 	}
 }
 
@@ -93,8 +93,7 @@ func (ec *EnumCache) SetAllNameByID(enum NameByID) {
 	defer ec.Unlock()
 
 	for id, name := range enum {
-		ec.name[id] = name
-		ec.id[name] = id
+		ec.set(id, name)
 	}
 }
 
@@ -180,4 +179,22 @@ func (ec *EnumCache) EncodeBinaryMap(s []string) (int, error) {
 	defer ec.RUnlock()
 
 	return enumbitmap.StringsToBitMap(ec.id, s) //nolint:wrapcheck
+}
+
+// set stores a single id<->name pair, keeping both internal maps consistent.
+//
+// When the id or the name already maps to a different counterpart, the stale
+// reverse-map entry is removed so the two maps never desync. The caller must
+// hold the write lock.
+func (ec *EnumCache) set(id int, name string) {
+	if oldName, ok := ec.name[id]; ok && oldName != name {
+		delete(ec.id, oldName)
+	}
+
+	if oldID, ok := ec.id[name]; ok && oldID != id {
+		delete(ec.name, oldID)
+	}
+
+	ec.name[id] = name
+	ec.id[name] = id
 }
