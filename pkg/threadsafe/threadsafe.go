@@ -35,11 +35,15 @@ goroutines.
 # Usage
 
 See the examples in:
-  - github.com/tecnickcom/gogen/pkg/tsmap
-  - github.com/tecnickcom/gogen/pkg/tsslice
+  - github.com/tecnickcom/gogen/pkg/threadsafe/tsmap
+  - github.com/tecnickcom/gogen/pkg/threadsafe/tsslice
 
 Those packages demonstrate how these interfaces are used to build practical,
 thread-safe containers.
+
+These interfaces only describe the locking contract; they do not enforce it.
+All access to the protected data must funnel through the helper functions using
+the same lock instance, otherwise concurrent reads and writes are not safe.
 */
 package threadsafe
 
