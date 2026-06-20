@@ -1,6 +1,7 @@
 package decint
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,31 @@ func TestFloatToInt(t *testing.T) {
 		{
 			name: "min",
 			v:    -MaxFloat,
+			want: -MaxInt,
+		},
+		{
+			name: "nan clamps to zero",
+			v:    math.NaN(),
+			want: 0,
+		},
+		{
+			name: "positive infinity clamps to max",
+			v:    math.Inf(1),
+			want: MaxInt,
+		},
+		{
+			name: "negative infinity clamps to min",
+			v:    math.Inf(-1),
+			want: -MaxInt,
+		},
+		{
+			name: "over range clamps to max",
+			v:    MaxFloat * 2,
+			want: MaxInt,
+		},
+		{
+			name: "under range clamps to min",
+			v:    -MaxFloat * 2,
 			want: -MaxInt,
 		},
 	}
@@ -103,6 +129,36 @@ func TestStringToInt(t *testing.T) {
 		{
 			name:    "error",
 			v:       "ERROR",
+			want:    0,
+			wantErr: true,
+		},
+		{
+			name:    "nan returns error",
+			v:       "NaN",
+			want:    0,
+			wantErr: true,
+		},
+		{
+			name:    "positive infinity returns error",
+			v:       "Inf",
+			want:    0,
+			wantErr: true,
+		},
+		{
+			name:    "negative infinity returns error",
+			v:       "-Inf",
+			want:    0,
+			wantErr: true,
+		},
+		{
+			name:    "over range returns error",
+			v:       "9007199255",
+			want:    0,
+			wantErr: true,
+		},
+		{
+			name:    "under range returns error",
+			v:       "-9007199255",
 			want:    0,
 			wantErr: true,
 		},
