@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
@@ -628,6 +629,27 @@ func TestClient_SendIncident(t *testing.T) {
 	}
 }
 
+// getEmptyBodyTestServer returns a stub server that asserts the incoming POST
+// request body is empty (not the literal "null" produced by encoding a nil
+// payload) before responding with success.
+func getEmptyBodyTestServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	hres := httputil.NewHTTPResp(slog.Default())
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		body, rerr := io.ReadAll(r.Body)
+		// assert (not require) because this runs in the server goroutine.
+		assert.NoError(t, rerr, "reading close request body")
+		assert.Empty(t, body, "close request body must be empty, got %q", string(body))
+
+		hres.SendText(r.Context(), w, http.StatusOK, "Success")
+	})
+
+	return httptest.NewServer(mux)
+}
+
 func TestClient_SendIncidentClose(t *testing.T) {
 	t.Parallel()
 
@@ -663,7 +685,7 @@ func TestClient_SendIncidentClose(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			ts := getTestServer(t)
+			ts := getEmptyBodyTestServer(t)
 			defer ts.Close()
 
 			c, err := New(
@@ -677,4 +699,28 @@ func TestClient_SendIncidentClose(t *testing.T) {
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
+}
+
+func TestClient_SendIncidentClose_newRequestError(t *testing.T) {
+	t.Parallel()
+
+	ts := getEmptyBodyTestServer(t)
+	defer ts.Close()
+
+	c, err := New(
+		ts.URL,
+		"0123456789abcdef",
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	// Force http.NewRequestWithContext to fail by injecting a URL format that
+	// expands to an unparseable URL (the leading "%^*&-ERROR" is invalid).
+	c.incidentCloseURLFormat = "%%^*&-ERROR/%d/%s"
+
+	err = c.SendIncidentClose(t.Context(), &IncidentRequestClose{
+		ConnectionID: 3,
+		IssueKey:     "issue_key",
+	})
+	require.Error(t, err)
 }

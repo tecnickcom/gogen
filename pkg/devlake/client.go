@@ -88,6 +88,13 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 		apiKey:                 apiKey,
 		pingURL:                fmt.Sprintf("%s/api/rest/version", baseURL),
 		deploymentRegURLFormat: fmt.Sprintf("%s/api/rest/plugins/webhook/connections/%%d/deployments", baseURL),
+		// NOTE: the DevLake webhook plugin registers each endpoint under both a legacy
+		// ".../webhook/:connectionId/..." form and a newer ".../webhook/connections/:connectionId/..."
+		// form (the latter added with webhook-name support). All three URLs below are valid
+		// registered routes. The deployment URL uses the "connections/" form (requires a
+		// recent DevLake), while the incident URLs use the legacy form (also valid on older
+		// DevLake); the close path correctly uses singular "issue". The styles differ but
+		// both work — see https://devlake.apache.org/docs/Plugins/webhook/
 		incidentRegURLFormat:   fmt.Sprintf("%s/api/rest/plugins/webhook/%%d/issues", baseURL),
 		incidentCloseURLFormat: fmt.Sprintf("%s/api/rest/plugins/webhook/%%d/issue/%%s/close", baseURL),
 	}
@@ -162,42 +169,18 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 //
 // The function performs struct validation, creates a JSON POST request, applies
 // write-safe retry behavior, and enforces a successful HTTP 200 response.
-func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) (err error) {
-	err = c.valid.ValidateStructCtx(ctx, request)
+func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, request *T) error {
+	err := c.valid.ValidateStructCtx(ctx, request)
 	if err != nil {
 		return fmt.Errorf("invalid request: %w", err)
 	}
 
-	var r *http.Request
-
-	r, err = httpPostRequest(ctx, urlStr, c.apiKey, request)
+	r, err := httpPostRequest(ctx, urlStr, c.apiKey, request)
 	if err != nil {
 		return err
 	}
 
-	var hr *httpretrier.HTTPRetrier
-
-	hr, err = c.newWriteHTTPRetrier()
-	if err != nil {
-		return fmt.Errorf("create retrier: %w", err)
-	}
-
-	var resp *http.Response
-
-	resp, err = hr.Do(r)
-	if err != nil {
-		return fmt.Errorf("execute request: %w", err)
-	}
-
-	defer func() {
-		err = errors.Join(err, resp.Body.Close())
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("devlake client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)
-	}
-
-	return nil
+	return c.doRequest(r)
 }
 
 // SendDeployment submits a deployment event to DevLake.
@@ -230,7 +213,45 @@ func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequest
 
 	urlStr := fmt.Sprintf(c.incidentCloseURLFormat, request.ConnectionID, request.IssueKey)
 
-	return sendRequest[IncidentRequest](ctx, c, urlStr, nil)
+	// The close endpoint takes no payload, so post an empty body. Reusing the
+	// generic sendRequest with a typed-nil payload would JSON-encode the literal
+	// "null" and bypass validation (go-playground/validator returns an
+	// InvalidValidationError for a nil pointer, not ValidationErrors).
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	httputil.AddJSONHeaders(r)
+	httputil.AddBearerToken(c.apiKey, r)
+
+	return c.doRequest(r)
+}
+
+// doRequest applies write-safe retry behavior and enforces an HTTP 200 response.
+//
+// It is shared by payload-carrying webhook calls and the bodyless close call so
+// the retry/response handling stays in one place.
+func (c *Client) doRequest(r *http.Request) (err error) {
+	hr, err := c.newWriteHTTPRetrier()
+	if err != nil {
+		return fmt.Errorf("create retrier: %w", err)
+	}
+
+	resp, err := hr.Do(r)
+	if err != nil {
+		return fmt.Errorf("execute request: %w", err)
+	}
+
+	defer func() {
+		err = errors.Join(err, resp.Body.Close())
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("devlake client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)
+	}
+
+	return nil
 }
 
 // newWriteHTTPRetrier creates the retrier used by write webhook requests.
