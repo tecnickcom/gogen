@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -52,6 +53,8 @@ func CheckHTTPStatus(
 	}
 
 	defer func() {
+		// Drain any remaining body so the connection can be reused by keep-alive.
+		_, _ = io.Copy(io.Discard, resp.Body)
 		err = errors.Join(err, resp.Body.Close())
 	}()
 
