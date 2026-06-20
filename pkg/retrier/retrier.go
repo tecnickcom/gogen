@@ -99,18 +99,16 @@ type TaskFn func(ctx context.Context) error
 type RetryIfFn func(err error) bool
 
 // Retrier applies configurable retry logic to generic task functions.
+//
+// A configured Retrier is immutable: it holds no per-run state, so a single
+// instance is safe to share and to call concurrently from multiple goroutines.
 type Retrier struct {
-	nextDelay         float64
-	delayFactor       float64
-	attempts          uint
-	remainingAttempts uint
-	delay             time.Duration
-	jitter            time.Duration
-	timeout           time.Duration
-	retryIfFn         RetryIfFn
-	timer             *time.Timer
-	resetTimer        chan time.Duration
-	taskError         error
+	delayFactor float64
+	attempts    uint
+	delay       time.Duration
+	jitter      time.Duration
+	timeout     time.Duration
+	retryIfFn   RetryIfFn
 }
 
 // defaultRetrier returns a [Retrier] initialized with package defaults.
@@ -122,7 +120,6 @@ func defaultRetrier() *Retrier {
 		jitter:      DefaultJitter,
 		timeout:     DefaultTimeout,
 		retryIfFn:   DefaultRetryIf,
-		resetTimer:  make(chan time.Duration, 1),
 	}
 }
 
@@ -145,59 +142,73 @@ func New(opts ...Option) (*Retrier, error) {
 	return r, nil
 }
 
+// run holds the mutable per-call state for a single [Retrier.Run] invocation.
+//
+// Keeping this state local (instead of on the shared [Retrier]) makes the
+// configured [Retrier] immutable and safe to call concurrently.
+type run struct {
+	cfg               *Retrier
+	timer             *time.Timer
+	taskError         error
+	nextDelay         float64
+	remainingAttempts uint
+}
+
 // Run executes the task with exponential backoff and jitter, respecting parent context cancellation.
 func (r *Retrier) Run(ctx context.Context, task TaskFn) error {
-	r.nextDelay = float64(r.delay)
-	r.remainingAttempts = r.attempts
-
 	rctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	r.timer = time.NewTimer(1 * time.Nanosecond)
+	st := &run{
+		cfg:               r,
+		timer:             time.NewTimer(1 * time.Nanosecond),
+		nextDelay:         float64(r.delay),
+		remainingAttempts: r.attempts,
+	}
+	defer st.timer.Stop()
 
 	for {
 		select {
 		case <-rctx.Done():
 			return fmt.Errorf("main context has been canceled: %w", rctx.Err())
-		case d := <-r.resetTimer:
-			r.setTimer(d)
-		case <-r.timer.C:
-			if r.exec(rctx, task) {
-				return r.taskError
+		case <-st.timer.C:
+			stop, err := st.exec(rctx, task)
+			if stop {
+				return err
 			}
 		}
 	}
 }
 
-// setTimer resets the internal timer, draining its channel if necessary to prevent deadlocks.
-func (r *Retrier) setTimer(d time.Duration) {
-	if !r.timer.Stop() {
+// setTimer resets the per-run timer, draining its channel if necessary to prevent deadlocks.
+func (s *run) setTimer(d time.Duration) {
+	if !s.timer.Stop() {
 		// make sure to drain timer channel before reset
 		select {
-		case <-r.timer.C:
+		case <-s.timer.C:
 		default:
 		}
 	}
 
-	r.timer.Reset(d)
+	s.timer.Reset(d)
 }
 
 // exec runs the task with a per-attempt timeout, evaluates the retry predicate, and schedules the next attempt if needed.
-// Returns true to stop retrying (success, exhausted attempts, or retry not needed).
-func (r *Retrier) exec(ctx context.Context, task TaskFn) bool {
-	tctx, cancel := context.WithTimeout(ctx, r.timeout)
-	r.taskError = task(tctx)
+// It returns stop=true to end retrying (success, exhausted attempts, or retry not needed) along with the last task error.
+func (s *run) exec(ctx context.Context, task TaskFn) (bool, error) {
+	tctx, cancel := context.WithTimeout(ctx, s.cfg.timeout)
+	s.taskError = task(tctx)
 
 	cancel()
 
-	r.remainingAttempts--
-	if r.remainingAttempts == 0 || !r.retryIfFn(r.taskError) {
-		return true
+	s.remainingAttempts--
+	if s.remainingAttempts == 0 || !s.cfg.retryIfFn(s.taskError) {
+		return true, s.taskError
 	}
 
-	r.resetTimer <- time.Duration(int64(r.nextDelay) + rand.Int63n(int64(r.jitter))) //nolint:gosec
+	s.setTimer(time.Duration(int64(s.nextDelay) + rand.Int63n(int64(s.cfg.jitter)))) //nolint:gosec
 
-	r.nextDelay *= r.delayFactor
+	s.nextDelay *= s.cfg.delayFactor
 
-	return false
+	return false, s.taskError
 }
