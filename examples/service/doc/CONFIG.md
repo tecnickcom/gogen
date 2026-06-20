@@ -76,14 +76,14 @@ The configuration format is a single JSON structure with the following fields:
       * **conn_max_idle_count**: Maximum number of connections in the idle connection pool
       * **conn_max_idle_time**: Maximum amount of time a connection may be idle [seconds]
       * **conn_max_lifetime**: Maximum amount of time a connection may be reused [seconds]
-      * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, no idle connections are retained
+      * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, there is no limit on the number of open connections
       * **dsn**: Database in DSN format: username:password@protocol(address)/dbname?param=value
       * **timeout_ping**: Database healthcheck ping timeout [seconds]
     * **read**: Read-only database replica
       * **conn_max_idle_count**: Maximum number of connections in the idle connection pool
       * **conn_max_idle_time**: Maximum amount of time a connection may be idle [seconds]
       * **conn_max_lifetime**: Maximum amount of time a connection may be reused [seconds]
-      * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, no idle connections are retained
+      * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, there is no limit on the number of open connections
       * **dsn**: Database in DSN format: username:password@protocol(address)/dbname?param=value
       * **timeout_ping**: Database healthcheck ping timeout [seconds]
 

@@ -99,7 +99,7 @@
             },
             "conn_max_open": {
               "default": 50,
-              "description": "Maximum number of open connections to the database. If n <= 0, no idle connections are retained",
+              "description": "Maximum number of open connections to the database. If n <= 0, there is no limit on the number of open connections",
               "examples": [
                 50
               ],
@@ -170,7 +170,7 @@
             },
             "conn_max_open": {
               "default": 50,
-              "description": "Maximum number of open connections to the database. If n <= 0, no idle connections are retained",
+              "description": "Maximum number of open connections to the database. If n <= 0, there is no limit on the number of open connections",
               "examples": [
                 50
               ],

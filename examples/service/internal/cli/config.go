@@ -58,10 +58,10 @@ type cfgDB struct {
 	Driver           string `mapstructure:"driver"              validate:"-"`
 	DSN              string `mapstructure:"dsn"                 validate:"required"`
 	TimeoutPing      int    `mapstructure:"timeout_ping"        validate:"required"`
-	ConnMaxOpen      int    `mapstructure:"conn_max_open"       validate:"required,min=0"`
-	ConnMaxIdleCount int    `mapstructure:"conn_max_idle_count" validate:"required,min=0"`
-	ConnMaxIdleTime  int    `mapstructure:"conn_max_idle_time"  validate:"required,min=0"`
-	ConnMaxLifetime  int    `mapstructure:"conn_max_lifetime"   validate:"required,min=0"`
+	ConnMaxOpen      int    `mapstructure:"conn_max_open"       validate:"min=0"`
+	ConnMaxIdleCount int    `mapstructure:"conn_max_idle_count" validate:"min=0"`
+	ConnMaxIdleTime  int    `mapstructure:"conn_max_idle_time"  validate:"min=0"`
+	ConnMaxLifetime  int    `mapstructure:"conn_max_lifetime"   validate:"min=0"`
 }
 
 type cfgDatabases struct {

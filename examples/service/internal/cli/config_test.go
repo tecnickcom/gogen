@@ -238,6 +238,28 @@ func Test_appConfig_Validate(t *testing.T) {
 			fcfg:    func(cfg appConfig) appConfig { cfg.DB.Read.TimeoutPing = 0; return cfg },
 			wantErr: true,
 		},
+		{
+			name: "valid db connection pool zero values (no limit)",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.DB.Main.ConnMaxOpen = 0
+				cfg.DB.Main.ConnMaxIdleCount = 0
+				cfg.DB.Main.ConnMaxIdleTime = 0
+				cfg.DB.Main.ConnMaxLifetime = 0
+
+				return cfg
+			},
+			wantErr: false,
+		},
+		{
+			name:    "invalid negative db.main.conn_max_open",
+			fcfg:    func(cfg appConfig) appConfig { cfg.DB.Main.ConnMaxOpen = -1; return cfg },
+			wantErr: true,
+		},
+		{
+			name:    "invalid negative db.main.conn_max_idle_count",
+			fcfg:    func(cfg appConfig) appConfig { cfg.DB.Main.ConnMaxIdleCount = -1; return cfg },
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
