@@ -101,8 +101,13 @@ func New(ctx context.Context, name, version string, opts ...Option) (*Client, er
 	}
 
 	err := c.set(ctx, name, version)
+	if err != nil {
+		// Counter/provider setup failed: tear down anything already installed
+		// and return no client so callers can't use a half-built instance.
+		return nil, errors.Join(err, c.CloseCtx(ctx))
+	}
 
-	return c, err
+	return c, nil
 }
 
 // initClient returns a Client instance with default values.
@@ -263,20 +268,35 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 	c.shutdownFuncs = append(c.shutdownFuncs, c.meterProvider.Shutdown)
 	otel.SetMeterProvider(c.meterProvider)
 
-	errMeter := c.meterProvider.Meter(NameErrorMeter)
-	cel, erra := c.setInt64Counter(ctx, errMeter, NameErrorLevel)
-	cec, errb := c.setInt64Counter(ctx, errMeter, NameErrorCode)
+	errMeter := newErrorMeter(c.meterProvider)
+	cel, erra := setInt64Counter(errMeter, NameErrorLevel)
+	cec, errb := setInt64Counter(errMeter, NameErrorCode)
+
+	err := errors.Join(erra, errb)
+	if err != nil {
+		return err
+	}
 
 	c.collectorErrorLevel = cel
 	c.collectorErrorCode = cec
 
-	return errors.Join(erra, errb)
+	return nil
 }
 
-func (c *Client) setInt64Counter(ctx context.Context, errMeter metric.Meter, name string) (metric.Int64Counter, error) {
+// newErrorMeter returns the meter used to register the internal error counters.
+// It is a package-level indirection so tests can force a counter-setup failure;
+// in production it always delegates to the configured meter provider.
+var newErrorMeter = func(mp *sdkmetric.MeterProvider) metric.Meter { //nolint:gochecknoglobals
+	return mp.Meter(NameErrorMeter)
+}
+
+// setInt64Counter creates a named Int64 counter on the given meter.
+// On failure it returns the wrapped error without tearing down the client;
+// the caller (set/New) decides how to clean up.
+func setInt64Counter(errMeter metric.Meter, name string) (metric.Int64Counter, error) {
 	counter, err := errMeter.Int64Counter(name)
 	if err != nil {
-		return nil, errors.Join(err, c.CloseCtx(ctx))
+		return nil, fmt.Errorf("failed to create %q counter: %w", name, err)
 	}
 
 	return counter, nil

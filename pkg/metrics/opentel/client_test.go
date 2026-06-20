@@ -292,13 +292,23 @@ func TestInstrumentDB(t *testing.T) {
 func Test_setInt64CounterError(t *testing.T) {
 	t.Parallel()
 
-	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
-	require.NoError(t, err)
-
-	testErrMeter := &errMeter{}
-
-	_, err = c.setInt64Counter(t.Context(), testErrMeter, "test")
+	_, err := setInt64Counter(&errMeter{}, "test")
 	require.Error(t, err)
+}
+
+//nolint:paralleltest // mutates the package-level newErrorMeter seam
+func TestNew_counterSetupError(t *testing.T) {
+	orig := newErrorMeter
+
+	t.Cleanup(func() { newErrorMeter = orig })
+
+	newErrorMeter = func(*sdkmetric.MeterProvider) metric.Meter {
+		return &errMeter{}
+	}
+
+	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
+	require.Error(t, err)
+	require.Nil(t, c)
 }
 
 type errMeter struct {
