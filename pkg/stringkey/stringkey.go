@@ -77,6 +77,9 @@ type StringKey struct {
 
 // New constructs deterministic FarmHash64 key from normalized input strings (whitespace/case/Unicode normalized).
 func New(fields ...string) *StringKey {
+	// NOTE: a fresh bytes.Buffer is allocated per call; for hot paths consider
+	// a sync.Pool of buffers. The hash output must remain byte-stable because
+	// it is used as a dedup/idempotency key, so this allocation is intentional.
 	var b bytes.Buffer
 
 	for _, v := range fields {
@@ -84,7 +87,10 @@ func New(fields ...string) *StringKey {
 		b.WriteByte('\t') // separate input strings
 	}
 
-	nb, _, _ := transform.Bytes(transform.Chain(norm.NFD, norm.NFC), b.Bytes())
+	// norm.NFC alone is equivalent to chaining norm.NFD then norm.NFC:
+	// NFC already decomposes (NFD) internally before recomposing, so the
+	// resulting bytes (and therefore the hash) are identical.
+	nb, _, _ := transform.Bytes(norm.NFC, b.Bytes())
 
 	return &StringKey{key: farmhash64.FarmHash64(nb)}
 }
