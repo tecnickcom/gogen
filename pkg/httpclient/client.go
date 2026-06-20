@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
@@ -23,12 +24,27 @@ type Client struct {
 	rnd               *random.Rnd
 }
 
+// defaultTransport returns a private transport for a new client.
+// It clones http.DefaultTransport so that per-client options (e.g. WithDialContext)
+// never mutate the process-wide http.DefaultTransport, which would race across
+// concurrent New calls and change the dialer for every other consumer.
+func defaultTransport() http.RoundTripper {
+	t, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		// http.DefaultTransport is always an *http.Transport in the standard
+		// library; this guards against a future change or test override.
+		return http.DefaultTransport
+	}
+
+	return t.Clone()
+}
+
 // defaultClient() returns a default client.
 func defaultClient() *Client {
 	return &Client{
 		client: &http.Client{
 			Timeout:   1 * time.Minute,
-			Transport: http.DefaultTransport,
+			Transport: defaultTransport(),
 		},
 		traceIDHeaderName: traceid.DefaultHeader,
 		component:         "-",
@@ -49,14 +65,38 @@ func New(opts ...Option) *Client {
 	return c
 }
 
+// cancelReadCloser wraps a response body so that closing it also releases the
+// per-request timeout context (canceling its timer promptly) while still
+// allowing the timeout to interrupt long reads that happen before Close.
+type cancelReadCloser struct {
+	io.ReadCloser
+
+	cancel context.CancelFunc
+}
+
+// Close closes the underlying body and cancels the per-request context.
+func (b *cancelReadCloser) Close() error {
+	defer b.cancel()
+
+	return b.ReadCloser.Close() //nolint:wrapcheck
+}
+
 // Do executes the request with trace ID attachment, structured logging, and optional debug payload dumps; returns error from underlying client.
+//
+// The returned response body is wrapped so that the per-request timeout context
+// is canceled when the body is closed. The caller is therefore responsible for
+// closing resp.Body (e.g. defer resp.Body.Close()) on the success path to avoid
+// leaking the timeout timer until the timeout elapses; failing to close the body
+// also leaks the underlying connection as with the standard net/http client.
 //
 //nolint:gocognit
 func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	reqTime := time.Now().UTC()
 
-	//nolint:govet,gosec // calling cancel() causes long body reads to return context canceled errors.
-	ctx, _ := context.WithTimeout(r.Context(), c.client.Timeout)
+	// The cancel func is released either when the response body is closed
+	// (success path) or immediately when no response is returned (error path);
+	// calling it interrupts in-flight body reads with a context-canceled error.
+	ctx, cancel := context.WithTimeout(r.Context(), c.client.Timeout)
 
 	l := c.logger.With(c.logPrefix+"component", c.component)
 	debug := l.Enabled(ctx, slog.LevelDebug)
@@ -114,6 +154,19 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 			l = l.With(slog.String(c.logPrefix+"response", c.redactFn(respDump)))
 		}
 	}
+
+	if resp == nil {
+		// No body to close: release the timeout timer immediately so it does
+		// not leak until the full timeout elapses.
+		cancel()
+
+		return resp, err //nolint:wrapcheck
+	}
+
+	// Tie the lifetime of the timeout context to the response body: closing the
+	// body cancels the context (releasing the timer), while leaving it open
+	// preserves the timeout's ability to interrupt long reads.
+	resp.Body = &cancelReadCloser{ReadCloser: resp.Body, cancel: cancel}
 
 	return resp, err //nolint:wrapcheck
 }

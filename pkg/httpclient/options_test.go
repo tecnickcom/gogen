@@ -25,9 +25,13 @@ func TestWithRoundTripper(t *testing.T) {
 	t.Parallel()
 
 	c := defaultClient()
+	base := c.client.Transport
 	v := func(next http.RoundTripper) http.RoundTripper { return next }
 	WithRoundTripper(v)(c)
-	require.Equal(t, v(http.DefaultTransport), c.client.Transport)
+	// The identity wrapper returns its argument unchanged, so the transport is
+	// still the client's own cloned transport (not http.DefaultTransport).
+	require.Same(t, base, c.client.Transport)
+	require.NotSame(t, http.DefaultTransport, c.client.Transport)
 }
 
 func TestWithTraceIDHeaderName(t *testing.T) {

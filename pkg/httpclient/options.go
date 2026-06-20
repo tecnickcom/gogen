@@ -28,6 +28,11 @@ func WithTimeout(timeout time.Duration) Option {
 }
 
 // WithRoundTripper wraps client transport with custom RoundTripper for middleware instrumentation.
+//
+// Ordering matters relative to WithDialContext: WithRoundTripper replaces the
+// transport with the (typically non-*http.Transport) wrapper returned by fn,
+// after which WithDialContext can no longer find the underlying *http.Transport
+// and becomes a silent no-op. Apply WithDialContext before WithRoundTripper.
 func WithRoundTripper(fn InstrumentRoundTripper) Option {
 	return func(c *Client) {
 		c.client.Transport = fn(c.client.Transport)
@@ -63,6 +68,16 @@ func WithLogPrefix(prefix string) Option {
 }
 
 // WithDialContext customizes network connection establishment via transport DialContext hook.
+//
+// It mutates the client's own *http.Transport (a private clone of
+// http.DefaultTransport), so it never affects http.DefaultTransport or any
+// other client.
+//
+// Ordering matters relative to WithRoundTripper: this option only takes effect
+// while the client's transport is still an *http.Transport. Once
+// WithRoundTripper has wrapped the transport, this option can no longer reach
+// the underlying *http.Transport and silently does nothing. Apply
+// WithDialContext before WithRoundTripper.
 func WithDialContext(fn DialContextFunc) Option {
 	return func(c *Client) {
 		t, ok := c.client.Transport.(*http.Transport)
