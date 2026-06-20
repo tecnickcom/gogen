@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/awsopt"
+	"github.com/tecnickcom/gogen/pkg/testutil"
 )
 
 func TestNew(t *testing.T) {
@@ -189,6 +190,50 @@ func TestS3Client_GetObject(t *testing.T) {
 			require.Equal(t, string(expectedBytes), string(gotBytes))
 		})
 	}
+}
+
+func TestObject_Body(t *testing.T) {
+	t.Parallel()
+
+	body := io.NopCloser(strings.NewReader("test str"))
+	obj := &Object{bucket: "bucket", key: "k1", body: body}
+
+	got := obj.Body()
+	require.NotNil(t, got)
+
+	gotBytes, err := io.ReadAll(got)
+	require.NoError(t, err)
+	require.Equal(t, "test str", string(gotBytes))
+}
+
+func TestObject_Close(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		obj := &Object{
+			bucket: "bucket",
+			key:    "k1",
+			body:   io.NopCloser(strings.NewReader("test str")),
+		}
+
+		err := obj.Close()
+		require.NoError(t, err)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		t.Parallel()
+
+		obj := &Object{
+			bucket: "bucket",
+			key:    "k1",
+			body:   testutil.NewErrorCloser("close failed"),
+		}
+
+		err := obj.Close()
+		require.Error(t, err)
+	})
 }
 
 func TestS3Client_ListObject(t *testing.T) {

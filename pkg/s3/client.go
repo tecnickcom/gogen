@@ -37,10 +37,34 @@ func New(ctx context.Context, bucketName string, opts ...Option) (*Client, error
 }
 
 // Object contains metadata and body stream for a downloaded S3 object.
+//
+// The caller owns the underlying body stream and MUST call [Object.Close] when
+// done to release the network connection and avoid leaking resources.
 type Object struct {
 	bucket string
 	key    string
 	body   io.ReadCloser
+}
+
+// Body returns the streaming body of the object.
+//
+// The caller MUST call [Object.Close] (not the returned reader directly) once
+// finished reading to release the underlying resources.
+func (o *Object) Body() io.ReadCloser {
+	return o.body
+}
+
+// Close releases the underlying body stream of the object.
+//
+// It MUST be called once the caller is done with the object to avoid leaking
+// the underlying network connection.
+func (o *Object) Close() error {
+	err := o.body.Close()
+	if err != nil {
+		return fmt.Errorf("cannot close s3 object body: %w", err)
+	}
+
+	return nil
 }
 
 // Delete removes the object identified by key from the configured bucket.
