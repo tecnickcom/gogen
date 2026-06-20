@@ -1,6 +1,7 @@
 package logutil
 
 import (
+	"bytes"
 	"log/slog"
 	"os"
 	"testing"
@@ -145,6 +146,23 @@ func TestSlogHandler(t *testing.T) {
 			require.NotNil(t, sh)
 		})
 	}
+}
+
+func TestSlogHandler_DefaultFormatHonorsOut(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	cfg, err := NewConfig(WithOutWriter(&buf), WithLevel(LevelDebug))
+	require.NoError(t, err)
+
+	cfg.Format = -16 // force the default branch with an invalid format
+
+	logger := slog.New(cfg.SlogHandler())
+	logger.Debug("default branch")
+
+	require.Contains(t, buf.String(), "default branch", "default branch must honor the configured writer")
+	require.Contains(t, buf.String(), `"level":"DEBUG"`, "default branch must honor the configured level")
 }
 
 func TestConfig_SlogLogger(t *testing.T) {

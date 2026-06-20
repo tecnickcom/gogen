@@ -83,10 +83,14 @@ func (c *Config) SlogHandler() slog.Handler {
 	case FormatNone:
 		h = slog.DiscardHandler
 	default:
-		h = slog.NewJSONHandler(os.Stderr, nil)
+		h = slog.NewJSONHandler(c.Out, opt)
 	}
 
 	h = h.WithAttrs(c.CommonAttr)
+
+	if c.TraceIDFn != nil {
+		h = newSlogTraceIDHandler(h, c.TraceIDFn)
+	}
 
 	if c.HookFn != nil {
 		h = NewSlogHookHandler(h, c.HookFn)

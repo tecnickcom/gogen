@@ -117,6 +117,7 @@ func TestWithLevel(t *testing.T) {
 			err := WithLevel(tt.testValue)(cfg)
 			if tt.wantErr {
 				require.Error(t, err)
+				require.EqualError(t, err, "invalid log level")
 			} else {
 				require.NoError(t, err)
 			}

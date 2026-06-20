@@ -47,7 +47,7 @@ func WithFormatStr(f string) Option {
 func WithLevel(l LogLevel) Option {
 	return func(cfg *Config) error {
 		if !ValidLevel(l) {
-			return errors.New("invalid log format")
+			return errors.New("invalid log level")
 		}
 
 		cfg.Level = l
