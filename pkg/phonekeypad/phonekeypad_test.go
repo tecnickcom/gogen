@@ -68,10 +68,40 @@ func TestKeypadNumber(t *testing.T) {
 func TestKeypadNumberString(t *testing.T) {
 	t.Parallel()
 
-	num := "0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghijklmnopqrstuvwxyz"
-	exp := "01234567892223334445556667777888999922233344455566677778889999"
+	tests := []struct {
+		name string
+		num  string
+		exp  string
+	}{
+		{
+			name: "full alphabet and digits",
+			num:  "0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghijklmnopqrstuvwxyz",
+			exp:  "01234567892223334445556667777888999922233344455566677778889999",
+		},
+		{
+			name: "vanity number from godoc example",
+			num:  "1-800-FLOWERS",
+			exp:  "18003569377",
+		},
+		{
+			name: "empty input",
+			num:  "",
+			exp:  "",
+		},
+		{
+			name: "all punctuation input",
+			num:  "-.()/ +#*",
+			exp:  "",
+		},
+	}
 
-	seq := KeypadNumberString(num)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	require.Equal(t, exp, seq)
+			seq := KeypadNumberString(tt.num)
+
+			require.Equal(t, tt.exp, seq)
+		})
+	}
 }

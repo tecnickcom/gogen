@@ -66,7 +66,6 @@ batch-processing pipelines.
 package phonekeypad
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -148,20 +147,22 @@ func KeypadNumber(num string) []int {
 
 // KeypadNumberString converts a string to a keypad digit string.
 //
-// It calls [KeypadNumber] and joins the resulting
-// digit slice into a plain string (e.g. "18003569377"), suitable for storage,
-// display, or passing directly to a dialler. Non-keypad characters are skipped
-// just as in [KeypadNumber].
+// Each rune in num is mapped via [KeypadDigit] and the resulting digits are
+// written into a plain string (e.g. "18003569377"), suitable for storage,
+// display, or passing directly to a dialler. Non-keypad characters
+// (separators, punctuation, etc.) are skipped just as in [KeypadNumber], so an
+// empty or all-punctuation input yields "".
 func KeypadNumberString(num string) string {
-	seq := KeypadNumber(num)
+	var sb strings.Builder
 
-	return strings.Trim(
-		strings.Join(
-			strings.Fields(
-				fmt.Sprint(seq),
-			),
-			"",
-		),
-		"[]",
-	)
+	sb.Grow(len(num))
+
+	for _, r := range num {
+		v, status := KeypadDigit(r)
+		if status {
+			sb.WriteByte(byte('0' + v))
+		}
+	}
+
+	return sb.String()
 }
