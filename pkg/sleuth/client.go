@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"regexp"
+	"strings"
 	"time"
 
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
@@ -17,11 +17,10 @@ import (
 	"github.com/tecnickcom/gogen/pkg/validator"
 )
 
-// Constants for default timeouts and regex patterns.
+// Constants for default timeouts.
 const (
-	defaultTimeout          = 1 * time.Minute
-	defaultPingTimeout      = 15 * time.Second
-	regexPatternHealthcheck = "Deployment - Not Found"
+	defaultTimeout     = 1 * time.Minute
+	defaultPingTimeout = 15 * time.Second
 )
 
 // newValidator is a package-level indirection over [validator.New] so tests can
@@ -38,7 +37,6 @@ type HTTPClient interface {
 type Client struct {
 	httpClient                  HTTPClient
 	baseURL                     *url.URL
-	regexHealthcheck            *regexp.Regexp
 	valid                       *validator.Validator
 	timeout                     time.Duration
 	pingTimeout                 time.Duration
@@ -48,8 +46,13 @@ type Client struct {
 	pingURL                     string
 	deployRegistrationURLFormat string
 	manualChangeURLFormat       string
-	customIncidentURLFormat     string
-	customMetricURLFormat       string
+	// customIncidentURLFormat ends in .../register_impact/<apiKey>: the Sleuth
+	// API key is part of the request URL path. Because secrets in URLs are
+	// prone to leaking (e.g. via *url.Error in wrapped transport errors), any
+	// error surfaced from a request built with this format must be passed
+	// through redactAPIKey before being returned or logged.
+	customIncidentURLFormat string
+	customMetricURLFormat   string
 }
 
 // New constructs a Sleuth API client with validation, retry defaults, and URL templates for the provided org.
@@ -92,7 +95,6 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 		manualChangeURLFormat:       fmt.Sprintf("%s/deployments/%s/%%s/register_manual_deploy", baseURL, org),
 		customIncidentURLFormat:     fmt.Sprintf("%s/deployments/%s/%%s/%%s/%%s/register_impact/%%s", baseURL, org),
 		customMetricURLFormat:       fmt.Sprintf("%s/impact/%%d/register_impact", baseURL),
-		regexHealthcheck:            regexp.MustCompile(regexPatternHealthcheck),
 		valid:                       valid,
 	}
 
@@ -128,24 +130,28 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 
 	resp, derr := c.httpClient.Do(req)
 	if derr != nil {
-		return fmt.Errorf("healthcheck request: %w", derr)
+		// The Sleuth API key is embedded in some request URL paths (see the
+		// comment on customIncidentURLFormat), so transport errors (typically
+		// *url.Error) may expose it via Error(). Redact it before returning.
+		return c.redactAPIKey(fmt.Errorf("healthcheck request: %w", derr))
 	}
 
 	defer func() {
 		err = errors.Join(err, resp.Body.Close())
 	}()
 
+	// Sleuth answers the controlled probe deployment with a 404, so the 404
+	// status code alone confirms reachable, authenticated API access. We rely on
+	// the status code rather than matching a localized response body string,
+	// which would be brittle if Sleuth changed its message wording.
 	if resp.StatusCode != http.StatusNotFound {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
 	}
 
-	body, rerr := io.ReadAll(resp.Body)
+	// Drain the body to allow connection reuse and to surface read errors.
+	_, rerr := io.ReadAll(resp.Body)
 	if rerr != nil {
 		return fmt.Errorf("failed reading response body: %w", rerr)
-	}
-
-	if !c.regexHealthcheck.MatchString(string(body)) {
-		return fmt.Errorf("unexpected healthcheck response: %v", string(body))
 	}
 
 	return nil
@@ -190,7 +196,12 @@ func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, r
 
 	resp, derr := hr.Do(r)
 	if derr != nil {
-		return fmt.Errorf("execute request: %w", derr)
+		// Some Sleuth endpoints embed the API key in the request URL path (see
+		// the comment on customIncidentURLFormat). Go's HTTP client wraps
+		// transport failures in *url.Error, whose Error() includes the full
+		// URL and therefore the secret. Redact the key before returning so it
+		// cannot leak into logs.
+		return c.redactAPIKey(fmt.Errorf("execute request: %w", derr))
 	}
 
 	defer func() {
@@ -227,6 +238,41 @@ func (c *Client) SendCustomMetricImpactRegistration(ctx context.Context, request
 	urlStr := fmt.Sprintf(c.customMetricURLFormat, request.ImpactID)
 	return sendRequest[CustomMetricImpactRegistrationRequest](ctx, c, urlStr, request)
 }
+
+// redactAPIKey returns an error whose message has every occurrence of the
+// client's API key replaced with "REDACTED". This guards against the secret
+// leaking through wrapped transport errors: Go's HTTP client returns a
+// *url.Error whose Error() string contains the full request URL, and some
+// Sleuth endpoints embed the API key in that URL path (see the comment on
+// customIncidentURLFormat). The original error is preserved via Unwrap so
+// callers can still inspect it with errors.Is / errors.As.
+func (c *Client) redactAPIKey(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if !strings.Contains(err.Error(), c.apiKey) {
+		return err
+	}
+
+	return &redactedError{
+		msg: strings.ReplaceAll(err.Error(), c.apiKey, "REDACTED"),
+		err: err,
+	}
+}
+
+// redactedError wraps an error with a sanitized message while keeping the
+// original error reachable through Unwrap for errors.Is / errors.As checks.
+type redactedError struct {
+	err error
+	msg string
+}
+
+// Error returns the sanitized error message with the API key redacted.
+func (e *redactedError) Error() string { return e.msg }
+
+// Unwrap exposes the original error for errors.Is / errors.As.
+func (e *redactedError) Unwrap() error { return e.err }
 
 // newWriteHTTPRetrier creates a write-oriented HTTP retrier using configured attempt count.
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {

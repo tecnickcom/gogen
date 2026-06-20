@@ -4,10 +4,12 @@ package sleuth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"runtime"
 	"testing"
 	"time"
@@ -177,13 +179,13 @@ func TestClient_HealthCheck(t *testing.T) {
 			name:                  "fails because ping url error",
 			pingHandlerStatusCode: http.StatusOK,
 			pingURL:               "%^*&-ERROR",
-			pingBody:              regexPatternHealthcheck,
+			pingBody:              "Deployment - Not Found",
 			wantErr:               true,
 		},
 		{
-			name:                  "fails because bad response body",
+			name:                  "fails because body read error",
 			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              regexPatternHealthcheck,
+			pingBody:              "Deployment - Not Found",
 			bodyErr:               true,
 			wantErr:               true,
 		},
@@ -191,25 +193,25 @@ func TestClient_HealthCheck(t *testing.T) {
 			name:                  "returns error because of timeout",
 			pingHandlerDelay:      timeout + 1,
 			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              regexPatternHealthcheck,
+			pingBody:              "Deployment - Not Found",
 			wantErr:               true,
 		},
 		{
 			name:                  "returns error from endpoint",
 			pingHandlerStatusCode: http.StatusInternalServerError,
-			pingBody:              regexPatternHealthcheck,
+			pingBody:              "Deployment - Not Found",
 			wantErr:               true,
 		},
 		{
-			name:                  "fails because bad response body",
+			name:                  "returns success on 404 regardless of body wording",
 			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              "error response",
-			wantErr:               true,
+			pingBody:              "any other body",
+			wantErr:               false,
 		},
 		{
 			name:                  "returns success from endpoint",
 			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              regexPatternHealthcheck,
+			pingBody:              "Deployment - Not Found",
 			wantErr:               false,
 		},
 	}
@@ -275,6 +277,107 @@ func TestClient_newWriteHTTPRetrier(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, hr)
+}
+
+const testAPIKey = "0123456789abcdef"
+
+func TestClient_redactAPIKey(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(
+		"https://test.invalid",
+		"testorg",
+		testAPIKey,
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, c.redactAPIKey(nil), "redactAPIKey(nil) should return nil")
+
+	// Errors that do not contain the API key must be returned unchanged.
+	plain := errors.New("some transport failure")
+	require.ErrorIs(t, c.redactAPIKey(plain), plain, "errors without the key must be passed through unchanged")
+
+	// Errors that contain the API key must have it redacted, while remaining
+	// unwrappable to the original error.
+	secret := fmt.Errorf("execute request: failed to call https://test.invalid/x/register_impact/%s: boom", testAPIKey)
+	got := c.redactAPIKey(secret)
+	require.Error(t, got)
+	require.NotContains(t, got.Error(), testAPIKey, "redacted error must not contain the api key")
+	require.Contains(t, got.Error(), "REDACTED", "redacted error must mention REDACTED")
+	require.ErrorIs(t, got, secret, "redacted error must unwrap to the original error")
+}
+
+// Test_sendRequest_redactsAPIKey forces a transport error whose message embeds
+// the API key (as Go's *url.Error would for endpoints with the key in the URL
+// path) and asserts the error surfaced by sendRequest does not leak the secret.
+func Test_sendRequest_redactsAPIKey(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	urlWithKey := "https://test.invalid/deployments/testorg/p/e/s/register_impact/" + testAPIKey
+
+	mc := NewMockHTTPClient(ctrl)
+	mc.EXPECT().Do(gomock.Any()).Return(nil, &url.Error{
+		Op:  "Post",
+		URL: urlWithKey,
+		Err: errors.New("connection refused"),
+	}).Times(1)
+
+	c, err := New(
+		"https://test.invalid",
+		"testorg",
+		testAPIKey,
+		WithHTTPClient(mc),
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	req := &DeployRegistrationRequest{
+		Deployment: "test_deployment",
+		Sha:        "96086c3354a0475073837a24a7fa95a5eb42aab9",
+	}
+
+	err = sendRequest(t.Context(), c, urlWithKey, req)
+
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), testAPIKey, "sendRequest error must not leak the api key")
+	require.Contains(t, err.Error(), "REDACTED", "sendRequest error must redact the api key")
+}
+
+// TestClient_HealthCheck_redactsAPIKey forces a transport error embedding the
+// API key on the health-check path and asserts it is redacted before return.
+func TestClient_HealthCheck_redactsAPIKey(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	urlWithKey := "https://test.invalid/deployments/testorg/-/register_deploy?key=" + testAPIKey
+
+	mc := NewMockHTTPClient(ctrl)
+	mc.EXPECT().Do(gomock.Any()).Return(nil, &url.Error{
+		Op:  "Post",
+		URL: urlWithKey,
+		Err: errors.New("connection refused"),
+	}).Times(1)
+
+	c, err := New(
+		"https://test.invalid",
+		"testorg",
+		testAPIKey,
+		WithHTTPClient(mc),
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	err = c.HealthCheck(t.Context())
+
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), testAPIKey, "HealthCheck error must not leak the api key")
+	require.Contains(t, err.Error(), "REDACTED", "HealthCheck error must redact the api key")
 }
 
 func Test_httpRequest(t *testing.T) {
