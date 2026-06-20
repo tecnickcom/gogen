@@ -80,9 +80,16 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 
 		//nolint:nestif
 		if cfg.Enabled {
+			// This example has no business logic, so the service is nil. In a real
+			// service, replace nil with your service implementation: this is the
+			// injection point for the private and public handlers.
 			serviceBinderPrivate = httphandlerpriv.New(nil, l)
 			serviceBinderPublic = httphandlerpub.New(nil, l)
 
+			// reldb holds the database connections. In this example they are wired
+			// only into health checks and graceful shutdown (below and inside
+			// newDatabase); a real service would also pass reldb to the handlers
+			// created above.
 			reldb := db.Databases{
 				Enabled: cfg.DB.Enabled,
 			}
@@ -201,7 +208,10 @@ func newDatabase(
 	wg *sync.WaitGroup,
 	sc chan struct{},
 ) (*sqlconn.SQLConn, []healthcheck.HealthCheck, error) {
-	// Extra options are required to correctly parse time.Time and for SQLX to work properly with projections that use joins.
+	// The commented-out DSN suffix below is MySQL-specific: it is required to
+	// correctly parse time.Time and for SQLX to work properly with projections
+	// that use joins. It is left disabled because this example ships without a
+	// live database; enable it (or adapt it to your driver) for a real connection.
 	// Ref.: https://pkg.go.dev/github.com/go-sql-driver/mysql#readme-usage
 	dbDSN := dbcfg.DSN // + "?parseTime=true&columnsWithAlias=true"
 
