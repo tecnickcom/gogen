@@ -6,5 +6,6 @@ ___*.md
 *.tmp
 /Dockerfile
 golangci-lint
+PLAN_*
 target
 vendor
