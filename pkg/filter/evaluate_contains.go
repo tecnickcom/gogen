@@ -24,7 +24,7 @@ func newContains(r any) (Evaluator, error) {
 
 // Evaluate returns true if the input string contains the reference substring, false if input is not a string.
 func (e *evalContains) Evaluate(v any) bool {
-	s, ok := v.(string)
+	s, ok := convertStringValue(v)
 	if !ok {
 		return false
 	}

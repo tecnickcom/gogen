@@ -165,14 +165,26 @@ func New(opts ...Option) (*Processor, error) {
 
 // ParseURLQuery unmarshals the JSON filter rule set from a URL query parameter.
 // Defaults to the "filter" key; override with WithQueryFilterKey().
-// Returns nil rules when the key is missing or empty; returns error on invalid JSON.
+// Returns nil rules when the key is missing or empty; returns error on invalid JSON
+// or when the decoded rule set exceeds the configured maximum (WithMaxRules).
 func (p *Processor) ParseURLQuery(q url.Values) ([][]Rule, error) {
 	value := q.Get(p.urlQueryFilterKey)
 	if value == "" {
 		return nil, nil
 	}
 
-	return ParseJSON(value)
+	rules, err := ParseJSON(value)
+	if err != nil {
+		return nil, err
+	}
+
+	// Defense-in-depth: reject oversized client-provided rule sets at parse time.
+	err = p.checkRulesCount(rules)
+	if err != nil {
+		return nil, err
+	}
+
+	return rules, nil
 }
 
 // Apply filters a slice by removing non-matching elements in place.
@@ -209,8 +221,16 @@ func (p *Processor) ApplySubset(rules [][]Rule, slicePtr any, offset, length uin
 		return 0, 0, fmt.Errorf("slicePtr should be a slice pointer but is %s", vSlicePtr.Type())
 	}
 
+	// Compile all evaluators up front, before touching the input slice. This makes
+	// concurrent Apply on a shared [][]Rule race-free (no per-rule lazy mutation) and
+	// ensures a misconfigured rule fails before any in-place mutation truncates the slice.
+	compiled, err := compileRules(rules)
+	if err != nil {
+		return 0, 0, err
+	}
+
 	matcher := func(obj any) (bool, error) {
-		return p.evaluateRules(rules, obj)
+		return p.evaluateRules(compiled, obj)
 	}
 
 	n, m, err := p.filterSliceValue(vSlice, offset, int(length), matcher)
@@ -234,57 +254,106 @@ func (p *Processor) checkRulesCount(rules [][]Rule) error {
 
 // filterSliceValue filters a reflect.Value slice in place using a matcher function.
 // Returns matched-element count within pagination window and total-match count overall.
+//
+// The matching pass is completed before any mutation: matched indices within the
+// pagination window are collected first, and the in-place compaction is committed only
+// once the full pass succeeds. A matcher error therefore leaves the input slice untouched.
 func (p *Processor) filterSliceValue(slice reflect.Value, offset uint, length int, matcher func(any) (bool, error)) (int, uint, error) {
+	selected, total, err := selectMatches(slice, offset, length, matcher)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Commit phase: only reached after a fully successful pass, so a mid-iteration
+	// error above can never truncate or clobber the caller's slice.
+	for n, i := range selected {
+		if n != i {
+			slice.Index(n).Set(slice.Index(i))
+		}
+	}
+
+	n := len(selected)
+
+	// shorten the slice to the actual number of elements
+	slice.SetLen(n)
+
+	return n, total, nil
+}
+
+// selectMatches runs the matcher over every element and returns the original indices that
+// match within the pagination window, plus the overall match count. It mutates nothing.
+func selectMatches(slice reflect.Value, offset uint, length int, matcher func(any) (bool, error)) ([]int, uint, error) {
 	skip := offset
 
 	var (
-		n int
-		m uint
+		selected []int
+		total    uint
 	)
 
 	for i := range slice.Len() {
-		value := slice.Index(i)
-
 		// value can always be Interface() because it's in a slice and cannot point to an unexported field
-		match, err := matcher(value.Interface())
+		match, err := matcher(slice.Index(i).Interface())
 		if err != nil {
-			return 0, 0, err
+			return nil, 0, err
 		}
 
 		if !match {
 			continue
 		}
 
-		m++
+		total++
 
 		if skip > 0 {
 			skip--
 			continue
 		}
 
-		if n < length {
-			// replace unselected elements by the ones that match
-			slice.Index(n).Set(value)
-
-			n++
+		if len(selected) < length {
+			selected = append(selected, i)
 		}
 	}
 
-	// shorten the slice to the actual number of elements
-	slice.SetLen(n)
+	return selected, total, nil
+}
 
-	return n, m, nil
+// compiledRule pairs a target field selector with its pre-built evaluator.
+type compiledRule struct {
+	field string
+	eval  Evaluator
+}
+
+// compileRules pre-builds the evaluator for every rule, surfacing configuration errors
+// (invalid type, bad regexp, non-numeric ordering reference, ...) before any filtering.
+// The result is independent of the input [][]Rule, so a shared rule set can be filtered
+// concurrently without mutating per-rule state.
+func compileRules(rules [][]Rule) ([][]compiledRule, error) {
+	compiled := make([][]compiledRule, len(rules))
+
+	for i := range rules {
+		compiled[i] = make([]compiledRule, len(rules[i]))
+
+		for j := range rules[i] {
+			eval, err := rules[i][j].getEvaluator()
+			if err != nil {
+				return nil, err
+			}
+
+			compiled[i][j] = compiledRule{field: rules[i][j].Field, eval: eval}
+		}
+	}
+
+	return compiled, nil
 }
 
 // evaluateRules applies AND-OR rule composition to determine object match: outer-AND, inner-OR.
 //
 //nolint:gocognit
-func (p *Processor) evaluateRules(rules [][]Rule, obj any) (bool, error) {
+func (p *Processor) evaluateRules(rules [][]compiledRule, obj any) (bool, error) {
 	for i := range rules {
 		orResult := false
 
 		for j := range rules[i] {
-			match, err := p.evaluateRule(&rules[i][j], obj)
+			match, err := p.evaluateRule(rules[i][j], obj)
 			if err != nil {
 				return false, err
 			}
@@ -303,10 +372,10 @@ func (p *Processor) evaluateRules(rules [][]Rule, obj any) (bool, error) {
 	return true, nil
 }
 
-// evaluateRule resolves a rule field, applies the evaluator, and treats missing fields as non-matches.
-// Returns false without error for missing fields; pointer to obj allows Rule state reuse (e.g. compiled regexp).
-func (p *Processor) evaluateRule(rule *Rule, obj any) (bool, error) {
-	value, err := p.fields.GetFieldValue(obj, rule.Field)
+// evaluateRule resolves a rule field, applies the pre-compiled evaluator, and treats missing fields as non-matches.
+// Returns false without error for missing fields.
+func (p *Processor) evaluateRule(rule compiledRule, obj any) (bool, error) {
+	value, err := p.fields.GetFieldValue(obj, rule.field)
 	if errors.Is(err, errFieldNotFound) {
 		return false, nil // filter out missing field without error
 	}
@@ -315,7 +384,7 @@ func (p *Processor) evaluateRule(rule *Rule, obj any) (bool, error) {
 		return false, err
 	}
 
-	return rule.Evaluate(value)
+	return rule.eval.Evaluate(value), nil
 }
 
 // ParseJSON unmarshals rule-set JSON into its composite AND-OR structure.

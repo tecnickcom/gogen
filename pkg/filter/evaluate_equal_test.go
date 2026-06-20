@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -157,6 +158,37 @@ func TestEqual_Evaluate(t *testing.T) {
 			name:  "false - string / stringAlias",
 			ref:   "hello",
 			value: stringAlias("world"),
+			want:  false,
+		},
+		{
+			// Beyond 2^53 float64 cannot distinguish adjacent integers; exact compare must.
+			name:  "true - large int64 exact",
+			ref:   int64(1)<<53 + 1,
+			value: int64(1)<<53 + 1,
+			want:  true,
+		},
+		{
+			name:  "false - large int64 off by one",
+			ref:   int64(1)<<53 + 1,
+			value: int64(1)<<53 + 2,
+			want:  false,
+		},
+		{
+			name:  "true - large uint64 exact",
+			ref:   uint64(math.MaxUint64),
+			value: uint64(math.MaxUint64),
+			want:  true,
+		},
+		{
+			name:  "false - large uint64 off by one",
+			ref:   uint64(math.MaxUint64),
+			value: uint64(math.MaxUint64) - 1,
+			want:  false,
+		},
+		{
+			name:  "false - numeric ref vs nil value",
+			ref:   int64(1) << 60,
+			value: nil,
 			want:  false,
 		},
 	}

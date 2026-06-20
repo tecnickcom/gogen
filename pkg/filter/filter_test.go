@@ -2,10 +2,13 @@ package filter
 
 import (
 	"errors"
+	"math"
 	"net/url"
 	"reflect"
+	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1157,6 +1160,135 @@ func TestFilter_ApplySubset(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestFilter_Apply_Concurrent ensures a single built [][]Rule can be filtered from many
+// goroutines at once without data races (run under -race). Before the fix, Rule.Evaluate
+// lazily wrote shared state through a pointer into the rule slice, which raced.
+func TestFilter_Apply_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	type item struct {
+		Name string
+		Age  int64
+	}
+
+	// A mix of operators so several evaluator kinds are built concurrently.
+	rules := [][]Rule{
+		{{Field: "Name", Type: TypeRegexp, Value: "^user"}},
+		{{Field: "Age", Type: TypeGTE, Value: 18}},
+	}
+
+	const goroutines = 32
+
+	var wg sync.WaitGroup
+
+	wg.Add(goroutines)
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+
+			p, err := New(WithMaxRules(4))
+			assert.NoError(t, err)
+
+			data := []item{
+				{Name: "user-a", Age: 20},
+				{Name: "guest-b", Age: 40},
+				{Name: "user-c", Age: 10},
+				{Name: "user-d", Age: 18},
+			}
+
+			n, total, aerr := p.Apply(rules, &data)
+			assert.NoError(t, aerr)
+			assert.Equal(t, uint(2), n)
+			assert.Equal(t, uint(2), total)
+			assert.Equal(t, []item{{Name: "user-a", Age: 20}, {Name: "user-d", Age: 18}}, data)
+		}()
+	}
+
+	wg.Wait()
+}
+
+// TestFilter_Apply_LargeInt verifies that large int64/uint64 values are filtered using
+// exact comparison rather than a lossy float64 widening (which collapses values beyond 2^53).
+func TestFilter_Apply_LargeInt(t *testing.T) {
+	t.Parallel()
+
+	p, err := New()
+	require.NoError(t, err)
+
+	t.Run("int64 equality beyond 2^53", func(t *testing.T) {
+		t.Parallel()
+
+		target := int64(1)<<53 + 1
+		data := []int64{target, target + 1, target - 1}
+
+		n, total, err := p.Apply([][]Rule{{{Type: TypeEqual, Value: target}}}, &data)
+		require.NoError(t, err)
+		require.Equal(t, uint(1), n)
+		require.Equal(t, uint(1), total)
+		require.Equal(t, []int64{target}, data)
+	})
+
+	t.Run("uint64 ordering near MaxUint64", func(t *testing.T) {
+		t.Parallel()
+
+		data := []uint64{math.MaxUint64, math.MaxUint64 - 1, math.MaxUint64 - 2}
+
+		n, total, err := p.Apply([][]Rule{{{Type: TypeGT, Value: data[1]}}}, &data)
+		require.NoError(t, err)
+		require.Equal(t, uint(1), n)
+		require.Equal(t, uint(1), total)
+		require.Equal(t, []uint64{uint64(math.MaxUint64)}, data)
+	})
+}
+
+// TestFilter_Apply_ErrorLeavesInputUntouched verifies that an error encountered partway
+// through filtering does not mutate (truncate or clobber) the caller's slice.
+func TestFilter_Apply_ErrorLeavesInputUntouched(t *testing.T) {
+	t.Parallel()
+
+	type withField struct {
+		Name string
+	}
+
+	p, err := New()
+	require.NoError(t, err)
+
+	// The first element resolves the "Name" field fine; the second is a plain int,
+	// so resolving "Name" on it fails mid-iteration.
+	data := []any{
+		withField{Name: "keep"},
+		42,
+		withField{Name: "keep2"},
+	}
+	original := []any{
+		withField{Name: "keep"},
+		42,
+		withField{Name: "keep2"},
+	}
+
+	_, _, err = p.Apply([][]Rule{{{Field: "Name", Type: TypeEqual, Value: "keep"}}}, &data)
+	require.Error(t, err)
+	require.Equal(t, original, data, "input slice must be left untouched on error")
+}
+
+// TestFilter_ParseURLQuery_RuleCap verifies ParseURLQuery rejects rule sets exceeding maxRules.
+func TestFilter_ParseURLQuery_RuleCap(t *testing.T) {
+	t.Parallel()
+
+	p, err := New(WithMaxRules(1))
+	require.NoError(t, err)
+
+	// Two rules in a single AND group, exceeding the max of 1.
+	raw := `[[{"field":"a","type":"==","value":1},{"field":"b","type":"==","value":2}]]`
+
+	u := &url.URL{RawQuery: url.Values{"filter": {raw}}.Encode()}
+
+	rules, err := p.ParseURLQuery(u.Query())
+	require.Error(t, err)
+	require.Nil(t, rules)
 }
 
 func benchmarkFilterApply(b *testing.B, n int, json string, opts ...Option) {

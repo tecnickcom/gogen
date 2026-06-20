@@ -51,6 +51,21 @@ func TestContains_Evaluate(t *testing.T) {
 			want:    false,
 			wantErr: false,
 		},
+		{
+			// String-alias types must behave like plain strings (consistent with sibling string ops).
+			name:    "true - contains sub-string with string alias",
+			ref:     "oniss",
+			value:   stringAlias("buonissimo"),
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "false - do not contain sub-string with string alias",
+			ref:     "three",
+			value:   stringAlias("bravissimo"),
+			want:    false,
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {

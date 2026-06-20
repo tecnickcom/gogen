@@ -147,6 +147,24 @@ func TestEqualFold_Evaluate(t *testing.T) {
 			value: nil,
 			want:  true,
 		},
+		{
+			name:  "true - large int64 exact",
+			ref:   int64(1)<<53 + 1,
+			value: int64(1)<<53 + 1,
+			want:  true,
+		},
+		{
+			name:  "false - large int64 off by one",
+			ref:   int64(1)<<53 + 1,
+			value: int64(1)<<53 + 2,
+			want:  false,
+		},
+		{
+			name:  "false - numeric ref vs string value",
+			ref:   42,
+			value: "42",
+			want:  false,
+		},
 	}
 
 	for _, tt := range tests {

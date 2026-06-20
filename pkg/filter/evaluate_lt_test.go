@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -120,6 +121,28 @@ func TestLT_Evaluate(t *testing.T) {
 			value:   "ciao",
 			want:    false,
 			wantErr: true,
+		},
+		{
+			// Exact ordering beyond 2^53: float64 would collapse these to equal.
+			name:    "true - large int64 strictly less",
+			ref:     int64(1)<<53 + 2,
+			value:   int64(1)<<53 + 1,
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name:    "false - large int64 off by one greater",
+			ref:     int64(1)<<53 + 1,
+			value:   int64(1)<<53 + 2,
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name:    "false - NaN value has no ordering",
+			ref:     5,
+			value:   math.NaN(),
+			want:    false,
+			wantErr: false,
 		},
 	}
 

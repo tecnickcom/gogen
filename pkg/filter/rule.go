@@ -59,24 +59,21 @@ type Rule struct {
 	// Value is the reference value to evaluate against.
 	// Its type should be accepted by the chosen Type.
 	Value any `json:"value"`
-
-	// eval is initialized at the first call to Evaluate() and stores the structure that evaluates the rule.
-	eval Evaluator
 }
 
-// Evaluate determines if the value matches the rule, with lazy-initialization of the type-specific evaluator.
+// Evaluate determines if the value matches the rule by compiling the type-specific evaluator.
 // Returns error for invalid Type, misconfiguration (e.g. invalid regexp), or type mismatch (e.g. regexp on int).
+//
+// Evaluate is safe for concurrent use: it stores no per-call state on the Rule, so the same
+// Rule (or a [][]Rule built once) can be evaluated from multiple goroutines simultaneously.
+// For repeated evaluations prefer [Processor.Apply], which compiles each evaluator only once.
 func (r *Rule) Evaluate(value any) (bool, error) {
-	if r.eval == nil {
-		var err error
-
-		r.eval, err = r.getEvaluator()
-		if err != nil {
-			return false, err
-		}
+	eval, err := r.getEvaluator()
+	if err != nil {
+		return false, err
 	}
 
-	return r.eval.Evaluate(value), nil
+	return eval.Evaluate(value), nil
 }
 
 // getEvaluator initializes and returns the evaluator for the rule.
