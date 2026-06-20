@@ -52,6 +52,8 @@ Usage:
     dedicated SQL connection, matching MySQL's lock semantics.
   - Connection keep-alive: a periodic query keeps the lock-owning connection
     active for long-running critical sections.
+  - Observable keep-alive: keep-alive failures can be surfaced through an
+    optional handler configured with [WithKeepAliveErrorHandler].
   - Context-aware acquisition: caller context controls acquisition cancellation.
   - Zero external dependencies at runtime: relies only on database/sql and
     MySQL lock functions.
@@ -62,6 +64,10 @@ The lock key namespace is per MySQL server instance. Use stable, descriptive
 keys (for example, "service:job:daily-reconciliation"). Always call the
 returned [ReleaseFunc], ideally with defer, to avoid holding locks longer than
 intended.
+
+The GET_LOCK timeout is passed to MySQL with sub-second (fractional) precision;
+MySQL 5.7.5 and later accept fractional timeouts (older servers truncate to
+whole seconds).
 */
 package mysqllock
 
@@ -105,11 +111,38 @@ const (
 // Create instances with [New].
 type MySQLLock struct {
 	db *sql.DB
+
+	// keepAliveErrHandler, when set, is invoked with any error produced by the
+	// keep-alive goroutine while a lock is held.
+	keepAliveErrHandler func(error)
+}
+
+// Option configures a [MySQLLock] at construction time.
+//
+// Options are additive; passing none preserves the historical default behavior.
+type Option func(*MySQLLock)
+
+// WithKeepAliveErrorHandler sets a handler that receives errors produced by the
+// keep-alive goroutine (failures of the periodic keep-alive query or of closing
+// its result set) while a lock is held.
+//
+// The handler is called from the keep-alive goroutine, so it must be safe for
+// concurrent use and should not block for long. A nil handler is ignored.
+func WithKeepAliveErrorHandler(handler func(error)) Option {
+	return func(l *MySQLLock) {
+		l.keepAliveErrHandler = handler
+	}
 }
 
 // New constructs distributed lock manager using MySQL named locks on provided database connection.
-func New(db *sql.DB) *MySQLLock {
-	return &MySQLLock{db: db}
+func New(db *sql.DB, opts ...Option) *MySQLLock {
+	l := &MySQLLock{db: db}
+
+	for _, opt := range opts {
+		opt(l)
+	}
+
+	return l
 }
 
 // Acquire acquires named lock with timeout, returning release function and keep-alive management; returns ErrTimeout if acquisition fails due to timeout.
@@ -121,7 +154,7 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 		return nil, fmt.Errorf("unable to get mysql connection: %w", cerr)
 	}
 
-	row := conn.QueryRowContext(ctx, sqlGetLock, key, int(timeout.Seconds()), resLockError)
+	row := conn.QueryRowContext(ctx, sqlGetLock, key, timeout.Seconds(), resLockError)
 
 	var res int
 
@@ -144,42 +177,82 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 	// The release context is independent from the parent context.
 	releaseCtx, cancelReleaseCtx := context.WithCancel(context.Background())
 
-	releaseFunc := func() error {
-		defer closeConnection(conn, &err)
-		defer cancelReleaseCtx()
+	// done is closed by the keep-alive goroutine right before it returns, so the
+	// release function can wait for it to stop touching conn before using conn.
+	done := make(chan struct{})
 
-		_, xerr := conn.ExecContext(releaseCtx, sqlReleaseLock, key)
+	releaseFunc := func() error {
+		// Stop the keep-alive goroutine and wait for it to exit BEFORE using the
+		// connection, otherwise QueryContext and ExecContext could run on the same
+		// *sql.Conn concurrently (a database/sql concurrent-use violation).
+		cancelReleaseCtx()
+		<-done
+
+		var rerr error
+
+		defer closeConnection(conn, &rerr)
+
+		_, xerr := conn.ExecContext(context.Background(), sqlReleaseLock, key)
 		if xerr != nil {
-			return fmt.Errorf("unable to release mysql lock: %w", xerr)
+			rerr = errors.Join(rerr, fmt.Errorf("unable to release mysql lock: %w", xerr))
 		}
 
-		return nil
+		return rerr
 	}
 
-	go keepConnectionAlive(releaseCtx, conn, keepAliveInterval, &err) //nolint:contextcheck
+	go keepConnectionAlive(releaseCtx, conn, keepAliveInterval, l.keepAliveErrHandler, done)
 
 	return releaseFunc, nil
 }
 
-// keepConnectionAlive periodically executes a simple query to keep the connection alive.
-func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Duration, err *error) {
+// keepConnectionAlive periodically executes a simple query to keep the connection
+// alive until ctx is canceled. It closes done right before returning so callers
+// can wait for it to stop using conn. Any error is reported to errHandler when set.
+func keepConnectionAlive(ctx context.Context, conn *sql.Conn, interval time.Duration, errHandler func(error), done chan<- struct{}) {
+	defer close(done)
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case <-time.After(interval):
-			//nolint:rowserrcheck
-			rows, qerr := conn.QueryContext(ctx, keepAliveSQLQuery)
-			if qerr != nil {
-				*err = errors.Join(*err, fmt.Errorf("error while keeping mysqllock connection alive: %w", qerr))
+		case <-ticker.C:
+			kerr := pingConnection(ctx, conn)
+			if kerr != nil {
+				reportKeepAliveError(errHandler, kerr)
 				return
 			}
-
-			defer func() {
-				*err = errors.Join(*err, rows.Close())
-			}()
 
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+// pingConnection runs the keep-alive query once, closing its result set
+// immediately (no rows are iterated, so the set is opened only to keep the
+// connection active).
+func pingConnection(ctx context.Context, conn *sql.Conn) (err error) {
+	//nolint:rowserrcheck // the rows are not iterated; the query only refreshes the connection.
+	rows, qerr := conn.QueryContext(ctx, keepAliveSQLQuery)
+	if qerr != nil {
+		return fmt.Errorf("error while keeping mysqllock connection alive: %w", qerr)
+	}
+
+	defer func() {
+		cerr := rows.Close()
+		if cerr != nil {
+			err = errors.Join(err, fmt.Errorf("error while closing mysqllock keep-alive result set: %w", cerr))
+		}
+	}()
+
+	return nil
+}
+
+// reportKeepAliveError forwards a keep-alive error to the handler when one is set.
+func reportKeepAliveError(errHandler func(error), err error) {
+	if errHandler != nil {
+		errHandler(err)
 	}
 }
 

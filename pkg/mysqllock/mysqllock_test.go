@@ -3,10 +3,12 @@ package mysqllock
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +26,7 @@ func TestDB_Acquire(t *testing.T) {
 			name: "success",
 			setupMocks: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(sqlGetLock).
-					WithArgs("key", 2, resLockError).
+					WithArgs("key", 2.0, resLockError).
 					WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
 
 				mock.ExpectExec(sqlReleaseLock).
@@ -114,11 +116,65 @@ func TestDB_Acquire(t *testing.T) {
 	}
 }
 
+// Test_Acquire_keepAliveOrdering verifies that the keep-alive goroutine and the
+// release function never use the same *sql.Conn concurrently: the release path
+// must cancel the keep-alive context and wait for the goroutine to exit before
+// running the RELEASE_LOCK exec. Run under -race this would fail without the fix.
+func Test_Acquire_keepAliveOrdering(t *testing.T) {
+	t.Parallel()
+
+	mockDB, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+
+	defer func() { _ = mockDB.Close() }()
+
+	mock.ExpectQuery(sqlGetLock).
+		WithArgs("key", 0.05, resLockError).
+		WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
+
+	// The keep-alive query may run zero or more times before release; allow it.
+	mock.MatchExpectationsInOrder(false)
+	mock.ExpectQuery(keepAliveSQLQuery).
+		WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
+	mock.ExpectExec(sqlReleaseLock).
+		WithArgs("key").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	var handlerErr error
+
+	locker := New(mockDB, WithKeepAliveErrorHandler(func(e error) { handlerErr = e }))
+
+	// Use a tiny interval so the keep-alive ticker fires before release.
+	release, err := locker.Acquire(t.Context(), "key", 50*time.Millisecond)
+	require.NoError(t, err)
+	require.NotNil(t, release)
+
+	// Give the keep-alive goroutine time to run at least one iteration.
+	time.Sleep(20 * time.Millisecond)
+
+	require.NoError(t, release())
+	require.NoError(t, handlerErr)
+}
+
+func TestWithKeepAliveErrorHandler(t *testing.T) {
+	t.Parallel()
+
+	called := false
+	locker := New(nil, WithKeepAliveErrorHandler(func(error) { called = true }))
+
+	require.NotNil(t, locker.keepAliveErrHandler)
+
+	locker.keepAliveErrHandler(errors.New("boom"))
+	require.True(t, called)
+}
+
 type keepConnectionAliveTest struct {
-	name       string
-	setupMocks func(mock sqlmock.Sqlmock)
-	ctxFunc    func() (context.Context, context.CancelFunc)
-	interval   time.Duration
+	name        string
+	setupMocks  func(mock sqlmock.Sqlmock)
+	ctxFunc     func() (context.Context, context.CancelFunc)
+	interval    time.Duration
+	useHandler  bool
+	wantHandler bool
 }
 
 func Test_keepConnectionAlive(t *testing.T) {
@@ -131,18 +187,31 @@ func Test_keepConnectionAlive(t *testing.T) {
 
 	tests := []keepConnectionAliveTest{
 		{
-			name: "context done while executing keep alive query",
+			name: "context done before keep alive query runs",
 			setupMocks: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(keepAliveSQLQuery).
 					WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
 			},
 			ctxFunc: func() (context.Context, context.CancelFunc) {
-				return context.WithTimeout(t.Context(), intervalFullTime)
+				return context.WithTimeout(t.Context(), intervalHalfTime)
 			},
 			interval: intervalFullTime,
 		},
 		{
-			name: "error while executing keep alive query",
+			name: "error while executing keep alive query reported to handler",
+			setupMocks: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(keepAliveSQLQuery).
+					WillReturnError(errors.New("can't execute keep alive query at this time"))
+			},
+			ctxFunc: func() (context.Context, context.CancelFunc) {
+				return context.WithTimeout(t.Context(), intervalFullTime)
+			},
+			interval:    intervalHalfTime,
+			useHandler:  true,
+			wantHandler: true,
+		},
+		{
+			name: "error while executing keep alive query without handler",
 			setupMocks: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(keepAliveSQLQuery).
 					WillReturnError(errors.New("can't execute keep alive query at this time"))
@@ -164,18 +233,7 @@ func Test_keepConnectionAlive(t *testing.T) {
 			interval: intervalHalfTime,
 		},
 		{
-			name: "context done before even getting a change of trying to keep the connection alive",
-			setupMocks: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(keepAliveSQLQuery).
-					WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1))
-			},
-			ctxFunc: func() (context.Context, context.CancelFunc) {
-				return context.WithTimeout(t.Context(), intervalFullTime)
-			},
-			interval: intervalHalfTime,
-		},
-		{
-			name: "close rows error",
+			name: "close rows error reported to handler",
 			setupMocks: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(keepAliveSQLQuery).
 					WillReturnRows(sqlmock.NewRows([]string{"result"}).AddRow(1).CloseError(errors.New("close error")))
@@ -183,7 +241,9 @@ func Test_keepConnectionAlive(t *testing.T) {
 			ctxFunc: func() (context.Context, context.CancelFunc) {
 				return context.WithTimeout(t.Context(), intervalFullTime)
 			},
-			interval: intervalHalfTime,
+			interval:    intervalHalfTime,
+			useHandler:  true,
+			wantHandler: true,
 		},
 	}
 	for _, tt := range tests {
@@ -212,7 +272,36 @@ func runKeepConnectionAlive(t *testing.T, tt keepConnectionAliveTest) {
 	conn, err := mockDB.Conn(ctx)
 	require.NoError(t, err)
 
-	keepConnectionAlive(ctx, conn, tt.interval, &err)
+	var (
+		mu          sync.Mutex
+		handlerErrs []error
+		handler     func(error)
+	)
+
+	if tt.useHandler {
+		handler = func(e error) {
+			mu.Lock()
+			defer mu.Unlock()
+
+			handlerErrs = append(handlerErrs, e)
+		}
+	}
+
+	done := make(chan struct{})
+
+	keepConnectionAlive(ctx, conn, tt.interval, handler, done)
+
+	// done must be closed when keepConnectionAlive returns.
+	select {
+	case <-done:
+	default:
+		assert.Fail(t, "done channel was not closed on return")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	assert.Equal(t, tt.wantHandler, len(handlerErrs) > 0, "handler invocation mismatch: %v", handlerErrs)
 }
 
 func Test_closeConnection(t *testing.T) {
@@ -232,7 +321,7 @@ func Test_closeConnection(t *testing.T) {
 	require.NoError(t, closeErr)
 
 	// Close the connection to simulate an error on close.
-	conn.Close()
+	_ = conn.Close()
 
 	closeConnection(conn, &closeErr)
 
