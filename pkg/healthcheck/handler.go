@@ -36,10 +36,14 @@ func NewHandler(checks []HealthCheck, opts ...HandlerOption) *Handler {
 		logger:      slog.Default(),
 	}
 
-	h.writeResult = httputil.NewHTTPResp(h.logger).SendJSON
-
 	for _, apply := range opts {
 		apply(h)
+	}
+
+	// Build the default result writer after options are applied so that
+	// WithLogger affects it, while WithResultWriter still takes precedence.
+	if h.writeResult == nil {
+		h.writeResult = httputil.NewHTTPResp(h.logger).SendJSON
 	}
 
 	return h
@@ -78,7 +82,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := http.StatusOK
 	data := make(map[string]string, h.checksCount)
 
-	for len(resCh) > 0 {
+	for range h.checksCount {
 		r := <-resCh
 		data[r.id] = StatusOK
 

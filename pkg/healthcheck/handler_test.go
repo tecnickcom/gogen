@@ -35,6 +35,12 @@ func TestNewHandler(t *testing.T) {
 	require.Len(t, h2.checks, 2)
 	require.Equal(t, 2, h2.checksCount)
 	require.Equal(t, reflect.ValueOf(rw).Pointer(), reflect.ValueOf(h2.writeResult).Pointer())
+
+	// WithLogger must affect the default result writer (built after options).
+	logger := slog.New(slog.DiscardHandler)
+	h3 := NewHandler(testChecks, WithLogger(logger))
+	require.Equal(t, logger, h3.logger)
+	require.Equal(t, reflect.ValueOf(httputil.NewHTTPResp(logger).SendJSON).Pointer(), reflect.ValueOf(h3.writeResult).Pointer())
 }
 
 func TestHandler_ServeHTTP(t *testing.T) {
