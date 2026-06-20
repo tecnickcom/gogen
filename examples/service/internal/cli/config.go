@@ -74,10 +74,12 @@ type cfgDatabases struct {
 type appConfig struct {
 	config.BaseConfig `mapstructure:",squash" validate:"required"`
 
-	Enabled bool         `mapstructure:"enabled"`
-	Servers cfgServers   `mapstructure:"servers" validate:"required"`
-	Clients cfgClients   `mapstructure:"clients" validate:"required"`
-	DB      cfgDatabases `mapstructure:"db"      validate:"required"`
+	Enabled bool       `mapstructure:"enabled"`
+	Servers cfgServers `mapstructure:"servers" validate:"required"`
+	Clients cfgClients `mapstructure:"clients" validate:"required"`
+	// DB is validated conditionally in Validate (only when db.enabled is true),
+	// so the "-" tag skips the default dive here.
+	DB cfgDatabases `mapstructure:"db" validate:"-"`
 }
 
 // SetDefaults registers baseline configuration values used when no explicit
@@ -136,5 +138,16 @@ func (c *appConfig) Validate() error {
 
 	v, _ := validator.New(opts...)
 
-	return v.ValidateStruct(c) //nolint:wrapcheck
+	err := v.ValidateStruct(c)
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	// The database configuration is validated only when enabled, so a service
+	// that does not use a database does not need to provide DSNs or pool sizes.
+	if c.DB.Enabled {
+		return v.ValidateStruct(&c.DB) //nolint:wrapcheck
+	}
+
+	return nil
 }

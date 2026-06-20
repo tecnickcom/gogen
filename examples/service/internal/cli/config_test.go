@@ -239,6 +239,17 @@ func Test_appConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "valid config with database disabled and empty DSNs",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.DB.Enabled = false
+				cfg.DB.Main.DSN = ""
+				cfg.DB.Read.DSN = ""
+
+				return cfg
+			},
+			wantErr: false,
+		},
+		{
 			name: "valid db connection pool zero values (no limit)",
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.DB.Main.ConnMaxOpen = 0
