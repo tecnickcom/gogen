@@ -90,6 +90,10 @@ func Test_countryByAlpha2ID_errors(t *testing.T) {
 			name: "invalid sub-region",
 			key:  0x1D5F572D981F9357, // 0 | 001 | 11010 10111 | 11010 10111 00101 | 1011001100 | 00001 | 11111 | 00100 | 11010 10111
 		},
+		{
+			name: "invalid intermediate-region",
+			key:  0x1D5F572D98187F57, // 0 | 001 | 11010 10111 | 11010 10111 00101 | 1011001100 | 00001 | 10000 | 11111 | 11010 10111
+		},
 	}
 
 	for _, tt := range tests {

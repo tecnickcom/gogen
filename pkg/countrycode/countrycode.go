@@ -88,43 +88,59 @@ func (d *Data) countryByAlpha2ID(a2 uint16) (*CountryData, error) {
 	}
 
 	if el.alpha3 > 0 {
-		cd.Alpha3Code = decodeAlpha3(el.alpha3)
-		cd.NumericCode = fmt.Sprintf("%03d", el.numeric)
-
-		name, err := d.countryNamesByAlpha2ID(el.alpha2)
+		err = d.populateCountryDetails(cd, el)
 		if err != nil {
 			return nil, err
 		}
-
-		cd.NameEnglish = name.EN
-		cd.NameFrench = name.FR
-
-		region, err := d.regionByID(int(el.region))
-		if err != nil {
-			return nil, err
-		}
-
-		cd.RegionCode = region.code
-		cd.Region = region.name
-
-		subregion, err := d.subRegionByID(int(el.subregion))
-		if err != nil {
-			return nil, err
-		}
-
-		cd.SubRegionCode = subregion.code
-		cd.SubRegion = subregion.name
-
-		// no error check because el.intregion is max 3 bit and always valid
-		intregion, _ := d.intermediateRegionByID(int(el.intregion))
-
-		cd.IntermediateRegionCode = intregion.code
-		cd.IntermediateRegion = intregion.name
-
-		cd.TLD = decodeTLD(el.tld)
 	}
 
 	return cd, nil
+}
+
+// populateCountryDetails fills the names, region hierarchy, codes, and TLD
+// fields of cd from the decoded country key el.
+//
+// It is only invoked for fully-assigned countries (those carrying an alpha-3
+// code) and returns an error when any decoded region ID is out of range.
+func (d *Data) populateCountryDetails(cd *CountryData, el *countryKeyElem) error {
+	cd.Alpha3Code = decodeAlpha3(el.alpha3)
+	cd.NumericCode = fmt.Sprintf("%03d", el.numeric)
+
+	name, err := d.countryNamesByAlpha2ID(el.alpha2)
+	if err != nil {
+		return err
+	}
+
+	cd.NameEnglish = name.EN
+	cd.NameFrench = name.FR
+
+	region, err := d.regionByID(int(el.region))
+	if err != nil {
+		return err
+	}
+
+	cd.RegionCode = region.code
+	cd.Region = region.name
+
+	subregion, err := d.subRegionByID(int(el.subregion))
+	if err != nil {
+		return err
+	}
+
+	cd.SubRegionCode = subregion.code
+	cd.SubRegion = subregion.name
+
+	intregion, err := d.intermediateRegionByID(int(el.intregion))
+	if err != nil {
+		return err
+	}
+
+	cd.IntermediateRegionCode = intregion.code
+	cd.IntermediateRegion = intregion.name
+
+	cd.TLD = decodeTLD(el.tld)
+
+	return nil
 }
 
 // EnumStatus returns all assignment-status names mapped to their numeric code strings.

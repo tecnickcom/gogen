@@ -43,9 +43,12 @@ type Data struct {
 
 // New builds a Data resolver with all lookup indexes precomputed.
 //
-// If cdata is nil, embedded default metadata is loaded; otherwise cdata is
-// encoded and indexed. Reusing the returned Data instance avoids repeated index
-// construction and keeps country lookups fast in hot paths.
+// If cdata is nil or empty, embedded default metadata is loaded; otherwise cdata
+// is encoded and indexed. Reusing the returned Data instance avoids repeated
+// index construction and keeps country lookups fast in hot paths.
+//
+// When cdata contains multiple records sharing the same alpha-2 code, the last
+// record silently overwrites the earlier ones in the lookup tables.
 //
 // Default data sources (updated at: 2024-07-17):
 //   - https://www.iso.org/iso-3166-country-codes.html
@@ -63,7 +66,7 @@ func New(cdata []*CountryData) (*Data, error) {
 
 	d.statusMap()
 
-	if cdata == nil {
+	if len(cdata) == 0 {
 		d.defaultData()
 	} else {
 		err := d.loadData(cdata)
