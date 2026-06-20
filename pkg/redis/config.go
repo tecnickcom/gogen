@@ -1,18 +1,9 @@
 package redis
 
 import (
-	"context"
 	"errors"
-	"regexp"
+	"net"
 )
-
-// Regular expression patterns.
-const (
-	regexPatternHostPort = `^[^\:]*:[0-9]{2,5}$`
-)
-
-// Compiled regular expressions.
-var regexHostPort = regexp.MustCompile(regexPatternHostPort)
 
 // cfg defines the redis client configuration.
 type cfg struct {
@@ -24,14 +15,14 @@ type cfg struct {
 }
 
 // loadConfig loads and validates the redis client configuration.
-func loadConfig(_ context.Context, srvOpts *SrvOptions, opts ...Option) (*cfg, error) {
+func loadConfig(srvOpts *SrvOptions, opts ...Option) (*cfg, error) {
 	c := &cfg{
 		messageEncodeFunc: DefaultMessageEncodeFunc,
 		messageDecodeFunc: DefaultMessageDecodeFunc,
 		srvOpts:           srvOpts,
 	}
 
-	if (srvOpts == nil) || (!regexHostPort.MatchString(srvOpts.Addr)) {
+	if !validAddr(srvOpts) {
 		return nil, errors.New("missing or invalid redis client options")
 	}
 
@@ -48,4 +39,21 @@ func loadConfig(_ context.Context, srvOpts *SrvOptions, opts ...Option) (*cfg, e
 	}
 
 	return c, nil
+}
+
+// validAddr reports whether the server options carry a syntactically valid
+// host:port address. The address parsing is delegated to net.SplitHostPort,
+// which also accepts bracketed IPv6 hosts (e.g. "[::1]:6379"); go-redis
+// performs the actual connection-time validation.
+func validAddr(srvOpts *SrvOptions) bool {
+	if srvOpts == nil {
+		return false
+	}
+
+	_, port, err := net.SplitHostPort(srvOpts.Addr)
+	if err != nil {
+		return false
+	}
+
+	return port != ""
 }

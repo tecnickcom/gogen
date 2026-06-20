@@ -17,7 +17,6 @@ func Test_loadConfig(t *testing.T) {
 	}
 
 	got, err := loadConfig(
-		t.Context(),
 		srvOpts,
 		WithMessageEncodeFunc(DefaultMessageEncodeFunc),
 		WithMessageDecodeFunc(DefaultMessageDecodeFunc),
@@ -34,7 +33,6 @@ func Test_loadConfig(t *testing.T) {
 	require.NotNil(t, got.messageDecodeFunc)
 
 	got, err = loadConfig(
-		t.Context(),
 		nil,
 	)
 
@@ -42,7 +40,6 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		t.Context(),
 		&SrvOptions{},
 	)
 
@@ -50,7 +47,6 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		t.Context(),
 		srvOpts,
 		WithMessageEncodeFunc(nil),
 	)
@@ -59,11 +55,73 @@ func Test_loadConfig(t *testing.T) {
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		t.Context(),
 		srvOpts,
 		WithMessageDecodeFunc(nil),
 	)
 
 	require.Error(t, err)
 	require.Nil(t, got)
+}
+
+func Test_loadConfig_addrValidation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		addr    string
+		wantErr bool
+	}{
+		{
+			name:    "valid host and port",
+			addr:    "localhost:6379",
+			wantErr: false,
+		},
+		{
+			name:    "valid IPv6 host and port",
+			addr:    "[::1]:6379",
+			wantErr: false,
+		},
+		{
+			name:    "valid single-digit port",
+			addr:    "localhost:1",
+			wantErr: false,
+		},
+		{
+			name:    "valid omitted host",
+			addr:    ":6379",
+			wantErr: false,
+		},
+		{
+			name:    "invalid missing port",
+			addr:    "localhost",
+			wantErr: true,
+		},
+		{
+			name:    "invalid empty address",
+			addr:    "",
+			wantErr: true,
+		},
+		{
+			name:    "invalid missing port value",
+			addr:    "localhost:",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := loadConfig(&SrvOptions{Addr: tt.addr})
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Nil(t, got)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, got)
+		})
+	}
 }

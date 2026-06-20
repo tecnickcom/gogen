@@ -38,6 +38,61 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, got)
 }
 
+func TestNew_withSubscription(t *testing.T) {
+	t.Parallel()
+
+	srvOpts := &SrvOptions{
+		Addr:     "test.redis.invalid:6379",
+		Username: "test_user",
+		Password: "test_password",
+		DB:       0,
+	}
+
+	got, err := New(
+		t.Context(),
+		srvOpts,
+		WithSubscrChannels("test_channel_1", "test_channel_2"),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.NotNil(t, got.rpubsub)
+	require.NotNil(t, got.subch)
+}
+
+func TestNew_withoutSubscription(t *testing.T) {
+	t.Parallel()
+
+	srvOpts := &SrvOptions{
+		Addr:     "test.redis.invalid:6379",
+		Username: "test_user",
+		Password: "test_password",
+		DB:       0,
+	}
+
+	ctx := t.Context()
+	cli, err := New(ctx, srvOpts)
+	require.NoError(t, err)
+	require.NotNil(t, cli)
+
+	// No subscription was configured: no Pub/Sub resources are allocated.
+	require.Nil(t, cli.rpubsub)
+	require.Nil(t, cli.subch)
+
+	// Receive must fail safely instead of blocking forever on a nil channel.
+	ch, val, err := cli.Receive(ctx)
+	require.Error(t, err)
+	require.Empty(t, ch)
+	require.Empty(t, val)
+
+	// Close must not panic when there is no Pub/Sub subscription.
+	cli.rclient = redisClientMock{closeFn: func() error {
+		return nil
+	}}
+
+	require.NoError(t, cli.Close())
+}
+
 type redisClientMock struct {
 	closeFn     func() error
 	delFn       func(ctx context.Context, keys ...string) *libredis.IntCmd

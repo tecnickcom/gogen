@@ -64,33 +64,42 @@ type Client struct {
 }
 
 // New constructs a Redis client wrapper with optional Pub/Sub subscriptions and pluggable message codecs.
+//
+// A Pub/Sub subscription is established only when at least one channel is configured
+// via WithSubscrChannels; otherwise no subscription goroutine is started.
 func New(ctx context.Context, srvopt *SrvOptions, opts ...Option) (*Client, error) {
-	cfg, err := loadConfig(ctx, srvopt, opts...)
+	cfg, err := loadConfig(srvopt, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create a new redis client: %w", err)
 	}
 
-	rclient := libredis.NewClient(cfg.srvOpts)
-	rpubsub := rclient.Subscribe(ctx, cfg.subChannels...)
-	subch := rpubsub.Channel(cfg.subChannelOpts...)
-
-	return &Client{
-		rclient:           rclient,
-		rpubsub:           rpubsub,
-		subch:             subch,
+	c := &Client{
+		rclient:           libredis.NewClient(cfg.srvOpts),
 		messageEncodeFunc: cfg.messageEncodeFunc,
 		messageDecodeFunc: cfg.messageDecodeFunc,
-	}, nil
+	}
+
+	if len(cfg.subChannels) > 0 {
+		c.rpubsub = c.rclient.Subscribe(ctx, cfg.subChannels...)
+		c.subch = c.rpubsub.Channel(cfg.subChannelOpts...)
+	}
+
+	return c, nil
 }
 
 // Close gracefully closes Pub/Sub and Redis client resources.
+//
+// When no Pub/Sub subscription was configured at construction time, only the
+// Redis client is closed.
 func (c *Client) Close() error {
-	err := c.rpubsub.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close Redis PubSub: %w", err)
+	if c.rpubsub != nil {
+		err := c.rpubsub.Close()
+		if err != nil {
+			return fmt.Errorf("failed to close Redis PubSub: %w", err)
+		}
 	}
 
-	err = c.rclient.Close()
+	err := c.rclient.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close Redis Client: %w", err)
 	}
@@ -122,7 +131,7 @@ func (c *Client) Get(ctx context.Context, key string, value any) error {
 func (c *Client) Del(ctx context.Context, key string) error {
 	err := c.rclient.Del(ctx, key).Err()
 	if err != nil {
-		return fmt.Errorf("cannot delete key: %s %w", key, err)
+		return fmt.Errorf("cannot delete key %s: %w", key, err)
 	}
 
 	return nil
@@ -139,7 +148,14 @@ func (c *Client) Send(ctx context.Context, channel string, message any) error {
 }
 
 // Receive returns the next raw message from subscribed channels as channel name and payload.
+//
+// It returns an error when the client was constructed without any subscription
+// channel (see WithSubscrChannels).
 func (c *Client) Receive(ctx context.Context) (string, string, error) {
+	if c.subch == nil {
+		return "", "", errors.New("no subscription channel configured")
+	}
+
 	select {
 	case <-ctx.Done():
 		return "", "", fmt.Errorf("context has been canceled: %w", ctx.Err())
