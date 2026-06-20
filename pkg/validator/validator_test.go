@@ -1,8 +1,10 @@
 package validator
 
 import (
+	"context"
 	"testing"
 
+	vt "github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/multierr"
 )
@@ -170,4 +172,57 @@ func TestValidator_ValidateStruct(t *testing.T) {
 			require.Len(t, errs, tt.wantErrCount, "errors: %+v", errs)
 		})
 	}
+}
+
+// TestValidator_ValidateStruct_noHTMLEscape ensures rendered error messages keep
+// special characters (such as '<' and '&') verbatim instead of HTML-escaping
+// them, since the messages are returned as plain text (text/template, not
+// html/template).
+func TestValidator_ValidateStruct_noHTMLEscape(t *testing.T) {
+	t.Parallel()
+
+	type escapeStruct struct {
+		Choice string `json:"choice" validate:"oneof=A&B C<D"`
+	}
+
+	v, err := New(
+		WithFieldNameTag("json"),
+		WithErrorTemplates(ErrorTemplates()),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	err = v.ValidateStruct(escapeStruct{Choice: "X"})
+	require.Error(t, err, "expected a validation error")
+
+	msg := err.Error()
+	require.Contains(t, msg, "A&B C<D", "message must keep raw special characters: %q", msg)
+	require.NotContains(t, msg, "&amp;", "message must not be HTML-escaped: %q", msg)
+	require.NotContains(t, msg, "&lt;", "message must not be HTML-escaped: %q", msg)
+}
+
+// TestValidator_ValidateStruct_falseifPrefix ensures that only the exact
+// "falseif" tag is skipped and that look-alike tags such as "falseifoo" are
+// still reported as errors.
+func TestValidator_ValidateStruct_falseifPrefix(t *testing.T) {
+	t.Parallel()
+
+	type prefixStruct struct {
+		Field string `json:"field" validate:"falseifoo"`
+	}
+
+	v, err := New(
+		WithFieldNameTag("json"),
+		WithCustomValidationTags(map[string]vt.FuncCtx{
+			// always fails so the produced error must NOT be skipped
+			"falseifoo": func(_ context.Context, _ vt.FieldLevel) bool { return false },
+		}),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	err = v.ValidateStruct(prefixStruct{Field: "anything"})
+	require.Error(t, err, "falseifoo error must not be skipped")
+
+	errs := multierr.Errors(err)
+	require.Len(t, errs, 1, "errors: %+v", errs)
+	require.Contains(t, errs[0].Error(), "falseifoo", "error must reference falseifoo: %q", errs[0].Error())
 }

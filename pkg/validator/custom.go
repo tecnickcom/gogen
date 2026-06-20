@@ -39,7 +39,7 @@ func CustomValidationTags() map[string]vt.FuncCtx {
 	}
 }
 
-// isE164 checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345).
+// isE164NoPlus checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345).
 func isE164NoPlus(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
 	return regexE164NoPlus.MatchString(field.String())
@@ -98,7 +98,7 @@ func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 		return true
 	}
 
-	params := strings.SplitN(param, " ", 3)
+	params := strings.SplitN(param, " ", 2)
 	paramField, paramKind, nullable, found := fl.GetStructFieldOKAdvanced2(fl.Parent(), params[0])
 
 	if !found {
@@ -167,7 +167,7 @@ func isDatetimeRFC3339(_ context.Context, fl vt.FieldLevel) bool {
 	return false
 }
 
-// isRFC3339DatetimeRelaxed checks if the fields value is a
+// isDatetimeRFC3339Relaxed checks if the fields value is a
 // valid RFC3339 date format or a relaxed format "2006-01-02 15:04:05".
 func isDatetimeRFC3339Relaxed(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()

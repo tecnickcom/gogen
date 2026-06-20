@@ -1,6 +1,6 @@
 package validator
 
-// ErrorTemplates returns a map of validation tags with error messages as html templates.
+// ErrorTemplates returns a map of validation tags with error messages as text templates.
 //
 //nolint:funlen,dupword
 func ErrorTemplates() map[string]string {

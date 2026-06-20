@@ -34,8 +34,8 @@ produces an independent, meaningful error.
 
 # Key Features
 
-  - Human-readable errors: [WithErrorTemplates] maps any validation tag to an
-    html/template string. Templates receive an [Error] value, giving access to
+  - Human-readable errors: [WithErrorTemplates] maps any validation tag to a
+    text/template string. Templates receive an [Error] value, giving access to
     the namespace, field name, tag, parameter, kind, and actual value.
     [ErrorTemplates] returns a ready-to-use map covering every built-in
     go-playground/validator tag.
@@ -86,8 +86,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html/template"
 	"strings"
+	"text/template"
 
 	vt "github.com/go-playground/validator/v10"
 	"go.uber.org/multierr"
@@ -134,7 +134,8 @@ func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 			// separate tags grouped by OR
 			tags := strings.SplitSeq(fe.Tag(), "|")
 			for tag := range tags {
-				if strings.HasPrefix(tag, "falseif") {
+				tagKey, _, _ := strings.Cut(tag, "=")
+				if tagKey == "falseif" {
 					// the "falseif" tag only works in combination with other tags
 					continue
 				}

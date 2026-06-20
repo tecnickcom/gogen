@@ -2,9 +2,9 @@ package validator
 
 import (
 	"fmt"
-	"html/template"
 	"reflect"
 	"strings"
+	"text/template"
 
 	vt "github.com/go-playground/validator/v10"
 )
@@ -54,7 +54,7 @@ func WithCustomTypeFunc(fn vt.CustomTypeFunc, types ...any) Option {
 	}
 }
 
-// WithErrorTemplates registers html/template-based error message translations for validation tags, taking precedence over upstream messages.
+// WithErrorTemplates registers text/template-based error message translations for validation tags, taking precedence over upstream messages.
 func WithErrorTemplates(t map[string]string) Option {
 	return func(v *Validator) error {
 		if len(v.tpl) == 0 {

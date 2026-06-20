@@ -201,6 +201,36 @@ func TestCustomTags(t *testing.T) {
 	}
 }
 
+// TestCustomTags_falseifMultiWordValue ensures that a "falseif" comparison
+// value containing spaces (e.g. "New York") is matched in full rather than
+// truncated at the first space.
+func TestCustomTags_falseifMultiWordValue(t *testing.T) {
+	t.Parallel()
+
+	// City is validated as a US state only when State equals the full
+	// multi-word value "New York".
+	type multiWordStruct struct {
+		State string `json:"state"`
+		City  string `json:"city"  validate:"falseif=State New York|usstate"`
+	}
+
+	v, err := New(
+		WithFieldNameTag("json"),
+		WithCustomValidationTags(CustomValidationTags()),
+		WithErrorTemplates(ErrorTemplates()),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	// State fully matches "New York": the usstate check applies and fails.
+	err = v.ValidateStruct(multiWordStruct{State: "New York", City: "XX"})
+	require.Error(t, err, "usstate check must run when State equals the full value")
+
+	// A value that only matches the truncated "New" must NOT trigger the
+	// usstate check (proving the value is compared in full).
+	err = v.ValidateStruct(multiWordStruct{State: "New", City: "XX"})
+	require.NoError(t, err, "usstate check must be skipped when State differs from the full value")
+}
+
 func Test_hasDefaultValue_invalid(t *testing.T) {
 	t.Parallel()
 
