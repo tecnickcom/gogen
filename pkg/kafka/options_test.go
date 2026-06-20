@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,6 +25,16 @@ func Test_WithFirstOffset(t *testing.T) {
 	cfg := &config{}
 	WithFirstOffset()(cfg)
 	require.Equal(t, int64(-2), cfg.startOffset)
+}
+
+func Test_WithBalancer(t *testing.T) {
+	t.Parallel()
+
+	b := &kafka.RoundRobin{}
+
+	cfg := &config{}
+	WithBalancer(b)(cfg)
+	require.Same(t, b, cfg.balancer)
 }
 
 func Test_WithMessageEncodeFunc(t *testing.T) {

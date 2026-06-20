@@ -16,6 +16,7 @@ type config struct {
 	startOffset       int64
 	messageEncodeFunc TEncodeFunc
 	messageDecodeFunc TDecodeFunc
+	balancer          kafka.Balancer
 }
 
 // defaultConfig returns a config struct populated with default values.
@@ -25,5 +26,6 @@ func defaultConfig() *config {
 		startOffset:       kafka.LastOffset,
 		messageEncodeFunc: DefaultMessageEncodeFunc,
 		messageDecodeFunc: DefaultMessageDecodeFunc,
+		balancer:          &kafka.Hash{},
 	}
 }

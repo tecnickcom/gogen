@@ -27,6 +27,7 @@ func Test_NewProducer(t *testing.T) {
 			urls: []string{"url1", "url2"},
 			options: []Option{
 				WithSessionTimeout(time.Millisecond * 17),
+				WithBalancer(&kafka.RoundRobin{}),
 			},
 			expTimeout: time.Millisecond * 17,
 		},

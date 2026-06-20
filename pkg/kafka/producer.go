@@ -25,6 +25,14 @@ type Producer struct {
 }
 
 // NewProducer constructs a Kafka producer for a topic with optional tuning (encoding, balancing).
+//
+// The partitioning strategy defaults to a kafka.Hash balancer. Because Send() publishes
+// messages without a Key, the default Hash balancer concentrates all messages on a single
+// partition; use WithBalancer to choose a different strategy (for example a round-robin
+// balancer) to spread keyless messages across partitions.
+//
+// The consumer-only options WithSessionTimeout and WithFirstOffset are accepted for API
+// compatibility on the shared Option type but have no effect on a Producer.
 func NewProducer(urls []string, topic string, opts ...Option) (*Producer, error) {
 	cfg := defaultConfig()
 
@@ -39,7 +47,7 @@ func NewProducer(urls []string, topic string, opts ...Option) (*Producer, error)
 	producer := &kafka.Writer{
 		Addr:     kafka.TCP(urls...),
 		Topic:    topic,
-		Balancer: &kafka.Hash{},
+		Balancer: cfg.balancer,
 	}
 
 	return &Producer{

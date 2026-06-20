@@ -15,4 +15,5 @@ func Test_defaultConfig(t *testing.T) {
 	require.Equal(t, int64(-1), cfg.startOffset)
 	require.NotNil(t, cfg.messageEncodeFunc)
 	require.NotNil(t, cfg.messageDecodeFunc)
+	require.NotNil(t, cfg.balancer)
 }
