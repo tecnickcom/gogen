@@ -1,6 +1,7 @@
 package kafkacgo
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -137,6 +138,118 @@ func Test_Receive(t *testing.T) {
 
 	err = consumer.Close()
 	require.Error(t, err)
+}
+
+func Test_ReceiveCtx(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		consumer := newTestConsumer(t)
+		consumer.client = consumerMock{
+			readMessage: func(_ time.Duration) (*kafka.Message, error) {
+				return &kafka.Message{Value: []byte{1, 2, 3}}, nil
+			},
+			close: func() error { return nil },
+		}
+
+		msg, err := consumer.ReceiveCtx(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, []byte{1, 2, 3}, msg)
+	})
+
+	t.Run("retries on timeout then succeeds", func(t *testing.T) {
+		t.Parallel()
+
+		consumer := newTestConsumer(t)
+
+		var calls int
+
+		consumer.client = consumerMock{
+			readMessage: func(_ time.Duration) (*kafka.Message, error) {
+				calls++
+				if calls < 3 {
+					return nil, kafka.NewError(kafka.ErrTimedOut, "timed out", false)
+				}
+
+				return &kafka.Message{Value: []byte{9}}, nil
+			},
+			close: func() error { return nil },
+		}
+
+		msg, err := consumer.ReceiveCtx(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, []byte{9}, msg)
+		require.Equal(t, 3, calls)
+	})
+
+	t.Run("returns non-timeout error", func(t *testing.T) {
+		t.Parallel()
+
+		consumer := newTestConsumer(t)
+		consumer.client = consumerMock{
+			readMessage: func(_ time.Duration) (*kafka.Message, error) {
+				return nil, errors.New("boom")
+			},
+			close: func() error { return nil },
+		}
+
+		msg, err := consumer.ReceiveCtx(t.Context())
+		require.Error(t, err)
+		require.Nil(t, msg)
+	})
+
+	t.Run("returns when context already canceled", func(t *testing.T) {
+		t.Parallel()
+
+		consumer := newTestConsumer(t)
+		consumer.client = consumerMock{
+			readMessage: func(_ time.Duration) (*kafka.Message, error) {
+				return &kafka.Message{Value: []byte{1}}, nil
+			},
+			close: func() error { return nil },
+		}
+
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		msg, err := consumer.ReceiveCtx(ctx)
+		require.Error(t, err)
+		require.ErrorIs(t, err, context.Canceled)
+		require.Nil(t, msg)
+	})
+
+	t.Run("returns when context canceled during timeout polling", func(t *testing.T) {
+		t.Parallel()
+
+		consumer := newTestConsumer(t)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		consumer.client = consumerMock{
+			readMessage: func(_ time.Duration) (*kafka.Message, error) {
+				cancel() // cancel after the first read so the loop exits on the ctx check
+
+				return nil, kafka.NewError(kafka.ErrTimedOut, "timed out", false)
+			},
+			close: func() error { return nil },
+		}
+
+		msg, err := consumer.ReceiveCtx(ctx)
+		require.Error(t, err)
+		require.ErrorIs(t, err, context.Canceled)
+		require.Nil(t, msg)
+	})
+}
+
+func newTestConsumer(t *testing.T) *Consumer {
+	t.Helper()
+
+	consumer, err := NewConsumer([]string{"url1", "url2"}, []string{"topic1"}, "group1")
+	require.NoError(t, err)
+	require.NotNil(t, consumer)
+
+	return consumer
 }
 
 type consumerMock struct {
