@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -260,6 +261,60 @@ func TestSQLConn_DB(t *testing.T) {
 	}
 }
 
+func TestSQLConn_Shutdown_idempotent(t *testing.T) {
+	t.Parallel()
+
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+
+	// Close must be expected exactly once: subsequent Shutdown calls are no-ops.
+	mock.ExpectClose()
+
+	shutdownWG := &sync.WaitGroup{}
+	shutdownSG := make(chan struct{})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	mockConnectFunc := newMockConnectFunc(db, nil)
+
+	conn, err := New(
+		ctx,
+		"testsql",
+		"user:pass@tcp(db.host.invalid:1234)/testdb",
+		WithConnectFunc(mockConnectFunc),
+		WithShutdownWaitGroup(shutdownWG),
+		WithShutdownSignalChan(shutdownSG),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, conn)
+
+	// First shutdown closes the DB and decrements the wait group.
+	require.NoError(t, conn.Shutdown(ctx))
+	require.Nil(t, conn.DB())
+
+	// A second direct call must be a no-op: no panic, no double close, and the
+	// wait group must not go negative (a negative wait group would panic on Wait).
+	require.NoError(t, conn.Shutdown(ctx))
+
+	// A concurrent third call (mimicking the watcher goroutine racing a deferred
+	// call) must also be safe; assert is used because this runs off the test goroutine.
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		assert.NoError(t, conn.Shutdown(ctx))
+	}()
+
+	<-done
+
+	// Wait returns immediately without panicking only if the counter is exactly 0.
+	shutdownWG.Wait()
+
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestSQLConn_HealthCheck(t *testing.T) {
 	t.Parallel()
 
@@ -385,7 +440,7 @@ func Test_checkConnection(t *testing.T) {
 	}
 }
 
-func Test_connectWithBackoff(t *testing.T) {
+func Test_connectOnce(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -444,18 +499,18 @@ func Test_connectWithBackoff(t *testing.T) {
 				tt.setupConfig(cfg, db)
 			}
 
-			got, err := connectWithBackoff(t.Context(), cfg)
+			got, err := connectOnce(t.Context(), cfg)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("connectWithBackoff() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("connectOnce() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if tt.want {
-				require.Equal(t, db, got, "connectWithBackoff() got = %v, want %v", got, db)
+				require.Equal(t, db, got, "connectOnce() got = %v, want %v", got, db)
 				return
 			}
 
-			require.Nil(t, got, "connectWithBackoff() expected nil DB")
+			require.Nil(t, got, "connectOnce() expected nil DB")
 		})
 	}
 }

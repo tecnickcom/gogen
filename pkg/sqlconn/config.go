@@ -40,7 +40,7 @@ func defaultConfig(driver, dsn string) *config {
 	return &config{
 		checkConnectionFunc: checkConnection,
 		sqlOpenFunc:         sql.Open,
-		connectFunc:         connectWithBackoff,
+		connectFunc:         connectOnce,
 		connMaxIdleCount:    defaultConnMaxIdleCount,
 		connMaxIdleTime:     defaultConnMaxIdleTime,
 		connMaxLifetime:     defaultConnMaxLifetime,
@@ -99,7 +99,7 @@ func (c *config) validate() error {
 	}
 
 	if c.connMaxIdleTime < 1*time.Second {
-		return errors.New("database connect retry interval must be at least 1 second")
+		return errors.New("database connection max idle time must be at least 1 second")
 	}
 
 	if c.connMaxLifetime < 1*time.Second {

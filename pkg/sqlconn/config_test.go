@@ -85,6 +85,7 @@ func Test_config_validate(t *testing.T) {
 		name    string
 		cfg     *config
 		wantErr bool
+		errMsg  string
 	}{
 		{
 			name:    "fail with empty driver",
@@ -145,6 +146,7 @@ func Test_config_validate(t *testing.T) {
 				return cfg
 			}(),
 			wantErr: true,
+			errMsg:  "database connection max idle time must be at least 1 second",
 		},
 		{
 			name: "fail with invalid max lifetime",
@@ -223,6 +225,10 @@ func Test_config_validate(t *testing.T) {
 			err := tt.cfg.validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.errMsg != "" {
+				require.EqualError(t, err, tt.errMsg)
 			}
 		})
 	}

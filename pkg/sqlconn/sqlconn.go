@@ -24,7 +24,9 @@ this pattern.
     shutdown signal channel.
   - When shutdown is triggered, [SQLConn.Shutdown] closes the underlying
     database handle, updates the shared shutdown wait group, and prevents
-    further use by setting the internal DB pointer to nil.
+    further use by setting the internal DB pointer to nil. Shutdown is
+    idempotent, so the watcher goroutine and a deferred call can both fire
+    safely.
 
 # Key Features
 
@@ -111,7 +113,13 @@ func (cfg *config) connect(ctx context.Context) (*SQLConn, error) {
 		db:  db,
 	}
 
-	// wait for shutdown signal or context cancelation
+	// Register with the shutdown wait group before launching the watcher
+	// goroutine so the matching Add(-1) in Shutdown can never run first.
+	cfg.shutdownWaitGroup.Add(1)
+
+	// Wait for a shutdown signal or context cancelation. The caller must pass a
+	// cancelable context or close the shutdown signal channel, otherwise this
+	// goroutine blocks until the process exits and Shutdown is never triggered.
 	go func() {
 		select {
 		case <-cfg.shutdownSignalChan:
@@ -122,8 +130,6 @@ func (cfg *config) connect(ctx context.Context) (*SQLConn, error) {
 
 		_ = c.Shutdown(ctx)
 	}()
-
-	cfg.shutdownWaitGroup.Add(1)
 
 	return &c, nil
 }
@@ -159,7 +165,7 @@ func (c *SQLConn) HealthCheck(ctx context.Context) error {
 	defer c.dbLock.RUnlock()
 
 	if c.db == nil {
-		return errors.New("database not unavailable")
+		return errors.New("database is unavailable")
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.pingTimeout)
@@ -169,11 +175,19 @@ func (c *SQLConn) HealthCheck(ctx context.Context) error {
 }
 
 // Shutdown gracefully closes database connection, preventing new queries and updating shutdown wait group.
+// The context parameter is intentionally ignored: sql.DB.Close takes no context.
+// Shutdown is idempotent; calling it more than once is a no-op and never drives the wait group negative.
 func (c *SQLConn) Shutdown(_ context.Context) error {
 	c.cfg.logger.Debug("shutting down sql connection")
 
 	c.dbLock.Lock()
 	defer c.dbLock.Unlock()
+
+	if c.db == nil {
+		c.cfg.logger.Debug("sql connection already shut down")
+
+		return nil
+	}
 
 	err := c.db.Close()
 
@@ -205,8 +219,9 @@ func checkConnection(ctx context.Context, db *sql.DB) (err error) {
 	return nil
 }
 
-// connectWithBackoff attempts to open a database connection and perform a health check.
-func connectWithBackoff(ctx context.Context, cfg *config) (*sql.DB, error) {
+// connectOnce opens a database connection once and performs a single health check.
+// It does not retry: any open or check failure is returned to the caller immediately.
+func connectOnce(ctx context.Context, cfg *config) (*sql.DB, error) {
 	db, err := cfg.sqlOpenFunc(cfg.driver, cfg.dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed opening database connection: %w", err)
