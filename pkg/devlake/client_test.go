@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/validator"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
 )
@@ -33,6 +34,24 @@ func TestNew(t *testing.T) {
 		{
 			name:    "fails with invalid character in URL",
 			addr:    "http://invalid-url.domain.invalid\u007F",
+			apikey:  "0123456789abcdef",
+			wantErr: true,
+		},
+		{
+			name:    "fails with empty address",
+			addr:    "",
+			apikey:  "0123456789abcdef",
+			wantErr: true,
+		},
+		{
+			name:    "fails with relative address missing scheme and host",
+			addr:    "/api/rest",
+			apikey:  "0123456789abcdef",
+			wantErr: true,
+		},
+		{
+			name:    "fails with scheme but missing host",
+			addr:    "http://",
 			apikey:  "0123456789abcdef",
 			wantErr: true,
 		},
@@ -83,6 +102,22 @@ func TestNew(t *testing.T) {
 			require.Equal(t, tt.wantTimeout, c.pingTimeout, "New() unexpected pingTimeout = %d got %d", tt.wantTimeout, c.pingTimeout)
 		})
 	}
+}
+
+//nolint:paralleltest // mutates the package-level newValidator seam
+func TestNew_validatorError(t *testing.T) {
+	orig := newValidator
+
+	t.Cleanup(func() { newValidator = orig })
+
+	newValidator = func(...validator.Option) (*validator.Validator, error) {
+		return nil, errors.New("test-error")
+	}
+
+	c, err := New("http://service.domain.invalid:1234", "0123456789abcdef")
+
+	require.Error(t, err)
+	require.Nil(t, c)
 }
 
 //nolint:gocognit

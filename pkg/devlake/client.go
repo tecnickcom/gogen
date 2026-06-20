@@ -27,6 +27,11 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// newValidator is a package-level indirection so tests can force a
+// validator initialization failure; in production it always delegates
+// to [validator.New].
+var newValidator = validator.New //nolint:gochecknoglobals
+
 // Client sends deployment and incident webhook events to DevLake.
 type Client struct {
 	httpClient             HTTPClient
@@ -51,20 +56,27 @@ type Client struct {
 //
 // Example addr: "https://app.devlake.invalid".
 func New(addr, apiKey string, opts ...Option) (*Client, error) {
-	baseURL, err := url.Parse(addr)
+	baseURL, err := url.ParseRequestURI(addr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse addr: %w", err)
+		return nil, fmt.Errorf("invalid devlake address %q: %w", addr, err)
+	}
+
+	if baseURL.Scheme == "" || baseURL.Host == "" {
+		return nil, fmt.Errorf("invalid devlake address %q: missing scheme or host", addr)
 	}
 
 	if apiKey == "" {
 		return nil, errors.New("apiKey is empty")
 	}
 
-	valid, _ := validator.New(
+	valid, err := newValidator(
 		validator.WithFieldNameTag("json"),
 		validator.WithCustomValidationTags(validator.CustomValidationTags()),
 		validator.WithErrorTemplates(validator.ErrorTemplates()),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("init validator: %w", err)
+	}
 
 	c := &Client{
 		baseURL:                baseURL,
@@ -140,7 +152,7 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	httputil.AddJsonHeaders(r)
+	httputil.AddJSONHeaders(r)
 	httputil.AddBearerToken(apiKey, r)
 
 	return r, nil
@@ -230,5 +242,6 @@ func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 		c.httpClient,
 		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
 		httpretrier.WithAttempts(c.retryAttempts),
+		httpretrier.WithDelay(c.retryDelay),
 	)
 }
