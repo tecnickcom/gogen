@@ -1,6 +1,7 @@
 package random
 
 import (
+	"encoding/binary"
 	"time"
 
 	"github.com/tecnickcom/gogen/pkg/uhex"
@@ -63,8 +64,13 @@ func (r *Rnd) UUIDv7() UUID {
 	ub[6] = 0x70 | (0x0F & byte(ns>>8))
 	ub[7] = byte(ns)
 
-	// generate 8 random bytes
-	rb, _ := r.RandomBytes(8)
+	// generate 8 random bytes; on reader failure fall back to the non-failing
+	// RandUint64 path (crypto, then math/rand/v2) so this never panics.
+	rb, err := r.RandomBytes(8)
+	if err != nil {
+		rb = make([]byte, 8)
+		binary.LittleEndian.PutUint64(rb, r.RandUint64())
+	}
 
 	// var:
 	// 2-bit variant field set to 0b10

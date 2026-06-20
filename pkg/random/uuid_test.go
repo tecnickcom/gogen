@@ -1,7 +1,9 @@
 package random
 
 import (
+	"errors"
 	"testing"
+	"testing/iotest"
 
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +19,19 @@ func TestUUIDv7(t *testing.T) {
 	require.NotEqual(t, a, b)
 	require.Len(t, a, 16)
 	require.Len(t, b, 16)
+}
+
+func TestUUIDv7_ReaderError(t *testing.T) {
+	t.Parallel()
+
+	// A failing random reader must not panic; UUIDv7 falls back to RandUint64.
+	r := New(iotest.ErrReader(errors.New("test-uuidv7-reader-error")))
+
+	u := r.UUIDv7()
+
+	require.Len(t, u, 16)
+	require.Equal(t, byte(0x70), u[6]&0xF0, "version nibble must be 7")
+	require.Equal(t, byte(0x80), u[8]&0xC0, "variant bits must be 0b10")
 }
 
 func TestUUIDv7_Byte(t *testing.T) {
