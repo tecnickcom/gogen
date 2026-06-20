@@ -15,11 +15,11 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		osArgs       []string
-		boostrapFunc bootstrapFunc
-		wantOutput   func(t *testing.T, out string)
-		wantErr      bool
+		name          string
+		osArgs        []string
+		bootstrapFunc bootstrapFunc
+		wantOutput    func(t *testing.T, out string)
+		wantErr       bool
 	}{
 		{
 			name:       "call version subcommand",
@@ -80,7 +80,7 @@ func TestNew(t *testing.T) {
 		{
 			name:   "bootstrap with valid configuration",
 			osArgs: []string{AppName, "-c", "../../resources/test/etc/gogenexample/"},
-			boostrapFunc: func(_ bootstrap.BindFunc, _ ...bootstrap.Option) error {
+			bootstrapFunc: func(_ bootstrap.BindFunc, _ ...bootstrap.Option) error {
 				return nil
 			},
 			wantErr: false,
@@ -96,8 +96,8 @@ func TestNew(t *testing.T) {
 			os.Args = tt.osArgs
 
 			bootstrapFunc := bootstrap.Bootstrap
-			if tt.boostrapFunc != nil {
-				bootstrapFunc = tt.boostrapFunc
+			if tt.bootstrapFunc != nil {
+				bootstrapFunc = tt.bootstrapFunc
 			}
 
 			// execute the main function

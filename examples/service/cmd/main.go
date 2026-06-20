@@ -22,7 +22,7 @@ var (
 	programRelease = "0" //nolint:gochecknoglobals
 )
 
-// exitFn define tha exit function and can be overwritten for testing.
+// exitFn defines the exit function and can be overwritten for testing.
 var exitFn = os.Exit //nolint:gochecknoglobals
 
 // main initializes a safe default logger, builds the root CLI command, and
