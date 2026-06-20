@@ -86,6 +86,9 @@ func QueryIntOrDefault(q url.Values, key string, defaultValue int) int {
 // QueryUintOrDefault parses query parameter as unsigned integer or returns defaultValue if missing or invalid.
 func QueryUintOrDefault(q url.Values, key string, defaultValue uint) uint {
 	v, err := strconv.ParseUint(q.Get(key), 10, 64)
+	// The v <= math.MaxUint check is a tautology on 64-bit platforms (where uint
+	// is 64-bit) but guards against truncation on 32-bit platforms (where uint
+	// is 32-bit and ParseUint still returns a uint64).
 	if err == nil && v <= math.MaxUint {
 		return uint(v)
 	}

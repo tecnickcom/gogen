@@ -106,7 +106,14 @@ type RouterArgs struct {
 }
 
 // Wrap builds a [Response] for statusCode using info metadata and data payload.
+//
+// A nil info is treated as an empty [AppInfo] so the response is still produced
+// (with empty program metadata) instead of panicking.
 func Wrap(statusCode int, info *AppInfo, data any) *Response {
+	if info == nil {
+		info = &AppInfo{}
+	}
+
 	now := time.Now().UTC()
 
 	return &Response{

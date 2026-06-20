@@ -62,6 +62,47 @@ func TestSend(t *testing.T) {
 	jr.Send(t.Context(), mockWriter, http.StatusOK, params, "message")
 }
 
+func TestWrapNilInfo(t *testing.T) {
+	t.Parallel()
+
+	resp := Wrap(http.StatusOK, nil, "data")
+
+	require.NotNil(t, resp)
+	require.Empty(t, resp.Program)
+	require.Empty(t, resp.Version)
+	require.Empty(t, resp.Release)
+	require.Equal(t, http.StatusOK, resp.Code)
+	require.Equal(t, "OK", resp.Message)
+	require.Equal(t, "data", resp.Data)
+}
+
+func TestSendNilInfo(t *testing.T) {
+	t.Parallel()
+
+	jr := NewJSXResp(nil)
+
+	rr := httptest.NewRecorder()
+	jr.Send(t.Context(), rr, http.StatusOK, nil, "hello test")
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	var okResp Response
+
+	_ = json.Unmarshal(body, &okResp)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Empty(t, okResp.Program, "unexpected response: %s", body)
+	require.Equal(t, "hello test", okResp.Data, "unexpected response: %s", body)
+}
+
 func TestDefaultNotFoundHandlerFunc(t *testing.T) {
 	t.Parallel()
 

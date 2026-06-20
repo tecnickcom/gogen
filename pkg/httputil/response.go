@@ -40,6 +40,11 @@ const (
 type Status int
 
 // MarshalJSON implements the custom marshaling function for the json encoder.
+//
+// The HTTP status code is projected onto a JSend status string:
+//   - codes below 400 (including 0 and negative values) map to "success"
+//   - codes in the 400-499 range map to "fail"
+//   - codes 500 and above map to "error"
 func (sc Status) MarshalJSON() ([]byte, error) {
 	s := StatusSuccess
 
