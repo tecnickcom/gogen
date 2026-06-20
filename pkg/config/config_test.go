@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	vt "github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -113,6 +114,7 @@ func mockViper(ctrl *gomock.Controller) *MockViper {
 	mock.EXPECT().SetDefault(keyRemoteConfigEndpoint, defaultRemoteConfigEndpoint)
 	mock.EXPECT().SetDefault(keyRemoteConfigPath, defaultRemoteConfigPath)
 	mock.EXPECT().SetDefault(keyRemoteConfigSecretKeyring, defaultRemoteConfigSecretKeyring)
+	mock.EXPECT().SetDefault(keyRemoteConfigData, defaultRemoteConfigData)
 
 	mock.EXPECT().SetDefault(keyLogFormat, defaultLogFormat)
 	mock.EXPECT().SetDefault(keyLogLevel, defaultLogLevel)
@@ -260,6 +262,61 @@ func Test_validationError(t *testing.T) {
 
 	err := validationError("provider", "prefix", "var")
 	require.EqualError(t, err, "provider config provider requires PREFIX_VAR to be set")
+}
+
+// Test_remoteSourceConfig_validation verifies the struct validation tags on
+// remoteSourceConfig, in particular that the required_if rule on Data fires
+// when Provider is set to the real provider name ("envvar").
+func Test_remoteSourceConfig_validation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		cfg     remoteSourceConfig
+		wantErr bool
+	}{
+		{
+			name:    "envvar provider without data fails required_if",
+			cfg:     remoteSourceConfig{Provider: providerEnvVar},
+			wantErr: true,
+		},
+		{
+			name: "envvar provider with data passes",
+			cfg: remoteSourceConfig{
+				Provider: providerEnvVar,
+				Data:     "eyJrZXkiOiJvbmUifQ==", // {"key":"one"} in base64
+			},
+			wantErr: false,
+		},
+		{
+			name:    "no provider without data passes",
+			cfg:     remoteSourceConfig{},
+			wantErr: false,
+		},
+		{
+			name: "other provider without data passes",
+			cfg: remoteSourceConfig{
+				Provider: "consul",
+				Endpoint: "remote:1234",
+			},
+			wantErr: false,
+		},
+	}
+
+	val := vt.New()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := val.Struct(tt.cfg)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 //nolint:gocognit

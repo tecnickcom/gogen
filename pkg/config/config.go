@@ -98,6 +98,7 @@ const (
 	defaultRemoteConfigEndpoint      = ""
 	defaultRemoteConfigPath          = ""
 	defaultRemoteConfigSecretKeyring = ""
+	defaultRemoteConfigData          = ""
 )
 
 // Logger configuration key names.
@@ -195,7 +196,7 @@ type remoteSourceConfig struct {
 	SecretKeyring string `mapstructure:"remoteConfigSecretKeyring" validate:"omitempty,file"`
 
 	// Data is the base64 encoded JSON configuration data to be used with the "envvar" provider.
-	Data string `mapstructure:"remoteConfigData" validate:"required_if=Provider envar,omitempty,base64"`
+	Data string `mapstructure:"remoteConfigData" validate:"required_if=Provider envvar,omitempty,base64"`
 }
 
 // Load builds cfg from defaults, local config, environment, and optional remote sources.
@@ -248,6 +249,7 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 	v.SetDefault(keyRemoteConfigEndpoint, defaultRemoteConfigEndpoint)
 	v.SetDefault(keyRemoteConfigPath, defaultRemoteConfigPath)
 	v.SetDefault(keyRemoteConfigSecretKeyring, defaultRemoteConfigSecretKeyring)
+	v.SetDefault(keyRemoteConfigData, defaultRemoteConfigData)
 
 	// set default logging configuration values
 	v.SetDefault(keyLogFormat, defaultLogFormat)
