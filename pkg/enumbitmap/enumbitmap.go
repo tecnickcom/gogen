@@ -51,8 +51,12 @@ const (
 
 // BitMapToStrings expands a bitmap value into its enum names.
 //
-// Unknown set bits are reported in the returned error while known values are
-// still returned, enabling tolerant parsing and diagnostics.
+// Unknown set bits are reported in the returned error as their bit mask values
+// (1, 2, 4, …), while known values are still returned, enabling tolerant
+// parsing and diagnostics.
+//
+// Only the lowest 32 bits (masks 1<<0 through 1<<31) are inspected; any bits set
+// at position 32 or higher are silently ignored.
 func BitMapToStrings(enum map[int]string, v int) ([]string, error) {
 	if v == 0 {
 		return []string{}, nil
@@ -61,19 +65,19 @@ func BitMapToStrings(enum map[int]string, v int) ([]string, error) {
 	s := make([]string, 0, maxBit)
 	errBits := make([]int, 0, maxBit)
 
-	i := 1
+	mask := 1
 
 	for bit := 1; bit <= maxBit; bit++ {
-		if v&i == i {
-			name, ok := enum[i]
+		if v&mask == mask {
+			name, ok := enum[mask]
 			if ok {
 				s = append(s, name)
 			} else {
-				errBits = append(errBits, bit)
+				errBits = append(errBits, mask)
 			}
 		}
 
-		i = (i << 1)
+		mask = (mask << 1)
 	}
 
 	var err error

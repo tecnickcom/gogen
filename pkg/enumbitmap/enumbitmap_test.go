@@ -102,6 +102,33 @@ func Test_BitMapToStrings(t *testing.T) {
 	}
 }
 
+func Test_BitMapToStrings_unknownBitReportsMask(t *testing.T) {
+	t.Parallel()
+
+	_, eis := testEnum()
+	delete(eis, 0b10000000)
+
+	got, err := BitMapToStrings(eis, 0b10000000)
+	require.Error(t, err)
+	require.Empty(t, got)
+	// The unknown set bit must be reported as its mask value (128), not as a
+	// 1-based loop index (8).
+	require.Contains(t, err.Error(), "128")
+	require.NotContains(t, err.Error(), "[8]")
+}
+
+func Test_BitMapToStrings_highBitsIgnored(t *testing.T) {
+	t.Parallel()
+
+	_, eis := testEnum()
+
+	// Bit at position 32 (mask 1<<32) is beyond the 32-bit limit and must be
+	// silently ignored without producing an error.
+	got, err := BitMapToStrings(eis, 1<<32)
+	require.NoError(t, err)
+	require.Empty(t, got)
+}
+
 func Test_StringsToBitMap(t *testing.T) {
 	t.Parallel()
 
