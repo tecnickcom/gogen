@@ -2,6 +2,7 @@ package redact
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -571,7 +572,7 @@ func TestHTTPDataKeywordBoundaries(t *testing.T) {
 	}
 }
 
-func TestRedactJSONKeysEdgeBranches(t *testing.T) {
+func TestHTTPDataJSONEdgeBranches(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -614,57 +615,45 @@ func TestRedactJSONKeysEdgeBranches(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedRedaction(tc.want), string(redactJSONKeys([]byte(tc.input))))
+			require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input))
 		})
 	}
 }
 
-func TestRedactURLEncodedKeysSlashInKey(t *testing.T) {
+func TestHTTPDataURLEncodedSlashInKey(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("GET /x/password=SECRET&password=SECRET")
 	want := []byte("GET /x/password=SECRET&password=***")
-	require.Equal(t, want, redactURLEncodedKeys(input))
+	require.Equal(t, want, HTTPDataBytes(input))
 }
 
-func TestRedactJSONKeysNonSensitivePreserved(t *testing.T) {
+func TestHTTPDataJSONNonSensitivePreserved(t *testing.T) {
 	t.Parallel()
 
 	input := []byte(`{"reference":"VISIBLE"}`)
 	want := []byte(`{"reference":"VISIBLE"}`)
-	require.Equal(t, want, redactJSONKeys(input))
+	require.Equal(t, want, HTTPDataBytes(input))
 }
 
-func TestRedactURLEncodedKeysNoEquals(t *testing.T) {
+func TestHTTPDataURLEncodedNoEquals(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("GET /health HTTP/1.1")
 	want := []byte("GET /health HTTP/1.1")
-	require.Equal(t, want, redactURLEncodedKeys(input))
+	require.Equal(t, want, HTTPDataBytes(input))
 }
 
-func TestRedactURLEncodedKeysNonSensitivePreserved(t *testing.T) {
+func TestHTTPDataURLEncodedNonSensitivePreserved(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("reference=VISIBLE&note=PUBLIC")
 	want := []byte("reference=VISIBLE&note=PUBLIC")
-	require.Equal(t, want, redactURLEncodedKeys(input))
+	require.Equal(t, want, HTTPDataBytes(input))
 }
 
 func TestRedactionHelpersCoverageBranches(t *testing.T) {
 	t.Parallel()
-
-	t.Run("trailing newline absent", func(t *testing.T) {
-		t.Parallel()
-		require.Nil(t, trailingNewline([]byte("Authorization: Bearer SECRET")))
-	})
-
-	t.Run("authorization line without colon", func(t *testing.T) {
-		t.Parallel()
-
-		_, ok := redactAuthorizationLine([]byte("Authorization no-colon\n"))
-		require.False(t, ok)
-	})
 
 	t.Run("json value start no colon after key", func(t *testing.T) {
 		t.Parallel()
@@ -698,11 +687,11 @@ func TestIsSensitiveNormalizedKeyEmpty(t *testing.T) {
 	require.False(t, isSensitiveNormalizedKey(""))
 }
 
-func TestRedactCreditCardsKeepsDigitsAdjacentToWordChar(t *testing.T) {
+func TestHTTPDataCreditCardsKeepsDigitsAdjacentToWordChar(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("prefix 4012888888881881x suffix")
-	got := redactCreditCards(input)
+	got := HTTPDataBytes(input)
 
 	require.Equal(t, input, got)
 }
@@ -713,41 +702,37 @@ func TestMatchesCardPatternReturnsFalseForUnknownPrefix(t *testing.T) {
 	require.False(t, matchesCardPattern([]byte("9111111111111111")))
 }
 
-func TestRedactAuthorizationLineBranches(t *testing.T) {
+func TestHTTPDataAuthorizationLineBranches(t *testing.T) {
 	t.Parallel()
 
-	_, ok := redactAuthorizationLine([]byte("X-Header: SECRET\n"))
-	require.False(t, ok)
+	// Non-authorization header is left untouched.
+	require.Equal(t, []byte("X-Header: SECRET\n"), HTTPDataBytes([]byte("X-Header: SECRET\n")))
 
-	out, ok := redactAuthorizationLine([]byte("Authorization: Bearer SECRET\n"))
-	require.True(t, ok)
-	require.Equal(t, []byte("Authorization: ***\n"), out)
+	// Authorization header value is redacted, trailing newline preserved.
+	require.Equal(t, []byte("Authorization: ***\n"), HTTPDataBytes([]byte("Authorization: Bearer SECRET\n")))
+
+	// Authorization header value is redacted without a trailing newline.
+	require.Equal(t, []byte("Authorization: ***"), HTTPDataBytes([]byte("Authorization: Bearer SECRET")))
 }
 
-func TestTrailingNewlinePresent(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, []byte("\n"), trailingNewline([]byte("line\n")))
-}
-
-func TestRedactCreditCardsAdditionalBranches(t *testing.T) {
+func TestHTTPDataCreditCardsAdditionalBranches(t *testing.T) {
 	t.Parallel()
 
 	// Match and redact a standalone valid card number.
-	require.Equal(t, []byte("***"), redactCreditCards([]byte("4012888888881881")))
+	require.Equal(t, []byte("***"), HTTPDataBytes([]byte("4012888888881881")))
 
 	// Keep non-matching numeric run unchanged.
-	require.Equal(t, []byte("9111111111111111"), redactCreditCards([]byte("9111111111111111")))
+	require.Equal(t, []byte("9111111111111111"), HTTPDataBytes([]byte("9111111111111111")))
 
 	// Exercise branch where current digit follows a word character.
-	require.Equal(t, []byte("x123"), redactCreditCards([]byte("x123")))
+	require.Equal(t, []byte("x123"), HTTPDataBytes([]byte("x123")))
 }
 
-func TestSinglePassDigitWordBoundaryBranch(t *testing.T) {
+func TestHTTPDataDigitWordBoundaryBranch(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("(123x)")
-	require.Equal(t, input, redactAllInSinglePass(input))
+	require.Equal(t, input, HTTPDataBytes(input))
 }
 
 func TestAppendRedactedAuthorizationLineNoColon(t *testing.T) {
@@ -756,18 +741,6 @@ func TestAppendRedactedAuthorizationLineNoColon(t *testing.T) {
 	out, ok := appendRedactedAuthorizationLine([]byte("prefix "), []byte("Authorization no-colon\n"))
 	require.False(t, ok)
 	require.Equal(t, []byte("prefix "), out)
-}
-
-func TestNextLineBytes(t *testing.T) {
-	t.Parallel()
-
-	line, rest := nextLineBytes([]byte("a\nb"))
-	require.Equal(t, []byte("a\n"), line)
-	require.Equal(t, []byte("b"), rest)
-
-	line, rest = nextLineBytes([]byte("abc"))
-	require.Equal(t, []byte("abc"), line)
-	require.Nil(t, rest)
 }
 
 func TestLikelyJSONKeyStart(t *testing.T) {
@@ -800,18 +773,94 @@ func TestAppendRedactedSensitiveJSONAtNoClosingQuote(t *testing.T) {
 	require.False(t, ok)
 }
 
-//nolint:paralleltest // Uses a shared sync.Pool to validate pooled buffer behavior.
+func TestPassesLuhn(t *testing.T) {
+	t.Parallel()
+
+	// Known-valid card numbers satisfy the Luhn checksum.
+	require.True(t, passesLuhn([]byte("4012888888881881")))
+	require.True(t, passesLuhn([]byte("371449635398431")))
+	require.True(t, passesLuhn([]byte("4222222222222")))
+
+	// Altering the final check digit breaks the checksum.
+	require.False(t, passesLuhn([]byte("4012888888881882")))
+}
+
+func TestLuhnCheckDefaultDisabled(t *testing.T) {
+	t.Parallel()
+
+	// The Luhn gate is off by default.
+	require.False(t, LuhnCheckEnabled())
+
+	digits := []byte("4012888888881882") // valid Visa prefix/length, invalid Luhn.
+
+	// With the gate disabled, prefix match alone is enough to flag as a card.
+	require.True(t, isCreditCard(digits))
+}
+
+//nolint:paralleltest // Mutates the process-wide Luhn toggle.
+func TestSetLuhnCheckGatesRedaction(t *testing.T) {
+	// Not parallel: SetLuhnCheck mutates process-wide state.
+	t.Cleanup(func() { SetLuhnCheck(false) })
+
+	// A run that matches a card prefix/length but fails Luhn.
+	invalidLuhn := []byte("4012888888881882")
+
+	// A run that matches a card prefix/length and passes Luhn.
+	validLuhn := []byte("4012888888881881")
+
+	SetLuhnCheck(true)
+	require.True(t, LuhnCheckEnabled())
+
+	// Enabled: only the Luhn-valid number is treated as a card.
+	require.False(t, isCreditCard(invalidLuhn))
+	require.True(t, isCreditCard(validLuhn))
+
+	// And through the public redaction path.
+	require.Equal(t, invalidLuhn, HTTPDataBytes(invalidLuhn))
+	require.Equal(t, []byte("***"), HTTPDataBytes(validLuhn))
+
+	SetLuhnCheck(false)
+	require.False(t, LuhnCheckEnabled())
+
+	// Disabled (default): both are redacted because prefix match alone suffices.
+	require.Equal(t, []byte("***"), HTTPDataBytes(invalidLuhn))
+	require.Equal(t, []byte("***"), HTTPDataBytes(validLuhn))
+}
+
+//nolint:paralleltest // Swaps the shared pool to validate pooled buffer behavior.
 func TestPooledBufferHelpers(t *testing.T) {
-	// Intentionally not parallel: this test manipulates the shared pool.
+	// Intentionally not parallel: this test replaces the shared pool. Restore an
+	// equivalent pool afterwards so other tests/benchmarks keep working.
+	t.Cleanup(func() { redactionBufferPool = sync.Pool{New: newRedactionBuffer} })
+
+	// Pool whose New returns a too-small buffer, forcing the grow-path fallback.
+	redactionBufferPool = sync.Pool{New: func() any {
+		b := make([]byte, 0, 1)
+
+		return &b
+	}}
+
 	b := getPooledRedactionBuffer(2 << 20)
 	require.GreaterOrEqual(t, cap(b), 2<<20)
 
-	// Exercise defensive fallback when the pool contains an unexpected value type.
-	redactionBufferPool.Put(&struct{}{})
+	// Pool whose New returns an unexpected value type, forcing the nil-assertion
+	// fallback in getPooledRedactionBuffer.
+	redactionBufferPool = sync.Pool{New: func() any { return &struct{}{} }}
 
 	b = getPooledRedactionBuffer(64)
 	require.GreaterOrEqual(t, cap(b), 64)
 
+	// Pool whose New returns a usable buffer, exercising the reuse path.
+	redactionBufferPool = sync.Pool{New: func() any {
+		b := make([]byte, 0, 256)
+
+		return &b
+	}}
+
+	b = getPooledRedactionBuffer(64)
+	require.GreaterOrEqual(t, cap(b), 64)
+
+	// Oversized buffers are dropped; right-sized buffers are returned to the pool.
 	putPooledRedactionBuffer(make([]byte, 0, 2<<20))
 	putPooledRedactionBuffer(make([]byte, 0, 128))
 }

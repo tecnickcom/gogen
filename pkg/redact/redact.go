@@ -25,6 +25,25 @@ applied at log boundaries.
 All matched sensitive values are replaced with a constant marker so output
 remains structurally useful while hiding private content.
 
+# Credit-Card Detection and the Optional Luhn Gate
+
+By default, any 13-16 digit run that matches a known card prefix (Visa,
+Mastercard, Amex, Discover, Diners, JCB, ...) and is bounded by non-word
+characters is redacted. This is deliberate over-redaction: it is the safe
+default and may also redact unrelated numeric identifiers that happen to share a
+card prefix and length.
+
+Callers that prefer fewer false positives can enable an additional Luhn-checksum
+gate. When enabled, a digit run is only redacted if it matches a known prefix AND
+passes the Luhn checksum:
+
+	redact.SetLuhnCheck(true)  // opt in: prefix + Luhn must both pass.
+	redact.SetLuhnCheck(false) // default: prefix match alone triggers redaction.
+
+The setting is process-wide and concurrency-safe. It defaults to off so existing
+output is unchanged. Enabling it may cause malformed or non-Luhn test numbers to
+be left visible.
+
 # Key Features
 
   - Single-call redaction API for common HTTP-style payloads.
@@ -55,8 +74,10 @@ package redact
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode"
 )
 
@@ -74,14 +95,36 @@ var (
 	// case-insensitive Authorization header scan.
 	authorizationPrefix = []byte("authorization") //nolint:gochecknoglobals
 
-	redactionBufferPool = sync.Pool{ //nolint:gochecknoglobals
-		New: func() any {
-			b := make([]byte, 0, 1024)
+	redactionBufferPool = sync.Pool{New: newRedactionBuffer} //nolint:gochecknoglobals
 
-			return &b
-		},
-	}
+	// luhnCheckEnabled gates the optional Luhn-checksum validation for
+	// credit-card detection. It defaults to false (disabled) so the package's
+	// out-of-the-box redaction output is unchanged: any 13-16 digit run matching
+	// a known card prefix is redacted (deliberate over-redaction as a safe
+	// default). When enabled, such a run is only redacted if it ALSO passes the
+	// Luhn checksum, reducing false positives at the cost of missing malformed
+	// or test card numbers.
+	luhnCheckEnabled atomic.Bool //nolint:gochecknoglobals
 )
+
+// SetLuhnCheck enables or disables the optional Luhn-checksum gate for
+// credit-card detection.
+//
+// This setting is process-wide and safe for concurrent use. It is additive and
+// off by default: with the default (disabled) behavior, every 13-16 digit run
+// matching a known card prefix is redacted (a deliberate, safe over-redaction).
+// When enabled, only digit runs that match a known prefix AND pass the Luhn
+// checksum are redacted, which reduces over-redaction of unrelated numeric
+// identifiers at the cost of possibly missing malformed numbers.
+func SetLuhnCheck(enabled bool) {
+	luhnCheckEnabled.Store(enabled)
+}
+
+// LuhnCheckEnabled reports whether the optional Luhn-checksum gate for
+// credit-card detection is currently enabled. It is safe for concurrent use.
+func LuhnCheckEnabled() bool {
+	return luhnCheckEnabled.Load()
+}
 
 // normalizeKey converts a key name to a tokenized lowercase form suitable for
 // boundary-aware keyword checks (e.g., camelCase -> snake_case tokens).
@@ -123,38 +166,6 @@ func appendNormalizedRune(b *strings.Builder, r rune, prevIsLowerOrDigit, prevIs
 	return false, true
 }
 
-func nextLineBytes(src []byte) ([]byte, []byte) {
-	nl := bytes.IndexByte(src, '\n')
-	if nl < 0 {
-		return src, nil
-	}
-
-	return src[:nl+1], src[nl+1:]
-}
-
-func redactAuthorizationLine(line []byte) ([]byte, bool) {
-	if !hasAuthorizationPrefix(line) {
-		return nil, false
-	}
-
-	colon := bytes.IndexByte(line[len(authorizationPrefix):], ':')
-	if colon < 0 {
-		return nil, false
-	}
-
-	headerEnd := len(authorizationPrefix) + colon + 1
-	valueStart := skipInlineSpaces(line, headerEnd)
-	trail := trailingNewline(line)
-
-	buf := bytes.Buffer{}
-	buf.Grow(len(line) + len(redactedBytes))
-	buf.Write(line[:valueStart])
-	buf.Write(redactedBytes)
-	buf.Write(trail)
-
-	return buf.Bytes(), true
-}
-
 func hasAuthorizationPrefix(line []byte) bool {
 	if len(line) <= len(authorizationPrefix) {
 		return false
@@ -175,95 +186,6 @@ func skipInlineSpaces(src []byte, i int) int {
 	}
 
 	return i
-}
-
-func trailingNewline(line []byte) []byte {
-	if len(line) > 0 && line[len(line)-1] == '\n' {
-		return line[len(line)-1:]
-	}
-
-	return nil
-}
-
-// redactJSONKeys replaces values of sensitive JSON keys.
-func redactJSONKeys(src []byte) []byte {
-	buf := bytes.Buffer{}
-	buf.Grow(len(src))
-
-	i := 0
-
-	for i < len(src) {
-		nextIndex, done := redactNextJSONKeyValue(src, i, &buf)
-		i = nextIndex
-
-		if done {
-			break
-		}
-	}
-
-	return buf.Bytes()
-}
-
-func redactNextJSONKeyValue(src []byte, i int, buf *bytes.Buffer) (int, bool) {
-	q1 := bytes.IndexByte(src[i:], '"')
-	if q1 < 0 {
-		buf.Write(src[i:])
-		return len(src), true
-	}
-
-	q1 += i
-	buf.Write(src[i:q1])
-
-	q2 := bytes.IndexByte(src[q1+1:], '"')
-	if q2 < 0 {
-		buf.Write(src[q1:])
-		return len(src), true
-	}
-
-	q2 += q1 + 1
-	key := src[q1+1 : q2]
-
-	valueStart, hasKV, done := findJSONValueStart(src, q2)
-	if done {
-		buf.Write(src[q1:])
-		return len(src), true
-	}
-
-	if !hasKV {
-		emitQuotedJSONToken(buf, key)
-		return q2 + 1, false
-	}
-
-	valueEnd := jsonValueEnd(src, valueStart)
-	if valueEnd == 0 {
-		emitQuotedJSONToken(buf, key)
-		return q2 + 1, false
-	}
-
-	sep := src[q2+1 : valueStart]
-
-	if !isSensitiveKeyBytes(key) {
-		emitQuotedJSONToken(buf, key)
-		buf.Write(sep)
-		buf.Write(src[valueStart:valueEnd])
-
-		return valueEnd, false
-	}
-
-	// Keep JSON valid while replacing any primitive with a redacted string marker.
-	emitQuotedJSONToken(buf, key)
-	buf.Write(sep)
-	buf.WriteByte('"')
-	buf.Write(redactedBytes)
-	buf.WriteByte('"')
-
-	return valueEnd, false
-}
-
-func emitQuotedJSONToken(buf *bytes.Buffer, key []byte) {
-	buf.WriteByte('"')
-	buf.Write(key)
-	buf.WriteByte('"')
 }
 
 func findJSONValueStart(src []byte, q2 int) (int, bool, bool) {
@@ -368,53 +290,6 @@ func parseJSONNumberEnd(src []byte, j int) int {
 	return vEnd
 }
 
-//nolint:cyclop,gocognit,gocyclo
-func redactCreditCards(src []byte) []byte {
-	buf := bytes.Buffer{}
-	buf.Grow(len(src))
-
-	for i := 0; i < len(src); {
-		if src[i] < '0' || src[i] > '9' {
-			buf.WriteByte(src[i])
-			i++
-
-			continue
-		}
-
-		if i > 0 && isWordChar(src[i-1]) {
-			buf.WriteByte(src[i])
-			i++
-
-			continue
-		}
-
-		j := i
-		for j < len(src) && src[j] >= '0' && src[j] <= '9' {
-			j++
-		}
-
-		if j < len(src) && isWordChar(src[j]) {
-			buf.Write(src[i:j])
-			i = j
-
-			continue
-		}
-
-		if matchesCardPattern(src[i:j]) {
-			buf.Write(redactedBytes)
-
-			i = j
-
-			continue
-		}
-
-		buf.Write(src[i:j])
-		i = j
-	}
-
-	return buf.Bytes()
-}
-
 func isWordChar(c byte) bool {
 	return c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 }
@@ -477,71 +352,41 @@ func matchesCardPattern(digits []byte) bool {
 	return false
 }
 
-// redactURLEncodedKeys replaces values of sensitive URL-encoded keys.
-//
-// It scans forward for '=' characters.  For each one it looks backward to find
-// the key start (the character after the last '&', '?', or '\n', or the start
-// of src) and forward to find the value end (the next '&' or '\n', or the end
-// of src).
-// All content between the previous position and the current key=value
-// pair is emitted verbatim, preserving every separator exactly once.
-func redactURLEncodedKeys(src []byte) []byte {
-	buf := bytes.Buffer{}
-	buf.Grow(len(src))
-
-	i := 0
-
-	for i < len(src) {
-		eq := bytes.IndexByte(src[i:], '=')
-		if eq < 0 {
-			buf.Write(src[i:])
-			break
-		}
-
-		eq += i
-		keyStart := urlEncodedKeyStart(src, i, eq)
-
-		rawKey := src[keyStart:eq]
-
-		// If the key contains '/', it belongs to a URL path segment, not an
-		// encoded field.
-		if bytes.IndexByte(rawKey, '/') >= 0 {
-			buf.Write(src[i : eq+1])
-			i = eq + 1
-
-			continue
-		}
-
-		valueEnd := urlEncodedValueEnd(src, eq+1)
-
-		if !isSensitiveKeyBytes(rawKey) {
-			buf.Write(src[i:valueEnd])
-			i = valueEnd
-
-			continue
-		}
-
-		// Sensitive: emit everything up to and including '=', then the marker.
-		buf.Write(src[i : eq+1])
-		buf.Write(redactedBytes)
-
-		i = valueEnd
+// isCreditCard reports whether a run of ASCII digits should be redacted as a
+// credit-card number. It always requires a known card prefix; when the optional
+// Luhn gate is enabled it additionally requires a valid Luhn checksum.
+func isCreditCard(digits []byte) bool {
+	if !matchesCardPattern(digits) {
+		return false
 	}
 
-	return buf.Bytes()
+	if luhnCheckEnabled.Load() {
+		return passesLuhn(digits)
+	}
+
+	return true
 }
 
-func urlEncodedKeyStart(src []byte, i, eq int) int {
-	keyStart := i
+// passesLuhn reports whether a run of ASCII digits satisfies the Luhn checksum.
+func passesLuhn(digits []byte) bool {
+	sum := 0
+	double := false
 
-	for k := eq - 1; k >= i; k-- {
-		c := src[k]
-		if c == '&' || c == '?' || c == '\n' {
-			return k + 1
+	for _, c := range slices.Backward(digits) {
+		d := int(c - '0')
+
+		if double {
+			d *= 2
+			if d > 9 {
+				d -= 9
+			}
 		}
+
+		sum += d
+		double = !double
 	}
 
-	return keyStart
+	return sum%10 == 0
 }
 
 func urlEncodedValueEnd(src []byte, i int) int {
@@ -555,14 +400,6 @@ func urlEncodedValueEnd(src []byte, i int) int {
 	}
 
 	return i
-}
-
-// redactAllInSinglePass applies all redaction rules in one traversal and writes
-// to an append-backed destination slice to minimize allocations.
-//
-
-func redactAllInSinglePass(src []byte) []byte {
-	return redactAllInSinglePassInto(make([]byte, 0, len(src)), src)
 }
 
 // redactAllInSinglePassInto applies all redaction rules while appending output
@@ -657,7 +494,7 @@ func redactAllInSinglePassInto(dst, src []byte) []byte {
 			continue
 		}
 
-		if matchesCardPattern(src[i:j]) {
+		if isCreditCard(src[i:j]) {
 			dst = append(dst, redactedBytes...)
 			i = j
 
@@ -812,6 +649,13 @@ func HTTPDataBytesPooled(src []byte, consume func([]byte)) {
 	out := redactAllInSinglePassInto(dst, src)
 	consume(out)
 	putPooledRedactionBuffer(out)
+}
+
+// newRedactionBuffer is the sync.Pool factory for reusable output buffers.
+func newRedactionBuffer() any {
+	b := make([]byte, 0, 1024)
+
+	return &b
 }
 
 func getPooledRedactionBuffer(minCap int) []byte {
