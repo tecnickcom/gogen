@@ -20,6 +20,16 @@ func TestNew(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "fails with missing scheme",
+			opts:    []Option{WithURL("//missing-scheme.invalid")},
+			wantErr: true,
+		},
+		{
+			name:    "fails with missing host",
+			opts:    []Option{WithURL("https://")},
+			wantErr: true,
+		},
+		{
 			name:    "succeeds with defaults",
 			wantErr: false,
 		},

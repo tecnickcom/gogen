@@ -3,6 +3,7 @@ package passwordpwned
 import (
 	"context"
 	"crypto/sha1" //nolint:gosec
+	"errors"
 	"fmt"
 	"hash"
 	"net/http"
@@ -11,6 +12,10 @@ import (
 
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 )
+
+// errMissingURLSchemeOrHost is returned when the configured API URL lacks a
+// scheme or host component.
+var errMissingURLSchemeOrHost = errors.New("missing scheme or host")
 
 const (
 	defaultTimeout   = 30 * time.Second
@@ -70,9 +75,13 @@ func New(opts ...Option) (*Client, error) {
 		c.httpClient = &http.Client{Timeout: c.timeout}
 	}
 
-	_, err := url.Parse(c.apiURL)
+	u, err := url.ParseRequestURI(c.apiURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid service address: %s", c.apiURL)
+		return nil, fmt.Errorf("invalid passwordpwned api url %q: %w", c.apiURL, err)
+	}
+
+	if u.Scheme == "" || u.Host == "" {
+		return nil, fmt.Errorf("invalid passwordpwned api url %q: %w", c.apiURL, errMissingURLSchemeOrHost)
 	}
 
 	return c, nil
@@ -91,5 +100,6 @@ func (c *Client) newHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 		c.httpClient,
 		httpretrier.WithRetryIfFn(httpretrier.RetryIfForReadRequests),
 		httpretrier.WithAttempts(c.retryAttempts),
+		httpretrier.WithDelay(c.retryDelay),
 	)
 }
