@@ -98,7 +98,7 @@ func ExecWithOptions(ctx context.Context, db DB, run ExecFunc, opts *sql.TxOptio
 
 		kerr := tx.Rollback()
 		if kerr != nil && !errors.Is(kerr, sql.ErrTxDone) {
-			err = errors.Join(err, fmt.Errorf("failed rolling back SQL transaction: %w", kerr))
+			err = errors.Join(err, fmt.Errorf("failed rolling back SQLX transaction: %w", kerr))
 		}
 	}()
 
@@ -109,7 +109,7 @@ func ExecWithOptions(ctx context.Context, db DB, run ExecFunc, opts *sql.TxOptio
 
 	cerr := tx.Commit()
 	if cerr != nil {
-		return fmt.Errorf("unable to commit SQL transaction: %w", cerr)
+		return fmt.Errorf("unable to commit SQLX transaction: %w", cerr)
 	}
 
 	committed = true

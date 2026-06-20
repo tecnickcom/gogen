@@ -15,7 +15,8 @@ func TestFilter(t *testing.T) {
 	got := Filter(m, filterFn)
 
 	require.Len(t, got, 1)
-	require.Equal(t, "World", m[1])
+	require.Equal(t, "World", got[1])
+	require.NotContains(t, got, 0)
 }
 
 func TestMap(t *testing.T) {

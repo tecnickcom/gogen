@@ -210,6 +210,145 @@ func Test_defaultQuoteValue(t *testing.T) {
 	}
 }
 
+// Test_QuoteValue_Escaping exercises the default escaping behavior through the
+// exported QuoteValue entry point, covering single quotes, backticks and every
+// control character the escaper handles (\0, \n, \r, \\, \032/\Z).
+func Test_QuoteValue_Escaping(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		val  string
+		want string
+	}{
+		{
+			name: "single quote doubled",
+			val:  "o'reilly",
+			want: "'o''reilly'",
+		},
+		{
+			name: "backtick left untouched in value",
+			val:  "a`b",
+			want: "'a`b'",
+		},
+		{
+			name: "null byte escaped",
+			val:  "a" + string([]byte{0}) + "b",
+			want: `'a\0b'`,
+		},
+		{
+			name: "newline escaped",
+			val:  "a\nb",
+			want: `'a\nb'`,
+		},
+		{
+			name: "carriage return escaped",
+			val:  "a\rb",
+			want: `'a\rb'`,
+		},
+		{
+			name: "backslash escaped",
+			val:  `a\b`,
+			want: `'a\\b'`,
+		},
+		{
+			name: "substitute (\\032) escaped to Z",
+			val:  "a\032b",
+			want: `'a\Zb'`,
+		},
+		{
+			name: "all control characters and quote together",
+			val:  string([]byte{'\'', 0, '\n', '\r', '\\', '\032', '`'}),
+			want: "'''\\0\\n\\r\\\\\\Z`'",
+		},
+	}
+
+	c, err := New()
+	require.NoError(t, err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := c.QuoteValue(tt.val)
+
+			require.Equal(t, tt.want, got, "QuoteValue() got = %v, want %v", got, tt.want)
+		})
+	}
+}
+
+// Test_QuoteID_Escaping exercises the default escaping behavior through the
+// exported QuoteID entry point, covering backtick-doubling, single quotes and
+// every control character the escaper handles (\0, \n, \r, \\, \032/\Z).
+func Test_QuoteID_Escaping(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		id   string
+		want string
+	}{
+		{
+			name: "embedded backtick doubled",
+			id:   "col`umn",
+			want: "`col``umn`",
+		},
+		{
+			name: "single quote left untouched in identifier",
+			id:   "col'umn",
+			want: "`col'umn`",
+		},
+		{
+			name: "dotted identifier with backtick per segment",
+			id:   "sch`ema.ta`ble",
+			want: "`sch``ema`.`ta``ble`",
+		},
+		{
+			name: "null byte escaped",
+			id:   "a" + string([]byte{0}) + "b",
+			want: "`a\\0b`",
+		},
+		{
+			name: "newline escaped",
+			id:   "a\nb",
+			want: "`a\\nb`",
+		},
+		{
+			name: "carriage return escaped",
+			id:   "a\rb",
+			want: "`a\\rb`",
+		},
+		{
+			name: "backslash escaped",
+			id:   `a\b`,
+			want: "`a\\\\b`",
+		},
+		{
+			name: "substitute (\\032) escaped to Z",
+			id:   "a\032b",
+			want: "`a\\Zb`",
+		},
+		{
+			name: "all control characters and backtick together",
+			id:   string([]byte{0, '\n', '\r', '\\', '\032', '`'}),
+			want: "`\\0\\n\\r\\\\\\Z```",
+		},
+	}
+
+	c, err := New()
+	require.NoError(t, err)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := c.QuoteID(tt.id)
+
+			require.Equal(t, tt.want, got, "QuoteID() got = %v, want %v", got, tt.want)
+		})
+	}
+}
+
 func Test_QuoteID(t *testing.T) {
 	t.Parallel()
 

@@ -149,6 +149,7 @@ func (c *Cache[K]) Remove(key K) {
 
 // Lookup retrieves the value for a key, performing single-flight deduplication for concurrent requests.
 // Returns cached value if not expired; coalesces duplicate in-flight requests; evicts old/expired entries on capacity.
+// Only successful values are cached for the TTL: errors are not cached (no negative caching), so every error triggers a fresh lookup on the next call.
 //
 //nolint:gocognit
 func (c *Cache[K]) Lookup(ctx context.Context, key K) (any, error) {

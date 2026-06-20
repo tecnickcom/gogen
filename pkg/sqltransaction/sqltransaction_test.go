@@ -95,6 +95,65 @@ func Test_Exec(t *testing.T) {
 	}
 }
 
+func Test_Exec_RollbackAfterFailedCommit(t *testing.T) {
+	t.Parallel()
+
+	mockDB, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+
+	defer func() { _ = mockDB.Close() }()
+
+	commitErr := errors.New("commit failure")
+
+	mock.ExpectBegin()
+	mock.ExpectCommit().WillReturnError(commitErr)
+	// After a failed Commit, database/sql has already marked the transaction as
+	// done, so the deferred Rollback short-circuits with sql.ErrTxDone and the
+	// driver Rollback is never invoked. The code ignores sql.ErrTxDone, so the
+	// returned error reflects only the commit failure.
+
+	err = Exec(t.Context(), mockDB, func(_ context.Context, _ *sql.Tx) error {
+		return nil
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, commitErr)
+	require.Contains(t, err.Error(), "unable to commit SQL transaction")
+	require.NotContains(t, err.Error(), "failed rolling back SQL transaction")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func Test_Exec_PanicRollsBackAndPropagates(t *testing.T) {
+	t.Parallel()
+
+	mockDB, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+
+	defer func() { _ = mockDB.Close() }()
+
+	mock.ExpectBegin()
+	mock.ExpectRollback()
+
+	panicValue := "boom"
+	recovered := false
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				recovered = true
+
+				require.Equal(t, panicValue, r)
+			}
+		}()
+
+		_ = Exec(t.Context(), mockDB, func(_ context.Context, _ *sql.Tx) error {
+			panic(panicValue)
+		})
+	}()
+
+	require.True(t, recovered, "expected panic to propagate out of Exec")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 type dbMock struct {
 	*sql.DB
 

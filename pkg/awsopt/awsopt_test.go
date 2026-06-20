@@ -1,12 +1,26 @@
 package awsopt
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/stretchr/testify/require"
 )
+
+// regionFromOptions applies the accumulated options to a config.LoadOptions
+// value and returns the resulting region, so tests can assert each option's
+// effect rather than comparing opaque function values.
+func regionFromOptions(t *testing.T, opts Options) string {
+	t.Helper()
+
+	var lo config.LoadOptions
+
+	for _, opt := range opts {
+		require.NoError(t, opt(&lo))
+	}
+
+	return lo.Region
+}
 
 func Test_LoadDefaultConfig(t *testing.T) {
 	region := "us-west-2"
@@ -32,32 +46,24 @@ func Test_WithAWSOption(t *testing.T) {
 	t.Parallel()
 
 	region := "ap-southeast-2"
-	want := Options{config.WithRegion(region)}
 
 	c := Options{}
 	c.WithAWSOption(config.WithRegion(region))
 
-	require.Len(t, c, len(want))
-
-	for i, opt := range want {
-		reflect.DeepEqual(opt, c[i])
-	}
+	require.Len(t, c, 1)
+	require.Equal(t, region, regionFromOptions(t, c))
 }
 
 func Test_WithRegion(t *testing.T) {
 	t.Parallel()
 
 	region := "eu-central-1"
-	want := Options{config.WithRegion(region)}
 
 	c := Options{}
 	c.WithRegion(region)
 
-	require.Len(t, c, len(want))
-
-	for i, opt := range want {
-		reflect.DeepEqual(opt, c[i])
-	}
+	require.Len(t, c, 1)
+	require.Equal(t, region, regionFromOptions(t, c))
 }
 
 func Test_WithRegionFromURL(t *testing.T) {
@@ -67,43 +73,43 @@ func Test_WithRegionFromURL(t *testing.T) {
 		defaultRegion       string
 		envAWSRegion        string
 		envAWSDefaultregion string
-		want                Options
+		wantRegion          string
 	}{
 		{
-			name: "Valid AWS URL",
-			url:  "https://sqs.ap-southeast-1.amazonaws.com",
-			want: Options{config.WithRegion("ap-southeast-1")},
+			name:       "Valid AWS URL",
+			url:        "https://sqs.ap-southeast-1.amazonaws.com",
+			wantRegion: "ap-southeast-1",
 		},
 		{
-			name: "Valid AWS URL with custom service",
-			url:  "https://some-service.af-south-1.amazonaws.com",
-			want: Options{config.WithRegion("af-south-1")},
+			name:       "Valid AWS URL with custom service",
+			url:        "https://some-service.af-south-1.amazonaws.com",
+			wantRegion: "af-south-1",
 		},
 		{
 			name:          "Load default region",
 			url:           "https://no-region-2.with-default.example.com",
 			defaultRegion: "ap-southeast-2",
-			want:          Options{config.WithRegion("ap-southeast-2")},
+			wantRegion:    "ap-southeast-2",
 		},
 		{
 			name:          "Load from AWS_REGION",
 			url:           "https://no-region-3.example.com",
 			defaultRegion: "",
 			envAWSRegion:  "eu-central-1",
-			want:          Options{config.WithRegion("eu-central-1")},
+			wantRegion:    "eu-central-1",
 		},
 		{
 			name:                "Load from AWS_DEFAULT_REGION",
 			url:                 "https://no-region-4.example.com",
 			defaultRegion:       "",
 			envAWSDefaultregion: "eu-west-1",
-			want:                Options{config.WithRegion("eu-west-1")},
+			wantRegion:          "eu-west-1",
 		},
 		{
 			name:          "Invalid AWS URL without default region",
 			url:           "https://no-region.without-default.example.com",
 			defaultRegion: "",
-			want:          Options{config.WithRegion(awsDefaultRegion)},
+			wantRegion:    awsDefaultRegion,
 		},
 	}
 
@@ -115,11 +121,8 @@ func Test_WithRegionFromURL(t *testing.T) {
 			c := Options{}
 			c.WithRegionFromURL(tt.url, tt.defaultRegion)
 
-			require.Len(t, c, len(tt.want))
-
-			for i, opt := range tt.want {
-				reflect.DeepEqual(opt, c[i])
-			}
+			require.Len(t, c, 1)
+			require.Equal(t, tt.wantRegion, regionFromOptions(t, c))
 		})
 	}
 }

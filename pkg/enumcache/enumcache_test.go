@@ -1,8 +1,11 @@
 package enumcache
 
 import (
+	"strconv"
+	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -242,4 +245,65 @@ func Test_EncodeBinaryMap(t *testing.T) {
 	v, err := ec.EncodeBinaryMap([]string{"alpha", "bravo", "charlie"})
 	require.Error(t, err)
 	require.Equal(t, 9, v)
+}
+
+// Test_Concurrent_RaceSafety hammers the cache from many goroutines mixing
+// writers (Set, SetAllIDByName, SetAllNameByID) with readers (ID, Name,
+// DecodeBinaryMap, EncodeBinaryMap, SortNames, SortIDs). It must run clean under
+// -race, proving the RWMutex guards every map access. assert (not require) is
+// used inside the goroutines per the testifylint go-require rule.
+//
+// The result correctness of reads is non-deterministic under concurrent writes,
+// so the goroutines assert only the absence of races and panics.
+func Test_Concurrent_RaceSafety(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.NotNil(t, ec)
+
+	// Seed deterministic bit-flag entries so reads can both hit and miss.
+	for n := range 8 {
+		ec.Set(1<<n, "flag"+strconv.Itoa(n))
+	}
+
+	const (
+		workers    = 16
+		iterations = 200
+	)
+
+	// spawn launches the same worker body across many goroutines on a single
+	// WaitGroup, keeping the test deterministic (no sleeps) and flat.
+	var wg sync.WaitGroup
+
+	spawn := func(body func(iter int)) {
+		for range workers {
+			wg.Go(func() {
+				for i := range iterations {
+					body(i)
+				}
+			})
+		}
+	}
+
+	flag := func(i int) string { return "flag" + strconv.Itoa(i%8) }
+	bit := func(i int) int { return 1 << (i % 8) }
+
+	spawn(func(i int) { ec.Set(bit(i), flag(i)) })
+	spawn(func(i int) { ec.SetAllIDByName(IDByName{flag(i): bit(i)}) })
+	spawn(func(i int) { ec.SetAllNameByID(NameByID{bit(i): flag(i)}) })
+
+	spawn(func(i int) {
+		_, _ = ec.ID(flag(i))
+		_, _ = ec.Name(bit(i))
+	})
+	spawn(func(i int) {
+		_, _ = ec.DecodeBinaryMap(bit(i))
+		_, _ = ec.EncodeBinaryMap([]string{flag(i)})
+	})
+	spawn(func(int) {
+		assert.NotNil(t, ec.SortNames())
+		assert.NotNil(t, ec.SortIDs())
+	})
+
+	wg.Wait()
 }
