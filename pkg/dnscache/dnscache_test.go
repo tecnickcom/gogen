@@ -273,6 +273,23 @@ func Test_DialContext_lookup_errors(t *testing.T) {
 	require.Nil(t, conn)
 }
 
+func Test_DialContext_no_addresses(t *testing.T) {
+	t.Parallel()
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			return []string{}, nil
+		},
+	}
+
+	c := New(resolver, 1, 1*time.Second)
+
+	conn, err := c.DialContext(t.Context(), "tcp", "example.com:80")
+	require.Error(t, err)
+	require.Nil(t, conn)
+	require.Equal(t, "no addresses resolved for example.com", err.Error())
+}
+
 func Test_DialContext_ip_error(t *testing.T) {
 	t.Parallel()
 

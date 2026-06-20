@@ -104,6 +104,10 @@ func (c *Cache) DialContext(ctx context.Context, network, address string) (net.C
 		return nil, err
 	}
 
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("no addresses resolved for %s", host)
+	}
+
 	var (
 		conn   net.Conn
 		dialer net.Dialer
