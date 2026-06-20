@@ -2,6 +2,7 @@ package periodic
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -130,6 +131,63 @@ func Test_Start_Stop(t *testing.T) {
 	p.Stop()
 
 	require.LessOrEqual(t, 2, <-count)
+}
+
+func Test_Stop_before_start(t *testing.T) {
+	t.Parallel()
+
+	p, err := New(10*time.Millisecond, 0, time.Millisecond, func(_ context.Context) {})
+	require.NoError(t, err)
+
+	p.Stop() // must be a no-op (and must not block) when Start was never called
+}
+
+func Test_run_zero_jitter(t *testing.T) {
+	t.Parallel()
+
+	p := &Periodic{
+		interval:   int64(10 * time.Millisecond),
+		jitter:     0,
+		timeout:    1 * time.Millisecond,
+		task:       func(_ context.Context) {},
+		resetTimer: make(chan time.Duration, 1),
+	}
+
+	// Must not panic on rand.Int63n(0) and must reset to exactly the interval.
+	p.run(t.Context())
+
+	require.Equal(t, 10*time.Millisecond, <-p.resetTimer)
+}
+
+func Test_Stop_waits_for_running_task(t *testing.T) {
+	t.Parallel()
+
+	running := make(chan struct{}, 1)
+
+	var completed atomic.Bool
+
+	task := func(_ context.Context) {
+		select {
+		case running <- struct{}{}:
+		default:
+		}
+
+		time.Sleep(30 * time.Millisecond)
+		completed.Store(true)
+	}
+
+	p, err := New(50*time.Millisecond, 1*time.Millisecond, 100*time.Millisecond, task)
+	require.NoError(t, err)
+
+	p.Start(t.Context())
+
+	<-running // first invocation is in progress
+
+	p.Stop() // must block until the in-flight task returns
+
+	require.True(t, completed.Load(), "Stop must wait for the in-flight task to finish")
+
+	p.Stop() // safe to call again (returns immediately on the closed done channel)
 }
 
 func TestPeriodic_setTimer(t *testing.T) {

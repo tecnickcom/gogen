@@ -85,6 +85,7 @@ type Periodic struct {
 	timer      *time.Timer
 	resetTimer chan time.Duration
 	cancel     context.CancelFunc
+	done       chan struct{} // closed by loop on exit so Stop can wait for the in-flight task.
 }
 
 // New constructs a Periodic scheduler with constraints on interval, jitter, timeout, and task validation.
@@ -97,7 +98,7 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 
 	jitterNs := int64(jitter)
 	if jitterNs < 0 {
-		return nil, errors.New("jitter must be positive")
+		return nil, errors.New("jitter must not be negative")
 	}
 
 	if int64(timeout) < 1 {
@@ -123,6 +124,7 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 func (p *Periodic) Start(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	p.cancel = cancel
+	p.done = make(chan struct{})
 
 	go p.loop(ctx)
 }
@@ -130,13 +132,17 @@ func (p *Periodic) Start(ctx context.Context) {
 // Stop cancels the execution loop and waits for the current task invocation to complete.
 // Safe to call multiple times or before Start() is called.
 func (p *Periodic) Stop() {
-	if p.cancel != nil {
-		p.cancel()
+	if p.cancel == nil {
+		return
 	}
+
+	p.cancel()
+	<-p.done
 }
 
 // loop runs the main periodic execution loop.
 func (p *Periodic) loop(ctx context.Context) {
+	defer close(p.done)
 	defer p.cancel()
 
 	p.timer = time.NewTimer(1 * time.Nanosecond)
@@ -172,5 +178,11 @@ func (p *Periodic) run(ctx context.Context) {
 	p.task(tctx)
 	cancel()
 
-	p.resetTimer <- time.Duration(p.interval + rand.Int63n(p.jitter)) //nolint:gosec
+	// rand.Int63n panics on a zero argument, so only add jitter when configured.
+	extra := int64(0)
+	if p.jitter > 0 {
+		extra = rand.Int63n(p.jitter) //nolint:gosec
+	}
+
+	p.resetTimer <- time.Duration(p.interval + extra)
 }
