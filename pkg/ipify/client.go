@@ -17,6 +17,9 @@ const (
 	defaultErrorIP = ""                      // string to return in case of error in place of the IP
 )
 
+// errMissingSchemeOrHost is returned when the configured API URL lacks a scheme or host.
+var errMissingSchemeOrHost = errors.New("missing scheme or host")
+
 // HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
@@ -56,9 +59,13 @@ func New(opts ...Option) (*Client, error) {
 		c.httpClient = &http.Client{Timeout: c.timeout}
 	}
 
-	_, err := url.Parse(c.apiURL)
+	parsed, err := url.ParseRequestURI(c.apiURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid service address: %s", c.apiURL)
+		return nil, fmt.Errorf("invalid ipify service address %q: %w", c.apiURL, err)
+	}
+
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return nil, fmt.Errorf("invalid ipify service address %q: %w", c.apiURL, errMissingSchemeOrHost)
 	}
 
 	return c, nil
@@ -89,6 +96,8 @@ func (c *Client) GetPublicIP(ctx context.Context) (ip string, err error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, resp.Body)
+
 		return c.errorIP, fmt.Errorf("unexpected ipify status code: %d", resp.StatusCode)
 	}
 

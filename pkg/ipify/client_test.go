@@ -48,6 +48,21 @@ func TestNew(t *testing.T) {
 			opts:    []Option{WithURL("http://invalid-url.domain.invalid\u007F")},
 			wantErr: true,
 		},
+		{
+			name:    "fails with empty URL",
+			opts:    []Option{WithURL("")},
+			wantErr: true,
+		},
+		{
+			name:    "fails with relative URL missing scheme and host",
+			opts:    []Option{WithURL("/relative/path")},
+			wantErr: true,
+		},
+		{
+			name:    "fails with scheme but missing host",
+			opts:    []Option{WithURL("http://")},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
