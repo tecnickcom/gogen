@@ -29,8 +29,8 @@ correct, idiomatic solutions to all four in one small dependency.
     the pointer is nil. Eliminates repetitive nil-guard boilerplate at every
     pointer dereference.
   - [BoolToInt]: converts a bool to 0 or 1 using the pattern that the Go
-    compiler optimizes to a single MOVBLZX instruction — no branch, no
-    conditional in the hot path. Preferable to an inline if/else when the
+    compiler optimizes to a single MOVBLZX instruction (no branch, no
+    conditional in the hot path). Preferable to an inline if/else when the
     result feeds into arithmetic or array indexing.
 
 # Usage
@@ -77,6 +77,9 @@ func IsNil(v any) bool {
 }
 
 // IsZero returns true if value equals type T's zero value without requiring comparable constraint.
+//
+// It uses reflection, which causes v to escape to the heap; prefer a direct
+// comparison when the type is known and the call is on a hot path.
 func IsZero[T any](v T) bool {
 	return reflect.ValueOf(&v).Elem().IsZero()
 }
