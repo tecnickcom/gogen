@@ -60,6 +60,15 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 // This reduces latency variance, avoids API bursts, and provides a single
 // entry point when callers need metadata in GetSecretValueOutput in addition to
 // the secret payload.
+//
+// Error fan-out: when the upstream GetSecretValue call fails, that error is
+// returned to every caller coalesced into the same in-flight lookup; the
+// failure is not retried within a single flight. A transient AWS error
+// (throttling, timeout, network blip) therefore surfaces to all waiters for
+// that key at once. Failed lookups are not cached, so a subsequent call after
+// the flight completes triggers a fresh upstream request. Callers that need
+// resilience against transient failures should wrap this method in their own
+// retry/backoff logic rather than relying on the cache.
 func (c *Cache) GetSecretData(ctx context.Context, key string) (*awssm.GetSecretValueOutput, error) {
 	val, err := c.cache.Lookup(ctx, key)
 	if err != nil {
