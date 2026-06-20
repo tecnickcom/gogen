@@ -155,6 +155,10 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
+	// stop relaying OS signals to quit once shutdown handling is done so the
+	// registration does not outlive this Bootstrap call.
+	defer signal.Stop(quit)
+
 	go func() {
 		defer close(done)
 
@@ -169,7 +173,11 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	<-done
 	l.Info("application stopping")
 
-	// send shutdown signal to all dependants (e.g. HTTP servers)
+	// Send shutdown signal to all dependants (e.g. HTTP servers) by closing the
+	// broadcast channel. The channel must be single-use: Bootstrap closes it
+	// exactly once per call, so a caller-supplied channel (see
+	// WithShutdownSignalChan) must not be shared across Bootstrap invocations or
+	// closed elsewhere, otherwise this close panics.
 	close(cfg.shutdownSignalChan)
 
 	// wait for graceful shutdown of dependants

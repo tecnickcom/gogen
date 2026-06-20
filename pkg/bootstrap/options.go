@@ -91,6 +91,10 @@ func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 //
 // Bootstrap closes this channel when shutdown begins. Dependants can watch this
 // channel to trigger their own graceful termination logic.
+//
+// The channel must be single-use: Bootstrap closes it exactly once, so it must
+// not be reused across multiple Bootstrap calls nor closed by the caller.
+// Reusing or pre-closing it makes the close panic.
 func WithShutdownSignalChan(ch chan struct{}) Option {
 	return func(cfg *config) {
 		cfg.shutdownSignalChan = ch
