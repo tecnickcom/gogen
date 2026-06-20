@@ -57,6 +57,7 @@ const (
 type Client struct {
 	registry                          *prometheus.Registry
 	handlerOpts                       promhttp.HandlerOpts
+	metricsHandler                    http.Handler
 	inboundRequestSizeBuckets         []float64
 	inboundResponseSizeBuckets        []float64
 	inboundRequestDurationBuckets     []float64
@@ -148,9 +149,12 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 
 // MetricsHandlerFunc returns the HTTP handler used to expose Prometheus
 // metrics from the internal registry.
+//
+// The handler is built once in [New] and cached on the client, so repeated
+// calls reuse the same instrumented handler instead of re-registering the
+// internal promhttp counters on every invocation.
 func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
-	h := promhttp.HandlerFor(c.registry, c.handlerOpts)
-	return promhttp.InstrumentMetricHandler(c.registry, h).ServeHTTP
+	return c.metricsHandler.ServeHTTP
 }
 
 // IncLogLevelCounter counts the number of errors for each log severity level.
@@ -284,6 +288,9 @@ func (c *Client) defaultCollectors() error {
 			return fmt.Errorf("failed registering collector: %w", err)
 		}
 	}
+
+	handler := promhttp.HandlerFor(c.registry, c.handlerOpts)
+	c.metricsHandler = promhttp.InstrumentMetricHandler(c.registry, handler)
 
 	return nil
 }

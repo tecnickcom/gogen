@@ -101,6 +101,35 @@ func TestInstrumentHandler(t *testing.T) {
 	require.Equal(t, 1, rt, "failed to assert right metrics: got %v want %v", rt, 1)
 }
 
+func TestMetricsHandlerFunc(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	c, err := New()
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	// The handler is built once in New and cached; calling MetricsHandlerFunc
+	// repeatedly must not re-register the internal promhttp counters (which
+	// would panic with a duplicate-registration error) and must keep working.
+	require.NotPanics(t, func() {
+		for range 3 {
+			handler := c.MetricsHandlerFunc()
+			require.NotNil(t, handler, "MetricsHandlerFunc() returned nil handler")
+
+			rr := httptest.NewRecorder()
+
+			req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, "/metrics", nil)
+			require.NoError(t, reqErr, "failed creating http request: %s", reqErr)
+
+			handler.ServeHTTP(rr, req)
+
+			require.Equal(t, http.StatusOK, rr.Code, "metrics handler returned wrong status code")
+			require.NotEmpty(t, rr.Body.String(), "metrics handler returned an empty body")
+		}
+	})
+}
+
 func TestInstrumentRoundTripper(t *testing.T) {
 	t.Parallel()
 

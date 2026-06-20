@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"strconv"
 	"time"
 
@@ -110,12 +109,16 @@ func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.H
 		c.statsd.Increment(labelInboundPath + labelIn)
 		defer c.statsd.Increment(labelInboundPath + labelOut)
 
-		reqDump, _ := httputil.DumpRequest(r, true)
-		reqSize := len(reqDump)
+		reqSize := requestSize(r)
 		rw := libhttputil.NewResponseWriterWrapper(w)
 
 		defer func() {
-			labelStatus := labelInboundPath + strconv.Itoa(rw.Status()) + labelSeparator
+			status := rw.Status()
+			if status == 0 {
+				status = http.StatusOK
+			}
+
+			labelStatus := labelInboundPath + strconv.Itoa(status) + labelSeparator
 			c.statsd.Increment(labelStatus + labelCount)
 			c.statsd.Gauge(labelStatus+labelRequestSize, reqSize)
 			c.statsd.Gauge(labelStatus+labelResponseSize, rw.Size())
@@ -124,6 +127,33 @@ func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.H
 
 		handler.ServeHTTP(rw, r)
 	})
+}
+
+// requestSize approximates the size of an inbound HTTP request in bytes without
+// buffering its body.
+//
+// It sums an approximation of the request-line and header bytes with the body
+// length taken from r.ContentLength when it is known (>= 0). A negative
+// ContentLength means the body length is unknown (e.g. chunked transfer), in
+// which case only the metadata size is reported rather than draining the body.
+func requestSize(r *http.Request) int {
+	size := len(r.Method) + len(r.URL.RequestURI()) + len(r.Proto) + len("  \r\n")
+
+	if r.Host != "" {
+		size += len("Host: ") + len(r.Host) + len("\r\n")
+	}
+
+	for name, values := range r.Header {
+		for _, value := range values {
+			size += len(name) + len(": ") + len(value) + len("\r\n")
+		}
+	}
+
+	if r.ContentLength > 0 {
+		size += int(r.ContentLength)
+	}
+
+	return size
 }
 
 // InstrumentRoundTripper wraps next to emit outbound HTTP metrics.

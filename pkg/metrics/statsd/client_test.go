@@ -73,7 +73,7 @@ func TestInstrumentHandler(t *testing.T) {
 	srv, err := newTestStatsdServer(t, func(p []byte) {
 		exp := `TEST.inbound.test.POST.in:1\|c
 TEST.inbound.test.POST.501.count:1\|c
-TEST.inbound.test.POST.501.request_size:27\|g
+TEST.inbound.test.POST.501.request_size:25\|g
 TEST.inbound.test.POST.501.response_size:16\|g
 TEST.inbound.test.POST.501.time:[0-9]+\|ms
 TEST.inbound.test.POST.out:1\|c`
@@ -110,6 +110,114 @@ TEST.inbound.test.POST.out:1\|c`
 	if status := rr.Code; status != http.StatusNotImplemented {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusNotImplemented)
 	}
+}
+
+func TestInstrumentHandlerEmptyBodyDefaultsStatusOK(t *testing.T) {
+	t.Parallel()
+
+	srv, err := newTestStatsdServer(t, func(p []byte) {
+		exp := `TEST.inbound.test.GET.in:1\|c
+TEST.inbound.test.GET.200.count:1\|c
+TEST.inbound.test.GET.200.request_size:[0-9]+\|g
+TEST.inbound.test.GET.200.response_size:0\|g
+TEST.inbound.test.GET.200.time:[0-9]+\|ms
+TEST.inbound.test.GET.out:1\|c`
+		re := regexp.MustCompile(exp)
+		got := string(p)
+
+		if !re.MatchString(got) {
+			t.Errorf("expected: %v , got: %v", exp, got)
+		}
+	})
+
+	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
+
+	defer srv.Close()
+
+	c, err := New(
+		WithPrefix("TEST"),
+		WithNetwork(statsdTestNetwork),
+		WithAddress(srv.addr),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	defer c.Close()
+
+	rr := httptest.NewRecorder()
+	ctx := t.Context()
+
+	// A handler that writes neither a body nor an explicit status code.
+	handler := c.InstrumentHandler("test", func(_ http.ResponseWriter, _ *http.Request) {})
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
+	require.NoError(t, err, "failed creating http request: %s", err)
+
+	handler.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code, "handler returned wrong status code")
+}
+
+func TestInstrumentHandlerDoesNotBufferBody(t *testing.T) {
+	t.Parallel()
+
+	const body = "hello world"
+
+	srv, err := newTestStatsdServer(t, func(p []byte) {
+		// request_size must be reported from the request metadata and
+		// ContentLength, without draining the body.
+		exp := `TEST.inbound.test.POST.200.request_size:[0-9]+\|g`
+		re := regexp.MustCompile(exp)
+		got := string(p)
+
+		if !re.MatchString(got) {
+			t.Errorf("expected: %v , got: %v", exp, got)
+		}
+	})
+
+	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
+
+	defer srv.Close()
+
+	c, err := New(
+		WithPrefix("TEST"),
+		WithNetwork(statsdTestNetwork),
+		WithAddress(srv.addr),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	defer c.Close()
+
+	rr := httptest.NewRecorder()
+	ctx := t.Context()
+
+	var (
+		gotBody    string
+		gotReadErr error
+	)
+
+	// The wrapped handler reads the full body; if requestSize had buffered or
+	// consumed it, the handler would see an empty body. Assertions happen after
+	// ServeHTTP returns to avoid calling require from within the handler.
+	handler := c.InstrumentHandler("test", func(w http.ResponseWriter, r *http.Request) {
+		got, readErr := io.ReadAll(r.Body)
+		gotBody = string(got)
+		gotReadErr = readErr
+
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/test", strings.NewReader(body))
+	require.NoError(t, err, "failed creating http request: %s", err)
+
+	// Exercise the Host and header contributions to the request-size estimate.
+	req.Host = "example.com"
+	req.Header.Set("X-Custom-Header", "custom-value")
+
+	handler.ServeHTTP(rr, req)
+
+	require.NoError(t, gotReadErr, "failed reading request body")
+	require.Equal(t, body, gotBody, "request body was consumed before reaching the handler")
+	require.Equal(t, http.StatusOK, rr.Code, "handler returned wrong status code")
 }
 
 func TestInstrumentRoundTripper(t *testing.T) {
