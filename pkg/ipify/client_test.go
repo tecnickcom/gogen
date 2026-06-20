@@ -44,6 +44,22 @@ func TestNew(t *testing.T) {
 			wantErr:     false,
 		},
 		{
+			name:        "clamps zero timeout to default",
+			opts:        []Option{WithTimeout(0)},
+			wantTimeout: defaultTimeout,
+			wantAPIURL:  defaultAPIURL,
+			wantErrorIP: defaultErrorIP,
+			wantErr:     false,
+		},
+		{
+			name:        "clamps negative timeout to default",
+			opts:        []Option{WithTimeout(-1 * time.Second)},
+			wantTimeout: defaultTimeout,
+			wantAPIURL:  defaultAPIURL,
+			wantErrorIP: defaultErrorIP,
+			wantErr:     false,
+		},
+		{
 			name:    "fails with invalid character in URL",
 			opts:    []Option{WithURL("http://invalid-url.domain.invalid\u007F")},
 			wantErr: true,

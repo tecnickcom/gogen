@@ -55,6 +55,12 @@ func New(opts ...Option) (*Client, error) {
 		applyOpt(c)
 	}
 
+	// Guard against a non-positive timeout, which would produce an
+	// already-expired context and make every request fail.
+	if c.timeout <= 0 {
+		c.timeout = defaultTimeout
+	}
+
 	if c.httpClient == nil {
 		c.httpClient = &http.Client{Timeout: c.timeout}
 	}
