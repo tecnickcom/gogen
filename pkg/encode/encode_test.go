@@ -130,7 +130,7 @@ func Test_GobEncoder(t *testing.T) {
 	}
 }
 
-func Test_JsonEncoder(t *testing.T) {
+func Test_JSONEncoder(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -169,11 +169,19 @@ func Test_JsonEncoder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := JsonEncoder(tt.enc, tt.data)
+			err := JSONEncoder(tt.enc, tt.data)
 
 			require.Equal(t, tt.wantErr, err != nil)
 		})
 	}
+}
+
+func Test_JsonEncoder(t *testing.T) {
+	t.Parallel()
+
+	err := JsonEncoder(Base64Encoder(new(bytes.Buffer)), 5) // exercises the deprecated alias
+
+	require.NoError(t, err)
 }
 
 func TestByteEncodeDecode(t *testing.T) {

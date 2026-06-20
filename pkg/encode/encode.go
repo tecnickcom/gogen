@@ -64,16 +64,23 @@ func GobEncoder(enc io.WriteCloser, data any) error {
 	return enc.Close() //nolint:wrapcheck
 }
 
-// JsonEncoder JSON-encodes data into enc and closes enc.
+// JSONEncoder JSON-encodes data into enc and closes enc.
 //
 // It is useful for stream-friendly JSON pipelines with explicit close semantics.
-func JsonEncoder(enc io.WriteCloser, data any) error {
+func JSONEncoder(enc io.WriteCloser, data any) error {
 	err := json.NewEncoder(enc).Encode(data)
 	if err != nil {
 		return fmt.Errorf("JSON: %w", err)
 	}
 
 	return enc.Close() //nolint:wrapcheck
+}
+
+// JsonEncoder JSON-encodes data into enc and closes enc.
+//
+// Deprecated: use JSONEncoder.
+func JsonEncoder(enc io.WriteCloser, data any) error {
+	return JSONEncoder(enc, data)
 }
 
 // ByteEncode encodes data as gob+Base64 bytes.
@@ -184,7 +191,7 @@ func BufferDecode(reader io.Reader, data any) error {
 func BufferSerialize(data any) (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
 
-	err := JsonEncoder(Base64Encoder(buf), data)
+	err := JSONEncoder(Base64Encoder(buf), data)
 	if err != nil {
 		return nil, fmt.Errorf("serialize: %w", err)
 	}
