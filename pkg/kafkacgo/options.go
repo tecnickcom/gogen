@@ -49,6 +49,15 @@ func WithProduceChannelSize(size int) Option {
 	return WithConfigParameter("go.produce.channel.size", size)
 }
 
+// WithFlushTimeout sets the maximum time Producer.Close waits for buffered
+// messages to be delivered before closing the underlying client.
+// It defaults to 15s.
+func WithFlushTimeout(t time.Duration) Option {
+	return func(c *config) {
+		c.flushTimeoutMs = int(t.Milliseconds())
+	}
+}
+
 // WithMessageEncodeFunc overrides DefaultMessageEncodeFunc used by SendData.
 func WithMessageEncodeFunc(f TEncodeFunc) Option {
 	return func(c *config) {

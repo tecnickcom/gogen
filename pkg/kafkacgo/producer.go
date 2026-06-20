@@ -16,6 +16,7 @@ type TEncodeFunc func(ctx context.Context, topic string, data any) ([]byte, erro
 // producerClient captures the minimal producer API used by [Producer].
 type producerClient interface {
 	Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error
+	Flush(timeoutMs int) int
 	Close()
 }
 
@@ -47,13 +48,21 @@ func NewProducer(urls []string, opts ...Option) (*Producer, error) {
 	return &Producer{cfg: cfg, client: producer}, nil
 }
 
-// Close releases producer resources and closes the underlying Kafka client.
+// Close flushes any buffered messages (up to the configured flush timeout) and
+// then releases producer resources and closes the underlying Kafka client.
 func (p *Producer) Close() {
+	p.client.Flush(p.cfg.flushTimeoutMs)
 	p.client.Close()
 }
 
-// Send publishes a raw byte message to the specified Kafka topic.
+// Send publishes a raw byte message to the specified Kafka topic and blocks
+// until the broker confirms delivery, returning an error if delivery fails.
 func (p *Producer) Send(topic string, msg []byte) error {
+	// Per-message delivery channel: librdkafka reports the delivery outcome here.
+	// Without it, Produce only enqueues and delivery failures are silently lost.
+	deliveryChan := make(chan kafka.Event, 1)
+	defer close(deliveryChan)
+
 	err := p.client.Produce(
 		&kafka.Message{
 			TopicPartition: kafka.TopicPartition{
@@ -62,10 +71,21 @@ func (p *Producer) Send(topic string, msg []byte) error {
 			},
 			Value: msg,
 		},
-		nil,
+		deliveryChan,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to send a kafka message: %w", err)
+	}
+
+	ev := <-deliveryChan
+
+	m, ok := ev.(*kafka.Message)
+	if !ok {
+		return fmt.Errorf("unexpected kafka delivery event: %T", ev)
+	}
+
+	if m.TopicPartition.Error != nil {
+		return fmt.Errorf("failed to deliver a kafka message: %w", m.TopicPartition.Error)
 	}
 
 	return nil

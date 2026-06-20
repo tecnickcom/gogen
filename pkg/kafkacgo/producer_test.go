@@ -83,9 +83,13 @@ func Test_NewProducer(t *testing.T) {
 
 type mockProducerClient struct{}
 
-func (m mockProducerClient) Produce(_ *kafka.Message, _ chan kafka.Event) error {
+func (m mockProducerClient) Produce(_ *kafka.Message, deliveryChan chan kafka.Event) error {
+	deliveryChan <- &kafka.Message{} // report a successful delivery (nil TopicPartition.Error)
+
 	return nil
 }
+
+func (m mockProducerClient) Flush(int) int { return 0 }
 
 func (m mockProducerClient) Close() {}
 
@@ -95,7 +99,14 @@ func (m mockProducerClientError) Produce(_ *kafka.Message, _ chan kafka.Event) e
 	return errors.New("error Produce")
 }
 
+func (m mockProducerClientError) Flush(int) int { return 0 }
+
 func (m mockProducerClientError) Close() {}
+
+// fakeEvent is a kafka.Event that is not a *kafka.Message.
+type fakeEvent struct{}
+
+func (fakeEvent) String() string { return "fake" }
 
 func Test_Send(t *testing.T) {
 	t.Parallel()
@@ -114,6 +125,44 @@ func Test_Send(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_Send_delivery_error(t *testing.T) {
+	t.Parallel()
+
+	producer, err := NewProducer([]string{"url"})
+	require.NoError(t, err)
+
+	producer.client = produceMock{
+		produce: func(_ *kafka.Message, deliveryChan chan kafka.Event) error {
+			deliveryChan <- &kafka.Message{
+				TopicPartition: kafka.TopicPartition{Error: errors.New("delivery failed")},
+			}
+
+			return nil
+		},
+	}
+
+	err = producer.Send("topic", []byte("payload"))
+	require.Error(t, err)
+}
+
+func Test_Send_unexpected_event(t *testing.T) {
+	t.Parallel()
+
+	producer, err := NewProducer([]string{"url"})
+	require.NoError(t, err)
+
+	producer.client = produceMock{
+		produce: func(_ *kafka.Message, deliveryChan chan kafka.Event) error {
+			deliveryChan <- fakeEvent{}
+
+			return nil
+		},
+	}
+
+	err = producer.Send("topic", []byte("payload"))
+	require.Error(t, err)
+}
+
 type produceMock struct {
 	produce func(msg *kafka.Message, deliveryChan chan kafka.Event) error
 	close   func()
@@ -122,6 +171,8 @@ type produceMock struct {
 func (p produceMock) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	return p.produce(msg, deliveryChan)
 }
+
+func (p produceMock) Flush(int) int { return 0 }
 
 func (p produceMock) Close() {}
 
@@ -134,7 +185,9 @@ func TestSendData(t *testing.T) {
 	require.NotNil(t, cli)
 
 	cli.client = produceMock{
-		produce: func(_ *kafka.Message, _ chan kafka.Event) error {
+		produce: func(_ *kafka.Message, deliveryChan chan kafka.Event) error {
+			deliveryChan <- &kafka.Message{}
+
 			return nil
 		},
 		close: func() {},
