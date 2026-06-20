@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -242,6 +243,60 @@ func Test_Lookup(t *testing.T) {
 	val, err = c.Lookup(ctx, "example.org")
 	require.Error(t, err)
 	require.Nil(t, val)
+}
+
+func Test_Lookup_canceled_waiter_no_double_close(t *testing.T) {
+	t.Parallel()
+
+	release := make(chan struct{})
+
+	lookupFn := func(_ context.Context, _ string) (any, error) {
+		<-release // hold the in-flight lookup open
+
+		return []string{"192.0.2.1"}, nil
+	}
+
+	c := New(lookupFn, 4, time.Minute)
+
+	prodDone := make(chan struct{})
+
+	go func() {
+		defer close(prodDone)
+
+		v, err := c.Lookup(context.Background(), "example.org")
+		assert.NoError(t, err) // assert (not require) must be used off the test goroutine
+		assert.Equal(t, []string{"192.0.2.1"}, v)
+	}()
+
+	// Wait until the producer has registered the in-flight entry.
+	require.Eventually(t, func() bool {
+		c.mux.RLock()
+		defer c.mux.RUnlock()
+
+		it, ok := c.keymap["example.org"]
+
+		return ok && it.wait != nil
+	}, time.Second, time.Millisecond)
+
+	// A waiter coalesces onto the producer, then its context is canceled.
+	wctx, wcancel := context.WithCancel(context.Background())
+	waiterDone := make(chan struct{})
+
+	go func() {
+		defer close(waiterDone)
+
+		_, err := c.Lookup(wctx, "example.org")
+		assert.Error(t, err) // assert (not require) must be used off the test goroutine
+	}()
+
+	time.Sleep(20 * time.Millisecond) // let the waiter block on item.wait
+	wcancel()
+	<-waiterDone
+
+	// The producer finishes and closes its own wait channel: must not panic
+	// on a double close now that the canceled waiter no longer closes it.
+	close(release)
+	<-prodDone
 }
 
 func Test_Lookup_concurrent_slow(t *testing.T) {

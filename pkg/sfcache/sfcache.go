@@ -172,7 +172,9 @@ func (c *Cache[K]) Lookup(ctx context.Context, key K) (any, error) {
 				// or the Context is canceled.
 				select {
 				case <-ctx.Done():
-					defer close(item.wait)
+					// A waiter must never close item.wait: it is owned by the
+					// in-flight goroutine, which closes it when lookupFn returns.
+					// Closing it here would double-close and panic.
 					return nil, fmt.Errorf("context canceled: %w", ctx.Err())
 				case <-item.wait:
 				}
