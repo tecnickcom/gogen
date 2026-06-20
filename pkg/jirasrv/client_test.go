@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/validator"
 	"github.com/undefinedlabs/go-mpatch"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -85,6 +86,25 @@ func TestNew(t *testing.T) {
 			require.Equal(t, tt.wantTimeout, c.pingTimeout, "New() unexpected pingTimeout = %d got %d", tt.wantTimeout, c.pingTimeout)
 		})
 	}
+}
+
+//nolint:paralleltest // mutates the package-level newValidator seam
+func TestNew_validatorError(t *testing.T) {
+	orig := newValidator
+
+	t.Cleanup(func() { newValidator = orig })
+
+	newValidator = func(...validator.Option) (*validator.Validator, error) {
+		return nil, errors.New("test-error")
+	}
+
+	c, err := New(
+		"http://service.domain.invalid:1234",
+		"0123456789abcdef",
+		WithRetryAttempts(1),
+	)
+	require.Error(t, err)
+	require.Nil(t, c)
 }
 
 func TestClient_setRequestHeaders(t *testing.T) {

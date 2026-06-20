@@ -23,6 +23,10 @@ const (
 	apiBasePath        = "/rest/api/2" // https://docs.atlassian.com/software/jira/docs/api/REST/9.17.0/
 )
 
+// newValidator is a package-level indirection so tests can force a validator
+// setup failure; in production it always delegates to [validator.New].
+var newValidator = validator.New //nolint:gochecknoglobals
+
 // HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
 	// Do sends an HTTP request and returns an HTTP response.
@@ -57,11 +61,14 @@ func New(addr, token string, opts ...Option) (*Client, error) {
 		return nil, errors.New("token is empty")
 	}
 
-	valid, _ := validator.New(
+	valid, err := newValidator(
 		validator.WithFieldNameTag("json"),
 		validator.WithCustomValidationTags(validator.CustomValidationTags()),
 		validator.WithErrorTemplates(validator.ErrorTemplates()),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("init validator: %w", err)
+	}
 
 	apiURL := baseURL.JoinPath(apiBasePath)
 
@@ -107,6 +114,7 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	}
 
 	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
 		err = errors.Join(err, resp.Body.Close())
 	}()
 
@@ -202,7 +210,7 @@ func (c *Client) httpRequest(
 
 // setRequestHeaders attaches JSON and bearer-token headers to r.
 func (c *Client) setRequestHeaders(r *http.Request) {
-	httputil.AddJsonHeaders(r)
+	httputil.AddJSONHeaders(r)
 	httputil.AddBearerToken(c.token, r)
 }
 
@@ -216,5 +224,6 @@ func (c *Client) newHTTPRetrier(httpMethod string) (*httpretrier.HTTPRetrier, er
 		c.httpClient,
 		httpretrier.WithRetryIfFn(httpretrier.RetryIfFnByHTTPMethod(httpMethod)),
 		httpretrier.WithAttempts(c.retryAttempts),
+		httpretrier.WithDelay(c.retryDelay),
 	)
 }
