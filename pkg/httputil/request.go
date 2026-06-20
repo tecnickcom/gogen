@@ -29,10 +29,17 @@ const (
 	MimeTypeJSON        = "application/json"
 )
 
-// AddJsonHeaders sets application/json Accept and Content-Type headers on the request.
-func AddJsonHeaders(r *http.Request) {
+// AddJSONHeaders sets application/json Accept and Content-Type headers on the request.
+func AddJSONHeaders(r *http.Request) {
 	r.Header.Set(HeaderAccept, MimeTypeJSON)
 	r.Header.Set(HeaderContentType, MimeTypeJSON)
+}
+
+// AddJsonHeaders sets application/json Accept and Content-Type headers on the request.
+//
+// Deprecated: use AddJSONHeaders.
+func AddJsonHeaders(r *http.Request) {
+	AddJSONHeaders(r)
 }
 
 // AddAuthorizationHeader adds Authorization header with specified value to request.

@@ -19,7 +19,21 @@ func TestClient_AddJSONHeaders(t *testing.T) {
 	ctx := t.Context()
 
 	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
-	AddJsonHeaders(r)
+	AddJSONHeaders(r)
+
+	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	wanted.Header.Set("Accept", "application/json")
+	wanted.Header.Set("Content-Type", "application/json")
+	require.Equal(t, wanted, r)
+}
+
+func TestClient_AddJsonHeaders(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+	AddJsonHeaders(r) // exercises the deprecated alias
 
 	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
 	wanted.Header.Set("Accept", "application/json")
