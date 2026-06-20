@@ -59,3 +59,77 @@ func Test_loadConfig(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, got)
 }
+
+func Test_validInitAddress(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		addrs []string
+		want  bool
+	}{
+		{
+			name:  "nil address list",
+			addrs: nil,
+			want:  false,
+		},
+		{
+			name:  "empty address list",
+			addrs: []string{},
+			want:  false,
+		},
+		{
+			name:  "valid hostname and port",
+			addrs: []string{"test.valkey.invalid:6379"},
+			want:  true,
+		},
+		{
+			name:  "valid single-digit port",
+			addrs: []string{"localhost:6"},
+			want:  true,
+		},
+		{
+			name:  "valid IPv6 address",
+			addrs: []string{"[::1]:6379"},
+			want:  true,
+		},
+		{
+			name:  "valid multiple addresses",
+			addrs: []string{"localhost:6379", "[::1]:6380"},
+			want:  true,
+		},
+		{
+			name:  "missing port",
+			addrs: []string{"localhost"},
+			want:  false,
+		},
+		{
+			name:  "missing host",
+			addrs: []string{":6379"},
+			want:  false,
+		},
+		{
+			name:  "empty port",
+			addrs: []string{"localhost:"},
+			want:  false,
+		},
+		{
+			name:  "malformed address",
+			addrs: []string{"::::"},
+			want:  false,
+		},
+		{
+			name:  "one invalid address in list",
+			addrs: []string{"localhost:6379", "localhost"},
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.want, validInitAddress(tt.addrs))
+		})
+	}
+}
