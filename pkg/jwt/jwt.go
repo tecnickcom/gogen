@@ -70,6 +70,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -146,7 +147,6 @@ func defaultJWT() *JWT {
 		rnd:                 random.New(nil),
 	}
 
-	cfg.httpresp = httputil.NewHTTPResp(cfg.logger)
 	cfg.sendResponseFn = cfg.defaultSendResponse
 
 	return cfg
@@ -268,8 +268,7 @@ func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
 		c.sendResponseFn(r.Context(), w, http.StatusBadRequest, "the JWT token can be renewed only when it is close to expiration")
 		c.logger.With(
 			slog.String("username", claims.Username),
-			slog.Any("error", err),
-		).Error("invalid JWT renewal time")
+		).Info("the JWT token cannot be renewed yet")
 
 		return
 	}
@@ -326,17 +325,22 @@ func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
 		return claims, errors.New("missing Authorization header")
 	}
 
-	authSplit := strings.Split(headAuth, httputil.HeaderAuthBearer)
-	if len(authSplit) != 2 {
+	signedToken, found := strings.CutPrefix(headAuth, httputil.HeaderAuthBearer)
+	if !found || signedToken == "" {
 		return claims, errors.New("missing JWT token")
 	}
-
-	signedToken := authSplit[1]
 
 	_, err := jwt.ParseWithClaims(
 		signedToken,
 		claims,
-		func(_ *jwt.Token) (any, error) {
+		func(t *jwt.Token) (any, error) {
+			// Restrict the accepted signing algorithm to the configured one to
+			// prevent algorithm-confusion attacks (e.g. alg=none or a different
+			// signing method than expected).
+			if t.Method.Alg() != c.signingMethod.Alg() {
+				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+			}
+
 			return c.key, nil
 		},
 	)

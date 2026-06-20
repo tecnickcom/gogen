@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/testutil"
@@ -387,6 +388,81 @@ func TestIsAuthorized(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckTokenRejectsUnexpectedAlgorithm(t *testing.T) {
+	t.Parallel()
+
+	key := []byte("signing-key")
+
+	// The JWT helper is configured with the default HS256 signing method.
+	c, err := New(key, testUserHash)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	// Craft a token signed with a DIFFERENT HMAC algorithm (HS384) using the
+	// same key. This must be rejected by the algorithm restriction.
+	claims := &Claims{
+		Username: "test-name",
+		RegisteredClaims: jwtv5.RegisteredClaims{
+			ExpiresAt: jwtv5.NewNumericDate(time.Now().UTC().Add(time.Minute)),
+		},
+	}
+
+	signedToken, err := jwtv5.NewWithClaims(jwtv5.SigningMethodHS384, claims).SignedString(key)
+	require.NoError(t, err)
+
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+signedToken)
+
+	got, err := c.checkToken(req)
+	require.NotNil(t, got)
+	require.Error(t, err, "a token signed with an unexpected algorithm must be rejected")
+	require.Contains(t, err.Error(), "unexpected signing method")
+}
+
+func TestCheckTokenRejectsAlgNone(t *testing.T) {
+	t.Parallel()
+
+	c, err := New([]byte("signing-key"), testUserHash)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	// Craft an "alg=none" (unsigned) token: it must be rejected.
+	claims := &Claims{
+		Username: "test-name",
+		RegisteredClaims: jwtv5.RegisteredClaims{
+			ExpiresAt: jwtv5.NewNumericDate(time.Now().UTC().Add(time.Minute)),
+		},
+	}
+
+	signedToken, err := jwtv5.NewWithClaims(jwtv5.SigningMethodNone, claims).
+		SignedString(jwtv5.UnsafeAllowNoneSignatureType)
+	require.NoError(t, err)
+
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+signedToken)
+
+	got, err := c.checkToken(req)
+	require.NotNil(t, got)
+	require.Error(t, err, "an alg=none token must be rejected")
+}
+
+func TestCheckTokenRejectsEmptyBearer(t *testing.T) {
+	t.Parallel()
+
+	c, err := New([]byte("signing-key"), testUserHash)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	// The Authorization header contains the Bearer prefix but an empty token.
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer)
+
+	got, err := c.checkToken(req)
+	require.NotNil(t, got)
+	require.Error(t, err, "an empty bearer token must be rejected")
+	require.Equal(t, "missing JWT token", err.Error())
 }
 
 // testUserHash assumes password = username.
