@@ -24,6 +24,10 @@ const (
 	regexPatternHealthcheck = "Deployment - Not Found"
 )
 
+// newValidator is a package-level indirection over [validator.New] so tests can
+// force an initialization failure; in production it always delegates to validator.New.
+var newValidator = validator.New //nolint:gochecknoglobals
+
 // HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
 	// Do sends an HTTP request and returns an HTTP response.
@@ -50,9 +54,13 @@ type Client struct {
 
 // New constructs a Sleuth API client with validation, retry defaults, and URL templates for the provided org.
 func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
-	baseURL, err := url.Parse(addr)
+	baseURL, err := url.ParseRequestURI(addr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse addr: %w", err)
+		return nil, fmt.Errorf("invalid sleuth address %q: %w", addr, err)
+	}
+
+	if baseURL.Scheme == "" || baseURL.Host == "" {
+		return nil, fmt.Errorf("invalid sleuth address %q: missing scheme or host", addr)
 	}
 
 	if org == "" {
@@ -63,11 +71,14 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 		return nil, errors.New("apiKey is empty")
 	}
 
-	valid, _ := validator.New(
+	valid, err := newValidator(
 		validator.WithFieldNameTag("json"),
 		validator.WithCustomValidationTags(validator.CustomValidationTags()),
 		validator.WithErrorTemplates(validator.ErrorTemplates()),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("init validator: %w", err)
+	}
 
 	c := &Client{
 		baseURL:                     baseURL,
@@ -154,7 +165,7 @@ func httpPostRequest(ctx context.Context, urlStr, apiKey string, request any) (*
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	httputil.AddJsonHeaders(r)
+	httputil.AddJSONHeaders(r)
 	httputil.AddAuthorizationHeader("apikey "+apiKey, r)
 
 	return r, nil
@@ -224,5 +235,6 @@ func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
 		c.httpClient,
 		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
 		httpretrier.WithAttempts(c.retryAttempts),
+		httpretrier.WithDelay(c.retryDelay),
 	)
 }

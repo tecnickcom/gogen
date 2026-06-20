@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/gogen/pkg/validator"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
 )
@@ -96,6 +97,65 @@ func TestNew(t *testing.T) {
 			require.Equal(t, tt.wantTimeout, c.pingTimeout, "New() unexpected pingTimeout = %d got %d", tt.wantTimeout, c.pingTimeout)
 		})
 	}
+}
+
+func TestNew_invalidAddress(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		addr string
+	}{
+		{
+			name: "relative address fails to parse",
+			addr: "invalid-relative-address",
+		},
+		{
+			name: "missing scheme",
+			addr: "//host/path",
+		},
+		{
+			name: "missing host",
+			addr: "http:///path",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c, err := New(
+				tt.addr,
+				"testorg",
+				"0123456789abcdef",
+				WithRetryAttempts(1),
+			)
+
+			require.Error(t, err, "New() expected error for invalid address")
+			require.Nil(t, c, "New() returned client should be nil")
+		})
+	}
+}
+
+//nolint:paralleltest // mutates the package-level newValidator seam
+func TestNew_validatorError(t *testing.T) {
+	orig := newValidator
+
+	t.Cleanup(func() { newValidator = orig })
+
+	newValidator = func(...validator.Option) (*validator.Validator, error) {
+		return nil, errors.New("test-error")
+	}
+
+	c, err := New(
+		"http://service.domain.invalid:1234",
+		"testorg",
+		"0123456789abcdef",
+		WithRetryAttempts(1),
+	)
+
+	require.Error(t, err, "New() expected error when validator init fails")
+	require.Nil(t, c, "New() returned client should be nil")
 }
 
 //nolint:gocognit
