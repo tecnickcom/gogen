@@ -41,6 +41,7 @@ package logsrv
 import (
 	"io"
 	"log/slog"
+	"sync"
 
 	"github.com/rs/zerolog"
 	szlog "github.com/samber/slog-zerolog/v2"
@@ -51,23 +52,48 @@ const (
 	traceIDName = "trace_id"
 )
 
+// logLevelsOnce guards the single, process-wide initialization of the
+// szlog.LogLevels map. The slog-zerolog handler reads that package global at
+// log time (with no per-handler override hook), so it must be written exactly
+// once to avoid a data race with loggers created by earlier NewLogger calls.
+//
+//nolint:gochecknoglobals // required to set szlog.LogLevels exactly once, race-free.
+var logLevelsOnce sync.Once
+
+// setLogLevels installs the syslog-style logutil-to-zerolog level mapping into
+// the szlog.LogLevels process global exactly once.
+//
+// The mapping is constant, so a single write is sufficient and prevents the
+// data race that arises from reassigning the global on every NewLogger call
+// while previously created handlers concurrently read it at log time.
+func setLogLevels() {
+	logLevelsOnce.Do(func() {
+		szlog.LogLevels = map[logutil.LogLevel]zerolog.Level{
+			logutil.LevelEmergency: zerolog.PanicLevel,
+			logutil.LevelAlert:     zerolog.FatalLevel,
+			logutil.LevelCritical:  zerolog.ErrorLevel,
+			logutil.LevelError:     zerolog.ErrorLevel,
+			logutil.LevelWarning:   zerolog.WarnLevel,
+			logutil.LevelNotice:    zerolog.InfoLevel,
+			logutil.LevelInfo:      zerolog.InfoLevel,
+			logutil.LevelDebug:     zerolog.DebugLevel,
+			logutil.LevelTrace:     zerolog.TraceLevel,
+		}
+	})
+}
+
 // NewLogger constructs a slog.Logger backed by zerolog, configured via logutil.Config.
 // Applies format selection, attributes, trace-ID injection, hooks, and level mapping.
 // Sets the returned logger as the process-wide slog default.
+//
+// The trace ID is resolved once, at construction time, via cfg.TraceIDFn and
+// embedded as a fixed field on every record from the returned logger. This is
+// intentional and matches the logutil model: callers that need a per-record
+// trace ID should derive child loggers with logger.With instead.
 func NewLogger(cfg *logutil.Config) *slog.Logger {
 	w := writerByFormat(cfg.Format, cfg.Out)
 
-	szlog.LogLevels = map[logutil.LogLevel]zerolog.Level{
-		logutil.LevelEmergency: zerolog.PanicLevel,
-		logutil.LevelAlert:     zerolog.FatalLevel,
-		logutil.LevelCritical:  zerolog.ErrorLevel,
-		logutil.LevelError:     zerolog.ErrorLevel,
-		logutil.LevelWarning:   zerolog.WarnLevel,
-		logutil.LevelNotice:    zerolog.InfoLevel,
-		logutil.LevelInfo:      zerolog.InfoLevel,
-		logutil.LevelDebug:     zerolog.DebugLevel,
-		logutil.LevelTrace:     zerolog.TraceLevel,
-	}
+	setLogLevels()
 
 	zl := zerolog.New(w).With().Timestamp().Str(traceIDName, cfg.TraceIDFn()).Logger()
 
