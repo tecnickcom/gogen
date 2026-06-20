@@ -90,6 +90,9 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 			slog.String("release", release),
 		}
 
+		// logFormat and logLevel were already parsed and validated above and the
+		// other options are static, so NewConfig cannot fail here; the error is
+		// intentionally discarded.
 		logcfg, _ := logutil.NewConfig(
 			logutil.WithOutWriter(os.Stderr),
 			logutil.WithFormat(logFormat),

@@ -38,6 +38,8 @@ func main() {
 		slog.String("version", programVersion),
 		slog.String("release", programRelease),
 	}
+	// NewConfig only fails when an option is invalid. Every option here is static
+	// and valid, so the error cannot occur and is intentionally discarded.
 	logcfg, _ := logutil.NewConfig(
 		logutil.WithOutWriter(os.Stderr),
 		logutil.WithFormat(logutil.FormatJSON),

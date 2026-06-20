@@ -146,51 +146,62 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 
 		httpMonitoringServer.StartServer()
 
-		// PRIVATE SERVER
+		// PRIVATE AND PUBLIC SERVERS
+		//
+		// Both expose only the default ping route plus their binder's routes, so
+		// they are created through the shared startServiceServer helper.
 
-		httpPrivateOpts := []httpserver.Option{
-			httpserver.WithLogger(l),
-			httpserver.WithServerAddr(cfg.Servers.Private.Address),
-			httpserver.WithRequestTimeout(time.Duration(cfg.Servers.Private.Timeout) * time.Second),
-			httpserver.WithMiddlewareFn(middleware),
-			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
-			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
-			httpserver.WithShutdownWaitGroup(wg),
-			httpserver.WithShutdownSignalChan(sc),
-		}
-
-		httpPrivateServer, err := httpserver.New(ctx, serviceBinderPrivate, httpPrivateOpts...)
+		err = startServiceServer(ctx, "private", serviceBinderPrivate, cfgServer(cfg.Servers.Private), l, middleware, wg, sc)
 		if err != nil {
-			return fmt.Errorf("error creating private HTTP server: %w", err)
+			return err
 		}
 
-		httpPrivateServer.StartServer()
-
-		// PUBLIC SERVER
-
-		httpPublicOpts := []httpserver.Option{
-			httpserver.WithLogger(l),
-			httpserver.WithServerAddr(cfg.Servers.Public.Address),
-			httpserver.WithRequestTimeout(time.Duration(cfg.Servers.Public.Timeout) * time.Second),
-			httpserver.WithMiddlewareFn(middleware),
-			httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
-			httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
-			httpserver.WithShutdownWaitGroup(wg),
-			httpserver.WithShutdownSignalChan(sc),
-		}
-
-		httpPublicServer, err := httpserver.New(ctx, serviceBinderPublic, httpPublicOpts...)
+		err = startServiceServer(ctx, "public", serviceBinderPublic, cfgServer(cfg.Servers.Public), l, middleware, wg, sc)
 		if err != nil {
-			return fmt.Errorf("error creating public HTTP server: %w", err)
+			return err
 		}
-
-		httpPublicServer.StartServer()
 
 		// example of custom metric
 		mtr.IncExampleCounter("START")
 
 		return nil
 	}
+}
+
+// startServiceServer builds, starts, and registers a service HTTP server that
+// exposes the default ping route plus the routes provided by binder.
+//
+// The private and public servers share this path because they differ only by
+// name, address, timeout, and binder.
+func startServiceServer(
+	ctx context.Context,
+	name string,
+	binder httpserver.Binder,
+	srv cfgServer,
+	l *slog.Logger,
+	middleware httpserver.MiddlewareFn,
+	wg *sync.WaitGroup,
+	sc chan struct{},
+) error {
+	opts := []httpserver.Option{
+		httpserver.WithLogger(l),
+		httpserver.WithServerAddr(srv.Address),
+		httpserver.WithRequestTimeout(time.Duration(srv.Timeout) * time.Second),
+		httpserver.WithMiddlewareFn(middleware),
+		httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
+		httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
+		httpserver.WithShutdownWaitGroup(wg),
+		httpserver.WithShutdownSignalChan(sc),
+	}
+
+	server, err := httpserver.New(ctx, binder, opts...)
+	if err != nil {
+		return fmt.Errorf("error creating %s HTTP server: %w", name, err)
+	}
+
+	server.StartServer()
+
+	return nil
 }
 
 // newDatabase creates, instruments, and health-checks a named SQL connection
