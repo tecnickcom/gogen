@@ -135,9 +135,10 @@ func (c *Client) Receive(ctx context.Context) (*Message, error) {
 	resp, err := c.sqs.ReceiveMessage(
 		ctx,
 		&sqs.ReceiveMessageInput{
-			QueueUrl:          c.queueURL,
-			WaitTimeSeconds:   c.waitTimeSeconds,
-			VisibilityTimeout: c.visibilityTimeout,
+			QueueUrl:            c.queueURL,
+			WaitTimeSeconds:     c.waitTimeSeconds,
+			VisibilityTimeout:   c.visibilityTimeout,
+			MaxNumberOfMessages: 1,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve message from the queue: %w", err)
