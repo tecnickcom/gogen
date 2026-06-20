@@ -42,3 +42,15 @@ func TestWithLogger(t *testing.T) {
 	WithLogger(l)(c)
 	require.Equal(t, l, c.logger)
 }
+
+func TestWithPathParam(t *testing.T) {
+	t.Parallel()
+
+	c := &Client{}
+	WithPathParam("upstream")(c)
+	require.Equal(t, "upstream", c.pathParam)
+
+	// An empty name falls back to the default.
+	WithPathParam("")(c)
+	require.Equal(t, defaultPathParam, c.pathParam)
+}

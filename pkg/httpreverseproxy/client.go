@@ -19,19 +19,31 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// defaultPathParam is the default name of the catch-all route parameter
+// holding the upstream path. It can be overridden via WithPathParam.
+const defaultPathParam = "path"
+
 // Client implements the Reverse Proxy.
 type Client struct {
 	proxy      *httputil.ReverseProxy
 	httpClient HTTPClient
 	logger     *slog.Logger
+	pathParam  string
 }
 
 // errHandler defines the function signature for error handlers.
 type errHandler = func(w http.ResponseWriter, r *http.Request, err error)
 
 // New constructs reverse proxy client forwarding requests to upstream address with default rewrite and X-Forwarded-* headers.
+//
+// The default rewrite builds the upstream path from a catch-all route parameter
+// named "path" (e.g. a route registered as "/proxy/*path"). If the router
+// registers the catch-all under a different name, configure it via WithPathParam,
+// otherwise the upstream path silently becomes "/".
 func New(addr string, opts ...Option) (*Client, error) {
-	c := &Client{}
+	c := &Client{
+		pathParam: defaultPathParam,
+	}
 
 	for _, applyOpt := range opts {
 		applyOpt(c)
@@ -53,7 +65,7 @@ func New(addr string, opts ...Option) (*Client, error) {
 			r.SetURL(proxyURL)
 			r.Out.URL.Scheme = proxyURL.Scheme
 			r.Out.URL.Host = proxyURL.Host
-			r.Out.URL.Path = "/" + libhttputil.PathParam(r.Out, "path")
+			r.Out.URL.Path = "/" + libhttputil.PathParam(r.Out, c.pathParam)
 			r.Out.Host = proxyURL.Host
 			r.SetXForwarded()
 		}

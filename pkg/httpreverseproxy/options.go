@@ -28,3 +28,18 @@ func WithLogger(l *slog.Logger) Option {
 		c.logger = l
 	}
 }
+
+// WithPathParam sets the name of the catch-all route parameter that holds the
+// upstream path used by the default rewrite (e.g. "path" for a route registered
+// as "/proxy/*path"). An empty value falls back to the default ("path").
+//
+// It has no effect when a custom rewrite is provided via WithReverseProxy.
+func WithPathParam(name string) Option {
+	return func(c *Client) {
+		if name == "" {
+			name = defaultPathParam
+		}
+
+		c.pathParam = name
+	}
+}

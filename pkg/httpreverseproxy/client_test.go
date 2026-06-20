@@ -52,6 +52,18 @@ func TestNew(t *testing.T) {
 			opts:        []Option{WithLogger(slog.Default())},
 			wantErr:     false,
 		},
+		{
+			name:        "succeeds with custom path param",
+			serviceAddr: "http://service.domain.invalid:1238/",
+			opts:        []Option{WithPathParam("upstream")},
+			wantErr:     false,
+		},
+		{
+			name:        "succeeds with empty path param falling back to default",
+			serviceAddr: "http://service.domain.invalid:1239/",
+			opts:        []Option{WithPathParam("")},
+			wantErr:     false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -198,4 +210,47 @@ func TestClient_ForwardRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClient_ForwardRequest_CustomPathParam(t *testing.T) {
+	t.Parallel()
+
+	const timeout = 1 * time.Second
+
+	targetMux := http.NewServeMux()
+	targetServer := httptest.NewServer(targetMux)
+
+	t.Cleanup(func() { targetServer.Close() })
+
+	hres := libhttputil.NewHTTPResp(slog.Default())
+
+	targetMux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		// The upstream path must be preserved through the custom wildcard param.
+		assert.Equal(t, "/test", r.URL.Path)
+		hres.SendStatus(r.Context(), w, http.StatusOK)
+	})
+
+	// Register the catch-all under a non-default param name and configure it.
+	c, err := New(targetServer.URL, WithPathParam("upstream"))
+	require.NoError(t, err)
+
+	proxyMux := testutil.RouterWithHandler(http.MethodGet, "/proxy/*upstream", c.ForwardRequest)
+	proxyServer := httptest.NewServer(proxyMux)
+
+	t.Cleanup(func() { proxyServer.Close() })
+
+	ctx := t.Context()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+"/proxy/test", nil)
+
+	hc := &http.Client{Timeout: timeout}
+	resp, err := hc.Do(req)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if resp != nil {
+			assert.NoError(t, resp.Body.Close())
+		}
+	})
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
