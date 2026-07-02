@@ -2,6 +2,7 @@ package healthcheck
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -69,6 +70,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, hc := range h.checks {
 		go func() { //nolint:contextcheck
 			defer wg.Done()
+
+			// Convert a panicking checker into a regular check failure:
+			// an unrecovered panic in these child goroutines would crash the
+			// whole process (net/http panic recovery only covers the request
+			// goroutine).
+			defer func() {
+				if p := recover(); p != nil {
+					resCh <- checkResult{id: hc.ID, err: fmt.Errorf("panic: %v", p)}
+				}
+			}()
 
 			resCh <- checkResult{
 				id:  hc.ID,

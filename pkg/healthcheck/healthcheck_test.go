@@ -21,6 +21,14 @@ func (th *testHealthChecker) HealthCheck(_ context.Context) error {
 	return th.err
 }
 
+type panicHealthChecker struct {
+	msg string
+}
+
+func (ph *panicHealthChecker) HealthCheck(_ context.Context) error {
+	panic(ph.msg)
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 

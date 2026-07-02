@@ -94,6 +94,16 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			wantBody:       `{"test_31":"OK","test_32":"check error"}`,
 			wantMaxElapsed: 300 * time.Millisecond,
 		},
+		{
+			name: "panicking checker reported as failure",
+			checks: []HealthCheck{
+				New("test_41", &testHealthChecker{delay: 100 * time.Millisecond, err: nil}),
+				New("test_42", &panicHealthChecker{msg: "checker exploded"}),
+			},
+			wantStatus:     http.StatusServiceUnavailable,
+			wantBody:       `{"test_41":"OK","test_42":"panic: checker exploded"}`,
+			wantMaxElapsed: 200 * time.Millisecond,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
