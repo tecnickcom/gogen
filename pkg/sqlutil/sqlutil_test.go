@@ -142,9 +142,14 @@ func Test_defaultQuoteID(t *testing.T) {
 			want: "`test``````4`",
 		},
 		{
+			name: "backslash kept literal",
+			id:   `a\b`,
+			want: "`a\\b`",
+		},
+		{
 			name: "special characters",
 			id:   "test" + string([]byte{'\'', '"', '`', 0, '\n', '\r', '\\', '\032'}),
-			want: "`test'\"``\\0\\n\\r\\\\\\Z`",
+			want: "`test'\"``" + string([]byte{0, '\n', '\r', '\\', '\032'}) + "`",
 		},
 	}
 
@@ -168,9 +173,9 @@ func Test_defaultQuoteValue(t *testing.T) {
 		want string
 	}{
 		{
-			name: "empty string",
+			name: "empty string is quoted",
 			val:  "",
-			want: "",
+			want: "''",
 		},
 		{
 			name: "simple value",
@@ -221,6 +226,11 @@ func Test_QuoteValue_Escaping(t *testing.T) {
 		val  string
 		want string
 	}{
+		{
+			name: "empty string is quoted",
+			val:  "",
+			want: "''",
+		},
 		{
 			name: "single quote doubled",
 			val:  "o'reilly",
@@ -277,9 +287,9 @@ func Test_QuoteValue_Escaping(t *testing.T) {
 	}
 }
 
-// Test_QuoteID_Escaping exercises the default escaping behavior through the
-// exported QuoteID entry point, covering backtick-doubling, single quotes and
-// every control character the escaper handles (\0, \n, \r, \\, \032/\Z).
+// Test_QuoteID_Escaping exercises the default quoting behavior through the
+// exported QuoteID entry point: inside backtick quotes only the backtick is
+// special (doubled); backslashes and control characters are kept literal.
 func Test_QuoteID_Escaping(t *testing.T) {
 	t.Parallel()
 
@@ -304,34 +314,34 @@ func Test_QuoteID_Escaping(t *testing.T) {
 			want: "`sch``ema`.`ta``ble`",
 		},
 		{
-			name: "null byte escaped",
+			name: "null byte kept literal",
 			id:   "a" + string([]byte{0}) + "b",
-			want: "`a\\0b`",
+			want: "`a" + string([]byte{0}) + "b`",
 		},
 		{
-			name: "newline escaped",
+			name: "newline kept literal",
 			id:   "a\nb",
-			want: "`a\\nb`",
+			want: "`a\nb`",
 		},
 		{
-			name: "carriage return escaped",
+			name: "carriage return kept literal",
 			id:   "a\rb",
-			want: "`a\\rb`",
+			want: "`a\rb`",
 		},
 		{
-			name: "backslash escaped",
+			name: "backslash kept literal",
 			id:   `a\b`,
-			want: "`a\\\\b`",
+			want: "`a\\b`",
 		},
 		{
-			name: "substitute (\\032) escaped to Z",
+			name: "substitute (\\032) kept literal",
 			id:   "a\032b",
-			want: "`a\\Zb`",
+			want: "`a\032b`",
 		},
 		{
-			name: "all control characters and backtick together",
+			name: "all control characters kept literal and backtick doubled",
 			id:   string([]byte{0, '\n', '\r', '\\', '\032', '`'}),
-			want: "`\\0\\n\\r\\\\\\Z```",
+			want: "`" + string([]byte{0, '\n', '\r', '\\', '\032'}) + "```",
 		},
 	}
 

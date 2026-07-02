@@ -21,9 +21,11 @@ sqlutil centralizes quoting behavior behind a small configurable API.
 The default implementation is mysql-like:
 
   - identifiers are split by "." and each segment is wrapped in backticks,
-    with embedded backticks escaped as doubled backticks.
-  - values are wrapped in single quotes, with embedded single quotes doubled.
-  - control characters are escaped (`\0`, `\n`, `\r`, `\\`, `\Z`).
+    with embedded backticks escaped as doubled backticks (no other escaping:
+    inside backtick quotes only the backtick is special).
+  - values are wrapped in single quotes, with embedded single quotes doubled
+    and control characters escaped (`\0`, `\n`, `\r`, `\\`, `\Z`); the empty
+    string yields an empty quoted literal (two single quotes).
 
 # Customization
 
@@ -118,6 +120,8 @@ func (c *SQLUtil) validate() error {
 }
 
 // defaultQuoteID is the QuoteID default function for mysql-like databases.
+// Inside backtick-quoted identifiers only the backtick is special (backslash is
+// a literal character), so backticks are doubled and no other escaping is applied.
 func defaultQuoteID(s string) string {
 	if s == "" {
 		return s
@@ -126,18 +130,16 @@ func defaultQuoteID(s string) string {
 	parts := strings.Split(s, ".")
 
 	for k, v := range parts {
-		parts[k] = "`" + strings.ReplaceAll(escape(v), "`", "``") + "`"
+		parts[k] = "`" + strings.ReplaceAll(v, "`", "``") + "`"
 	}
 
 	return strings.Join(parts, ".")
 }
 
 // defaultQuoteValue is the QuoteValue default function for mysql-like databases.
+// The empty string is returned as an empty quoted literal (two single quotes)
+// so the result is always a valid SQL string literal.
 func defaultQuoteValue(s string) string {
-	if s == "" {
-		return s
-	}
-
 	return "'" + strings.ReplaceAll(escape(s), "'", "''") + "'"
 }
 

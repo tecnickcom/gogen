@@ -39,6 +39,18 @@ func TestBuildInClauseString(t *testing.T) {
 			values: []string{"D", "E", "F"},
 			want:   "`schema_in_4`.`table_in_4` IN ('D','E','F')",
 		},
+		{
+			name:   "empty string value is quoted",
+			field:  "test_in_5",
+			values: []string{""},
+			want:   "`test_in_5` IN ('')",
+		},
+		{
+			name:   "empty string mixed with other values",
+			field:  "test_in_6",
+			values: []string{"", "A"},
+			want:   "`test_in_6` IN ('','A')",
+		},
 	}
 
 	for _, tt := range tests {
