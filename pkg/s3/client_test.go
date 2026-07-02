@@ -277,10 +277,67 @@ func TestS3Client_ListObject(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:   "success - paginated over multiple pages",
+			prefix: "",
+			bucket: "bucket",
+			mock: s3mock{listFn: func(_ context.Context, params *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+				switch aws.ToString(params.ContinuationToken) {
+				case "":
+					return &s3.ListObjectsV2Output{
+						Contents: []types.Object{
+							{Key: aws.String("key1")},
+							{Key: aws.String("key2")},
+						},
+						IsTruncated:           aws.Bool(true),
+						NextContinuationToken: aws.String("token1"),
+					}, nil
+				case "token1":
+					return &s3.ListObjectsV2Output{
+						Contents: []types.Object{
+							{Key: aws.String("key3")},
+						},
+						IsTruncated:           aws.Bool(true),
+						NextContinuationToken: aws.String("token2"),
+					}, nil
+				case "token2":
+					return &s3.ListObjectsV2Output{
+						Contents: []types.Object{
+							{Key: aws.String("key4")},
+						},
+						IsTruncated: aws.Bool(false),
+					}, nil
+				default:
+					return nil, errors.New("unexpected continuation token")
+				}
+			}},
+			want:    []string{"key1", "key2", "key3", "key4"},
+			wantErr: false,
+		},
+		{
 			name:   "error",
 			prefix: "k1",
 			bucket: "bucket",
 			mock: s3mock{listFn: func(_ context.Context, _ *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+				return nil, errors.New("some err")
+			}},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:   "error - second page",
+			prefix: "",
+			bucket: "bucket",
+			mock: s3mock{listFn: func(_ context.Context, params *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+				if params.ContinuationToken == nil {
+					return &s3.ListObjectsV2Output{
+						Contents: []types.Object{
+							{Key: aws.String("key1")},
+						},
+						IsTruncated:           aws.Bool(true),
+						NextContinuationToken: aws.String("token1"),
+					}, nil
+				}
+
 				return nil, errors.New("some err")
 			}},
 			want:    nil,

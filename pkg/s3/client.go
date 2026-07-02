@@ -91,15 +91,27 @@ func (c *Client) Get(ctx context.Context, key string) (*Object, error) {
 }
 
 // ListKeys returns object keys matching prefix; an empty prefix lists all keys in the bucket.
+// It transparently paginates over ListObjectsV2 results, so all matching keys are
+// returned even when they exceed the per-request AWS limit (1000 keys).
 func (c *Client) ListKeys(ctx context.Context, prefix string) ([]string, error) {
-	l, err := c.s3.ListObjectsV2(ctx, &s3.ListObjectsV2Input{Bucket: aws.String(c.bucketName), Prefix: aws.String(prefix)})
-	if err != nil {
-		return nil, fmt.Errorf("cannot list s3 keys: %w", err)
-	}
+	input := &s3.ListObjectsV2Input{Bucket: aws.String(c.bucketName), Prefix: aws.String(prefix)}
+	keysList := make([]string, 0)
 
-	keysList := make([]string, 0, len(l.Contents))
-	for _, key := range l.Contents {
-		keysList = append(keysList, aws.ToString(key.Key))
+	for {
+		l, err := c.s3.ListObjectsV2(ctx, input)
+		if err != nil {
+			return nil, fmt.Errorf("cannot list s3 keys: %w", err)
+		}
+
+		for _, key := range l.Contents {
+			keysList = append(keysList, aws.ToString(key.Key))
+		}
+
+		if !aws.ToBool(l.IsTruncated) || l.NextContinuationToken == nil {
+			break
+		}
+
+		input.ContinuationToken = l.NextContinuationToken
 	}
 
 	return keysList, nil
