@@ -121,6 +121,11 @@ func ChunkLine(s string, size, n int) []string {
 			end--
 		}
 
+		// the leading rune is wider than size: hard-cut the whole rune to guarantee progress
+		if end == 0 {
+			_, end = utf8.DecodeRuneInString(s)
+		}
+
 		// try to split by unicode spaces
 		sepIdx := strings.LastIndexFunc(s[:end], unicode.IsSpace)
 		if sepIdx == -1 {

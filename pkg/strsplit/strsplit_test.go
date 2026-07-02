@@ -79,6 +79,13 @@ func TestChunk(t *testing.T) {
 			n:    3,
 			want: []string{"hello", "world", "bella"},
 		},
+		{
+			name: "multibyte rune wider than size", // regression: used to loop forever
+			s:    "😀😀",
+			size: 3,
+			n:    -1,
+			want: []string{"😀", "😀"},
+		},
 	}
 
 	for _, tt := range cases {
@@ -226,6 +233,20 @@ func TestChunkLine(t *testing.T) {
 			size: 5,
 			n:    2,
 			want: []string{"hello", "world"},
+		},
+		{
+			name: "multibyte leading rune wider than size", // regression: used to loop forever
+			s:    "é",
+			size: 1,
+			n:    -1,
+			want: []string{"é"},
+		},
+		{
+			name: "multibyte runes wider than size",
+			s:    "😀😀",
+			size: 3,
+			n:    -1,
+			want: []string{"😀", "😀"},
 		},
 	}
 
