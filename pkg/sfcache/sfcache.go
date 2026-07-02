@@ -82,7 +82,8 @@ type entry struct {
 	// err is the error returned by the external lookup.
 	err error
 
-	// expireAt is the expiration time in seconds elapsed since January 1, 1970 UTC.
+	// expireAt is the expiration time in nanoseconds elapsed since January 1, 1970 UTC.
+	// A zero value marks the entry as already expired (in-flight placeholders and errors).
 	expireAt int64
 
 	// val is the value associated with the key.
@@ -151,14 +152,14 @@ func (c *Cache[K]) Remove(key K) {
 // Returns cached value if not expired; coalesces duplicate in-flight requests; evicts old/expired entries on capacity.
 // Only successful values are cached for the TTL: errors are not cached (no negative caching), so every error triggers a fresh lookup on the next call.
 //
-//nolint:gocognit
+//nolint:gocognit,gocyclo,cyclop
 func (c *Cache[K]) Lookup(ctx context.Context, key K) (any, error) {
 	c.mux.Lock()
 	item, ok := c.keymap[key]
 
 	//nolint:nestif
 	if ok {
-		if item.expireAt > time.Now().UTC().Unix() {
+		if item.expireAt > time.Now().UTC().UnixNano() {
 			c.mux.Unlock()
 			return item.val, item.err
 		}
@@ -206,7 +207,24 @@ func (c *Cache[K]) Lookup(ctx context.Context, key K) (any, error) {
 	}
 
 	wait := make(chan struct{})
-	defer close(wait)
+	finalized := false
+
+	defer func() {
+		if !finalized {
+			// lookupFn panicked: remove the in-flight placeholder so waiters
+			// observe a terminal state (missing entry) instead of busy-spinning
+			// on a closed wait channel. The panic propagates to the caller.
+			c.mux.Lock()
+
+			if item, ok := c.keymap[key]; ok && (item.wait == wait) {
+				delete(c.keymap, key)
+			}
+
+			c.mux.Unlock()
+		}
+
+		close(wait)
+	}()
 
 	c.set(key, nil, nil, wait)
 	c.mux.Unlock()
@@ -215,6 +233,8 @@ func (c *Cache[K]) Lookup(ctx context.Context, key K) (any, error) {
 
 	c.mux.Lock()
 	c.set(key, val, err, nil)
+
+	finalized = true
 	c.mux.Unlock()
 
 	return val, err
@@ -232,29 +252,41 @@ func (c *Cache[K]) set(key K, val any, err error, wait chan struct{}) {
 		}
 	}
 
-	var now int64
+	var expireAt int64
 
-	if val != nil {
-		now = time.Now().UTC().Add(c.ttl).Unix()
+	if (err == nil) && (wait == nil) {
+		// Only successful completed lookups are cached for the TTL
+		// (including legitimate nil values): errors are never cached
+		// (no negative caching) and in-flight placeholders (wait != nil)
+		// must stay expired so duplicate callers wait on the channel.
+		expireAt = time.Now().UTC().Add(c.ttl).UnixNano()
 	}
 
 	c.keymap[key] = &entry{
 		wait:     wait,
 		err:      err,
-		expireAt: now,
+		expireAt: expireAt,
 		val:      val,
 	}
 }
 
 // evict removes either the oldest entry or the first expired one from the cache.
+// In-flight placeholders (entries with a non-nil wait channel) are never evicted,
+// as removing them would break single-flight deduplication.
 // NOTE: this is not thread-safe, it should be called within a mutex lock.
 func (c *Cache[K]) evict() {
-	cuttime := time.Now().UTC().Unix()
+	cuttime := time.Now().UTC().UnixNano()
 	oldest := int64(1<<63 - 1)
+	found := false
 
 	var oldestkey K
 
 	for h, d := range c.keymap {
+		if d.wait != nil {
+			// skip in-flight placeholders
+			continue
+		}
+
 		if d.expireAt < cuttime {
 			delete(c.keymap, h)
 			return
@@ -263,8 +295,11 @@ func (c *Cache[K]) evict() {
 		if d.expireAt < oldest {
 			oldest = d.expireAt
 			oldestkey = h
+			found = true
 		}
 	}
 
-	delete(c.keymap, oldestkey)
+	if found {
+		delete(c.keymap, oldestkey)
+	}
 }
