@@ -84,6 +84,19 @@ func (w *mockWriteCloserCloseError) Close() error {
 	return errors.New("close error")
 }
 
+type mockWriteCloserCloseTracker struct {
+	closed bool
+}
+
+func (w *mockWriteCloserCloseTracker) Write(_ []byte) (int, error) {
+	return 0, nil
+}
+
+func (w *mockWriteCloserCloseTracker) Close() error {
+	w.closed = true
+	return nil
+}
+
 func Test_GobEncoder(t *testing.T) {
 	t.Parallel()
 
@@ -182,6 +195,28 @@ func Test_JsonEncoder(t *testing.T) {
 	err := JsonEncoder(Base64Encoder(new(bytes.Buffer)), 5) // exercises the deprecated alias
 
 	require.NoError(t, err)
+}
+
+func Test_GobEncoder_ClosesEncoderOnError(t *testing.T) {
+	t.Parallel()
+
+	enc := &mockWriteCloserCloseTracker{}
+
+	err := GobEncoder(enc, make(chan int)) // unencodable value
+
+	require.Error(t, err)
+	require.True(t, enc.closed, "encoder must be closed on the encode error path")
+}
+
+func Test_JSONEncoder_ClosesEncoderOnError(t *testing.T) {
+	t.Parallel()
+
+	enc := &mockWriteCloserCloseTracker{}
+
+	err := JSONEncoder(enc, make(chan int)) // unencodable value
+
+	require.Error(t, err)
+	require.True(t, enc.closed, "encoder must be closed on the encode error path")
 }
 
 func TestByteEncodeDecode(t *testing.T) {

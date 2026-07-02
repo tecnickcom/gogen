@@ -33,6 +33,7 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -58,7 +59,7 @@ func Base64Encoder(w io.Writer) io.WriteCloser {
 func GobEncoder(enc io.WriteCloser, data any) error {
 	err := gob.NewEncoder(enc).Encode(data)
 	if err != nil {
-		return fmt.Errorf("gob: %w", err)
+		return errors.Join(fmt.Errorf("gob: %w", err), enc.Close())
 	}
 
 	return enc.Close() //nolint:wrapcheck
@@ -70,7 +71,7 @@ func GobEncoder(enc io.WriteCloser, data any) error {
 func JSONEncoder(enc io.WriteCloser, data any) error {
 	err := json.NewEncoder(enc).Encode(data)
 	if err != nil {
-		return fmt.Errorf("JSON: %w", err)
+		return errors.Join(fmt.Errorf("JSON: %w", err), enc.Close())
 	}
 
 	return enc.Close() //nolint:wrapcheck
