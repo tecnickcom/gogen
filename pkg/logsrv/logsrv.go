@@ -89,25 +89,39 @@ func setLogLevels() {
 // The trace ID is resolved once, at construction time, via cfg.TraceIDFn and
 // embedded as a fixed field on every record from the returned logger. This is
 // intentional and matches the logutil model: callers that need a per-record
-// trace ID should derive child loggers with logger.With instead.
+// trace ID should derive child loggers with logger.With instead. A nil
+// TraceIDFn is valid (as in logutil) and simply omits the trace ID field.
+//
+// The hook (cfg.HookFn) is invoked at the slog layer, before the record is
+// handed to zerolog, so it receives the original record level (e.g.
+// logutil.LevelNotice or logutil.LevelCritical) rather than the collapsed
+// zerolog level (Notice->Info, Critical->Error).
 func NewLogger(cfg *logutil.Config) *slog.Logger {
 	w := writerByFormat(cfg.Format, cfg.Out)
 
 	setLogLevels()
 
-	zl := zerolog.New(w).With().Timestamp().Str(traceIDName, cfg.TraceIDFn()).Logger()
+	zctx := zerolog.New(w).With().Timestamp()
 
-	if cfg.HookFn != nil {
-		hf := func(_ *zerolog.Event, level zerolog.Level, message string) {
-			cfg.HookFn(SlogLevel(level), message)
-		}
-		zl = zl.Hook(zerolog.HookFunc(hf))
+	// logutil treats a nil TraceIDFn as valid (no trace ID field); mirror
+	// that here instead of panicking on a nil function call.
+	if cfg.TraceIDFn != nil {
+		zctx = zctx.Str(traceIDName, cfg.TraceIDFn())
 	}
+
+	zl := zctx.Logger()
 
 	sh := szlog.Option{
 		Level:  cfg.Level,
 		Logger: &zl,
 	}.NewZerologHandler().WithAttrs(cfg.CommonAttr)
+
+	// Wrap the handler (as logutil does) instead of hooking the zerolog event:
+	// a zerolog hook would only see the zerolog-collapsed level, losing the
+	// Notice and Critical severities.
+	if cfg.HookFn != nil {
+		sh = logutil.NewSlogHookHandler(sh, cfg.HookFn)
+	}
 
 	sl := slog.New(sh)
 

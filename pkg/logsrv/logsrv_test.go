@@ -1,6 +1,7 @@
 package logsrv
 
 import (
+	"bytes"
 	"io"
 	"log/slog"
 	"os"
@@ -45,6 +46,77 @@ func TestNewLogger(t *testing.T) {
 	l.Info("test")
 
 	require.Equal(t, "test", hookValue)
+}
+
+// TestNewLogger_nilTraceIDFn verifies that a nil TraceIDFn is treated as
+// valid (as logutil does): the logger is created without panicking and the
+// trace ID field is simply omitted from the output.
+func TestNewLogger_nilTraceIDFn(t *testing.T) {
+	t.Parallel()
+
+	out := &bytes.Buffer{}
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(out),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithTraceIDFn(nil),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	require.Nil(t, cfg.TraceIDFn)
+
+	require.NotPanics(t, func() {
+		l := NewLogger(cfg)
+
+		require.NotNil(t, l)
+
+		l.Info("no trace id")
+	})
+
+	require.Contains(t, out.String(), "no trace id")
+	require.NotContains(t, out.String(), traceIDName, "the trace ID field must be omitted when TraceIDFn is nil")
+}
+
+// TestNewLogger_hookReceivesOriginalLevel verifies the hook is invoked with
+// the original slog record level instead of the zerolog-collapsed one
+// (zerolog maps Notice->Info and Critical->Error).
+func TestNewLogger_hookReceivesOriginalLevel(t *testing.T) {
+	t.Parallel()
+
+	type hookCall struct {
+		level   logutil.LogLevel
+		message string
+	}
+
+	var calls []hookCall
+
+	hookFn := func(level logutil.LogLevel, message string) {
+		calls = append(calls, hookCall{level: level, message: message})
+	}
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(io.Discard),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithHookFn(hookFn),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	l := NewLogger(cfg)
+
+	require.NotNil(t, l)
+
+	l.Log(t.Context(), logutil.LevelNotice, "notice message")
+	l.Log(t.Context(), logutil.LevelCritical, "critical message")
+
+	require.Equal(t, []hookCall{
+		{level: logutil.LevelNotice, message: "notice message"},
+		{level: logutil.LevelCritical, message: "critical message"},
+	}, calls, "the hook must receive the original slog levels, not the zerolog-collapsed ones")
 }
 
 // TestNewLogger_concurrent creates many loggers concurrently while each one is
