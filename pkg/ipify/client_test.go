@@ -1,9 +1,11 @@
 package ipify
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -173,6 +175,48 @@ func TestClient_GetPublicIP(t *testing.T) {
 			}
 		})
 	}
+}
+
+// errorCloseHTTPClient is an [HTTPClient] returning a valid 200 response whose
+// body reads successfully but fails on Close.
+type errorCloseHTTPClient struct {
+	body string
+}
+
+func (c *errorCloseHTTPClient) Do(_ *http.Request) (*http.Response, error) {
+	return &http.Response{
+		Status:     http.StatusText(http.StatusOK),
+		StatusCode: http.StatusOK,
+		Body:       &errorCloser{Reader: strings.NewReader(c.body)},
+	}, nil
+}
+
+// errorCloser is an io.ReadCloser whose Close always fails.
+type errorCloser struct {
+	*strings.Reader
+}
+
+func (e *errorCloser) Close() error {
+	return errors.New("close error")
+}
+
+// TestClient_GetPublicIP_CloseError verifies the documented contract: when the
+// response body Close fails after a successful read, GetPublicIP returns the
+// configured errorIP together with the error, never the real IP.
+func TestClient_GetPublicIP_CloseError(t *testing.T) {
+	t.Parallel()
+
+	const fallbackIP = "0.0.0.0"
+
+	c, err := New(
+		WithHTTPClient(&errorCloseHTTPClient{body: "192.0.2.1"}),
+		WithErrorIP(fallbackIP),
+	)
+	require.NoError(t, err, "Client.GetPublicIP() create client unexpected error = %v", err)
+
+	ip, err := c.GetPublicIP(t.Context())
+	require.Error(t, err, "Client.GetPublicIP() expected close error")
+	require.Equal(t, fallbackIP, ip, "on failure the configured errorIP must be returned instead of the real IP")
 }
 
 func TestClient_GetPublicIP_URLError(t *testing.T) {

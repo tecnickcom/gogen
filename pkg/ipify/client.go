@@ -99,6 +99,12 @@ func (c *Client) GetPublicIP(ctx context.Context) (ip string, err error) {
 
 	defer func() {
 		err = errors.Join(err, resp.Body.Close())
+		if err != nil {
+			// Honor the documented contract: on any failure — including a
+			// close error after a successful read — return the configured
+			// fallback errorIP together with the error.
+			ip = c.errorIP
+		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
