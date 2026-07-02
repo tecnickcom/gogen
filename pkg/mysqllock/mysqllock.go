@@ -160,18 +160,22 @@ func (l *MySQLLock) Acquire(ctx context.Context, key string, timeout time.Durati
 
 	serr := row.Scan(&res)
 	if serr != nil {
+		err = fmt.Errorf("unable to scan mysql lock: %w", serr)
 		closeConnection(conn, &err)
-		return nil, fmt.Errorf("unable to scan mysql lock: %w", serr)
+
+		return nil, err
 	}
 
 	if res != resLockAcquired {
-		closeConnection(conn, &err)
-
 		if res == resLockTimeout {
-			return nil, ErrTimeout
+			err = ErrTimeout
+		} else {
+			err = ErrFailed
 		}
 
-		return nil, ErrFailed
+		closeConnection(conn, &err)
+
+		return nil, err
 	}
 
 	// The release context is independent from the parent context.
@@ -256,7 +260,12 @@ func reportKeepAliveError(errHandler func(error), err error) {
 	}
 }
 
-// closeConnection closes the given SQL connection and logs any error.
+// closeConnection closes the given SQL connection, joining any close error
+// into err. When the close succeeds, err is left untouched so sentinel errors
+// (e.g. [ErrTimeout]) keep their identity.
 func closeConnection(conn *sql.Conn, err *error) {
-	*err = errors.Join(*err, conn.Close())
+	cerr := conn.Close()
+	if cerr != nil {
+		*err = errors.Join(*err, cerr)
+	}
 }

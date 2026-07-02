@@ -2,6 +2,7 @@ package mysqllock
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"sync"
 	"testing"
@@ -320,10 +321,30 @@ func Test_closeConnection(t *testing.T) {
 
 	require.NoError(t, closeErr)
 
+	// A successful close must leave a pre-existing sentinel error untouched so
+	// its identity is preserved (e.g. err == ErrTimeout keeps working).
+	conn2, err := mockDB.Conn(t.Context())
+	require.NoError(t, err)
+
+	sentinelErr := ErrTimeout
+
+	closeConnection(conn2, &sentinelErr)
+
+	require.Equal(t, ErrTimeout, sentinelErr)
+
 	// Close the connection to simulate an error on close.
 	_ = conn.Close()
 
 	closeConnection(conn, &closeErr)
 
 	require.Error(t, closeErr)
+
+	// A failing close must join the close error into a pre-existing error, so
+	// both errors reach the caller (as in the Acquire error paths).
+	joinedErr := ErrTimeout
+
+	closeConnection(conn, &joinedErr)
+
+	require.ErrorIs(t, joinedErr, ErrTimeout)
+	require.ErrorIs(t, joinedErr, sql.ErrConnDone)
 }
