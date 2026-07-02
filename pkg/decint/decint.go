@@ -20,8 +20,9 @@ Top features:
 
 Implementation note:
 
-  - float-to-integer conversion uses scale-and-cast semantics, which truncates
-    extra fractional digits toward zero instead of rounding.
+  - float-to-integer conversion scales by 1e6 and rounds to the nearest
+    integer (half away from zero), so extra fractional digits beyond the
+    supported precision are rounded rather than truncated.
 
 Key benefits:
 

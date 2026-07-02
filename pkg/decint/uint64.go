@@ -8,6 +8,10 @@ import (
 
 // FloatToUint converts a decimal float into the scaled uint64 fixed-point form.
 //
+// The value is multiplied by 1e6 and rounded to the nearest integer, so exact
+// decimal inputs whose float64 form is one ULP off (e.g. 8.2) still map to
+// their exact scaled value.
+//
 // Values less than or equal to zero are clamped to 0, making this helper safe
 // for unsigned amount domains.
 //
@@ -24,7 +28,7 @@ func FloatToUint(v float64) uint64 {
 		return MaxInt
 	}
 
-	return uint64(v * precision)
+	return uint64(math.Round(v * precision))
 }
 
 // UintToFloat converts a scaled uint64 fixed-point value back to float64.

@@ -8,7 +8,9 @@ import (
 
 // FloatToInt converts a decimal float into the scaled int64 fixed-point form.
 //
-// The value is multiplied by 1e6 and truncated toward zero.
+// The value is multiplied by 1e6 and rounded to the nearest integer
+// (half away from zero), so exact decimal inputs whose float64 form is one
+// ULP off (e.g. 8.2) still map to their exact scaled value.
 //
 // Non-finite and out-of-range inputs are clamped (the signature is preserved):
 // NaN yields 0, +Inf or values above MaxFloat yield MaxInt, and -Inf or values
@@ -23,7 +25,7 @@ func FloatToInt(v float64) int64 {
 		return -MaxInt
 	}
 
-	return int64(v * precision)
+	return int64(math.Round(v * precision))
 }
 
 // IntToFloat converts a scaled int64 fixed-point value back to float64.

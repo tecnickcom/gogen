@@ -55,6 +55,16 @@ func TestFloatToInt(t *testing.T) {
 			v:    -MaxFloat * 2,
 			want: -MaxInt,
 		},
+		{
+			name: "rounds one-ULP-low float representation", // regression: truncation returned 8199999
+			v:    8.2,
+			want: 8200000,
+		},
+		{
+			name: "rounds negative one-ULP-off float representation",
+			v:    -8.2,
+			want: -8200000,
+		},
 	}
 
 	for _, tt := range tests {
@@ -162,6 +172,11 @@ func TestStringToInt(t *testing.T) {
 			want:    0,
 			wantErr: true,
 		},
+		{
+			name: "exact decimal rounds correctly", // regression: truncation returned 8199999
+			v:    "8.2",
+			want: 8200000,
+		},
 	}
 
 	for _, tt := range tests {
@@ -198,6 +213,11 @@ func TestIntToString(t *testing.T) {
 			name: "min",
 			v:    -MaxInt,
 			want: "-9007199254.740992",
+		},
+		{
+			name: "exact decimal round-trip",
+			v:    8200000,
+			want: "8.200000",
 		},
 	}
 
