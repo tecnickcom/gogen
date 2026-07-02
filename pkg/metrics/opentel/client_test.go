@@ -10,6 +10,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
@@ -296,7 +297,7 @@ func Test_setInt64CounterError(t *testing.T) {
 	require.Error(t, err)
 }
 
-//nolint:paralleltest // mutates the package-level newErrorMeter seam
+//nolint:paralleltest // mutates the package-level newErrorMeter seam and reads the otel globals
 func TestNew_counterSetupError(t *testing.T) {
 	orig := newErrorMeter
 
@@ -306,9 +307,19 @@ func TestNew_counterSetupError(t *testing.T) {
 		return &errMeter{}
 	}
 
+	prevPropagator := otel.GetTextMapPropagator()
+	prevTracerProvider := otel.GetTracerProvider()
+	prevMeterProvider := otel.GetMeterProvider()
+
 	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
 	require.Error(t, err)
 	require.Nil(t, c)
+
+	// A failed New must not leave its (already shut down) providers installed
+	// as process globals.
+	require.Same(t, prevTracerProvider, otel.GetTracerProvider())
+	require.Same(t, prevMeterProvider, otel.GetMeterProvider())
+	require.Equal(t, prevPropagator, otel.GetTextMapPropagator())
 }
 
 type errMeter struct {

@@ -239,8 +239,6 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 		c.propagator = DefaultPropagator()
 	}
 
-	otel.SetTextMapPropagator(c.propagator)
-
 	// SDK resource
 	if c.resFn == nil {
 		c.resFn = DefaultSDKResource
@@ -256,7 +254,6 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 	c.tracerProvider = c.tracerProviderFn(ctx, c.res)
 
 	c.shutdownFuncs = append(c.shutdownFuncs, c.tracerProvider.Shutdown)
-	otel.SetTracerProvider(c.tracerProvider)
 
 	// meter provider
 	if c.meterProviderFn == nil {
@@ -266,7 +263,6 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 	c.meterProvider = c.meterProviderFn(ctx, c.res)
 
 	c.shutdownFuncs = append(c.shutdownFuncs, c.meterProvider.Shutdown)
-	otel.SetMeterProvider(c.meterProvider)
 
 	errMeter := newErrorMeter(c.meterProvider)
 	cel, erra := setInt64Counter(errMeter, NameErrorLevel)
@@ -279,6 +275,13 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 
 	c.collectorErrorLevel = cel
 	c.collectorErrorCode = cec
+
+	// Install the global OTel providers only after the whole setup succeeded,
+	// so a partial-setup failure (followed by the CloseCtx teardown in New)
+	// never leaves shut-down providers installed as process globals.
+	otel.SetTextMapPropagator(c.propagator)
+	otel.SetTracerProvider(c.tracerProvider)
+	otel.SetMeterProvider(c.meterProvider)
 
 	return nil
 }

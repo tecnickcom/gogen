@@ -173,7 +173,7 @@ func TestIncLogLevelCounter(t *testing.T) {
 
 	c.IncLogLevelCounter("debug")
 
-	i, err := testutil.GatherAndCount(c.registry, NameErrorLevel)
+	i, err := testutil.GatherAndCount(c.registry, NameLogLevel)
 	require.NoError(t, err, "failed to gather metrics: %s", err)
 
 	if i != 1 {

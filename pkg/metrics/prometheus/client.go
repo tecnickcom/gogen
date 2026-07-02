@@ -36,8 +36,15 @@ const (
 	// NameOutboundInFlightRequests is the name of the collector that counts in-flight outbound http requests.
 	NameOutboundInFlightRequests = "outbound_in_flight_requests"
 
-	// NameErrorLevel is the name of the collector that counts the number of errors for each log severity level.
-	NameErrorLevel = "error_level_total"
+	// NameLogLevel is the name of the collector that counts the number of log lines emitted for each severity level.
+	NameLogLevel = "log_level_total"
+
+	// NameErrorLevel is the previous name of the log-level counter collector.
+	//
+	// Deprecated: the collector counts every log line by severity level (not
+	// only errors), so the metric has been renamed from "error_level_total" to
+	// "log_level_total". Use [NameLogLevel] instead.
+	NameErrorLevel = NameLogLevel
 
 	// NameErrorCode is the name of the collector that counts the number of errors by task, operation and error code.
 	NameErrorCode = "error_code_total"
@@ -70,7 +77,7 @@ type Client struct {
 	collectorOutboundRequests         *prometheus.CounterVec
 	collectorOutboundRequestsDuration *prometheus.HistogramVec
 	collectorOutboundInFlightRequests prometheus.Gauge
-	collectorErrorLevel               *prometheus.CounterVec
+	collectorLogLevel                 *prometheus.CounterVec
 	collectorErrorCode                *prometheus.CounterVec
 }
 
@@ -157,9 +164,9 @@ func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
 	return c.metricsHandler.ServeHTTP
 }
 
-// IncLogLevelCounter counts the number of errors for each log severity level.
+// IncLogLevelCounter counts the number of log lines emitted for each log severity level.
 func (c *Client) IncLogLevelCounter(level string) {
-	c.collectorErrorLevel.With(
+	c.collectorLogLevel.With(
 		prometheus.Labels{
 			labelLevel: level,
 		}).Inc()
@@ -251,10 +258,10 @@ func (c *Client) defaultCollectors() error {
 		},
 	)
 
-	c.collectorErrorLevel = prometheus.NewCounterVec(
+	c.collectorLogLevel = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: NameErrorLevel,
-			Help: "Number of errors by severity level.",
+			Name: NameLogLevel,
+			Help: "Number of log lines by severity level.",
 		},
 		[]string{labelLevel},
 	)
@@ -278,7 +285,7 @@ func (c *Client) defaultCollectors() error {
 		c.collectorOutboundRequests,
 		c.collectorOutboundRequestsDuration,
 		c.collectorOutboundInFlightRequests,
-		c.collectorErrorLevel,
+		c.collectorLogLevel,
 		c.collectorErrorCode,
 	}
 
