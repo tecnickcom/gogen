@@ -26,7 +26,8 @@ parameter payloads can be loaded with [Processor.ParseURLQuery].
 
   - JSON-friendly filtering grammar for client-provided filters.
   - Rich comparison operators: regexp, equality/equal-fold, prefix/suffix,
-    contains, and numeric/string ordering (<, <=, >, >=).
+    contains, and numeric ordering (<, <=, >, >=) with a collection/string
+    length fallback.
   - Optional negation prefix (`!`) for every operator.
   - Dot-path field selection for nested struct fields
     (for example `address.country`).
@@ -98,6 +99,11 @@ Supported rule types are:
   - `<=`     : Less than or equal to - matches when the value is less than or equal the reference.
   - `>`      : Greater than - matches when the value is greater than reference.
   - `>=`     : Greater than or equal to - matches when the value is greater than or equal the reference.
+
+The ordering operators (<, <=, >, >=) require a numeric reference value and
+compare numeric values directly; for strings, arrays, slices, and maps they
+compare the length of the value against the reference (not lexicographic
+order). Anything else evaluates to false.
 
 Every rule type can be prefixed with the symbol `!` to get the negated value.
 For example `!==` is equivalent to "Not Equal", matching values that are

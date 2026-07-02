@@ -55,6 +55,11 @@ func (r *fieldGetter) GetFieldValue(obj any, path string) (any, error) {
 	value := reflect.ValueOf(obj)
 	for _, fieldIndex := range rPath {
 		value = reflect.Indirect(value)
+		if !value.IsValid() {
+			// nil pointer along the path: treat the field as missing (non-match).
+			return nil, fmt.Errorf("field %s of %s is unreachable through a nil pointer: %w", path, tElement, errFieldNotFound)
+		}
+
 		value = value.Field(fieldIndex)
 	}
 

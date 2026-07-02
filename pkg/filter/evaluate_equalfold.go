@@ -40,5 +40,5 @@ func (e *equalFold) Evaluate(v any) bool {
 		return strings.EqualFold(val.String(), ref.String())
 	}
 
-	return (v == e.ref) || (isNil(v) && isNil(e.ref))
+	return equalValues(v, e.ref)
 }

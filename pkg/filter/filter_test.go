@@ -1291,6 +1291,265 @@ func TestFilter_ParseURLQuery_RuleCap(t *testing.T) {
 	require.Nil(t, rules)
 }
 
+// TestFilter_Apply_ConcurrentSharedProcessor ensures a single shared Processor can Apply
+// from many goroutines at once without data races (run under -race). Before the fix, the
+// reflection field cache mutated plain maps with no synchronization, so concurrent Apply
+// on one Processor crashed with "concurrent map writes".
+func TestFilter_Apply_ConcurrentSharedProcessor(t *testing.T) {
+	t.Parallel()
+
+	type address struct {
+		Country string
+	}
+
+	type person struct {
+		Name    string
+		Age     int64
+		Address *address
+	}
+
+	// A mix of field paths so several cache entries are resolved concurrently.
+	rules := [][]Rule{
+		{{Field: "Name", Type: TypeHasPrefix, Value: "user"}},
+		{{Field: "Address.Country", Type: TypeEqual, Value: "EN"}},
+		{{Field: "Age", Type: TypeGTE, Value: 18}},
+	}
+
+	p, err := New(WithMaxRules(4))
+	require.NoError(t, err)
+
+	const goroutines = 32
+
+	var wg sync.WaitGroup
+
+	wg.Add(goroutines)
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+
+			data := []person{
+				{Name: "user-a", Age: 20, Address: &address{Country: "EN"}},
+				{Name: "guest-b", Age: 40, Address: &address{Country: "EN"}},
+				{Name: "user-c", Age: 10, Address: &address{Country: "EN"}},
+				{Name: "user-d", Age: 30, Address: &address{Country: "FR"}},
+			}
+
+			n, total, aerr := p.Apply(rules, &data)
+			assert.NoError(t, aerr)
+			assert.Equal(t, uint(1), n)
+			assert.Equal(t, uint(1), total)
+			assert.Equal(t, []person{{Name: "user-a", Age: 20, Address: &address{Country: "EN"}}}, data)
+		}()
+	}
+
+	wg.Wait()
+}
+
+// TestFilter_Apply_NilPointerInFieldPath verifies that nil intermediate (and root)
+// pointers along a rule field path are treated as a non-match instead of panicking.
+func TestFilter_Apply_NilPointerInFieldPath(t *testing.T) {
+	t.Parallel()
+
+	type address struct {
+		Country string
+	}
+
+	type person struct {
+		Name    string
+		Address *address
+	}
+
+	rules := [][]Rule{{{Field: "Address.Country", Type: TypeEqual, Value: "EN"}}}
+
+	t.Run("nil intermediate pointer", func(t *testing.T) {
+		t.Parallel()
+
+		p, err := New()
+		require.NoError(t, err)
+
+		data := []person{
+			{Name: "alpha", Address: nil},
+			{Name: "beta", Address: &address{Country: "EN"}},
+		}
+
+		n, total, err := p.Apply(rules, &data)
+		require.NoError(t, err)
+		require.Equal(t, uint(1), n)
+		require.Equal(t, uint(1), total)
+		require.Equal(t, []person{{Name: "beta", Address: &address{Country: "EN"}}}, data)
+	})
+
+	t.Run("nil root pointer", func(t *testing.T) {
+		t.Parallel()
+
+		p, err := New()
+		require.NoError(t, err)
+
+		data := []*person{
+			nil,
+			{Name: "beta", Address: &address{Country: "EN"}},
+		}
+
+		n, total, err := p.Apply(rules, &data)
+		require.NoError(t, err)
+		require.Equal(t, uint(1), n)
+		require.Equal(t, uint(1), total)
+		require.Equal(t, []*person{{Name: "beta", Address: &address{Country: "EN"}}}, data)
+	})
+}
+
+// TestFilter_Apply_UncomparableJSONValue ensures untrusted JSON filter values of
+// non-comparable dynamic types (maps, slices) cannot panic the process: equality
+// falls back to deep comparison instead of the interface "==" operator.
+func TestFilter_Apply_UncomparableJSONValue(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		json string
+	}{
+		{name: "equal", json: `[[{"field":"","type":"==","value":{"a":1}}]]`},
+		{name: "equal fold", json: `[[{"field":"","type":"=","value":{"a":1}}]]`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rules, err := ParseJSON(tt.json)
+			require.NoError(t, err)
+
+			p, err := New()
+			require.NoError(t, err)
+
+			data := []map[string]any{
+				{"a": 1.0},
+				{"a": 2.0},
+				{"b": []any{"x"}},
+			}
+
+			n, total, err := p.Apply(rules, &data)
+			require.NoError(t, err)
+			require.Equal(t, uint(1), n)
+			require.Equal(t, uint(1), total)
+			require.Equal(t, []map[string]any{{"a": 1.0}}, data)
+		})
+	}
+}
+
+// TestFilter_Apply_NamedNumericType verifies that named numeric types (e.g. "type Status int")
+// are treated as numbers: they must not match string rules via the rune-string conversion,
+// and must match numeric equality and ordering rules.
+func TestFilter_Apply_NamedNumericType(t *testing.T) {
+	t.Parallel()
+
+	type status int
+
+	type item struct {
+		Code status
+	}
+
+	newData := func() []item {
+		return []item{{Code: 65}, {Code: 40}}
+	}
+
+	p, err := New()
+	require.NoError(t, err)
+
+	t.Run("does not match string rules", func(t *testing.T) {
+		t.Parallel()
+
+		// status(65) must not be coerced to the rune-string "A".
+		stringRules := []Rule{
+			{Field: "Code", Type: TypeRegexp, Value: "^A$"},
+			{Field: "Code", Type: TypeEqual, Value: "A"},
+		}
+
+		for _, rule := range stringRules {
+			data := newData()
+
+			n, total, err := p.Apply([][]Rule{{rule}}, &data)
+			require.NoError(t, err)
+			require.Equal(t, uint(0), n)
+			require.Equal(t, uint(0), total)
+		}
+	})
+
+	t.Run("matches numeric ordering", func(t *testing.T) {
+		t.Parallel()
+
+		data := newData()
+
+		n, total, err := p.Apply([][]Rule{{{Field: "Code", Type: TypeGT, Value: 50}}}, &data)
+		require.NoError(t, err)
+		require.Equal(t, uint(1), n)
+		require.Equal(t, uint(1), total)
+		require.Equal(t, []item{{Code: 65}}, data)
+	})
+
+	t.Run("matches numeric equality", func(t *testing.T) {
+		t.Parallel()
+
+		data := newData()
+
+		n, total, err := p.Apply([][]Rule{{{Field: "Code", Type: TypeEqual, Value: 65}}}, &data)
+		require.NoError(t, err)
+		require.Equal(t, uint(1), n)
+		require.Equal(t, uint(1), total)
+		require.Equal(t, []item{{Code: 65}}, data)
+	})
+}
+
+// TestFilter_Apply_TypeNameCollision ensures the field cache distinguishes identically
+// named types (which share the same reflect.Type String()) instead of reusing the
+// reflection path resolved for the first type.
+func TestFilter_Apply_TypeNameCollision(t *testing.T) {
+	t.Parallel()
+
+	rules := [][]Rule{{{Field: "A", Type: TypeEqual, Value: 1}}}
+
+	p, err := New()
+	require.NoError(t, err)
+
+	one := makeCollisionSliceOne()
+
+	n, total, err := p.Apply(rules, one)
+	require.NoError(t, err)
+	require.Equal(t, uint(1), n)
+	require.Equal(t, uint(1), total)
+
+	// The second type has the same String() ("filter.collideT") but a different layout:
+	// field "A" is at a different index, so a name-keyed cache resolves the wrong field.
+	two := makeCollisionSliceTwo()
+
+	n, total, err = p.Apply(rules, two)
+	require.NoError(t, err)
+	require.Equal(t, uint(1), n)
+	require.Equal(t, uint(1), total)
+}
+
+// makeCollisionSliceOne returns a slice of a function-local type named collideT
+// whose field "A" is at index 0.
+func makeCollisionSliceOne() any {
+	type collideT struct {
+		A int
+	}
+
+	return &[]collideT{{A: 1}, {A: 2}}
+}
+
+// makeCollisionSliceTwo returns a slice of a different function-local type also named
+// collideT (same reflect String()) whose field "A" is at index 1.
+func makeCollisionSliceTwo() any {
+	type collideT struct {
+		B string
+		A int
+	}
+
+	return &[]collideT{{B: "x", A: 1}, {B: "y", A: 3}}
+}
+
 func benchmarkFilterApply(b *testing.B, n int, json string, opts ...Option) {
 	b.Helper()
 

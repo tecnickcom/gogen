@@ -191,6 +191,31 @@ func TestEqual_Evaluate(t *testing.T) {
 			value: nil,
 			want:  false,
 		},
+		{
+			// Non-comparable dynamic types (e.g. JSON objects) must not panic.
+			name:  "true - uncomparable map / map (deep equal)",
+			ref:   map[string]any{"a": 1.0},
+			value: map[string]any{"a": 1.0},
+			want:  true,
+		},
+		{
+			name:  "false - uncomparable map / map",
+			ref:   map[string]any{"a": 1.0},
+			value: map[string]any{"a": 2.0},
+			want:  false,
+		},
+		{
+			name:  "true - uncomparable slice / slice (deep equal)",
+			ref:   []any{"x"},
+			value: []any{"x"},
+			want:  true,
+		},
+		{
+			name:  "false - uncomparable slice / string",
+			ref:   []any{"x"},
+			value: "x",
+			want:  false,
+		},
 	}
 
 	for _, tt := range tests {

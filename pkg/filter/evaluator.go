@@ -18,33 +18,26 @@ func isNil(v any) bool {
 	return typeutil.IsNil(v)
 }
 
-// convertValue normalizes numeric types to float64 for cross-type comparison, leaving others unchanged.
-//
-//nolint:gocyclo,cyclop
+// equalValues reports whether two normalized values are equal without panicking on
+// non-comparable dynamic types (e.g. maps or slices decoded from untrusted JSON filters),
+// which fall back to reflect.DeepEqual. Typed and untyped nils are considered equal.
+func equalValues(a, b any) bool {
+	if isNil(a) || isNil(b) {
+		return isNil(a) && isNil(b)
+	}
+
+	if reflect.TypeOf(a).Comparable() && reflect.TypeOf(b).Comparable() {
+		return a == b
+	}
+
+	return reflect.DeepEqual(a, b)
+}
+
+// convertValue normalizes numeric types (including named numeric types) to float64
+// and string kinds to string for cross-type comparison, leaving others unchanged.
 func convertValue(v any) any {
-	switch v := v.(type) {
-	case int:
-		return float64(v)
-	case int8:
-		return float64(v)
-	case int16:
-		return float64(v)
-	case int32:
-		return float64(v)
-	case int64:
-		return float64(v)
-	case uint:
-		return float64(v)
-	case uint8:
-		return float64(v)
-	case uint16:
-		return float64(v)
-	case uint32:
-		return float64(v)
-	case uint64:
-		return float64(v)
-	case float32:
-		return float64(v)
+	if num, ok := toNumeric(v); ok {
+		return num.float()
 	}
 
 	if s, ok := convertStringValue(v); ok {
@@ -64,15 +57,15 @@ func convertStringValue(v any) (string, bool) {
 		return s, true
 	}
 
-	// Convert string aliases back to string
+	// Convert string aliases back to string.
+	// Only string kinds qualify: CanConvert would also accept integer kinds
+	// (rune-string conversion), which must not match string evaluators.
 	vv := reflect.ValueOf(v)
-	st := reflect.TypeFor[string]()
-
-	if !vv.CanConvert(st) {
+	if vv.Kind() != reflect.String {
 		return "", false
 	}
 
-	return vv.Convert(st).String(), true
+	return vv.String(), true
 }
 
 // convertFloatValue normalizes the value to float64 using convertValue, returning error for non-numeric types.

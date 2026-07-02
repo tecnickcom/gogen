@@ -165,6 +165,19 @@ func TestEqualFold_Evaluate(t *testing.T) {
 			value: "42",
 			want:  false,
 		},
+		{
+			// Non-comparable dynamic types (e.g. JSON objects) must not panic.
+			name:  "true - uncomparable map / map (deep equal)",
+			ref:   map[string]any{"a": 1.0},
+			value: map[string]any{"a": 1.0},
+			want:  true,
+		},
+		{
+			name:  "false - uncomparable map / map",
+			ref:   map[string]any{"a": 1.0},
+			value: map[string]any{"a": 2.0},
+			want:  false,
+		},
 	}
 
 	for _, tt := range tests {

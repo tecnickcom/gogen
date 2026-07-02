@@ -29,5 +29,5 @@ func (e *equal) Evaluate(v any) bool {
 
 	v = convertValue(v)
 
-	return (v == e.ref) || (isNil(v) && isNil(e.ref))
+	return equalValues(v, e.ref)
 }

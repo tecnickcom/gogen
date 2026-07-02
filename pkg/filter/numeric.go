@@ -1,6 +1,9 @@
 package filter
 
-import "math"
+import (
+	"math"
+	"reflect"
+)
 
 // numericNaN is a sentinel returned by cmpFloat for NaN operands; callers treat it as "no ordering".
 const numericNaN = 2
@@ -55,6 +58,28 @@ func toNumeric(v any) (numeric, bool) {
 		return numeric{kind: numericFloat, f: float64(x)}, true
 	case float64:
 		return numeric{kind: numericFloat, f: x}, true
+	}
+
+	return toNumericReflect(v)
+}
+
+// toNumericReflect normalizes named numeric types (e.g. "type Status int") via their
+// reflect kind, so they are treated as numbers like their built-in underlying types.
+func toNumericReflect(v any) (numeric, bool) {
+	if v == nil {
+		return numeric{}, false
+	}
+
+	rv := reflect.ValueOf(v)
+
+	//nolint:exhaustive
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return numeric{kind: numericInt, i: rv.Int()}, true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return numeric{kind: numericUint, u: rv.Uint()}, true
+	case reflect.Float32, reflect.Float64:
+		return numeric{kind: numericFloat, f: rv.Float()}, true
 	}
 
 	return numeric{}, false

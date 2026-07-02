@@ -7,6 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Named numeric types must be normalized like their underlying built-in kinds.
+type (
+	namedInt   int
+	namedUint  uint8
+	namedFloat float32
+)
+
 func TestToNumeric(t *testing.T) {
 	t.Parallel()
 
@@ -28,7 +35,12 @@ func TestToNumeric(t *testing.T) {
 		{name: "uint64", value: uint64(1), wantOK: true, wantKind: numericUint},
 		{name: "float32", value: float32(1), wantOK: true, wantKind: numericFloat},
 		{name: "float64", value: float64(1), wantOK: true, wantKind: numericFloat},
+		{name: "named int", value: namedInt(65), wantOK: true, wantKind: numericInt},
+		{name: "named uint", value: namedUint(65), wantOK: true, wantKind: numericUint},
+		{name: "named float", value: namedFloat(6.5), wantOK: true, wantKind: numericFloat},
 		{name: "string", value: "1", wantOK: false, wantKind: numericNone},
+		{name: "string alias", value: stringAlias("1"), wantOK: false, wantKind: numericNone},
+		{name: "bool", value: true, wantOK: false, wantKind: numericNone},
 		{name: "nil", value: nil, wantOK: false, wantKind: numericNone},
 	}
 
