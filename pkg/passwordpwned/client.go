@@ -2,10 +2,8 @@ package passwordpwned
 
 import (
 	"context"
-	"crypto/sha1" //nolint:gosec
 	"errors"
 	"fmt"
-	"hash"
 	"net/http"
 	"net/url"
 	"time"
@@ -37,7 +35,6 @@ type Client struct {
 	timeout       time.Duration
 	retryDelay    time.Duration
 	retryAttempts uint
-	hashObj       hash.Hash
 	apiURL        string
 	userAgent     string
 }
@@ -48,7 +45,6 @@ func defaultClient() *Client {
 		timeout:       defaultTimeout,
 		retryAttempts: httpretrier.DefaultAttempts,
 		retryDelay:    httpretrier.DefaultDelay,
-		hashObj:       sha1.New(), //nolint:gosec
 		apiURL:        defaultAPIURL,
 		userAgent:     defaultUserAgent,
 	}

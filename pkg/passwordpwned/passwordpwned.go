@@ -70,6 +70,7 @@ package passwordpwned
 import (
 	"bytes"
 	"context"
+	"crypto/sha1" //nolint:gosec
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -79,6 +80,10 @@ import (
 
 	brotli "github.com/aperturerobotics/go-brotli-decoder"
 )
+
+// errMalformedResponse is returned when a matched hash suffix in the API
+// response is not followed by the expected ":<count>" sequence.
+var errMalformedResponse = errors.New("malformed response body")
 
 // IsPwnedPassword reports whether password has appeared in a known data breach.
 //
@@ -94,14 +99,11 @@ import (
 //
 //nolint:nonamedreturns
 func (c *Client) IsPwnedPassword(ctx context.Context, password string) (pwned bool, err error) {
-	c.hashObj.Reset()
+	// The hash is computed locally per call (no shared hash.Hash state), so
+	// concurrent calls on the same Client are safe.
+	sum := sha1.Sum([]byte(password)) //nolint:gosec // SHA-1 is required by the HIBP API.
 
-	_, werr := io.WriteString(c.hashObj, password)
-	if werr != nil {
-		return false, fmt.Errorf("unable to hash password: %w", werr)
-	}
-
-	hash := strings.ToUpper(hex.EncodeToString(c.hashObj.Sum(nil)))
+	hash := strings.ToUpper(hex.EncodeToString(sum[:]))
 
 	r, nerr := http.NewRequestWithContext(ctx, http.MethodGet, c.apiURL+"/"+rangePath+"/"+hash[:5], nil)
 	if nerr != nil {
@@ -139,9 +141,20 @@ func (c *Client) IsPwnedPassword(ctx context.Context, password string) (pwned bo
 
 	idx := bytes.Index(data, []byte(hash[5:]))
 
-	// A password is not pwned if the hash suffix is not found
-	// or the recurrence is zero.
-	if (idx < 0) || (data[idx+36] == '0') {
+	// A password is not pwned if the hash suffix is not found.
+	if idx < 0 {
+		return false, nil
+	}
+
+	// Each response line is "<35-hex-char suffix>:<count>": the matched suffix
+	// must be followed by a ':' separator and at least one count digit.
+	// Guard against truncated or malformed responses before indexing.
+	if (idx+36 >= len(data)) || (data[idx+35] != ':') {
+		return false, errMalformedResponse
+	}
+
+	// A password is not pwned if the recurrence is zero.
+	if data[idx+36] == '0' {
 		return false, nil
 	}
 

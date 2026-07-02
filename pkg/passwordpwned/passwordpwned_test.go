@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpre
 	return nil, errors.New("error")
 }
 
-//nolint:gocognit,tparallel,gocyclo,cyclop
+//nolint:gocognit,tparallel
 func TestClient_IsPwnedPassword(t *testing.T) {
 	t.Parallel()
 
@@ -71,17 +72,9 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 		createMockHandler func(t *testing.T) http.HandlerFunc
 		setupMocks        func(client *MockHTTPClient)
 		setupPatches      func() (*mpatch.Patch, error)
-		hashError         bool
 		pwned             bool
 		wantErr           bool
 	}{
-		{
-			name:      "hash write error",
-			password:  "some.password",
-			hashError: true,
-			pwned:     false,
-			wantErr:   true,
-		},
 		{
 			name: "failed to execute request - NewRequest error",
 			setupPatches: func() (*mpatch.Patch, error) {
@@ -179,6 +172,38 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			pwned:   false,
 			wantErr: false,
 		},
+		{
+			name:     "malformed response - truncated after suffix",
+			password: "pwned.password.2", // 274AC46FA9F7FDDB8AB4A5BB8295A47E3929171E
+			createMockHandler: func(t *testing.T) http.HandlerFunc {
+				t.Helper()
+
+				// brotli("46FA9F7FDDB8AB4A5BB8295A47E3929171E"): the matched
+				// suffix ends the body with no ":<count>" following it.
+				body, err := base64.StdEncoding.DecodeString("HyIA+EVPPW9Ww9kGJQpGwcDhH/vyZlQUGFJ5B5H7mqUt")
+				require.NoError(t, err)
+
+				return mockHandleFn(t, body)
+			},
+			pwned:   false,
+			wantErr: true,
+		},
+		{
+			name:     "malformed response - wrong separator",
+			password: "pwned.password.2", // 274AC46FA9F7FDDB8AB4A5BB8295A47E3929171E
+			createMockHandler: func(t *testing.T) http.HandlerFunc {
+				t.Helper()
+
+				// brotli("46FA9F7FDDB8AB4A5BB8295A47E3929171E;2"): the matched
+				// suffix is followed by ';' instead of the expected ':'.
+				body, err := base64.StdEncoding.DecodeString("HyQA+EXPpHH2HXJTG5QsGAUD5+/QlzfDAh1BlnbAc62RlP0K")
+				require.NoError(t, err)
+
+				return mockHandleFn(t, body)
+			},
+			pwned:   false,
+			wantErr: true,
+		},
 	}
 
 	//nolint:paralleltest
@@ -214,10 +239,6 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			c, err := New(clientOpts...)
 			require.NoError(t, err)
 
-			if tt.hashError {
-				c.hashObj = &mockHashErr{}
-			}
-
 			if tt.setupPatches != nil {
 				patch, err := tt.setupPatches()
 				require.NoError(t, err)
@@ -235,26 +256,52 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 	}
 }
 
-type mockWriterErr struct{}
+// TestClient_IsPwnedPassword_Concurrent verifies that concurrent
+// IsPwnedPassword calls on a shared Client are race-free (run with -race) and
+// return consistent results: the SHA-1 hash is computed locally per call
+// instead of through shared hash state.
+//
+//nolint:paralleltest // TestClient_IsPwnedPassword mpatch-es process-global functions in the parallel phase.
+func TestClient_IsPwnedPassword_Concurrent(t *testing.T) {
+	// Same brotli-encoded body used by TestClient_IsPwnedPassword.
+	retBody, err := base64.StdEncoding.DecodeString("G+IA+I2ULm8UPTY2L7T4yFAoTZILH26i9Ehm9XAi90lEEkgpxCt4c1gfxS7j/GbqZUlq1aPQFF8OCnTcT1v94iEQTTMR3FmjDwZzpa6C4edcWcu5CibTTqo+UAOl6IO66fjSS64H0vLyEFKWOOvpkOcxcRR8EDuc9nPbotUBk5q9NS1HOvwB")
+	require.NoError(t, err)
 
-func (w *mockWriterErr) Write(_ []byte) (int, error) {
-	return 0, errors.New("write error")
-}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/"+rangePath+"/", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", httputil.MimeTextPlain)
+		w.Header().Set("Content-Encoding", "br")
+		_, werr := w.Write(retBody)
+		assert.NoError(t, werr)
+	})
 
-type mockHashErr struct {
-	mockWriterErr
-}
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
 
-func (m *mockHashErr) Sum(b []byte) []byte {
-	return b
-}
+	c, err := New(WithURL(ts.URL), WithRetryAttempts(1))
+	require.NoError(t, err)
 
-func (m *mockHashErr) Reset() {}
+	tests := []struct {
+		password string
+		pwned    bool
+	}{
+		{password: "pwned.password.1", pwned: true},
+		{password: "pwned.password.2", pwned: true},
+		{password: "pwned.password.5", pwned: false},   // zero recurrence
+		{password: "not.pwned.password", pwned: false}, //nolint:gosec // test data, not a credential
+	}
 
-func (m *mockHashErr) Size() int {
-	return 0
-}
+	var wg sync.WaitGroup
 
-func (m *mockHashErr) BlockSize() int {
-	return 0
+	for range 8 {
+		for _, tt := range tests {
+			wg.Go(func() {
+				got, gerr := c.IsPwnedPassword(t.Context(), tt.password)
+				assert.NoError(t, gerr, tt.password) //nolint:testifylint // require must not be called from a non-test goroutine
+				assert.Equal(t, tt.pwned, got, tt.password)
+			})
+		}
+	}
+
+	wg.Wait()
 }
