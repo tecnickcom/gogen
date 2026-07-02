@@ -34,6 +34,7 @@ func TestWithLogConfig(t *testing.T) {
 
 	WithLogConfig(lc)(cfg)
 	require.Equal(t, lc, cfg.logConfig)
+	require.True(t, cfg.logConfigSet)
 	require.NotNil(t, cfg.createLoggerFunc)
 }
 

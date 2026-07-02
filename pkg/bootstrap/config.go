@@ -29,6 +29,10 @@ type config struct {
 	// logConfig stores the logger configuration
 	logConfig *logutil.Config
 
+	// logConfigSet records that WithLogConfig was used, so validate can reject
+	// a nil logConfig before logger creation dereferences it.
+	logConfigSet bool
+
 	// createLoggerFunc is the function used to create a new logger.
 	createLoggerFunc CreateLoggerFunc
 
@@ -94,6 +98,10 @@ func (c *config) validate() error {
 
 	if c.createLoggerFunc == nil {
 		return errors.New("createLoggerFunc is required")
+	}
+
+	if c.logConfigSet && c.logConfig == nil {
+		return errors.New("logConfig is required when using WithLogConfig")
 	}
 
 	if c.createMetricsClientFunc == nil {

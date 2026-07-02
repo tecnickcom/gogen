@@ -82,6 +82,13 @@ func Test_config_validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "fail with nil logConfig set via WithLogConfig",
+			setupConfig: func(cfg *config) {
+				WithLogConfig(nil)(cfg)
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

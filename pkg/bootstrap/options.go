@@ -30,6 +30,7 @@ func WithContext(ctx context.Context) Option {
 func WithLogConfig(c *logutil.Config) Option {
 	return func(cfg *config) {
 		cfg.logConfig = c
+		cfg.logConfigSet = true
 		cfg.createLoggerFunc = cfg.newLogger
 	}
 }
