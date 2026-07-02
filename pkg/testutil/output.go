@@ -31,7 +31,12 @@ func CaptureOutput(t *testing.T, fn func()) string {
 	os.Stderr = writer
 	log.SetOutput(writer)
 
-	out := make(chan string)
+	type captureResult struct {
+		out string
+		err error
+	}
+
+	out := make(chan captureResult, 1)
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 
@@ -40,10 +45,10 @@ func CaptureOutput(t *testing.T, fn func()) string {
 
 		wg.Done()
 
+		// Always send a result so the receive below can never block forever,
+		// and surface any pipe read error instead of swallowing it.
 		_, err := io.Copy(&buf, reader)
-		if err == nil {
-			out <- buf.String()
-		}
+		out <- captureResult{out: buf.String(), err: err}
 	}()
 
 	wg.Wait()
@@ -53,5 +58,12 @@ func CaptureOutput(t *testing.T, fn func()) string {
 	err = writer.Close()
 	require.NoError(t, err, "Unexpected error (writer.Close)")
 
-	return <-out
+	res := <-out
+
+	err = reader.Close()
+	require.NoError(t, err, "Unexpected error (reader.Close)")
+
+	require.NoError(t, res.err, "Unexpected error (io.Copy)")
+
+	return res.out
 }
