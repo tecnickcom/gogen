@@ -3,10 +3,12 @@ package httputil
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -44,6 +46,24 @@ func (rw *mockResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 func (rw *mockResponseWriter) Push(_ string, _ *http.PushOptions) error {
 	rw.pushCalled = true
 	return nil
+}
+
+// mockPlainResponseWriter is a working http.ResponseWriter that does NOT
+// implement io.ReaderFrom, exercising the generic-copy fallback in ReadFrom.
+type mockPlainResponseWriter struct {
+	buf bytes.Buffer
+}
+
+func (rw *mockPlainResponseWriter) Header() http.Header {
+	return nil
+}
+
+//nolint:wrapcheck
+func (rw *mockPlainResponseWriter) Write(in []byte) (int, error) {
+	return rw.buf.Write(in)
+}
+
+func (rw *mockPlainResponseWriter) WriteHeader(_ int) {
 }
 
 type mockBrokenResponseWriter struct{}
@@ -88,9 +108,16 @@ func Test_responseWriterWrapper_Size(t *testing.T) {
 func Test_responseWriterWrapper_Flush(t *testing.T) {
 	t.Parallel()
 
-	ww := responseWriterWrapper{ResponseWriter: httptest.NewRecorder()}
+	rr := httptest.NewRecorder()
+	ww := responseWriterWrapper{ResponseWriter: rr}
 	ww.Flush()
 	require.True(t, ww.headerWritten, "expected flush to set headerWritten=true")
+	require.Equal(t, http.StatusOK, ww.Status(), "expected flush to record the implicit 200 status")
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	// A later WriteHeader must not override the status recorded by Flush.
+	ww.WriteHeader(http.StatusInternalServerError)
+	require.Equal(t, http.StatusOK, ww.Status())
 }
 
 func Test_responseWriterWrapper_Status(t *testing.T) {
@@ -237,6 +264,58 @@ func Test_responseWriterWrapper_ReadFrom(t *testing.T) {
 	require.True(t, wwTeeResponseWriterWrapper.headerWritten)
 }
 
+// Test_responseWriterWrapper_ReadFrom_LimitReaderTee is a regression test for
+// the tee-branch infinite recursion: io.Copy on a source lacking io.WriterTo
+// (e.g. io.LimitReader) dispatches to the destination's ReadFrom, which used to
+// call io.Copy on itself and overflow the stack. It also verifies the size is
+// counted exactly once (no double count).
+func Test_responseWriterWrapper_ReadFrom_LimitReaderTee(t *testing.T) {
+	t.Parallel()
+
+	mock := newMockResponseWriter()
+	ww := NewResponseWriterWrapper(mock)
+	require.NotNil(t, ww)
+
+	teeBuf := bytes.NewBuffer([]byte{})
+	ww.Tee(teeBuf)
+
+	src := io.LimitReader(strings.NewReader("0123456789"), 10)
+
+	rww, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	count, err := rww.ReadFrom(src)
+	require.NoError(t, err)
+	require.Equal(t, int64(10), count)
+	require.Equal(t, 10, ww.Size(), "size must be counted exactly once")
+	require.Equal(t, "0123456789", teeBuf.String())
+	require.Equal(t, "0123456789", mock.String())
+}
+
+// Test_responseWriterWrapper_ReadFrom_NoReaderFromFallback verifies that when
+// the underlying ResponseWriter does not implement io.ReaderFrom, ReadFrom
+// falls back to a generic copy instead of returning an error.
+func Test_responseWriterWrapper_ReadFrom_NoReaderFromFallback(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockPlainResponseWriter{}
+	ww := NewResponseWriterWrapper(mock)
+	require.NotNil(t, ww)
+
+	src := io.LimitReader(strings.NewReader("0123456789"), 10)
+
+	rww, ok := ww.(*responseWriterWrapper)
+	require.True(t, ok)
+
+	count, err := rww.ReadFrom(src)
+	require.NoError(t, err)
+	require.Equal(t, int64(10), count)
+	require.Equal(t, 10, ww.Size())
+	require.Equal(t, "0123456789", mock.buf.String())
+	require.True(t, rww.headerWritten)
+	require.Equal(t, http.StatusOK, ww.Status())
+}
+
 func Test_broken_responseWriterWrapper_ReadFrom(t *testing.T) {
 	t.Parallel()
 
@@ -249,6 +328,8 @@ func Test_broken_responseWriterWrapper_ReadFrom(t *testing.T) {
 	rww, ok := ww.(*responseWriterWrapper)
 	require.True(t, ok)
 
+	// The broken writer accepts no bytes (0, nil), so the generic-copy
+	// fallback must surface a short-write error.
 	_, err := rww.ReadFrom(inputBuf)
 	require.Error(t, err)
 }

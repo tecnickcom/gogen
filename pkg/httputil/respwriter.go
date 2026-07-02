@@ -44,7 +44,9 @@ func (b *responseWriterWrapper) Size() int {
 
 // Flush implements the http.Flusher interface.
 func (b *responseWriterWrapper) Flush() {
-	b.headerWritten = true
+	// Record the implicit 200 status (as net/http does when flushing before
+	// any explicit WriteHeader call) so that Status() reflects reality.
+	b.maybeWriteHeader()
 
 	fl, ok := b.ResponseWriter.(http.Flusher)
 	if ok {
@@ -80,16 +82,13 @@ func (b *responseWriterWrapper) Push(target string, opts *http.PushOptions) erro
 //
 //nolint:wrapcheck
 func (b *responseWriterWrapper) ReadFrom(r io.Reader) (int64, error) {
-	if b.tee != nil {
-		n, err := io.Copy(b, r)
-		b.size += int(n)
-
-		return n, err
-	}
-
 	rf, ok := b.ResponseWriter.(io.ReaderFrom)
-	if !ok {
-		return 0, errors.New("the ReaderFrom is not supported by the ResponseWriter")
+	if b.tee != nil || !ok {
+		// Copy through Write (which tees, counts the size, and records the
+		// implicit header) via a wrapper that hides this ReadFrom method,
+		// otherwise io.Copy would dispatch straight back here and recurse
+		// infinitely for sources lacking io.WriterTo (e.g. io.LimitReader).
+		return io.Copy(struct{ io.Writer }{b}, r)
 	}
 
 	b.maybeWriteHeader()
