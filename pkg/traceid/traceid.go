@@ -111,11 +111,17 @@ func FromContext(ctx context.Context, defaultValue string) string {
 
 // SetHTTPRequestHeaderFromContext retrieves the trace ID from context and sets it onto the HTTP request header, validating it first; returns the ID that was set.
 // The outbound ID is validated against the pattern ^[0-9A-Za-z\-\_\.]{1,64}$ to prevent header injection; any value that does not match is replaced with defaultValue before being written.
+// The defaultValue is subject to the same validation: when the final value is empty or invalid the header is left unset (so no empty header is transmitted) and an empty string is returned.
 func SetHTTPRequestHeaderFromContext(ctx context.Context, r *http.Request, header, defaultValue string) string {
 	id := FromContext(ctx, defaultValue)
 
 	if !regexValidID.MatchString(id) {
 		id = defaultValue
+	}
+
+	// The regex requires at least one character, so this also skips empty values.
+	if !regexValidID.MatchString(id) {
+		return ""
 	}
 
 	r.Header.Set(header, id)

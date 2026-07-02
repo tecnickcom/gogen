@@ -59,13 +59,13 @@ func TestSetHTTPRequestHeaderFromContext(t *testing.T) {
 
 	ctx := t.Context()
 
-	// header not set
+	// header not set: with the empty DefaultValue no header must be transmitted
 	r1, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 	require.NoError(t, err)
 
 	id1 := SetHTTPRequestHeaderFromContext(t.Context(), r1, DefaultHeader, DefaultValue)
 	require.Equal(t, DefaultValue, id1)
-	require.Equal(t, DefaultValue, r1.Header.Get(DefaultHeader))
+	require.Empty(t, r1.Header.Values(DefaultHeader), "an empty header must not be set")
 
 	// header set
 	r2, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
@@ -95,8 +95,8 @@ func TestSetHTTPRequestHeaderFromContextInvalidIDFallback(t *testing.T) {
 	require.Equal(t, "fallback-771201", got)
 	require.Equal(t, "fallback-771201", r.Header.Get(DefaultHeader))
 
-	// when both the context id and the default are invalid, the default is still
-	// used as-is (the regex check only swaps the id for the default).
+	// when both the context id and the default are invalid (empty), nothing is
+	// written: no empty header is transmitted and an empty id is returned.
 	ctx2 := NewContext(t.Context(), injection)
 
 	r2, err := http.NewRequestWithContext(ctx2, http.MethodGet, "/", nil)
@@ -104,7 +104,18 @@ func TestSetHTTPRequestHeaderFromContextInvalidIDFallback(t *testing.T) {
 
 	got2 := SetHTTPRequestHeaderFromContext(ctx2, r2, DefaultHeader, DefaultValue)
 	require.Equal(t, DefaultValue, got2)
-	require.Equal(t, DefaultValue, r2.Header.Get(DefaultHeader))
+	require.Empty(t, r2.Header.Values(DefaultHeader), "an empty header must not be set")
+
+	// an invalid non-empty default is validated with the same regex: it must not
+	// be written to the header either.
+	ctx3 := NewContext(t.Context(), injection)
+
+	r3, err := http.NewRequestWithContext(ctx3, http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	got3 := SetHTTPRequestHeaderFromContext(ctx3, r3, DefaultHeader, "invalid default\r\n")
+	require.Empty(t, got3)
+	require.Empty(t, r3.Header.Values(DefaultHeader), "an invalid default must not be set")
 }
 
 func TestFromHTTPRequestHeader(t *testing.T) {
