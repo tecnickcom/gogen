@@ -71,6 +71,7 @@ package retrier
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 )
@@ -91,6 +92,12 @@ const (
 	// DefaultTimeout is the default timeout applied to each function call via context.
 	DefaultTimeout = 1 * time.Second
 )
+
+// maxBackoffDelay is the upper bound applied to the exponential backoff delay.
+// It caps nextDelay well below math.MaxInt64 nanoseconds (~146 years), so the
+// float64 to int64 conversion performed when scheduling the next attempt can
+// never overflow into a negative timer reset at high attempt counts.
+const maxBackoffDelay = float64(math.MaxInt64 / 2)
 
 // TaskFn is the type of function to be executed.
 type TaskFn func(ctx context.Context) error
@@ -206,9 +213,20 @@ func (s *run) exec(ctx context.Context, task TaskFn) (bool, error) {
 		return true, s.taskError
 	}
 
-	s.setTimer(time.Duration(int64(s.nextDelay) + rand.Int63n(int64(s.cfg.jitter)))) //nolint:gosec
+	delay := int64(s.nextDelay) + rand.Int63n(int64(s.cfg.jitter)) //nolint:gosec
+	if delay < 0 {
+		// the jitter addition overflowed int64
+		delay = math.MaxInt64
+	}
+
+	s.setTimer(time.Duration(delay))
 
 	s.nextDelay *= s.cfg.delayFactor
+	if s.nextDelay > maxBackoffDelay {
+		// cap the exponential growth to keep the delay conversion in the
+		// int64 range (see maxBackoffDelay)
+		s.nextDelay = maxBackoffDelay
+	}
 
 	return false, s.taskError
 }

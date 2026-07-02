@@ -3,6 +3,7 @@ package retrier
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -233,6 +234,45 @@ func TestRetrier_Run_backoffGrowth(t *testing.T) {
 	require.Greater(t, gap3, gap2, "third delay should exceed the second")
 }
 
+// TestRun_exec_backoff_overflow_clamp verifies the exponential backoff delay
+// stays positive (no float64 to int64 conversion overflow) at high attempt
+// counts.
+func TestRun_exec_backoff_overflow_clamp(t *testing.T) {
+	t.Parallel()
+
+	r, err := New(
+		WithAttempts(100),
+		WithDelay(1*time.Second),
+		WithDelayFactor(2),
+		WithJitter(1*time.Millisecond),
+		WithTimeout(1*time.Second),
+	)
+	require.NoError(t, err)
+
+	s := &run{
+		cfg:               r,
+		timer:             time.NewTimer(1 * time.Hour),
+		nextDelay:         float64(r.delay),
+		remainingAttempts: r.attempts,
+	}
+	defer s.timer.Stop()
+
+	task := func(_ context.Context) error { return errTask }
+
+	// Drive exec through enough failed attempts that the uncapped delay
+	// (1s doubled on each retry) would overflow int64 after ~33 doublings.
+	for range 99 {
+		stop, execErr := s.exec(t.Context(), task)
+		require.False(t, stop)
+		require.ErrorIs(t, execErr, errTask)
+
+		require.Positive(t, s.nextDelay)
+		require.LessOrEqual(t, s.nextDelay, maxBackoffDelay)
+		require.Positive(t, time.Duration(int64(s.nextDelay)),
+			"backoff delay must stay positive at high attempt counts")
+	}
+}
+
 // TestRetrier_Run_earlyStop verifies that a RetryIfFn returning false stops
 // retrying immediately even when attempts remain.
 func TestRetrier_Run_earlyStop(t *testing.T) {
@@ -303,4 +343,45 @@ func TestRun_setTimer(t *testing.T) {
 	s.setTimer(2 * time.Millisecond)
 
 	<-s.timer.C
+}
+
+func Test_setTimer_drainsFiredTimer(t *testing.T) {
+	t.Parallel()
+
+	timer := time.NewTimer(time.Nanosecond)
+
+	time.Sleep(10 * time.Millisecond) // let the timer fire so Stop returns false
+
+	s := &run{timer: timer}
+	s.setTimer(time.Hour) // must drain the fired value before resetting
+
+	require.True(t, s.timer.Stop())
+}
+
+func Test_exec_delayOverflowClamp(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultRetrier()
+	cfg.jitter = time.Duration(math.MaxInt64)
+	cfg.retryIfFn = func(error) bool { return true }
+
+	s := &run{
+		cfg:   cfg,
+		timer: time.NewTimer(time.Hour),
+	}
+	defer s.timer.Stop()
+
+	task := func(_ context.Context) error { return errTask }
+
+	// delay = maxBackoffDelay + rand[0, MaxInt64) wraps negative with
+	// probability ~1/2 per attempt, so 100 attempts make missing the
+	// overflow-clamp branch vanishingly unlikely (~2^-100).
+	for range 100 {
+		s.nextDelay = maxBackoffDelay
+		s.remainingAttempts = 2
+
+		stop, err := s.exec(t.Context(), task)
+		require.False(t, stop)
+		require.ErrorIs(t, err, errTask)
+	}
 }
