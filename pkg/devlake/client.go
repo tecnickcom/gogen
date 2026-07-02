@@ -78,6 +78,11 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 		return nil, fmt.Errorf("init validator: %w", err)
 	}
 
+	// Build the static endpoint prefix with URL.JoinPath so a trailing slash
+	// in addr cannot produce "//" in the endpoint paths (strict routers treat
+	// "//" as a different, 404 path).
+	apiBase := baseURL.JoinPath("api", "rest").String()
+
 	c := &Client{
 		baseURL:                baseURL,
 		valid:                  valid,
@@ -86,8 +91,8 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 		retryDelay:             httpretrier.DefaultDelay,
 		retryAttempts:          httpretrier.DefaultAttempts,
 		apiKey:                 apiKey,
-		pingURL:                fmt.Sprintf("%s/api/rest/version", baseURL),
-		deploymentRegURLFormat: fmt.Sprintf("%s/api/rest/plugins/webhook/connections/%%d/deployments", baseURL),
+		pingURL:                apiBase + "/version",
+		deploymentRegURLFormat: apiBase + "/plugins/webhook/connections/%d/deployments",
 		// NOTE: the DevLake webhook plugin registers each endpoint under both a legacy
 		// ".../webhook/:connectionId/..." form and a newer ".../webhook/connections/:connectionId/..."
 		// form (the latter added with webhook-name support). All three URLs below are valid
@@ -95,8 +100,8 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 		// recent DevLake), while the incident URLs use the legacy form (also valid on older
 		// DevLake); the close path correctly uses singular "issue". The styles differ but
 		// both work — see https://devlake.apache.org/docs/Plugins/webhook/
-		incidentRegURLFormat:   fmt.Sprintf("%s/api/rest/plugins/webhook/%%d/issues", baseURL),
-		incidentCloseURLFormat: fmt.Sprintf("%s/api/rest/plugins/webhook/%%d/issue/%%s/close", baseURL),
+		incidentRegURLFormat:   apiBase + "/plugins/webhook/%d/issues",
+		incidentCloseURLFormat: apiBase + "/plugins/webhook/%d/issue/%s/close",
 	}
 
 	for _, applyOpt := range opts {
@@ -211,7 +216,10 @@ func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequest
 		return fmt.Errorf("invalid request: %w", err)
 	}
 
-	urlStr := fmt.Sprintf(c.incidentCloseURLFormat, request.ConnectionID, request.IssueKey)
+	// Percent-escape the issue key (it may come from an external tracker) so
+	// values containing "/", "?", or "#" cannot rewrite the request path or
+	// swallow the trailing "/close" segment.
+	urlStr := fmt.Sprintf(c.incidentCloseURLFormat, request.ConnectionID, url.PathEscape(request.IssueKey))
 
 	// The close endpoint takes no payload, so post an empty body. Reusing the
 	// generic sendRequest with a typed-nil payload would JSON-encode the literal

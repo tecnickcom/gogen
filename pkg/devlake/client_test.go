@@ -105,6 +105,26 @@ func TestNew(t *testing.T) {
 	}
 }
 
+// TestNew_trailingSlashAddr verifies that a trailing slash in addr does not
+// produce "//" in the endpoint URLs (they are built with URL.JoinPath).
+func TestNew_trailingSlashAddr(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(
+		"https://app.devlake.invalid/",
+		"0123456789abcdef",
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	base := "https://app.devlake.invalid"
+
+	require.Equal(t, base+"/api/rest/version", c.pingURL)
+	require.Equal(t, base+"/api/rest/plugins/webhook/connections/%d/deployments", c.deploymentRegURLFormat)
+	require.Equal(t, base+"/api/rest/plugins/webhook/%d/issues", c.incidentRegURLFormat)
+	require.Equal(t, base+"/api/rest/plugins/webhook/%d/issue/%s/close", c.incidentCloseURLFormat)
+}
+
 //nolint:paralleltest // mutates the package-level newValidator seam
 func TestNew_validatorError(t *testing.T) {
 	orig := newValidator
@@ -699,6 +719,40 @@ func TestClient_SendIncidentClose(t *testing.T) {
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
+}
+
+// TestClient_SendIncidentClose_escapesIssueKey verifies that an issue key
+// containing reserved URL characters is percent-escaped into a single path
+// segment, so it cannot rewrite the path or swallow the "/close" suffix.
+func TestClient_SendIncidentClose_escapesIssueKey(t *testing.T) {
+	t.Parallel()
+
+	uriCh := make(chan string, 1)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uriCh <- r.RequestURI
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	c, err := New(
+		ts.URL,
+		"0123456789abcdef",
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	err = c.SendIncidentClose(t.Context(), &IncidentRequestClose{
+		ConnectionID: 3,
+		IssueKey:     "PROJ/123?x=1",
+	})
+	require.NoError(t, err)
+
+	uri := <-uriCh
+
+	require.Equal(t, "/api/rest/plugins/webhook/3/issue/PROJ%2F123%3Fx=1/close", uri,
+		"the issue key must be percent-escaped into a single path segment")
 }
 
 func TestClient_SendIncidentClose_newRequestError(t *testing.T) {
