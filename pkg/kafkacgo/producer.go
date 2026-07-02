@@ -50,9 +50,19 @@ func NewProducer(urls []string, opts ...Option) (*Producer, error) {
 
 // Close flushes any buffered messages (up to the configured flush timeout) and
 // then releases producer resources and closes the underlying Kafka client.
-func (p *Producer) Close() {
-	p.client.Flush(p.cfg.flushTimeoutMs)
+//
+// It returns an error when events (undelivered messages, outstanding requests,
+// or unread delivery reports) are still queued after the flush timeout
+// expires: those events are dropped when the client is closed.
+func (p *Producer) Close() error {
+	remaining := p.client.Flush(p.cfg.flushTimeoutMs)
 	p.client.Close()
+
+	if remaining > 0 {
+		return fmt.Errorf("kafka producer closed with %d unflushed events still in queue", remaining)
+	}
+
+	return nil
 }
 
 // Send publishes a raw byte message to the specified Kafka topic and blocks

@@ -96,8 +96,20 @@ func Test_NewConsumer(t *testing.T) {
 
 type mockConsumerClient struct{}
 
+func (m mockConsumerClient) SubscribeTopics(_ []string, _ kafka.RebalanceCb) error {
+	return nil
+}
+
 func (m mockConsumerClient) ReadMessage(_ time.Duration) (*kafka.Message, error) {
 	return &kafka.Message{Value: []byte{1}}, nil
+}
+
+func (m mockConsumerClient) CommitMessage(_ *kafka.Message) ([]kafka.TopicPartition, error) {
+	return nil, nil
+}
+
+func (m mockConsumerClient) StoreMessage(_ *kafka.Message) ([]kafka.TopicPartition, error) {
+	return nil, nil
 }
 
 func (m mockConsumerClient) Close() error {
@@ -106,8 +118,20 @@ func (m mockConsumerClient) Close() error {
 
 type mockConsumerClientError struct{}
 
+func (m mockConsumerClientError) SubscribeTopics(_ []string, _ kafka.RebalanceCb) error {
+	return errors.New("error SubscribeTopics")
+}
+
 func (m mockConsumerClientError) ReadMessage(_ time.Duration) (*kafka.Message, error) {
 	return nil, errors.New("error ReadMessage")
+}
+
+func (m mockConsumerClientError) CommitMessage(_ *kafka.Message) ([]kafka.TopicPartition, error) {
+	return nil, errors.New("error CommitMessage")
+}
+
+func (m mockConsumerClientError) StoreMessage(_ *kafka.Message) ([]kafka.TopicPartition, error) {
+	return nil, errors.New("error StoreMessage")
 }
 
 func (m mockConsumerClientError) Close() error {
@@ -242,6 +266,120 @@ func Test_ReceiveCtx(t *testing.T) {
 	})
 }
 
+func Test_newConsumer_subscribe_error_closes_client(t *testing.T) {
+	t.Parallel()
+
+	t.Run("close succeeds", func(t *testing.T) {
+		t.Parallel()
+
+		closed := false
+		mock := consumerMock{
+			subscribeTopics: func(_ []string, _ kafka.RebalanceCb) error {
+				return errors.New("error SubscribeTopics")
+			},
+			close: func() error {
+				closed = true
+
+				return nil
+			},
+		}
+
+		consumer, err := newConsumer(defaultConfig(), mock, []string{"topic1"})
+		require.Error(t, err)
+		require.Nil(t, consumer)
+		require.ErrorContains(t, err, "failed to subscribe kafka topic")
+		require.True(t, closed, "the consumer client must be closed when SubscribeTopics fails")
+	})
+
+	t.Run("close error is joined", func(t *testing.T) {
+		t.Parallel()
+
+		mock := consumerMock{
+			subscribeTopics: func(_ []string, _ kafka.RebalanceCb) error {
+				return errors.New("error SubscribeTopics")
+			},
+			close: func() error {
+				return errors.New("error Close")
+			},
+		}
+
+		consumer, err := newConsumer(defaultConfig(), mock, []string{"topic1"})
+		require.Error(t, err)
+		require.Nil(t, consumer)
+		require.ErrorContains(t, err, "failed to subscribe kafka topic")
+		require.ErrorContains(t, err, "error Close")
+	})
+}
+
+func Test_ReceiveMessage(t *testing.T) {
+	t.Parallel()
+
+	consumer := newTestConsumer(t)
+
+	consumer.client = mockConsumerClient{}
+	msg, err := consumer.ReceiveMessage(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, msg)
+	require.Equal(t, []byte{1}, msg.Value)
+
+	consumer.client = mockConsumerClientError{}
+	msg, err = consumer.ReceiveMessage(t.Context())
+	require.Error(t, err)
+	require.Nil(t, msg)
+}
+
+func Test_CommitMessage(t *testing.T) {
+	t.Parallel()
+
+	consumer := newTestConsumer(t)
+	msg := &kafka.Message{Value: []byte{1}}
+
+	var committed *kafka.Message
+
+	consumer.client = consumerMock{
+		commitMessage: func(m *kafka.Message) ([]kafka.TopicPartition, error) {
+			committed = m
+
+			return nil, nil
+		},
+		close: func() error { return nil },
+	}
+
+	err := consumer.CommitMessage(msg)
+	require.NoError(t, err)
+	require.Same(t, msg, committed)
+
+	consumer.client = mockConsumerClientError{}
+	err = consumer.CommitMessage(msg)
+	require.Error(t, err)
+}
+
+func Test_StoreMessage(t *testing.T) {
+	t.Parallel()
+
+	consumer := newTestConsumer(t)
+	msg := &kafka.Message{Value: []byte{1}}
+
+	var stored *kafka.Message
+
+	consumer.client = consumerMock{
+		storeMessage: func(m *kafka.Message) ([]kafka.TopicPartition, error) {
+			stored = m
+
+			return nil, nil
+		},
+		close: func() error { return nil },
+	}
+
+	err := consumer.StoreMessage(msg)
+	require.NoError(t, err)
+	require.Same(t, msg, stored)
+
+	consumer.client = mockConsumerClientError{}
+	err = consumer.StoreMessage(msg)
+	require.Error(t, err)
+}
+
 func newTestConsumer(t *testing.T) *Consumer {
 	t.Helper()
 
@@ -253,12 +391,27 @@ func newTestConsumer(t *testing.T) *Consumer {
 }
 
 type consumerMock struct {
-	readMessage func(duration time.Duration) (*kafka.Message, error)
-	close       func() error
+	subscribeTopics func(topics []string, rebalanceCb kafka.RebalanceCb) error
+	readMessage     func(duration time.Duration) (*kafka.Message, error)
+	commitMessage   func(msg *kafka.Message) ([]kafka.TopicPartition, error)
+	storeMessage    func(msg *kafka.Message) ([]kafka.TopicPartition, error)
+	close           func() error
+}
+
+func (c consumerMock) SubscribeTopics(topics []string, rebalanceCb kafka.RebalanceCb) error {
+	return c.subscribeTopics(topics, rebalanceCb)
 }
 
 func (c consumerMock) ReadMessage(duration time.Duration) (*kafka.Message, error) {
 	return c.readMessage(duration)
+}
+
+func (c consumerMock) CommitMessage(msg *kafka.Message) ([]kafka.TopicPartition, error) {
+	return c.commitMessage(msg)
+}
+
+func (c consumerMock) StoreMessage(msg *kafka.Message) ([]kafka.TopicPartition, error) {
+	return c.storeMessage(msg)
 }
 
 func (c consumerMock) Close() error {

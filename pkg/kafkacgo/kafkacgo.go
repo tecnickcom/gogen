@@ -16,9 +16,26 @@ minimal interface:
 
   - [NewProducer] + [Producer.Send] / [Producer.SendData]
   - [NewConsumer] + [Consumer.Receive] / [Consumer.ReceiveData]
+  - [NewConsumer] + [Consumer.ReceiveMessage] / [Consumer.CommitMessage] /
+    [Consumer.StoreMessage]
 
 It also exposes functional options for common Kafka client parameters and for
 pluggable message codecs.
+
+# Delivery Semantics
+
+Producer sends block until the broker reports the per-message delivery outcome,
+and [Producer.Close] returns an error when buffered messages are still
+undelivered after the flush timeout.
+
+On the consumer side, librdkafka defaults to automatic offset commits
+(enable.auto.commit=true, 5s interval), so offsets read via [Consumer.Receive],
+[Consumer.ReceiveCtx], or [Consumer.ReceiveData] are committed on a timer
+regardless of processing outcome. For at-least-once processing, acknowledge
+offsets explicitly after successful processing using [Consumer.ReceiveMessage]
+together with [Consumer.CommitMessage] (auto-commit disabled) or
+[Consumer.StoreMessage] (automatic offset store disabled); see [NewConsumer]
+for details.
 
 # Message Encoding and Decoding
 

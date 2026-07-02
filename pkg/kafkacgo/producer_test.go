@@ -26,6 +26,7 @@ func Test_NewProducer(t *testing.T) {
 			options: []Option{
 				WithSessionTimeout(time.Millisecond * 17),
 				WithProduceChannelSize(1_000),
+				WithFlushTimeout(time.Millisecond * 10),
 			},
 			expTimeout:            time.Millisecond * 17,
 			expProduceChannelSize: 1_000,
@@ -75,7 +76,11 @@ func Test_NewProducer(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expProduceChannelSize, offset)
 
-				producer.Close()
+				// This real (unconnectable) producer may or may not have
+				// connection-error events queued at close time, so Close's
+				// unflushed-events result is inherently racy here; Close
+				// semantics are covered by the mock-based tests.
+				_ = producer.Close()
 			}
 		})
 	}
@@ -107,6 +112,45 @@ func (m mockProducerClientError) Close() {}
 type fakeEvent struct{}
 
 func (fakeEvent) String() string { return "fake" }
+
+// flushMock is a producerClient whose Flush reports a configurable number of
+// still-undelivered messages and records whether Close was called.
+type flushMock struct {
+	remaining int
+	closed    *bool
+}
+
+func (f flushMock) Produce(_ *kafka.Message, _ chan kafka.Event) error { return nil }
+
+func (f flushMock) Flush(int) int { return f.remaining }
+
+func (f flushMock) Close() {
+	if f.closed != nil {
+		*f.closed = true
+	}
+}
+
+func Test_Close(t *testing.T) {
+	t.Parallel()
+
+	producer, err := NewProducer([]string{"url"})
+	require.NoError(t, err)
+	require.NotNil(t, producer)
+
+	// all messages flushed: no error and the client is closed
+	closed := false
+	producer.client = flushMock{remaining: 0, closed: &closed}
+	require.NoError(t, producer.Close())
+	require.True(t, closed)
+
+	// unflushed events after the flush timeout: error and the client is still closed
+	closed = false
+	producer.client = flushMock{remaining: 7, closed: &closed}
+	err = producer.Close()
+	require.Error(t, err)
+	require.ErrorContains(t, err, "7 unflushed events")
+	require.True(t, closed)
+}
 
 func Test_Send(t *testing.T) {
 	t.Parallel()
