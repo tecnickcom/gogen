@@ -84,13 +84,13 @@ func DLDistance(sa, sb string) int {
 
 	// fill the distance matrix
 	for i := 2; i < ncols; i++ {
-		db := 0
+		db := 1 // matrix column of the last match in the current row (1 = none)
 
 		for j := 2; j < nrows; j++ {
-			k := da[rb[j-2]]
+			k := da[rb[j-2]] // matrix row of the last occurrence of rb[j-2] in ra (1 = none)
 			l := db
-			tcost := (i - k + j - l - 2) // transposition cost = (i-k-1)+(j-l-1)
-			scost := 1                   // substitution cost
+			tcost := (i - k - 1) + 1 + (j - l - 1) // transposition cost = deletions + swap + insertions
+			scost := 1                             // substitution cost
 
 			if ra[i-2] == rb[j-2] {
 				scost = 0
@@ -101,7 +101,7 @@ func DLDistance(sa, sb string) int {
 				dist[i-1][j-1]+scost, // substitution
 				dist[i][j-1]+1,       // insertion
 				dist[i-1][j]+1,       // deletion
-				dist[k][l]+tcost,     // transposition
+				dist[k-1][l-1]+tcost, // transposition
 			)
 		}
 
@@ -127,15 +127,17 @@ func DLDistance(sa, sb string) int {
 }
 
 // initDLAlphabet initialize the alphabet (Σ) for the Damerau-Levenshtein distance calculation.
+// Each rune starts at matrix index 1 ("never seen"), so that the transposition
+// lookup dist[k-1][l-1] hits the maxdist sentinel row/column.
 func initDLAlphabet(ra, rb []rune, maxdist int) map[rune]int {
 	da := make(map[rune]int, maxdist)
 
 	for _, c := range ra {
-		da[c] = 0
+		da[c] = 1
 	}
 
 	for _, c := range rb {
-		da[c] = 0
+		da[c] = 1
 	}
 
 	return da

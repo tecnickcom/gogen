@@ -70,10 +70,40 @@ func TestDLDistance(t *testing.T) {
 			dist: 1,
 		},
 		{
+			name: "one transposition - inner",
+			sa:   "a cat",
+			sb:   "a act",
+			dist: 1,
+		},
+		{
 			name: "transposition + insertion",
 			sa:   "a cat",
 			sb:   "a abct",
 			dist: 2, // "a cat" -> "a act" -> "a abct"
+		},
+		{
+			name: "two transpositions overlap",
+			sa:   "aba",
+			sb:   "bab",
+			dist: 2, // "aba" -> "baa" -> "bab" (regression: transposition cost was underestimated to 1)
+		},
+		{
+			name: "transposition across insertion",
+			sa:   "CA",
+			sb:   "ABC",
+			dist: 2, // "CA" -> "AC" -> "ABC" (unrestricted Damerau-Levenshtein, not OSA which gives 3)
+		},
+		{
+			name: "three transpositions",
+			sa:   "abcdef",
+			sb:   "badcfe",
+			dist: 3,
+		},
+		{
+			name: "transposition - last chars",
+			sa:   "specter",
+			sb:   "spectre", //nolint:misspell // intentional transposition of the US spelling
+			dist: 1,
 		},
 		{
 			name: "INTENTION/EXECUTION",
