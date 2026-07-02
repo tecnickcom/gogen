@@ -34,7 +34,21 @@ type Client struct {
 	vkclient VKClient
 
 	// vkpubsub is the upstream PubSub completed command.
+	// It is only set when at least one channel is configured via WithChannels.
 	vkpubsub VKPubSub
+
+	// subch delivers Pub/Sub messages from the background subscription
+	// goroutine to Receive(). It is nil when no channels are configured and
+	// it is closed when the subscription terminates.
+	subch chan VKMessage
+
+	// subcancel stops the background subscription goroutine.
+	subcancel context.CancelFunc
+
+	// suberr is the terminal error returned by the background subscription.
+	// It is written once before subch is closed and must only be read after
+	// observing subch closed.
+	suberr error
 
 	// messageEncodeFunc is the function used by SendData()
 	// to encode and serialize the input data to a string compatible with Valkey.
@@ -46,7 +60,12 @@ type Client struct {
 	messageDecodeFunc TDecodeFunc
 }
 
-// New constructs a Valkey client wrapper with pinned Pub/Sub subscription and pluggable codecs.
+// New constructs a Valkey client wrapper with optional pinned Pub/Sub subscription and pluggable codecs.
+//
+// A Pub/Sub subscription is established only when at least one channel is
+// configured via WithChannels: a single background goroutine then receives the
+// published messages and hands them over, one per call, to Receive or
+// ReceiveData. The subscription is bound to ctx and is terminated by Close.
 func New(ctx context.Context, srvopt SrvOptions, opts ...Option) (*Client, error) {
 	cfg, err := loadConfig(ctx, srvopt, opts...)
 	if err != nil {
@@ -62,22 +81,53 @@ func New(ctx context.Context, srvopt SrvOptions, opts ...Option) (*Client, error
 		}
 	}
 
-	return &Client{
+	c := &Client{
 		vkclient:          vkc,
-		vkpubsub:          vkc.B().Subscribe().Channel(cfg.channels...).Build().Pin(),
 		messageEncodeFunc: cfg.messageEncodeFunc,
 		messageDecodeFunc: cfg.messageDecodeFunc,
-	}, nil
+	}
+
+	if len(cfg.channels) > 0 {
+		c.vkpubsub = vkc.B().Subscribe().Channel(cfg.channels...).Build().Pin()
+		c.subscribe(ctx)
+	}
+
+	return c, nil
 }
 
-// Close closes the underlying client after pending calls complete.
+// Close stops the Pub/Sub subscription (when configured) and closes the
+// underlying client after pending calls complete.
 func (c *Client) Close() {
+	if c.subcancel != nil {
+		c.subcancel()
+	}
+
 	c.vkclient.Close()
 }
 
 // Set stores a raw string value for key with expiration.
+//
+// A non-positive exp stores the key without expiration (no TTL).
+// Whole-second durations are sent as EX (seconds), while other durations use
+// PX (milliseconds) for sub-second precision, with a minimum effective TTL of
+// one millisecond.
 func (c *Client) Set(ctx context.Context, key string, value string, exp time.Duration) error {
-	err := c.vkclient.Do(ctx, c.vkclient.B().Set().Key(key).Value(value).Ex(exp).Build()).Error()
+	base := c.vkclient.B().Set().Key(key).Value(value)
+
+	var cmd libvalkey.Completed
+
+	switch {
+	case exp <= 0:
+		cmd = base.Build()
+	case exp < time.Millisecond:
+		cmd = base.Px(time.Millisecond).Build()
+	case exp%time.Second == 0:
+		cmd = base.Ex(exp).Build()
+	default:
+		cmd = base.Px(exp).Build()
+	}
+
+	err := c.vkclient.Do(ctx, cmd).Error()
 	if err != nil {
 		return fmt.Errorf("cannot set key: %s %w", key, err)
 	}
@@ -116,23 +166,32 @@ func (c *Client) Send(ctx context.Context, channel string, message string) error
 }
 
 // Receive returns the next raw Pub/Sub message as channel name and payload.
+//
+// Messages are delivered by the background subscription established at
+// construction time; each call consumes exactly one message. It returns an
+// error when the client was constructed without any subscription channel
+// (see WithChannels), when ctx is canceled, or when the subscription has
+// terminated.
 func (c *Client) Receive(ctx context.Context) (string, string, error) {
-	data := VKMessage{}
-	received := false
-
-	err := c.vkclient.Receive(ctx, c.vkpubsub, func(msg VKMessage) {
-		data = msg
-		received = true
-	})
-	if err != nil {
-		return "", "", fmt.Errorf("error receiving message: %w", err)
+	if c.subch == nil {
+		return "", "", errors.New("no subscription channel configured")
 	}
 
-	if !received {
-		return "", "", errors.New("no message received")
+	select {
+	case <-ctx.Done():
+		return "", "", fmt.Errorf("context has been canceled: %w", ctx.Err())
+	case msg, ok := <-c.subch:
+		if ok {
+			return msg.Channel, msg.Message, nil
+		}
 	}
 
-	return data.Channel, data.Message, nil
+	// The subscription terminated: c.suberr was written before subch closed.
+	if c.suberr != nil {
+		return "", "", fmt.Errorf("error receiving message: %w", c.suberr)
+	}
+
+	return "", "", errors.New("the subscription has been closed")
 }
 
 // MessageEncode encodes and serializes data into a string payload.
@@ -203,4 +262,28 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// subscribe starts the background goroutine that runs the blocking valkey-go
+// Receive call once, pushing every published message into c.subch.
+// The goroutine terminates (closing c.subch) when the subscription ends:
+// on Close, on ctx cancellation, or on client-side disconnection.
+func (c *Client) subscribe(ctx context.Context) {
+	subctx, cancel := context.WithCancel(ctx)
+
+	subch := make(chan VKMessage)
+
+	c.subcancel = cancel
+	c.subch = subch
+
+	go func() {
+		defer close(subch)
+
+		c.suberr = c.vkclient.Receive(subctx, c.vkpubsub, func(msg VKMessage) {
+			select {
+			case subch <- msg:
+			case <-subctx.Done():
+			}
+		})
+	}()
 }

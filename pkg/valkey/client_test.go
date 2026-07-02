@@ -98,6 +98,58 @@ func TestSet(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "success without expiration",
+			key:  "key3",
+			val:  "val3",
+			exp:  0,
+			mock: func(ctx context.Context, vkc *mock.Client) {
+				vkc.EXPECT().Do(
+					ctx,
+					mock.Match("SET", "key3", "val3"),
+				)
+			},
+			wantErr: false,
+		},
+		{
+			name: "success with sub-second expiration",
+			key:  "key4",
+			val:  "val4",
+			exp:  500 * time.Millisecond,
+			mock: func(ctx context.Context, vkc *mock.Client) {
+				vkc.EXPECT().Do(
+					ctx,
+					mock.Match("SET", "key4", "val4", "PX", "500"),
+				)
+			},
+			wantErr: false,
+		},
+		{
+			name: "success with non-whole-second expiration",
+			key:  "key5",
+			val:  "val5",
+			exp:  1500 * time.Millisecond,
+			mock: func(ctx context.Context, vkc *mock.Client) {
+				vkc.EXPECT().Do(
+					ctx,
+					mock.Match("SET", "key5", "val5", "PX", "1500"),
+				)
+			},
+			wantErr: false,
+		},
+		{
+			name: "success with sub-millisecond expiration clamped to 1ms",
+			key:  "key6",
+			val:  "val6",
+			exp:  100 * time.Microsecond,
+			mock: func(ctx context.Context, vkc *mock.Client) {
+				vkc.EXPECT().Do(
+					ctx,
+					mock.Match("SET", "key6", "val6", "PX", "1"),
+				)
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -350,98 +402,197 @@ func TestSend(t *testing.T) {
 func TestReceive(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name    string
-		channel string
-		message string
-		mock    func(ctx context.Context, vkc *mock.Client)
-		wantErr bool
-	}{
-		{
-			name:    "success",
-			channel: "ch1",
-			message: "msg1",
-			mock: func(ctx context.Context, vkc *mock.Client) {
-				vkc.EXPECT().Receive(
-					ctx,
-					mock.Match("SUBSCRIBE", "ch1", "ch2"),
-					gomock.Any(),
-				).Do(func(_, _ any, fn func(message VKMessage)) {
-					fn(VKMessage{Channel: "ch1", Message: "msg1"})
-				})
-			},
-			wantErr: false,
-		},
-		{
-			name:    "error",
-			channel: "ch2",
-			message: "msg2",
-			mock: func(ctx context.Context, vkc *mock.Client) {
-				vkc.EXPECT().Receive(
-					ctx,
-					mock.Match("SUBSCRIBE", "ch1", "ch2"),
-					gomock.Any(),
-				).Do(func(_, _ any, fn func(message VKMessage)) {
-					fn(VKMessage{Channel: "ch2", Message: "msg2"})
-				}).Return(errors.New("error"))
-			},
-			wantErr: true,
-		},
-		{
-			name:    "callback never fires",
-			channel: "ch1",
-			message: "msg1",
-			mock: func(ctx context.Context, vkc *mock.Client) {
-				vkc.EXPECT().Receive(
-					ctx,
-					mock.Match("SUBSCRIBE", "ch1", "ch2"),
-					gomock.Any(),
-				).Do(func(_, _ any, _ func(message VKMessage)) {
-					// Return nil error without ever invoking the callback.
-				})
-			},
-			wantErr: true,
-		},
-	}
+	t.Run("no channels configured", func(t *testing.T) {
+		t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		ctrl := gomock.NewController(t)
+		t.Cleanup(func() { ctrl.Finish() })
 
-			srvOpts := getTestSrvOptions()
+		vkc := mock.NewClient(ctrl)
+		ctx := t.Context()
 
-			ctrl := gomock.NewController(t)
-			t.Cleanup(func() { ctrl.Finish() })
+		cli, err := New(
+			ctx,
+			getTestSrvOptions(),
+			WithValkeyClient(vkc),
+		)
 
-			vkc := mock.NewClient(ctrl)
-			ctx := t.Context()
+		require.NoError(t, err)
+		require.NotNil(t, cli)
 
-			cli, err := New(
-				ctx,
-				srvOpts,
-				WithValkeyClient(vkc),
-				WithChannels("ch1", "ch2"),
-			)
+		channel, message, err := cli.Receive(ctx)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "no subscription channel configured")
+		require.Empty(t, channel)
+		require.Empty(t, message)
+	})
 
-			require.NoError(t, err)
-			require.NotNil(t, cli)
+	t.Run("one message per call", func(t *testing.T) {
+		t.Parallel()
 
-			tt.mock(ctx, vkc)
+		ctrl := gomock.NewController(t)
+		t.Cleanup(func() { ctrl.Finish() })
 
-			channel, message, err := cli.Receive(ctx)
-			if tt.wantErr {
-				require.Error(t, err)
-				require.Empty(t, channel)
-				require.Empty(t, message)
+		vkc := mock.NewClient(ctrl)
+		ctx := t.Context()
 
-				return
-			}
-
-			require.NoError(t, err)
-			require.Equal(t, tt.channel, channel)
-			require.Equal(t, tt.message, message)
+		// The blocking valkey-go Receive runs once in the background
+		// subscription goroutine and invokes the callback for every
+		// published message.
+		vkc.EXPECT().Receive(
+			gomock.Any(),
+			mock.Match("SUBSCRIBE", "ch1", "ch2"),
+			gomock.Any(),
+		).Do(func(_, _ any, fn func(message VKMessage)) {
+			fn(VKMessage{Channel: "ch1", Message: "msg1"})
+			fn(VKMessage{Channel: "ch2", Message: "msg2"})
 		})
-	}
+
+		cli, err := New(
+			ctx,
+			getTestSrvOptions(),
+			WithValkeyClient(vkc),
+			WithChannels("ch1", "ch2"),
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, cli)
+
+		channel, message, err := cli.Receive(ctx)
+		require.NoError(t, err)
+		require.Equal(t, "ch1", channel)
+		require.Equal(t, "msg1", message)
+
+		channel, message, err = cli.Receive(ctx)
+		require.NoError(t, err)
+		require.Equal(t, "ch2", channel)
+		require.Equal(t, "msg2", message)
+
+		// The subscription terminated after the last message.
+		channel, message, err = cli.Receive(ctx)
+		require.Error(t, err)
+		require.Empty(t, channel)
+		require.Empty(t, message)
+	})
+
+	t.Run("subscription error", func(t *testing.T) {
+		t.Parallel()
+
+		ctrl := gomock.NewController(t)
+		t.Cleanup(func() { ctrl.Finish() })
+
+		vkc := mock.NewClient(ctrl)
+		ctx := t.Context()
+
+		vkc.EXPECT().Receive(
+			gomock.Any(),
+			mock.Match("SUBSCRIBE", "ch1", "ch2"),
+			gomock.Any(),
+		).Return(errors.New("mock receive error"))
+
+		cli, err := New(
+			ctx,
+			getTestSrvOptions(),
+			WithValkeyClient(vkc),
+			WithChannels("ch1", "ch2"),
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, cli)
+
+		channel, message, err := cli.Receive(ctx)
+		require.Error(t, err)
+		require.ErrorContains(t, err, "mock receive error")
+		require.Empty(t, channel)
+		require.Empty(t, message)
+	})
+
+	t.Run("context canceled", func(t *testing.T) {
+		t.Parallel()
+
+		ctrl := gomock.NewController(t)
+		t.Cleanup(func() { ctrl.Finish() })
+
+		vkc := mock.NewClient(ctrl)
+		ctx := t.Context()
+
+		started := make(chan struct{})
+		release := make(chan struct{})
+
+		t.Cleanup(func() { close(release) })
+
+		// Simulate a live subscription with no incoming messages.
+		vkc.EXPECT().Receive(
+			gomock.Any(),
+			mock.Match("SUBSCRIBE", "ch1", "ch2"),
+			gomock.Any(),
+		).Do(func(_, _ any, _ func(message VKMessage)) {
+			close(started)
+			<-release
+		})
+
+		cli, err := New(
+			ctx,
+			getTestSrvOptions(),
+			WithValkeyClient(vkc),
+			WithChannels("ch1", "ch2"),
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, cli)
+
+		// Wait for the background subscription goroutine to be running.
+		<-started
+
+		cctx, cancel := context.WithCancel(ctx)
+		cancel()
+
+		channel, message, err := cli.Receive(cctx)
+		require.Error(t, err)
+		require.Empty(t, channel)
+		require.Empty(t, message)
+	})
+
+	t.Run("close terminates the subscription", func(t *testing.T) {
+		t.Parallel()
+
+		ctrl := gomock.NewController(t)
+		t.Cleanup(func() { ctrl.Finish() })
+
+		vkc := mock.NewClient(ctrl)
+		ctx := t.Context()
+
+		// Block like the real client until the subscription context is
+		// canceled by Close, then return its error.
+		vkc.EXPECT().Receive(
+			gomock.Any(),
+			mock.Match("SUBSCRIBE", "ch1"),
+			gomock.Any(),
+		).DoAndReturn(func(rctx context.Context, _, _ any) error {
+			<-rctx.Done()
+
+			return rctx.Err()
+		})
+
+		vkc.EXPECT().Close()
+
+		cli, err := New(
+			ctx,
+			getTestSrvOptions(),
+			WithValkeyClient(vkc),
+			WithChannels("ch1"),
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, cli)
+
+		cli.Close()
+
+		channel, message, err := cli.Receive(ctx)
+		require.Error(t, err)
+		require.Empty(t, channel)
+		require.Empty(t, message)
+	})
 }
 
 func TestSetData(t *testing.T) {
@@ -745,9 +896,9 @@ func TestReceiveData(t *testing.T) {
 			name:    "success",
 			channel: "ch1",
 			message: testMsg,
-			mock: func(ctx context.Context, vkc *mock.Client) {
+			mock: func(_ context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Receive(
-					ctx,
+					gomock.Any(),
 					mock.Match("SUBSCRIBE", "ch1", "ch2"),
 					gomock.Any(),
 				).Do(func(_, _ any, fn func(message VKMessage)) {
@@ -760,14 +911,12 @@ func TestReceiveData(t *testing.T) {
 			name:    "error",
 			channel: "ch2",
 			message: testMsg,
-			mock: func(ctx context.Context, vkc *mock.Client) {
+			mock: func(_ context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Receive(
-					ctx,
+					gomock.Any(),
 					mock.Match("SUBSCRIBE", "ch1", "ch2"),
 					gomock.Any(),
-				).Do(func(_, _ any, fn func(message VKMessage)) {
-					fn(VKMessage{Channel: "ch2", Message: testEncMsg})
-				}).Return(errors.New("error"))
+				).Return(errors.New("error"))
 			},
 			wantErr: true,
 		},
@@ -775,9 +924,9 @@ func TestReceiveData(t *testing.T) {
 			name:    "data error",
 			channel: "ch2",
 			message: TestData{},
-			mock: func(ctx context.Context, vkc *mock.Client) {
+			mock: func(_ context.Context, vkc *mock.Client) {
 				vkc.EXPECT().Receive(
-					ctx,
+					gomock.Any(),
 					mock.Match("SUBSCRIBE", "ch1", "ch2"),
 					gomock.Any(),
 				).Do(func(_, _ any, fn func(message VKMessage)) {
@@ -800,6 +949,10 @@ func TestReceiveData(t *testing.T) {
 			vkc := mock.NewClient(ctrl)
 			ctx := t.Context()
 
+			// The background subscription starts inside New, so the mock
+			// expectation must be registered before creating the client.
+			tt.mock(ctx, vkc)
+
 			cli, err := New(
 				ctx,
 				srvOpts,
@@ -809,8 +962,6 @@ func TestReceiveData(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotNil(t, cli)
-
-			tt.mock(ctx, vkc)
 
 			var data TestData
 

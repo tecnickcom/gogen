@@ -22,8 +22,10 @@ valkey-go's ClientOption) and a variadic list of [Option] values:
 
  1. The server address is validated before any network connection is attempted.
  2. A valkey-go client is constructed (or injected via [WithValkeyClient] for
-    tests) and stored alongside a pre-built, pinned Pub/Sub subscription
-    command covering all channels declared with [WithChannels].
+    tests). When at least one channel is declared with [WithChannels], a
+    pre-built, pinned Pub/Sub subscription command is stored and a background
+    subscription is started to feed [Client.Receive] and [Client.ReceiveData]
+    one message per call.
  3. Encode and decode functions — defaulting to [DefaultMessageEncodeFunc] and
     [DefaultMessageDecodeFunc] — are stored on the client and used
     transparently by the typed data methods.
