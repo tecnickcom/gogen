@@ -125,23 +125,27 @@ func (v *Validator) ValidateStruct(obj any) error {
 func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 	vErr := v.v.StructCtx(ctx, obj)
 
-	var (
-		valErr vt.ValidationErrors
-		err    error
-	)
-	if errors.As(vErr, &valErr) {
-		for _, fe := range valErr {
-			// separate tags grouped by OR
-			tags := strings.SplitSeq(fe.Tag(), "|")
-			for tag := range tags {
-				tagKey, _, _ := strings.Cut(tag, "=")
-				if tagKey == "falseif" {
-					// the "falseif" tag only works in combination with other tags
-					continue
-				}
+	var valErr vt.ValidationErrors
+	if !errors.As(vErr, &valErr) {
+		// Non-validation errors (e.g. *vt.InvalidValidationError for a nil or
+		// non-struct input) must be surfaced instead of silently discarded.
+		//nolint:wrapcheck
+		return vErr
+	}
 
-				err = multierr.Append(err, v.tagError(fe, tag))
+	var err error
+
+	for _, fe := range valErr {
+		// separate tags grouped by OR
+		tags := strings.SplitSeq(fe.Tag(), "|")
+		for tag := range tags {
+			tagKey, _, _ := strings.Cut(tag, "=")
+			if tagKey == "falseif" {
+				// the "falseif" tag only works in combination with other tags
+				continue
 			}
+
+			err = multierr.Append(err, v.tagError(fe, tag))
 		}
 	}
 

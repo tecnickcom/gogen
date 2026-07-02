@@ -114,7 +114,7 @@ func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 }
 
 // hasDefaultvalue returns true if the field has a default value (nil/zero) or if is unset/invalid.
-func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool {
+func hasDefaultValue(value reflect.Value, kind reflect.Kind, _ bool) bool {
 	//nolint:exhaustive
 	switch kind {
 	case reflect.Invalid:
@@ -123,7 +123,9 @@ func hasDefaultValue(value reflect.Value, kind reflect.Kind, nullable bool) bool
 		return value.IsNil()
 	}
 
-	return (nullable && value.Interface() == nil) || !value.IsValid() || (value.Interface() == reflect.Zero(value.Type()).Interface())
+	// IsZero avoids the interface-equality comparison that panics on
+	// non-comparable types (e.g. structs containing slices or maps).
+	return !value.IsValid() || value.IsZero()
 }
 
 // hasNotValue returns true if the field has not the specified value.
@@ -142,7 +144,12 @@ func hasNotValue(value reflect.Value, kind reflect.Kind, paramValue string) bool
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		p, err := strconv.ParseUint(paramValue, 0, 64)
 		return err != nil || value.Uint() != p
-	case reflect.Float32, reflect.Float64:
+	case reflect.Float32:
+		// Parse at float32 precision so params such as "0.1" round to the same
+		// representation stored in the field (the float64 widening is exact).
+		p, err := strconv.ParseFloat(paramValue, 32)
+		return err != nil || value.Float() != p
+	case reflect.Float64:
 		p, err := strconv.ParseFloat(paramValue, 64)
 		return err != nil || value.Float() != p
 	case reflect.Bool:

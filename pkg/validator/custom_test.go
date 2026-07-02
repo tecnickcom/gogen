@@ -231,6 +231,72 @@ func TestCustomTags_falseifMultiWordValue(t *testing.T) {
 	require.NoError(t, err, "usstate check must be skipped when State differs from the full value")
 }
 
+// TestCustomTags_falseifNonComparable ensures that "falseif" referencing a struct field
+// of a non-comparable type (containing a slice) does not panic and correctly detects
+// zero values via IsZero.
+func TestCustomTags_falseifNonComparable(t *testing.T) {
+	t.Parallel()
+
+	type meta struct {
+		Tags []string
+	}
+
+	type ncStruct struct {
+		Meta  meta   `json:"meta"`
+		State string `json:"state" validate:"falseif=Meta|usstate"`
+	}
+
+	v, err := New(
+		WithFieldNameTag("json"),
+		WithCustomValidationTags(CustomValidationTags()),
+		WithErrorTemplates(ErrorTemplates()),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	// Meta is zero: the usstate check is skipped, so an invalid state passes.
+	err = v.ValidateStruct(ncStruct{State: "ZZ"})
+	require.NoError(t, err, "usstate check must be skipped when Meta is zero")
+
+	// Meta is set: the usstate check applies and fails for an invalid state.
+	err = v.ValidateStruct(ncStruct{Meta: meta{Tags: []string{"x"}}, State: "ZZ"})
+	require.Error(t, err, "usstate check must run when Meta is set")
+
+	// Meta is set and the state is valid.
+	err = v.ValidateStruct(ncStruct{Meta: meta{Tags: []string{"x"}}, State: "NY"})
+	require.NoError(t, err, "valid state must pass when Meta is set")
+}
+
+// TestCustomTags_falseifFloat32Param ensures that "falseif" params for float32 fields
+// are compared at float32 precision, so values such as "0.1" (not exactly representable
+// in binary floating point) still match the stored field value.
+func TestCustomTags_falseifFloat32Param(t *testing.T) {
+	t.Parallel()
+
+	type f32Struct struct {
+		Ratio float32 `json:"ratio"`
+		State string  `json:"state" validate:"falseif=Ratio 0.1|usstate"`
+	}
+
+	v, err := New(
+		WithFieldNameTag("json"),
+		WithCustomValidationTags(CustomValidationTags()),
+		WithErrorTemplates(ErrorTemplates()),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	// Ratio equals the param at float32 precision: the usstate check applies and fails.
+	err = v.ValidateStruct(f32Struct{Ratio: 0.1, State: "ZZ"})
+	require.Error(t, err, "usstate check must run when Ratio matches the falseif param")
+
+	// Ratio differs from the param: the usstate check is skipped.
+	err = v.ValidateStruct(f32Struct{Ratio: 0.2, State: "ZZ"})
+	require.NoError(t, err, "usstate check must be skipped when Ratio differs from the falseif param")
+
+	// Ratio matches and the state is valid.
+	err = v.ValidateStruct(f32Struct{Ratio: 0.1, State: "NY"})
+	require.NoError(t, err, "valid state must pass when Ratio matches the falseif param")
+}
+
 func Test_hasDefaultValue_invalid(t *testing.T) {
 	t.Parallel()
 
@@ -239,4 +305,24 @@ func Test_hasDefaultValue_invalid(t *testing.T) {
 	vi := reflect.ValueOf(i)
 	got := hasDefaultValue(vi, vi.Kind(), true)
 	require.True(t, got, "Expecting true value")
+}
+
+func Test_hasNotValue_float32(t *testing.T) {
+	t.Parallel()
+
+	v := reflect.ValueOf(float32(0.1))
+
+	require.False(t, hasNotValue(v, reflect.Float32, "0.1"))
+	require.True(t, hasNotValue(v, reflect.Float32, "0.2"))
+	require.True(t, hasNotValue(v, reflect.Float32, "not-a-number"))
+}
+
+func Test_hasNotValue_float64(t *testing.T) {
+	t.Parallel()
+
+	v := reflect.ValueOf(float64(0.1))
+
+	require.False(t, hasNotValue(v, reflect.Float64, "0.1"))
+	require.True(t, hasNotValue(v, reflect.Float64, "0.2"))
+	require.True(t, hasNotValue(v, reflect.Float64, "not-a-number"))
 }

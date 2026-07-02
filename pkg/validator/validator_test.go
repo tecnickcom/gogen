@@ -156,6 +156,28 @@ func TestValidator_ValidateStruct(t *testing.T) {
 			wantErr:      true,
 			wantErrCount: 5,
 		},
+		{
+			// Non-validation errors (*vt.InvalidValidationError) must be surfaced.
+			name:         "fail with nil object",
+			obj:          nil,
+			opts:         []Option{},
+			wantErr:      true,
+			wantErrCount: 1,
+		},
+		{
+			name:         "fail with nil struct pointer",
+			obj:          (*rootStruct)(nil),
+			opts:         []Option{},
+			wantErr:      true,
+			wantErrCount: 1,
+		},
+		{
+			name:         "fail with non-struct object",
+			obj:          42,
+			opts:         []Option{},
+			wantErr:      true,
+			wantErrCount: 1,
+		},
 	}
 
 	for _, tt := range tests {
