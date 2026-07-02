@@ -40,6 +40,24 @@ func TestNew(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "fails with empty address",
+			addr:    "",
+			token:   "0123456789abcdef",
+			wantErr: true,
+		},
+		{
+			name:    "fails with relative address missing scheme and host",
+			addr:    "/rest/api/2",
+			token:   "0123456789abcdef",
+			wantErr: true,
+		},
+		{
+			name:    "fails with scheme but missing host",
+			addr:    "http://",
+			token:   "0123456789abcdef",
+			wantErr: true,
+		},
+		{
 			name:    "fails with empty api token",
 			addr:    "http://service.domain.invalid:1234",
 			token:   "",
@@ -564,4 +582,15 @@ func TestClient_requestBuffer(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_isValidatable(t *testing.T) {
+	t.Parallel()
+
+	type payload struct{}
+
+	require.True(t, isValidatable(payload{}))
+	require.True(t, isValidatable(&payload{}))
+	require.False(t, isValidatable((*payload)(nil)))
+	require.False(t, isValidatable(map[string]string{}))
 }

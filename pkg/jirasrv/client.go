@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"time"
 
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
@@ -52,9 +53,15 @@ type Client struct {
 // It validates base URL and token, initializes validators and endpoint paths,
 // applies options, and provisions a default HTTP client when none is provided.
 func New(addr, token string, opts ...Option) (*Client, error) {
-	baseURL, err := url.Parse(addr)
+	baseURL, err := url.ParseRequestURI(addr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse addr: %w", err)
+		return nil, fmt.Errorf("invalid jira address %q: %w", addr, err)
+	}
+
+	// Reject relative or schemeless addresses at construction time; otherwise
+	// every later request fails with an obscure "missing scheme" transport error.
+	if baseURL.Scheme == "" || baseURL.Host == "" {
+		return nil, fmt.Errorf("invalid jira address %q: missing scheme or host", addr)
 	}
 
 	if token == "" {
@@ -171,24 +178,45 @@ func (c *Client) SendRequest(
 // requestBuffer validates request and JSON-encodes it into a buffer.
 //
 // This keeps SendRequest focused on transport flow while enforcing payload
-// schema checks before network calls.
+// schema checks before network calls. Only struct payloads (or non-nil
+// pointers to structs) carry validation tags, so validation is skipped for
+// other JSON-encodable payloads (maps, slices, strings), which the validator
+// would otherwise reject as invalid input.
 func (c *Client) requestBuffer(
 	ctx context.Context,
 	request any,
 ) (*bytes.Buffer, error) {
-	err := c.valid.ValidateStructCtx(ctx, request)
-	if err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+	if isValidatable(request) {
+		err := c.valid.ValidateStructCtx(ctx, request)
+		if err != nil {
+			return nil, fmt.Errorf("invalid request: %w", err)
+		}
 	}
 
 	buf := &bytes.Buffer{}
 
-	err = json.NewEncoder(buf).Encode(request)
+	err := json.NewEncoder(buf).Encode(request)
 	if err != nil {
 		return nil, fmt.Errorf("json encoding: %w", err)
 	}
 
 	return buf, nil
+}
+
+// isValidatable reports whether v is a struct or a non-nil pointer chain
+// leading to a struct, i.e. an input the struct validator can process.
+func isValidatable(v any) bool {
+	rv := reflect.ValueOf(v)
+
+	for rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return false
+		}
+
+		rv = rv.Elem()
+	}
+
+	return rv.Kind() == reflect.Struct
 }
 
 // httpRequest builds an HTTP request with Jira default headers attached.
