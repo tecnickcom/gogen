@@ -153,13 +153,13 @@ ensuretarget:
 .PHONY: example
 example:
 	cd examples/service && \
-	make clean mod deps gendoc generate qa build
+	$(MAKE) clean mod deps gendoc generate qa build
 
 ## Format the source code
 .PHONY: format
 format:
 	@find $(SRCDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
-	cd examples/service && make format
+	cd examples/service && $(MAKE) format
 
 ## Generate go code automatically
 .PHONY: generate
@@ -182,13 +182,13 @@ mod: gotools
 ## Generate a new project from the example using the data set via CONFIG=project.cfg
 .PHONY: project
 project:
-	cd examples/service && make clean
+	cd examples/service && $(MAKE) clean
 	@mkdir -p ./target/$(gogenexamplecvspath)/$(gogenexample)
 	@rm -rf ./target/$(gogenexamplecvspath)/$(gogenexample)/*
 	@cp -rf examples/service/. ./target/$(gogenexamplecvspath)/$(gogenexample)/
 	sed $(SEDINPLACE) '/^replace /d' ./target/$(gogenexamplecvspath)/$(gogenexample)/go.mod
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -regextype sed -regex '.*gogenexample.*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/gogenexample/$(gogenexample)/)"' \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -regextype sed -regex '.*GOGENEXAMPLE.*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/GOGENEXAMPLE/$(GOGENEXAMPLE)/)"' \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -name '*gogenexample*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/gogenexample/$(gogenexample)/)"' \;
+	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -name '*GOGENEXAMPLE*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/GOGENEXAMPLE/$(GOGENEXAMPLE)/)"' \;
 	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleshortdesc|$(gogenexampleshortdesc)|g" {} \;
 	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexamplelongdesc|$(gogenexamplelongdesc)|g" {} \;
 	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleauthor|$(gogenexampleauthor)|g" {} \;
@@ -242,21 +242,21 @@ updatego:
 	$(eval LAST_GO_VERSION=$(shell echo ${LAST_GO_TOOLCHAIN} | grep -oE '[0-9]+\.[0-9]+'))
 	sed $(SEDINPLACE) "s|^go [0-9]*\.[0-9]*.*$$|go ${LAST_GO_VERSION}|g" go.mod
 	sed $(SEDINPLACE) "s|^toolchain go[0-9]*\.[0-9]*\.[0-9]*$$|toolchain ${LAST_GO_TOOLCHAIN}|g" go.mod
-	cd examples/service && make updatego
+	cd examples/service && $(MAKE) updatego
 
 ## Update golangci-lint version
 .PHONY: updatelint
 updatelint:
 	$(eval LAST_GOLANGCILINT_VERSION=$(shell curl -sL https://github.com/golangci/golangci-lint/releases/latest | sed -n 's/.*<title>Release \(v[0-9]*\.[0-9]*\.[0-9]*\).*/\1/p'))
 	sed $(SEDINPLACE) "s|^GOLANGCILINTVERSION=v[0-9]*\.[0-9]*\.[0-9]*$$|GOLANGCILINTVERSION=${LAST_GOLANGCILINT_VERSION}|g" Makefile
-	cd examples/service && make updatelint
+	cd examples/service && $(MAKE) updatelint
 
 ## Update dependencies
 .PHONY: updatemod
 updatemod: mod
 	$(GO) get -t -u ./... && \
 	$(GO) mod tidy -compat=$(shell sed -n -E 's/^go ([0-9]+\.[0-9]+).*/\1/p' go.mod)
-	cd examples/service && make updatemod
+	cd examples/service && $(MAKE) updatemod
 
 ## Update this library version in the examples
 .PHONY: version
@@ -266,5 +266,5 @@ version:
 ## Increase the patch number in the VERSION file
 .PHONY: versionup
 versionup:
-	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION
+	echo ${VERSION} | awk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION
 	$(MAKE) version
