@@ -83,6 +83,11 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 		return nil, fmt.Errorf("init validator: %w", err)
 	}
 
+	// Build the static endpoint prefixes with URL.JoinPath so a trailing
+	// slash in addr cannot produce "//" in the endpoint paths. The dynamic
+	// segments are percent-escaped and substituted at request time.
+	orgBase := baseURL.JoinPath("deployments", url.PathEscape(org)).String()
+
 	c := &Client{
 		baseURL:                     baseURL,
 		pingTimeout:                 defaultPingTimeout,
@@ -90,11 +95,11 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 		retryAttempts:               httpretrier.DefaultAttempts,
 		retryDelay:                  httpretrier.DefaultDelay,
 		apiKey:                      apiKey,
-		pingURL:                     fmt.Sprintf("%s/deployments/%s/-/register_deploy", baseURL, org),
-		deployRegistrationURLFormat: fmt.Sprintf("%s/deployments/%s/%%s/register_deploy", baseURL, org),
-		manualChangeURLFormat:       fmt.Sprintf("%s/deployments/%s/%%s/register_manual_deploy", baseURL, org),
-		customIncidentURLFormat:     fmt.Sprintf("%s/deployments/%s/%%s/%%s/%%s/register_impact/%%s", baseURL, org),
-		customMetricURLFormat:       fmt.Sprintf("%s/impact/%%d/register_impact", baseURL),
+		pingURL:                     orgBase + "/-/register_deploy",
+		deployRegistrationURLFormat: orgBase + "/%s/register_deploy",
+		manualChangeURLFormat:       orgBase + "/%s/register_manual_deploy",
+		customIncidentURLFormat:     orgBase + "/%s/%s/%s/register_impact/%s",
+		customMetricURLFormat:       baseURL.JoinPath("impact").String() + "/%d/register_impact",
 		valid:                       valid,
 	}
 
@@ -186,7 +191,10 @@ func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, r
 
 	r, rerr := httpPostRequest(ctx, urlStr, c.apiKey, request)
 	if rerr != nil {
-		return rerr
+		// URL parse errors from http.NewRequestWithContext quote the full URL,
+		// which embeds the API key for some endpoints (see the comment on
+		// customIncidentURLFormat), so redact it before returning.
+		return c.redactAPIKey(rerr)
 	}
 
 	hr, herr := c.newWriteHTTPRetrier()
@@ -217,19 +225,30 @@ func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, r
 
 // SendDeployRegistration registers a deployment event with Sleuth.
 func (c *Client) SendDeployRegistration(ctx context.Context, request *DeployRegistrationRequest) error {
-	urlStr := fmt.Sprintf(c.deployRegistrationURLFormat, request.Deployment)
+	urlStr := fmt.Sprintf(c.deployRegistrationURLFormat, url.PathEscape(request.Deployment))
 	return sendRequest[DeployRegistrationRequest](ctx, c, urlStr, request)
 }
 
 // SendManualChange registers a manual change not tracked by source-control-based integrations.
 func (c *Client) SendManualChange(ctx context.Context, request *ManualChangeRequest) error {
-	urlStr := fmt.Sprintf(c.manualChangeURLFormat, request.Project)
+	urlStr := fmt.Sprintf(c.manualChangeURLFormat, url.PathEscape(request.Project))
 	return sendRequest[ManualChangeRequest](ctx, c, urlStr, request)
 }
 
 // SendCustomIncidentImpactRegistration submits custom incident impact values used by Sleuth failure-rate and MTTR metrics.
+// The dynamic path segments are percent-escaped so values containing "/", "?",
+// or "#" cannot rewrite the request path or shift the API-key segment.
 func (c *Client) SendCustomIncidentImpactRegistration(ctx context.Context, request *CustomIncidentImpactRegistrationRequest) error {
-	urlStr := fmt.Sprintf(c.customIncidentURLFormat, request.Project, request.Environment, request.ImpactSource, c.apiKey)
+	urlStr := fmt.Sprintf(
+		c.customIncidentURLFormat,
+		url.PathEscape(request.Project),
+		url.PathEscape(request.Environment),
+		url.PathEscape(request.ImpactSource),
+		// The API key is client configuration (not request data) and is kept
+		// verbatim so redactAPIKey can match it in wrapped error messages.
+		c.apiKey,
+	)
+
 	return sendRequest[CustomIncidentImpactRegistrationRequest](ctx, c, urlStr, request)
 }
 

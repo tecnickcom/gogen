@@ -139,6 +139,28 @@ func TestNew_invalidAddress(t *testing.T) {
 	}
 }
 
+// TestNew_trailingSlashAddr verifies that a trailing slash in addr does not
+// produce "//" in the endpoint URLs (they are built with URL.JoinPath).
+func TestNew_trailingSlashAddr(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(
+		"https://app.sleuth.invalid/api/1/",
+		"testorg",
+		"0123456789abcdef",
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	base := "https://app.sleuth.invalid/api/1"
+
+	require.Equal(t, base+"/deployments/testorg/-/register_deploy", c.pingURL)
+	require.Equal(t, base+"/deployments/testorg/%s/register_deploy", c.deployRegistrationURLFormat)
+	require.Equal(t, base+"/deployments/testorg/%s/register_manual_deploy", c.manualChangeURLFormat)
+	require.Equal(t, base+"/deployments/testorg/%s/%s/%s/register_impact/%s", c.customIncidentURLFormat)
+	require.Equal(t, base+"/impact/%d/register_impact", c.customMetricURLFormat)
+}
+
 //nolint:paralleltest // mutates the package-level newValidator seam
 func TestNew_validatorError(t *testing.T) {
 	orig := newValidator
@@ -345,6 +367,34 @@ func Test_sendRequest_redactsAPIKey(t *testing.T) {
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), testAPIKey, "sendRequest error must not leak the api key")
 	require.Contains(t, err.Error(), "REDACTED", "sendRequest error must redact the api key")
+}
+
+// Test_sendRequest_redactsAPIKey_onRequestBuildError forces an
+// http.NewRequestWithContext parse failure on a URL embedding the API key and
+// asserts the returned error does not leak the secret.
+func Test_sendRequest_redactsAPIKey_onRequestBuildError(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(
+		"https://test.invalid",
+		"testorg",
+		testAPIKey,
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	req := &DeployRegistrationRequest{
+		Deployment: "test_deployment",
+		Sha:        "96086c3354a0475073837a24a7fa95a5eb42aab9",
+	}
+
+	// The leading "%^*&-ERROR" makes the URL unparsable, so the request-build
+	// error message quotes the full URL, including the API-key segment.
+	err = sendRequest(t.Context(), c, "%^*&-ERROR/register_impact/"+testAPIKey, req)
+
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), testAPIKey, "request-build error must not leak the api key")
+	require.Contains(t, err.Error(), "REDACTED", "request-build error must redact the api key")
 }
 
 // TestClient_HealthCheck_redactsAPIKey forces a transport error embedding the
@@ -750,6 +800,77 @@ func TestClient_SendManualChange(t *testing.T) {
 	}
 }
 
+// TestClient_SendManualChange_authorJSONKey verifies the Author field is
+// serialized under the lowercase "author" key expected by the Sleuth API.
+func TestClient_SendManualChange_authorJSONKey(t *testing.T) {
+	t.Parallel()
+
+	bodyCh := make(chan []byte, 1)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		bodyCh <- body
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	c, err := New(
+		ts.URL,
+		"testorg",
+		"0123456789abcdef",
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	err = c.SendManualChange(t.Context(), &ManualChangeRequest{
+		Project: "test_project",
+		Name:    "test_name",
+		Author:  "author@example.invalid",
+	})
+	require.NoError(t, err)
+
+	body := string(<-bodyCh)
+
+	require.Contains(t, body, `"author":"author@example.invalid"`, "Author must serialize under the lowercase author key")
+	require.NotContains(t, body, `"Author"`, "the Go field name must not be used as the JSON key")
+}
+
+// TestClient_pathSegmentsEscaped verifies that dynamic path segments
+// containing reserved URL characters are percent-escaped, so they stay a
+// single path segment instead of rewriting the request path.
+func TestClient_pathSegmentsEscaped(t *testing.T) {
+	t.Parallel()
+
+	uriCh := make(chan string, 1)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uriCh <- r.RequestURI
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	c, err := New(
+		ts.URL,
+		"testorg",
+		"0123456789abcdef",
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	err = c.SendDeployRegistration(t.Context(), &DeployRegistrationRequest{
+		Deployment: "abc/../def?x=1",
+		Sha:        "96086c3354a0475073837a24a7fa95a5eb42aab9",
+	})
+	require.NoError(t, err)
+
+	uri := <-uriCh
+
+	require.Equal(t, "/deployments/testorg/abc%2F..%2Fdef%3Fx=1/register_deploy", uri,
+		"the deployment segment must be percent-escaped into a single path segment")
+}
+
 func TestClient_SendCustomIncidentImpactRegistration(t *testing.T) {
 	t.Parallel()
 
@@ -848,6 +969,14 @@ func TestClient_SendCustomMetricImpactRegistration(t *testing.T) {
 			req: &CustomMetricImpactRegistrationRequest{
 				ImpactID: 3452,
 				Value:    123.4562,
+			},
+			wantErr: false,
+		},
+		{
+			name: "success with legitimate zero value",
+			req: &CustomMetricImpactRegistrationRequest{
+				ImpactID: 3454,
+				Value:    0,
 			},
 			wantErr: false,
 		},

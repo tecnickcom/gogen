@@ -135,7 +135,7 @@ type ManualChangeRequest struct {
 	Tags []string `json:"tags,omitempty" validate:"omitempty,max=50,dive,max=50,startswith=#"`
 
 	// Author is the email address of the change author.
-	Author string `json:",omitempty" validate:"omitempty,email"`
+	Author string `json:"author,omitempty" validate:"omitempty,email"`
 
 	// Email is the email address of the user associated with the project receiving the manual change.
 	Email string `json:"email,omitempty" validate:"omitempty,email"`
@@ -197,7 +197,10 @@ type CustomMetricImpactRegistrationRequest struct {
 	ImpactID int `json:"-" validate:"required"`
 
 	// Value is the metric value to be registered.
-	Value float64 `json:"value" validate:"required"`
+	// Zero is a legitimate metric value (e.g. a zero error rate), so no
+	// "required" validation is applied (go-playground's required rejects
+	// zero values); the field is always serialized.
+	Value float64 `json:"value"`
 
 	// Date is the ISO 8601 date and time string at which the metric value should be registered.
 	// Defaults to the current time.
