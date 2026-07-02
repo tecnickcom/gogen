@@ -2,6 +2,7 @@ package timeutil
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
 	"time"
 
@@ -78,6 +79,11 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "numeric value overflowing float64",
+			data:    []byte(`1e400`),
+			wantErr: true,
+		},
+		{
 			name: "seconds",
 			data: []byte(`"13s"`),
 			want: Duration(13 * time.Second),
@@ -107,6 +113,26 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 			data: []byte(`-17`),
 			want: Duration(-17),
 		},
+		{
+			name: "large integer number beyond float64 precision",
+			data: []byte(`9007199254740993`), // 2^53 + 1
+			want: Duration(9007199254740993),
+		},
+		{
+			name: "max int64 number",
+			data: []byte(`9223372036854775807`),
+			want: Duration(math.MaxInt64),
+		},
+		{
+			name: "min int64 number",
+			data: []byte(`-9223372036854775808`),
+			want: Duration(math.MinInt64),
+		},
+		{
+			name: "fractional number",
+			data: []byte(`1.5`),
+			want: Duration(1),
+		},
 	}
 
 	for _, tt := range tests {
@@ -124,6 +150,43 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 			err = json.Unmarshal(tt.data, &d)
 			require.Equal(t, tt.wantErr, err != nil, "error = %v, wantErr %v", err, tt.wantErr)
 			require.Equal(t, int64(tt.want), int64(d))
+		})
+	}
+}
+
+func TestDuration_JSONRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		dur  Duration
+	}{
+		{
+			name: "large integer beyond float64 precision",
+			dur:  Duration(9007199254740993), // 2^53 + 1
+		},
+		{
+			name: "max int64",
+			dur:  Duration(math.MaxInt64),
+		},
+		{
+			name: "small duration",
+			dur:  Duration(13 * time.Second),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			data, err := json.Marshal(tt.dur)
+			require.NoError(t, err)
+
+			var got Duration
+
+			err = json.Unmarshal(data, &got)
+			require.NoError(t, err)
+			require.Equal(t, int64(tt.dur), int64(got), "duration did not round-trip exactly")
 		})
 	}
 }

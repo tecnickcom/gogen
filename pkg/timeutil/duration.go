@@ -1,6 +1,7 @@
 package timeutil
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -22,17 +23,33 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON parses the duration from either a human-readable string (e.g., "20s", "1h") or a numeric nanosecond value.
+// Numeric values are decoded as int64 first, so integer nanosecond durations beyond float64 precision (>= 2^53) are preserved exactly.
 func (d *Duration) UnmarshalJSON(data []byte) error {
 	var v any
 
-	err := json.Unmarshal(data, &v)
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+
+	err := dec.Decode(&v)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
 
 	switch value := v.(type) {
-	case float64:
-		*d = Duration(value)
+	case json.Number:
+		ns, err := value.Int64()
+		if err == nil {
+			*d = Duration(ns)
+			return nil
+		}
+
+		aux, err := value.Float64()
+		if err != nil {
+			return fmt.Errorf("unable to parse the numeric time duration %s : %w", value, err)
+		}
+
+		*d = Duration(aux)
+
 		return nil
 	case string:
 		aux, err := time.ParseDuration(value)
