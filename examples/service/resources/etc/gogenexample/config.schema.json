@@ -27,7 +27,7 @@
               "type": "string"
             },
             "timeout": {
-              "default": 15,
+              "default": 1,
               "description": "HTTP client timeout [seconds]",
               "examples": [
                 15
@@ -82,7 +82,7 @@
               "type": "integer"
             },
             "conn_max_idle_time": {
-              "default": 1,
+              "default": 60,
               "description": "Maximum amount of time a connection may be idle [seconds]",
               "examples": [
                 60
@@ -90,7 +90,7 @@
               "type": "integer"
             },
             "conn_max_lifetime": {
-              "default": 1,
+              "default": 3600,
               "description": "Maximum amount of time a connection may be reused [seconds]",
               "examples": [
                 3600
@@ -105,9 +105,17 @@
               ],
               "type": "integer"
             },
+            "driver": {
+              "default": "mysql",
+              "description": "Database driver name, used when the DSN does not include a <driver>:// prefix",
+              "examples": [
+                "mysql"
+              ],
+              "type": "string"
+            },
             "dsn": {
               "default": "",
-              "description": "Database in DSN format: username:password@protocol(address)/dbname?param=value",
+              "description": "Database in DSN format, optionally prefixed with the driver name: [<driver>://]username:password@protocol(address)/dbname?param=value",
               "type": "string"
             },
             "timeout_ping": {
@@ -153,7 +161,7 @@
               "type": "integer"
             },
             "conn_max_idle_time": {
-              "default": 1,
+              "default": 60,
               "description": "Maximum amount of time a connection may be idle [seconds]",
               "examples": [
                 60
@@ -161,7 +169,7 @@
               "type": "integer"
             },
             "conn_max_lifetime": {
-              "default": 1,
+              "default": 3600,
               "description": "Maximum amount of time a connection may be reused [seconds]",
               "examples": [
                 3600
@@ -176,9 +184,17 @@
               ],
               "type": "integer"
             },
+            "driver": {
+              "default": "mysql",
+              "description": "Database driver name, used when the DSN does not include a <driver>:// prefix",
+              "examples": [
+                "mysql"
+              ],
+              "type": "string"
+            },
             "dsn": {
               "default": "",
-              "description": "Database in DSN format: username:password@protocol(address)/dbname?param=value",
+              "description": "Database in DSN format, optionally prefixed with the driver name: [<driver>://]username:password@protocol(address)/dbname?param=value",
               "type": "string"
             },
             "timeout_ping": {
@@ -261,6 +277,7 @@
       },
       "required": [
         "address",
+        "format",
         "level",
         "network"
       ],

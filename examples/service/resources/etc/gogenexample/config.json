@@ -1,7 +1,7 @@
 {
   "clients": {
     "ipify": {
-      "address": "",
+      "address": "https://api.ipify.org",
       "timeout": 1
     }
   },
@@ -37,15 +37,15 @@
   "remoteConfigSecretKeyring": "",
   "servers": {
     "monitoring": {
-      "address": "",
+      "address": ":8071",
       "timeout": 60
     },
     "private": {
-      "address": ":",
+      "address": ":8072",
       "timeout": 60
     },
     "public": {
-      "address": "",
+      "address": ":8073",
       "timeout": 60
     }
   },

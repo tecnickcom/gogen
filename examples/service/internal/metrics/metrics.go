@@ -3,6 +3,7 @@ package metrics
 
 import (
 	"database/sql"
+	"errors"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tecnickcom/gogen/pkg/metrics"
@@ -15,6 +16,10 @@ const (
 
 	labelCode = "code"
 )
+
+// errMetricsClientNotInitialized is returned when a method requiring the
+// underlying metrics client is called before CreateMetricsClientFunc.
+var errMetricsClientNotInitialized = errors.New("metrics client not initialized: call CreateMetricsClientFunc first")
 
 // Metrics is the interface for the custom metrics.
 type Metrics interface {
@@ -80,11 +85,19 @@ func (m *Client) IncExampleCounter(code string) {
 // Wrapping DB handles with metrics is key to spotting saturation and latency
 // regressions before they become incidents.
 func (m *Client) InstrumentDB(dbName string, db *sql.DB) error {
+	if m.libClient == nil {
+		return errMetricsClientNotInitialized
+	}
+
 	return m.libClient.InstrumentDB(dbName, db) //nolint:wrapcheck
 }
 
 // SqlOpen opens a SQL database through the metrics client so returned handles
 // are compatible with the service instrumentation pipeline.
 func (m *Client) SqlOpen(driverName, dsn string) (*sql.DB, error) {
+	if m.libClient == nil {
+		return nil, errMetricsClientNotInitialized
+	}
+
 	return m.libClient.SqlOpen(driverName, dsn) //nolint:wrapcheck
 }

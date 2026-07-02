@@ -18,7 +18,7 @@
 * [Description](#description)
 * [Documentation](#documentation)
   * [public](#documentation_public)
-		* [General](#documentation_public_general)
+    * [General](#documentation_public_general)
 * [Development](#development)
 * [Deployment](#deployment)
 
@@ -44,8 +44,8 @@ gogenexamplelongdesc
 * public
   <a name="documentation_public_general"></a>
   * General  
-	_General project documentation_
-    * [GitHup project page](gogenexampleprojectlink)
+    _General project documentation_
+    * [GitHub project page](gogenexampleprojectlink)
 
 
 ----------
@@ -87,7 +87,7 @@ To quickly get started with this project, follow these steps:
 3. Change into the project directory: `cd gogenexample`.
 4. Install the required dependencies and test everything: `DEVMODE=LOCAL make x`.
 
-Now you are ready to start developing with /gogenexample!
+Now you are ready to start developing with gogenexample!
 
 This project includes a *Makefile* that allows you to test and build the project in a Linux-compatible system with simple commands.  
 All the artifacts and reports produced using this *Makefile* are stored in the *target* folder.  
@@ -224,7 +224,7 @@ make x
 
 ## Documentation
 
-The `README.md` and `doc/RUNBOOK.md` documentation files are generated using the source templates in `doc/src` via `make gendoc` command.
+The `README.md` documentation file is generated using the source templates in `doc/src` via the `make gendoc` command.
 
 To update links and common information edit the file `doc/src/config.yaml` in YAML format.
 The schema of the configuration file is defined by the JSON schema: `doc/src/config.schema.json`.
@@ -247,14 +247,14 @@ Flags:
 
 -c, --configDir  string  Configuration directory to be added on top of the search list
 -f, --logFormat  string  Logging format: CONSOLE, JSON
--o, --loglevel   string  Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
+-o, --logLevel   string  Log level: EMERGENCY, ALERT, CRITICAL, ERROR, WARNING, NOTICE, INFO, DEBUG
 ```
 
 <a name="examples"></a>
 
 ## Examples
 
-Once the application has being compiled with `make build`, it can be quickly tested:
+Once the application has been compiled with `make build`, it can be quickly tested:
 
 ```bash
 target/usr/bin/gogenexample -c resources/test/etc/gogenexample
@@ -308,7 +308,7 @@ This service provides [PPROF](https://github.com/google/pprof) profiling data at
 The pprof data can be analyzed and displayed using the pprof tool:
 
 ```bash
-go get github.com/google/pprof
+go install github.com/google/pprof@latest
 ```
 
 Example:
@@ -321,9 +321,9 @@ pprof -seconds 10 -http=localhost:8182 http://INSTANCE_URL:PORT/pprof/profile
 
 ## OpenAPI
 
-The gogenexample API is specified via the [OpenAPI 3](https://www.openapis.org/) file: `openapi.yaml`.
+The gogenexample API is specified via the [OpenAPI 3](https://www.openapis.org/) files: `openapi_public.yaml`, `openapi_private.yaml` and `openapi_monitoring.yaml`.
 
-The openapi file can be edited using the Swagger Editor:
+The OpenAPI files can be edited using the Swagger Editor:
 
 ```bash
 docker pull swaggerapi/swagger-editor

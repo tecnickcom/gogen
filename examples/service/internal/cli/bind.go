@@ -219,6 +219,11 @@ func newDatabase(
 	wg *sync.WaitGroup,
 	sc chan struct{},
 ) (*sqlconn.SQLConn, []healthcheck.HealthCheck, error) {
+	// The DSN may embed the driver name as a "<driver>://" prefix (for example
+	// "pgx://postgres://user:pass@host:5432/db"); sqlconn.Connect parses it and
+	// falls back to the configured db.*.driver when the prefix is absent (the
+	// plain MySQL DSN format has no "://").
+	//
 	// The commented-out DSN suffix below is MySQL-specific: it is required to
 	// correctly parse time.Time and for SQLX to work properly with projections
 	// that use joins. It is left disabled because this example ships without a
@@ -238,7 +243,7 @@ func newDatabase(
 		sqlconn.WithSQLOpenFunc(mtr.SqlOpen),
 	}
 
-	sqlConn, err := sqlconn.New(ctx, dbcfg.Driver, dbDSN, sqlConnOpts...)
+	sqlConn, err := sqlconn.Connect(ctx, dbDSN, sqlConnOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to %s DB: %w", name, err)
 	}
@@ -248,5 +253,5 @@ func newDatabase(
 		return nil, nil, fmt.Errorf("failed to instrument %s DB: %w", name, err)
 	}
 
-	return sqlConn, append(healthchecks, healthcheck.New("db", sqlConn)), nil
+	return sqlConn, append(healthchecks, healthcheck.New("db_"+name, sqlConn)), nil
 }

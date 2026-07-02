@@ -398,7 +398,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum by (level) (rate(error_level_total{dc=~\"^($dc)$\",instance=~\"^($instance)$\",job=\"gogenexample-monitoring\",port=~\"^($port)$\"}[$__interval]))",
+          "expr": "sum by (level) (rate(log_level_total{dc=~\"^($dc)$\",instance=~\"^($instance)$\",job=\"gogenexample-monitoring\",port=~\"^($port)$\"}[$__interval]))",
           "interval": "",
           "legendFormat": "{{level}}",
           "refId": "A"

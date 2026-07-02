@@ -24,7 +24,7 @@ doclinks:
       description: General project documentation
       links:
         github:
-          name: GitHup project page
+          name: GitHub project page
           url: gogenexampleprojectlink
 slack:
 dependencies:

@@ -28,6 +28,18 @@ func TestNew(t *testing.T) {
 			wantOutput: matchTestVersion,
 		},
 		{
+			name:       "prints help with --help flag",
+			osArgs:     []string{AppName, "--help"},
+			wantErr:    false,
+			wantOutput: matchHelpOutput,
+		},
+		{
+			name:       "prints help with -h flag",
+			osArgs:     []string{AppName, "-h"},
+			wantErr:    false,
+			wantOutput: matchHelpOutput,
+		},
+		{
 			name:       "fails with unknown flag",
 			osArgs:     []string{AppName, "--unknown"},
 			wantErr:    true,
@@ -142,4 +154,14 @@ func matchTestVersion(t *testing.T, out string) {
 	}
 
 	t.Errorf("A version number was expected")
+}
+
+func matchHelpOutput(t *testing.T, out string) {
+	t.Helper()
+
+	if strings.Contains(out, "Usage:") {
+		return
+	}
+
+	t.Errorf("The help message was expected")
 }

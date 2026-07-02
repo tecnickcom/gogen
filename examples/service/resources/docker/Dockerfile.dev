@@ -1,4 +1,5 @@
 FROM golang:1.26
+ARG TARGETARCH=amd64
 ENV PATH=/root/.local/bin:$PATH
 RUN apt update \
 && apt -y install \
@@ -13,6 +14,6 @@ dh-golang \
 python3 \
 python3-pip \
 && pip3 install --upgrade --break-system-packages schemathesis httpx \
-&& curl --location https://github.com/ovh/venom/releases/download/v1.3.0/venom.linux-amd64 > /usr/bin/venom \
+&& curl --silent --show-error --fail --location https://github.com/ovh/venom/releases/download/v1.3.0/venom.linux-${TARGETARCH} > /usr/bin/venom \
 && chmod ug+x /usr/bin/venom
 HEALTHCHECK CMD go version || exit 1

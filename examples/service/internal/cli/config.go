@@ -26,6 +26,9 @@ const (
 	dbDriver = "mysql"
 )
 
+// validatorNewFn defines the validator constructor and can be overwritten for testing.
+var validatorNewFn = validator.New //nolint:gochecknoglobals
+
 type cfgServer struct {
 	Address string `mapstructure:"address" validate:"required,hostname_port"`
 	Timeout int    `mapstructure:"timeout" validate:"required,min=1"`
@@ -136,9 +139,12 @@ func (c *appConfig) Validate() error {
 		validator.WithErrorTemplates(validator.ErrorTemplates()),
 	}
 
-	v, _ := validator.New(opts...)
+	v, err := validatorNewFn(opts...)
+	if err != nil {
+		return err
+	}
 
-	err := v.ValidateStruct(c)
+	err = v.ValidateStruct(c)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}

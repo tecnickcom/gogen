@@ -146,7 +146,7 @@ ifeq ($(DOCKERCOMPOSE),)
 endif
 
 DOCKERCOMPOSECMD=COMPOSE_PROJECT_NAME=$(VENDOR) $(DOCKERCOMPOSE)
-DOCKERBUILDARG=--build-arg HOST_USER="$(shell id -u ${USER})" --build-arg HOST_GROUP="$(shell id -u ${GROUP})"
+DOCKERBUILDARG=--build-arg HOST_USER="$(shell id -u ${USER})" --build-arg HOST_GROUP="$(shell id -g ${USER})"
 
 # Common commands
 GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
@@ -161,8 +161,12 @@ DOCKERIZEVERSION=v0.9.2
 # Current operating system and architecture as one string.
 GOOSARCH=$(shell go env GOOS GOARCH | tr -d \\n)
 
+# Architecture used for Docker images and helper binaries
+# (matches the host architecture so containers run natively, e.g. arm64 on Apple Silicon).
+DOCKERARCH=$(shell go env GOARCH)
+
 # OS and Architecture used to build the Go binary for Docker.
-LINUXGOBUILDENV=GOOS=linux GOARCH=amd64
+LINUXGOBUILDENV=GOOS=linux GOARCH=$(DOCKERARCH)
 
 # Environment variables for the go build command (uncomment the one that is appropriate):
 #
@@ -322,7 +326,7 @@ all: help
 ## Test and build everything from scratch
 .PHONY: x
 x:
-	DEVMODE=LOCAL make format clean mod deps gendoc generate qa build docker dockertest
+	DEVMODE=LOCAL $(MAKE) format clean mod deps gendoc generate qa build docker dockertest
 
 ## Execute API tests
 .PHONY: apitest
@@ -436,7 +440,7 @@ dockerdb:
 ### Delete the Docker image
 .PHONY: dockerdelete
 dockerdelete:
-	$(DOCKER) rmi -f `docker images "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX)" -q`
+	$(DOCKER) rmi -f `$(DOCKER) images "${LCVENDOR}/${PROJECT}$(DOCKERSUFFIX)" -q`
 
 ### Build a base development Docker image
 .PHONY: dockerdev
@@ -448,7 +452,7 @@ endif
 ## Create the directory with docker files to be packaged
 .PHONY: dockerdir
 dockerdir:
-ifneq ($(GOOSARCH),linuxamd64)
+ifneq ($(GOOSARCH),linux$(DOCKERARCH))
 	$(MAKE) build GOBUILDENV=$(LINUXGOBUILDENV)
 endif
 ifneq ($(GOBUILDENV),)
@@ -481,7 +485,7 @@ dockerpromote:
 	$(DOCKER) tag "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)" "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)"
 	$(MAKE) ecrlogin ECR_PROFILE="${ECR_PROFILE_PUSH}" ECR_REGISTRY=${DOCKER_REGISTRY_PUSH}
 	$(DOCKER) push "${DOCKER_REGISTRY_PUSH}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)"
-	$(DOCKER) rmi -f `docker images "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)" -q`
+	$(DOCKER) rmi -f `$(DOCKER) images "${DOCKER_REGISTRY_PULL}/${DOCKERPREFIX}${PROJECT}$(DOCKERSUFFIX):$(DOCKERTAG)" -q`
 
 ## Push docker container to a remote repository
 .PHONY: dockerpush
@@ -495,22 +499,22 @@ dockerpush:
 ## Start a local docker compose environment for manual testing
 .PHONY: localenvstart
 localenvstart:
-	make dcenvup DEPLOY_ENV=local
+	$(MAKE) dcenvup DEPLOY_ENV=local
 
 ## Stop the local docker compose environment
 .PHONY: localenvstop
 localenvstop:
-	make dcenvdown DEPLOY_ENV=local
+	$(MAKE) dcenvdown DEPLOY_ENV=local
 
 ## Test the newly built docker container
 .PHONY: dockertest
 dockertest:
-	make dcenvup dcenvdown DEPLOY_ENV=int
+	$(MAKE) dcenvup dcenvdown DEPLOY_ENV=int
 
 ## Start a docker-compose environment
 .PHONY: dcenvup
 dcenvup: dockerenvcfg dockerdev
-	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/${DOCKERIZEVERSION}/dockerize-linux-amd64-${DOCKERIZEVERSION}.tar.gz | tar -xz -C $(BINUTIL)
+	test -f "$(BINUTIL)/dockerize" || curl --silent --show-error --fail --location https://github.com/jwilder/dockerize/releases/download/${DOCKERIZEVERSION}/dockerize-linux-$(DOCKERARCH)-${DOCKERIZEVERSION}.tar.gz | tar -xz -C $(BINUTIL)
 	@echo 0 > $(TARGETDIR)/make.exit
 	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml down --volumes || true
 	$(DOCKERCOMPOSECMD) -f ./docker-compose-$(DEPLOY_ENV).yml build $(DOCKERBUILDARG)
@@ -599,7 +603,10 @@ ifneq ($(strip $(MANPATH)),)
 	cat ./resources/${MANPATH}${PROJECT}.1 | gzip -9 > $(PATHINSTMAN)${PROJECT}.1.gz
 	find $(PATHINSTMAN) -type f -exec chmod 644 {} \;
 endif
+# only write the nonroot passwd file for staged installs (e.g. Docker scratch image), never on a live system
+ifneq ($(strip $(DESTDIR)),)
 	echo 'nonroot:*:65532:65532:nonroot:/nonexistent:/bin/false' > $(DESTDIR)/etc/passwd
+endif
 
 ## Install TLS root CA certificates
 .PHONY: installssl
@@ -752,4 +759,4 @@ venomtest:
 ## Increase the patch number in the VERSION file
 .PHONY: versionup
 versionup:
-	echo ${VERSION} | gawk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION
+	echo ${VERSION} | awk -F. '{printf("%d.%d.%d\n",$$1,$$2,(($$3+1)));}' > VERSION

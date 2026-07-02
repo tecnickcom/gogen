@@ -52,6 +52,10 @@ func main() {
 	if err != nil {
 		l.With(slog.Any("error", err)).Error("UNABLE TO START THE PROGRAM")
 		exitFn(1)
+
+		// exitFn normally terminates the process; guard against test doubles
+		// that return, so a nil rootCmd is never executed.
+		return
 	}
 
 	// execute the root command and log errors (if any)

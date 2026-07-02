@@ -31,6 +31,9 @@ ${DOCKER} build --pull --tag ${DOCKERDEV} --file ./resources/docker/Dockerfile.d
 # Define the project root path.
 PRJPATH=/root/src/${CVSPATH}/${PROJECT}
 
+# Remove the temporary Dockerfile even if this script fails.
+trap 'rm -f Dockerfile.test' EXIT
+
 # Generate a temporary Dockerfile to build and test the project
 # NOTE: The exit status of the RUN command is stored to be returned later,
 #       so in case of error we can continue without interrupting this script.
@@ -56,7 +59,7 @@ mkdir -p /root/.ssh \\
 && mkdir -p ${PRJPATH}
 COPY ./ ${PRJPATH}
 WORKDIR ${PRJPATH}
-RUN sed 's/replace/#replace/' go.mod
+RUN sed -i '/^replace /d' go.mod
 RUN make ${MAKETARGET} || (echo \$? > target/make.exit)
 HEALTHCHECK CMD go version || exit 1
 EOM
@@ -74,7 +77,7 @@ ${DOCKER} build \
 --file Dockerfile.test .
 
 # Start a container using the newly created Docker image.
-CONTAINER_ID=$(docker run -d ${DOCKER_IMAGE_NAME})
+CONTAINER_ID=$(${DOCKER} run -d ${DOCKER_IMAGE_NAME})
 
 # Copy all build/test artifacts back to the host.
 ${DOCKER} cp ${CONTAINER_ID}:"${PRJPATH}/target" ./

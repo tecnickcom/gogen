@@ -1,6 +1,6 @@
 # Configuration Guide
 
-The gogenexample service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/coreos/etcd) or a single Environmental Variable.
+The gogenexample service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/etcd-io/etcd) or a single environment variable.
 
 The local configuration file is always loaded before the remote configuration, the latter always overwrites any local setting.
 
@@ -24,8 +24,8 @@ The configuration fields are:
 * **remoteConfigProvider**      : Remote configuration source ("consul", "etcd", "envvar")
 * **remoteConfigEndpoint**      : Remote configuration URL (ip:port)
 * **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/gogenexample")
-* **remoteConfigSecretKeyring** : Path to the [OpenPGP](http://openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/gogenexample/configkey.gpg"); if empty a non secure connection will be used instead
-* **remoteConfigData**          : Base64 encoded JSON configuration data to be used with the "envvar" provider
+* **remoteConfigSecretKeyring** : Path to the [OpenPGP](https://www.openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/gogenexample/configkey.gpg"); if empty a non-secure connection will be used instead
+* **remoteConfigData**          : Base64 encoded JSON configuration data to be used with the "envvar" provider (can only be set via the GOGENEXAMPLE_REMOTECONFIGDATA environment variable, not in the configuration file)
 
 The equivalent environment variables are:
 
@@ -42,7 +42,7 @@ The configuration format is a single JSON structure with the following fields:
 * **remoteConfigProvider**      : Remote configuration source ("consul", "etcd", "envvar")
 * **remoteConfigEndpoint**      : Remote configuration URL (ip:port)
 * **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/gogenexample")
-* **remoteConfigSecretKeyring** : Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. "/etc/gogenexample/configkey.gpg"); if empty a non secure connection will be used instead
+* **remoteConfigSecretKeyring** : Path to the OpenPGP secret keyring used to decrypt the remote configuration data (e.g. "/etc/gogenexample/configkey.gpg"); if empty a non-secure connection will be used instead
 
 * **enabled**: Enable or disable the service
 
@@ -72,24 +72,26 @@ The configuration format is a single JSON structure with the following fields:
 
 * **db**: Database configuration
   * **enabled**: Enable or disable the database
-    * **main**: Main (read/write) database
-      * **conn_max_idle_count**: Maximum number of connections in the idle connection pool
-      * **conn_max_idle_time**: Maximum amount of time a connection may be idle [seconds]
-      * **conn_max_lifetime**: Maximum amount of time a connection may be reused [seconds]
-      * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, there is no limit on the number of open connections
-      * **dsn**: Database in DSN format: username:password@protocol(address)/dbname?param=value
-      * **timeout_ping**: Database healthcheck ping timeout [seconds]
-    * **read**: Read-only database replica
-      * **conn_max_idle_count**: Maximum number of connections in the idle connection pool
-      * **conn_max_idle_time**: Maximum amount of time a connection may be idle [seconds]
-      * **conn_max_lifetime**: Maximum amount of time a connection may be reused [seconds]
-      * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, there is no limit on the number of open connections
-      * **dsn**: Database in DSN format: username:password@protocol(address)/dbname?param=value
-      * **timeout_ping**: Database healthcheck ping timeout [seconds]
+  * **main**: Main (read/write) database
+    * **conn_max_idle_count**: Maximum number of connections in the idle connection pool
+    * **conn_max_idle_time**: Maximum amount of time a connection may be idle [seconds]
+    * **conn_max_lifetime**: Maximum amount of time a connection may be reused [seconds]
+    * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, there is no limit on the number of open connections
+    * **driver**: Database driver name (e.g. "mysql"), used when the DSN does not include a \<driver\>:// prefix
+    * **dsn**: Database in DSN format, optionally prefixed with the driver name: [\<driver\>://]username:password@protocol(address)/dbname?param=value (e.g. "pgx://postgres://user:pass@host:5432/dbname")
+    * **timeout_ping**: Database healthcheck ping timeout [seconds]
+  * **read**: Read-only database replica
+    * **conn_max_idle_count**: Maximum number of connections in the idle connection pool
+    * **conn_max_idle_time**: Maximum amount of time a connection may be idle [seconds]
+    * **conn_max_lifetime**: Maximum amount of time a connection may be reused [seconds]
+    * **conn_max_open**: Maximum number of open connections to the database. If n <= 0, there is no limit on the number of open connections
+    * **driver**: Database driver name (e.g. "mysql"), used when the DSN does not include a \<driver\>:// prefix
+    * **dsn**: Database in DSN format, optionally prefixed with the driver name: [\<driver\>://]username:password@protocol(address)/dbname?param=value (e.g. "pgx://postgres://user:pass@host:5432/dbname")
+    * **timeout_ping**: Database healthcheck ping timeout [seconds]
 
 ## Formatting Configuration
 
-All configuration files are formatted and ordered by key using the [jq](https://github.com/stedolan/jq) tool.
+All configuration files are formatted and ordered by key using the [jq](https://github.com/jqlang/jq) tool.
 For example:
 
 ```bash

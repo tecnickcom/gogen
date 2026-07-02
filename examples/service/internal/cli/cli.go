@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gogenexampleowner/gogenexample/internal/metrics"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/tecnickcom/gogen/pkg/bootstrap"
 	"github.com/tecnickcom/gogen/pkg/config"
 	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
@@ -138,8 +140,12 @@ func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, er
 
 	rootCmd.AddCommand(versionCmd)
 
-	err := rootCmd.ParseFlags(os.Args)
-	if err != nil {
+	// Parse the flags early so invalid command-line arguments are reported by
+	// New (exit code 1) instead of at execution time. pflag returns ErrHelp
+	// for -h/--help because cobra registers its default help flag only inside
+	// Execute; it is not an error here and Execute prints the help text.
+	err := rootCmd.ParseFlags(os.Args[1:])
+	if err != nil && !errors.Is(err, pflag.ErrHelp) {
 		return nil, fmt.Errorf("failed parsing command-line arguments: %w", err)
 	}
 
