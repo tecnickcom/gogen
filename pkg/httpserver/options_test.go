@@ -354,8 +354,11 @@ func TestWithRedactFn(t *testing.T) {
 
 	cfg := defaultConfig()
 
+	err := WithRedactFn(nil)(cfg)
+	require.Error(t, err)
+
 	v := func(b []byte) string { return string(b) + "test" }
-	err := WithRedactFn(v)(cfg)
+	err = WithRedactFn(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, "alphatest", cfg.redactFn([]byte("alpha")))
 }
@@ -451,9 +454,13 @@ func TestWithLogger(t *testing.T) {
 	t.Parallel()
 
 	cfg := defaultConfig()
+
+	err := WithLogger(nil)(cfg)
+	require.Error(t, err)
+
 	v := slog.Default()
 
-	err := WithLogger(v)(cfg)
+	err = WithLogger(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, v, cfg.logger)
 }

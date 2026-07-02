@@ -332,10 +332,10 @@ func TestNew_setsIdleTimeout(t *testing.T) {
 	require.NotNil(t, h)
 	require.Equal(t, idle, h.httpServer.IdleTimeout)
 
-	// Balance the single Shutdown decrement so the default wait group does not
-	// go negative (mirrors the Add(1) that StartServerCtx performs).
-	shutdownWG.Add(1)
+	// Shutdown on a never-started server must not panic and must not decrement
+	// the wait group (its counter stays balanced at zero).
 	require.NoError(t, h.Shutdown(t.Context()))
+	shutdownWG.Wait()
 }
 
 func TestShutdown_idempotent(t *testing.T) {
@@ -354,7 +354,7 @@ func TestShutdown_idempotent(t *testing.T) {
 	require.NotNil(t, h)
 
 	// Register one running server with the wait group.
-	shutdownWG.Add(1)
+	h.StartServer()
 
 	// Calling Shutdown multiple times must not panic and must decrement the
 	// wait group exactly once (otherwise Wait would unblock prematurely / the
@@ -363,7 +363,24 @@ func TestShutdown_idempotent(t *testing.T) {
 	require.NoError(t, h.Shutdown(t.Context()))
 	require.NoError(t, h.Shutdown(t.Context()))
 
-	// The single internal decrement plus the manual Add(1) above must balance.
+	// The internal done channel must be closed by the first Shutdown so the
+	// shutdown-monitor goroutine started by StartServer does not leak.
+	select {
+	case <-h.shutdownDone:
+	default:
+		t.Fatal("shutdownDone channel not closed: the shutdown-monitor goroutine leaks")
+	}
+
+	// Wait for the monitor goroutine to observe shutdownDone and exit. This is
+	// done before the test returns (canceling t.Context) so the goroutine
+	// deterministically wakes on the shutdownDone case, not on ctx.Done.
+	select {
+	case <-h.monitorDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shutdown-monitor goroutine did not exit after direct Shutdown")
+	}
+
+	// The single internal decrement must balance the StartServer Add(1).
 	done := make(chan struct{})
 
 	go func() {
@@ -376,6 +393,37 @@ func TestShutdown_idempotent(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("shutdownWaitGroup did not reach zero: decremented the wrong number of times")
 	}
+}
+
+func TestShutdown_neverStarted(t *testing.T) {
+	t.Parallel()
+
+	addr := ":31814"
+	shutdownWG := &sync.WaitGroup{}
+
+	h, err := New(
+		t.Context(),
+		NopBinder(),
+		WithServerAddr(addr),
+		WithShutdownWaitGroup(shutdownWG),
+		WithShutdownTimeout(1*time.Second),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, h)
+
+	// Shutdown on a never-started server must not panic (no negative wait group
+	// counter) and must release the bound listener so the address can be reused.
+	require.NoError(t, h.Shutdown(t.Context()))
+	require.NoError(t, h.Shutdown(t.Context()))
+
+	shutdownWG.Wait()
+
+	var lc net.ListenConfig
+
+	l, err := lc.Listen(t.Context(), "tcp", addr)
+	require.NoError(t, err, "the listener was not released by Shutdown")
+
+	require.NoError(t, l.Close())
 }
 
 func TestStartServerCtx_contextAlreadyCanceled(t *testing.T) {
@@ -454,4 +502,21 @@ func TestRequestInjectHandler_concurrentLoggerIsolation(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestShutdown_neverStartedListenerCloseError(t *testing.T) {
+	t.Parallel()
+
+	h, err := New(
+		t.Context(),
+		NopBinder(),
+		WithServerAddr(":31815"),
+		WithShutdownTimeout(1*time.Second),
+	)
+	require.NoError(t, err)
+
+	// Close the listener beforehand so Shutdown's explicit close of the
+	// never-started server's listener fails, covering the error-logging branch.
+	require.NoError(t, h.listener.Close())
+	require.NoError(t, h.Shutdown(t.Context()))
 }

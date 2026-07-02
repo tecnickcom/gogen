@@ -276,7 +276,12 @@ func WithTraceIDHeaderName(name string) Option {
 // WithRedactFn set the function used to redact HTTP request and response dumps in the logs.
 func WithRedactFn(fn RedactFn) Option {
 	return func(cfg *config) error {
+		if fn == nil {
+			return errors.New("redactFn is required")
+		}
+
 		cfg.redactFn = fn
+
 		return nil
 	}
 }
@@ -351,7 +356,12 @@ func WithoutDefaultRouteLogger(routes ...DefaultRoute) Option {
 // WithLogger overrides the default logger.
 func WithLogger(logger *slog.Logger) Option {
 	return func(cfg *config) error {
+		if logger == nil {
+			return errors.New("logger is required")
+		}
+
 		cfg.logger = logger
+
 		return nil
 	}
 }

@@ -93,7 +93,11 @@ type HTTPServer struct {
 	ctx          context.Context //nolint:containedctx
 	httpServer   *http.Server
 	listener     net.Listener
+	startedMutex sync.Mutex
+	started      bool
 	shutdownOnce sync.Once
+	shutdownDone chan struct{}
+	monitorDone  chan struct{} // closed when the shutdown-monitor goroutine exits
 }
 
 // New constructs HTTP server with router, middleware, default operational routes, TLS, and graceful shutdown orchestration.
@@ -134,7 +138,9 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 				TLSConfig:         cfg.tlsConfig,
 				WriteTimeout:      cfg.serverWriteTimeout,
 			},
-			listener: listener,
+			listener:     listener,
+			shutdownDone: make(chan struct{}),
+			monitorDone:  make(chan struct{}),
 		},
 		nil
 }
@@ -143,14 +149,23 @@ func New(ctx context.Context, binder Binder, opts ...Option) (*HTTPServer, error
 func (h *HTTPServer) StartServerCtx(ctx context.Context) {
 	// Register the running server with the wait group synchronously, before any
 	// goroutine (including the shutdown one) can decrement it. The matching
-	// decrement happens exactly once in Shutdown via sync.Once.
+	// decrement happens exactly once in Shutdown via sync.Once, and only for a
+	// started server (Shutdown on a never-started server must not decrement).
+	h.startedMutex.Lock()
+	h.started = true
 	h.cfg.shutdownWaitGroup.Add(1)
+	h.startedMutex.Unlock()
 
-	// wait for shutdown signal or context cancelation
+	// wait for shutdown signal, direct Shutdown call, or context cancelation
 	go func() { //nolint:gosec
+		defer close(h.monitorDone)
+
 		select {
 		case <-h.cfg.shutdownSignalChan:
 			h.cfg.logger.Debug("shutdown notification received")
+		case <-h.shutdownDone:
+			// Shutdown was already called directly: exit without leaking this goroutine.
+			return
 		case <-ctx.Done():
 			h.cfg.logger.Warn("context canceled")
 		}
@@ -178,14 +193,31 @@ func (h *HTTPServer) StartServer() {
 // Shutdown gracefully shuts down server with timeout enforcement; wraps net/http Server.Shutdown().
 // It is safe to call Shutdown any number of times and from multiple paths
 // (e.g. manually and via the internal context/signal goroutine): the wait group
-// is decremented exactly once.
+// is decremented exactly once, and only when the server was actually started.
 func (h *HTTPServer) Shutdown(ctx context.Context) error {
 	h.cfg.logger.Debug("shutting down http server")
 
 	err := h.httpServer.Shutdown(ctx)
 
 	h.shutdownOnce.Do(func() {
-		h.cfg.shutdownWaitGroup.Add(-1)
+		// Unblock the internal shutdown-monitor goroutine (if any),
+		// so a direct Shutdown call does not leak it.
+		close(h.shutdownDone)
+
+		h.startedMutex.Lock()
+		defer h.startedMutex.Unlock()
+
+		if h.started {
+			h.cfg.shutdownWaitGroup.Add(-1)
+			return
+		}
+
+		// http.Server.Shutdown only closes listeners registered by Serve,
+		// so a never-started server must release its bound listener explicitly.
+		cerr := h.listener.Close()
+		if cerr != nil {
+			h.cfg.logger.With(slog.Any("error", cerr)).Debug("failed closing the http server listener")
+		}
 	})
 
 	h.cfg.logger.With(slog.Any("error", err)).Debug("http server shutdown complete")
