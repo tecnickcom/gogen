@@ -65,7 +65,14 @@ func New(resolver Resolver, size int, ttl time.Duration) *Cache {
 	}
 
 	lookupFn := func(ctx context.Context, key string) (any, error) {
-		return resolver.LookupHost(ctx, key)
+		addrs, err := resolver.LookupHost(ctx, key)
+		if err != nil {
+			// Return an untyped nil value so a failed lookup can never be
+			// mistaken for a cacheable value (typed-nil boxing).
+			return nil, fmt.Errorf("DNS lookup failed: %w", err)
+		}
+
+		return addrs, nil
 	}
 
 	return &Cache{

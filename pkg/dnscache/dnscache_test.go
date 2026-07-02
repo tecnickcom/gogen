@@ -206,9 +206,40 @@ func Test_LookupHost_error(t *testing.T) {
 
 	for v := range ret {
 		require.Error(t, v.err)
-		require.Equal(t, "unable to retrieve DNS for host example.net: mock error: 2", v.err.Error())
+		require.Equal(t, "unable to retrieve DNS for host example.net: DNS lookup failed: mock error: 2", v.err.Error())
 		require.Nil(t, v.addrs)
 	}
+}
+
+func Test_LookupHost_error_not_cached(t *testing.T) {
+	t.Parallel()
+
+	var i int
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			i++
+
+			if i == 1 {
+				return nil, errors.New("transient mock error")
+			}
+
+			return []string{"192.0.2.1"}, nil
+		},
+	}
+
+	c := New(resolver, 2, 1*time.Minute)
+
+	// A transient DNS failure must not be negatively cached.
+	addrs, err := c.LookupHost(t.Context(), "example.com")
+	require.Error(t, err)
+	require.Nil(t, addrs)
+
+	// The next call must re-query the resolver and succeed within the TTL.
+	addrs, err = c.LookupHost(t.Context(), "example.com")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1"}, addrs)
+	require.Equal(t, 2, i)
 }
 
 func Test_LookupHost_error_concurrent_fast(t *testing.T) {
@@ -246,7 +277,7 @@ func Test_LookupHost_error_concurrent_fast(t *testing.T) {
 
 	for v := range ret {
 		require.Error(t, v.err)
-		require.Equal(t, "unable to retrieve DNS for host example.net: mock error", v.err.Error())
+		require.Equal(t, "unable to retrieve DNS for host example.net: DNS lookup failed: mock error", v.err.Error())
 		require.Nil(t, v.addrs)
 	}
 }
