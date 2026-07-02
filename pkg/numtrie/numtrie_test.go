@@ -194,3 +194,105 @@ func TestNode_Get(t *testing.T) {
 		})
 	}
 }
+
+func TestNode_Get_empty_trie(t *testing.T) {
+	t.Parallel()
+
+	node := New[int]()
+
+	got, status := node.Get("")
+
+	require.Nil(t, got)
+	require.Equal(t, StatusMatchEmpty, status)
+
+	got, status = node.Get("---")
+
+	require.Nil(t, got)
+	require.Equal(t, StatusMatchEmpty, status)
+
+	got, status = node.Get("5")
+
+	require.Nil(t, got)
+	require.Equal(t, StatusMatchNo, status)
+}
+
+func TestNode_GetExact(t *testing.T) {
+	t.Parallel()
+
+	node := New[int]()
+
+	valA := 17
+	node.Add("1", &valA)
+
+	valB := 41
+	node.Add("123", &valB)
+
+	tests := []struct {
+		name string
+		num  string
+		exp  *int
+	}{
+		{
+			name: "empty input without root value",
+			num:  "",
+			exp:  nil,
+		},
+		{
+			name: "exact match A",
+			num:  "1",
+			exp:  &valA,
+		},
+		{
+			name: "exact match B",
+			num:  "123",
+			exp:  &valB,
+		},
+		{
+			name: "exact match B with extra chars",
+			num:  "1-2-3--",
+			exp:  &valB,
+		},
+		{
+			name: "intermediate node without value",
+			num:  "12",
+			exp:  nil,
+		},
+		{
+			name: "missing sibling node",
+			num:  "124",
+			exp:  nil,
+		},
+		{
+			name: "input longer than stored key",
+			num:  "1234",
+			exp:  nil,
+		},
+		{
+			name: "no match",
+			num:  "999",
+			exp:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := node.GetExact(tt.num)
+
+			require.Equal(t, tt.exp, got)
+		})
+	}
+}
+
+func TestNode_GetExact_root_value(t *testing.T) {
+	t.Parallel()
+
+	node := New[int]()
+
+	valR := 71
+	node.Add("", &valR)
+
+	require.Equal(t, &valR, node.GetExact(""))
+	require.Nil(t, node.GetExact("1"))
+}

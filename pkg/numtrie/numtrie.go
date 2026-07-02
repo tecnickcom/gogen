@@ -38,6 +38,8 @@ once with [Node.Add], then query it repeatedly with [Node.Get]:
   - Longest-prefix / partial-match semantics: [Node.Get] returns the last
     non-nil value found while walking the trie path, implementing longest-prefix
     match in a single traversal.
+  - Exact-match lookup: [Node.GetExact] returns the value stored exactly at a
+    key position, without any longest-prefix fallback.
   - Six fine-grained match status codes: the int8 status returned by [Node.Get]
     distinguishes empty input, no match, full exact match, partial match (input
     is a prefix of a stored key), prefix match (stored key is a prefix of the
@@ -218,9 +220,47 @@ func (t *Node[T]) Get(num string) (*T, int8) {
 		match++
 	}
 
-	status := (int8(typeutil.BoolToInt(match == 0)<<7) |
-		int8(typeutil.BoolToInt(digit > match)<<1) |
-		int8(typeutil.BoolToInt(node.numChildren > 0)))
+	return val, node.matchStatus(match, digit)
+}
 
-	return val, status
+// matchStatus derives the Get status code for a traversal that ended on the
+// receiver node, having matched match digits out of digit input digits.
+func (t *Node[T]) matchStatus(match, digit int) int8 {
+	if match == 0 {
+		// No digit was matched: return the named no-match constants directly,
+		// so the status is well-defined even when the trie is empty.
+		if digit == 0 {
+			return StatusMatchEmpty
+		}
+
+		return StatusMatchNo
+	}
+
+	return (int8(typeutil.BoolToInt(digit > match)<<1) |
+		int8(typeutil.BoolToInt(t.numChildren > 0)))
+}
+
+// GetExact retrieves the value stored at the exact trie position defined by num.
+// Non-digit characters are skipped and letters are mapped to keypad digits,
+// mirroring [Node.Add]. Unlike [Node.Get], it performs no longest-prefix
+// fallback: it returns nil when the position does not exist in the trie or
+// when no value was stored exactly at that position.
+func (t *Node[T]) GetExact(num string) *T {
+	node := t
+
+	for _, v := range num {
+		i, ok := phonekeypad.KeypadDigit(v)
+		if !ok {
+			// ignore non-digit characters
+			continue
+		}
+
+		if node.children[i] == nil {
+			return nil
+		}
+
+		node = node.children[i]
+	}
+
+	return node.value
 }
