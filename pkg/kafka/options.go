@@ -46,6 +46,46 @@ func WithBalancer(b kafka.Balancer) Option {
 	}
 }
 
+// WithRequiredAcks sets the number of broker acknowledgments required before
+// a Producer write is considered successful:
+//
+//   - kafka.RequireNone (0): fire-and-forget, broker-side failures are silently lost;
+//   - kafka.RequireOne (1): wait for the partition leader to acknowledge the write;
+//   - kafka.RequireAll (-1): wait for the full in-sync replica set (default).
+//
+// This option is producer-only and has no effect on a Consumer; passing it to
+// NewConsumer is silently ignored.
+func WithRequiredAcks(acks kafka.RequiredAcks) Option {
+	return func(c *config) {
+		c.requiredAcks = acks
+	}
+}
+
+// WithBatchSize sets the maximum number of messages the Producer buffers into a
+// single batch before sending it to the brokers. If not set, the kafka-go
+// library default (100) is used.
+//
+// This option is producer-only and has no effect on a Consumer; passing it to
+// NewConsumer is silently ignored.
+func WithBatchSize(size int) Option {
+	return func(c *config) {
+		c.batchSize = size
+	}
+}
+
+// WithBatchTimeout sets the maximum time an incomplete message batch is
+// buffered before being flushed to the brokers. Because Send() and SendData()
+// publish one message synchronously per call, each call can block up to this
+// duration; it defaults to 10ms to keep per-message latency low.
+//
+// This option is producer-only and has no effect on a Consumer; passing it to
+// NewConsumer is silently ignored.
+func WithBatchTimeout(t time.Duration) Option {
+	return func(c *config) {
+		c.batchTimeout = t
+	}
+}
+
 // WithMessageEncodeFunc overrides DefaultMessageEncodeFunc for SendData() serialization.
 func WithMessageEncodeFunc(f TEncodeFunc) Option {
 	return func(c *config) {

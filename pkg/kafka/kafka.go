@@ -17,10 +17,26 @@ into a compact producer/consumer interface:
 
   - [NewProducer] + [Producer.Send] / [Producer.SendData]
   - [NewConsumer] + [Consumer.Receive] / [Consumer.ReceiveData]
+  - [NewConsumer] + [Consumer.FetchMessage] / [Consumer.CommitMessages]
 
 Functional options provide targeted tuning (session timeout, start offset,
-custom codecs) without requiring callers to manage the full kafka-go config
-surface.
+required acks, batching, custom codecs) without requiring callers to manage
+the full kafka-go config surface.
+
+# Delivery Semantics
+
+Producer writes wait for broker acknowledgment from the full in-sync replica
+set by default (kafka.RequireAll); tune this with [WithRequiredAcks].
+
+On the consumer side, when a consumer group is configured:
+
+  - [Consumer.Receive] and [Consumer.ReceiveData] are at-most-once: the offset
+    is committed as soon as the message is read, before the caller processes
+    it, so a crash or decode failure after the read permanently skips the
+    message.
+  - [Consumer.FetchMessage] + [Consumer.CommitMessages] are at-least-once: the
+    offset is committed only when the caller explicitly acknowledges the
+    message after successful processing.
 
 # Message Encoding and Decoding
 
@@ -42,6 +58,10 @@ encryption, compression, or schema validation.
     (default is latest offset).
   - Blocking receive semantics through [Consumer.Receive], suitable for worker
     loops driven by context cancellation.
+  - Explicit offset acknowledgment via [Consumer.FetchMessage] and
+    [Consumer.CommitMessages] for at-least-once processing.
+  - Configurable broker acknowledgment via [WithRequiredAcks] and producer
+    batching via [WithBatchSize] / [WithBatchTimeout].
   - Health probe support through [Consumer.HealthCheck] to verify broker/topic
     reachability from the process.
   - Explicit resource lifecycle with [Producer.Close] and [Consumer.Close].

@@ -37,6 +37,35 @@ func Test_WithBalancer(t *testing.T) {
 	require.Same(t, b, cfg.balancer)
 }
 
+func Test_WithRequiredAcks(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+	WithRequiredAcks(kafka.RequireOne)(cfg)
+	require.Equal(t, kafka.RequireOne, cfg.requiredAcks)
+
+	WithRequiredAcks(kafka.RequireAll)(cfg)
+	require.Equal(t, kafka.RequireAll, cfg.requiredAcks)
+}
+
+func Test_WithBatchSize(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+	WithBatchSize(123)(cfg)
+	require.Equal(t, 123, cfg.batchSize)
+}
+
+func Test_WithBatchTimeout(t *testing.T) {
+	t.Parallel()
+
+	v := time.Millisecond * 37
+
+	cfg := &config{}
+	WithBatchTimeout(v)(cfg)
+	require.Equal(t, v, cfg.batchTimeout)
+}
+
 func Test_WithMessageEncodeFunc(t *testing.T) {
 	t.Parallel()
 

@@ -20,6 +20,8 @@ type TDecodeFunc func(ctx context.Context, msg []byte, data any) error
 
 type consumerClient interface {
 	ReadMessage(ctx context.Context) (kafka.Message, error)
+	FetchMessage(ctx context.Context) (kafka.Message, error)
+	CommitMessages(ctx context.Context, msgs ...kafka.Message) error
 	Close() error
 }
 
@@ -83,6 +85,13 @@ func (c *Consumer) Close() error {
 }
 
 // Receive reads one message from the Kafka broker, blocking until a message arrives or context cancels.
+//
+// Delivery semantics: at-most-once. When a consumer group is configured, the
+// message offset is committed as soon as the message is read, before the
+// caller processes it; if the process crashes (or decoding fails in
+// ReceiveData) after Receive returns, the message is permanently skipped.
+// For at-least-once semantics use FetchMessage and commit explicitly with
+// CommitMessages after successful processing.
 func (c *Consumer) Receive(ctx context.Context) ([]byte, error) {
 	msg, err := c.client.ReadMessage(ctx)
 	if err != nil {
@@ -90,6 +99,36 @@ func (c *Consumer) Receive(ctx context.Context) ([]byte, error) {
 	}
 
 	return msg.Value, nil
+}
+
+// FetchMessage reads one message from the Kafka broker without committing its
+// offset, blocking until a message arrives or context cancels.
+//
+// Delivery semantics: at-least-once. When a consumer group is configured, the
+// caller must explicitly acknowledge the message by passing it to
+// CommitMessages after successful processing; uncommitted messages are
+// redelivered after a rebalance or restart. When no consumer group is
+// configured, FetchMessage behaves like Receive.
+func (c *Consumer) FetchMessage(ctx context.Context) (kafka.Message, error) {
+	msg, err := c.client.FetchMessage(ctx)
+	if err != nil {
+		return kafka.Message{}, fmt.Errorf("failed to fetch a message from Kafka: %w", err)
+	}
+
+	return msg, nil
+}
+
+// CommitMessages acknowledges (commits the offsets of) the messages returned
+// by FetchMessage. It must be called only after the messages have been
+// successfully processed, to obtain at-least-once delivery semantics.
+// It only applies when a consumer group is configured.
+func (c *Consumer) CommitMessages(ctx context.Context, msgs ...kafka.Message) error {
+	err := c.client.CommitMessages(ctx, msgs...)
+	if err != nil {
+		return fmt.Errorf("failed to commit Kafka messages: %w", err)
+	}
+
+	return nil
 }
 
 // HealthCheck verifies broker reachability by attempting partition lookup on all configured brokers.
@@ -115,6 +154,12 @@ func DefaultMessageDecodeFunc(_ context.Context, msg []byte, data any) error {
 }
 
 // ReceiveData reads a message and decodes it into the provided data argument using the configured decoder.
+//
+// Delivery semantics: at-most-once — see Receive. In particular, when a
+// consumer group is configured the offset is already committed when decoding
+// happens, so a message failing to decode is permanently skipped. For
+// at-least-once semantics use FetchMessage + CommitMessages and decode the
+// payload manually.
 func (c *Consumer) ReceiveData(ctx context.Context, data any) error {
 	message, err := c.Receive(ctx)
 	if err != nil {

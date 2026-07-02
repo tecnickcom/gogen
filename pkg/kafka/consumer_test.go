@@ -75,6 +75,14 @@ func (m mockConsumerClient) ReadMessage(_ context.Context) (kafka.Message, error
 	return kafka.Message{Value: []byte{1}}, nil
 }
 
+func (m mockConsumerClient) FetchMessage(_ context.Context) (kafka.Message, error) {
+	return kafka.Message{Value: []byte{1}}, nil
+}
+
+func (m mockConsumerClient) CommitMessages(_ context.Context, _ ...kafka.Message) error {
+	return nil
+}
+
 func (m mockConsumerClient) Config() kafka.ReaderConfig {
 	return kafka.ReaderConfig{}
 }
@@ -87,6 +95,14 @@ type mockConsumerClientError struct{}
 
 func (m mockConsumerClientError) ReadMessage(_ context.Context) (kafka.Message, error) {
 	return kafka.Message{}, errors.New("error Receive")
+}
+
+func (m mockConsumerClientError) FetchMessage(_ context.Context) (kafka.Message, error) {
+	return kafka.Message{}, errors.New("error FetchMessage")
+}
+
+func (m mockConsumerClientError) CommitMessages(_ context.Context, _ ...kafka.Message) error {
+	return errors.New("error CommitMessages")
 }
 
 func (m mockConsumerClientError) Config() kafka.ReaderConfig {
@@ -126,6 +142,93 @@ func Test_Consumer_Receive(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_Consumer_FetchMessage(t *testing.T) {
+	t.Parallel()
+
+	consumer, err := NewConsumer(
+		[]string{"url1", "url2"},
+		"topic1",
+		"group1",
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, consumer)
+
+	ctx := t.Context()
+
+	consumer.client = &mockConsumerClient{}
+	msg, err := consumer.FetchMessage(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []byte{1}, msg.Value)
+
+	consumer.client = &mockConsumerClientError{}
+	_, err = consumer.FetchMessage(ctx)
+	require.Error(t, err)
+}
+
+func Test_Consumer_CommitMessages(t *testing.T) {
+	t.Parallel()
+
+	consumer, err := NewConsumer(
+		[]string{"url1", "url2"},
+		"topic1",
+		"group1",
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, consumer)
+
+	ctx := t.Context()
+
+	consumer.client = &mockConsumerClient{}
+	err = consumer.CommitMessages(ctx, kafka.Message{Value: []byte{1}})
+	require.NoError(t, err)
+
+	consumer.client = &mockConsumerClientError{}
+	err = consumer.CommitMessages(ctx, kafka.Message{Value: []byte{1}})
+	require.Error(t, err)
+}
+
+func Test_Consumer_FetchMessage_CommitMessages_flow(t *testing.T) {
+	t.Parallel()
+
+	consumer, err := NewConsumer(
+		[]string{"url1", "url2"},
+		"topic1",
+		"group1",
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, consumer)
+
+	ctx := t.Context()
+
+	var committed []kafka.Message
+
+	consumer.client = consumerMock{
+		fetchMessage: func(_ context.Context) (kafka.Message, error) {
+			return kafka.Message{Topic: "topic1", Partition: 3, Offset: 42, Value: []byte("payload")}, nil
+		},
+		commitMessages: func(_ context.Context, msgs ...kafka.Message) error {
+			committed = append(committed, msgs...)
+
+			return nil
+		},
+		close: func() error { return nil },
+	}
+
+	// fetch does not commit: the caller acknowledges after successful processing
+	msg, err := consumer.FetchMessage(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []byte("payload"), msg.Value)
+	require.Empty(t, committed)
+
+	err = consumer.CommitMessages(ctx, msg)
+	require.NoError(t, err)
+	require.Len(t, committed, 1)
+	require.Equal(t, msg, committed[0])
+}
+
 func Test_Consumer_HealthCheck(t *testing.T) {
 	t.Parallel()
 
@@ -154,12 +257,22 @@ func Test_Consumer_HealthCheck(t *testing.T) {
 }
 
 type consumerMock struct {
-	readMessage func(ctx context.Context) (kafka.Message, error)
-	close       func() error
+	readMessage    func(ctx context.Context) (kafka.Message, error)
+	fetchMessage   func(ctx context.Context) (kafka.Message, error)
+	commitMessages func(ctx context.Context, msgs ...kafka.Message) error
+	close          func() error
 }
 
 func (c consumerMock) ReadMessage(ctx context.Context) (kafka.Message, error) {
 	return c.readMessage(ctx)
+}
+
+func (c consumerMock) FetchMessage(ctx context.Context) (kafka.Message, error) {
+	return c.fetchMessage(ctx)
+}
+
+func (c consumerMock) CommitMessages(ctx context.Context, msgs ...kafka.Message) error {
+	return c.commitMessages(ctx, msgs...)
 }
 
 func (c consumerMock) Close() error {

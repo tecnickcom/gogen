@@ -31,6 +31,14 @@ type Producer struct {
 // partition; use WithBalancer to choose a different strategy (for example a round-robin
 // balancer) to spread keyless messages across partitions.
 //
+// Broker acknowledgment defaults to kafka.RequireAll, so Send()/SendData() return an error
+// when the write is not acknowledged by the full in-sync replica set; use WithRequiredAcks
+// to trade durability for throughput.
+//
+// The batch flush timeout defaults to 10ms (instead of the kafka-go 1s default) to keep the
+// latency of synchronous per-message Send() calls low; use WithBatchTimeout and
+// WithBatchSize to tune batching behavior.
+//
 // The consumer-only options WithSessionTimeout and WithFirstOffset are accepted for API
 // compatibility on the shared Option type but have no effect on a Producer.
 func NewProducer(urls []string, topic string, opts ...Option) (*Producer, error) {
@@ -45,9 +53,12 @@ func NewProducer(urls []string, topic string, opts ...Option) (*Producer, error)
 	}
 
 	producer := &kafka.Writer{
-		Addr:     kafka.TCP(urls...),
-		Topic:    topic,
-		Balancer: cfg.balancer,
+		Addr:         kafka.TCP(urls...),
+		Topic:        topic,
+		Balancer:     cfg.balancer,
+		RequiredAcks: cfg.requiredAcks,
+		BatchSize:    cfg.batchSize,
+		BatchTimeout: cfg.batchTimeout,
 	}
 
 	return &Producer{

@@ -20,6 +20,9 @@ func Test_NewProducer(t *testing.T) {
 		options               []Option
 		expTimeout            time.Duration
 		expProduceChannelSize int
+		expRequiredAcks       kafka.RequiredAcks
+		expBatchSize          int
+		expBatchTimeout       time.Duration
 		wantErr               bool
 	}{
 		{
@@ -29,7 +32,23 @@ func Test_NewProducer(t *testing.T) {
 				WithSessionTimeout(time.Millisecond * 17),
 				WithBalancer(&kafka.RoundRobin{}),
 			},
-			expTimeout: time.Millisecond * 17,
+			expTimeout:      time.Millisecond * 17,
+			expRequiredAcks: kafka.RequireAll,
+			expBatchTimeout: defaultBatchTimeout,
+		},
+		{
+			name: "success with producer tuning options",
+			urls: []string{"url1", "url2"},
+			options: []Option{
+				WithSessionTimeout(time.Millisecond * 17),
+				WithRequiredAcks(kafka.RequireOne),
+				WithBatchSize(53),
+				WithBatchTimeout(time.Millisecond * 21),
+			},
+			expTimeout:      time.Millisecond * 17,
+			expRequiredAcks: kafka.RequireOne,
+			expBatchSize:    53,
+			expBatchTimeout: time.Millisecond * 21,
 		},
 		{
 			name: "missing encoding function",
@@ -55,6 +74,12 @@ func Test_NewProducer(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, producer)
 				require.Equal(t, tt.expTimeout, producer.cfg.sessionTimeout)
+
+				writer, ok := producer.client.(*kafka.Writer)
+				require.True(t, ok)
+				require.Equal(t, tt.expRequiredAcks, writer.RequiredAcks)
+				require.Equal(t, tt.expBatchSize, writer.BatchSize)
+				require.Equal(t, tt.expBatchTimeout, writer.BatchTimeout)
 
 				err := producer.Close()
 				require.NoError(t, err)
