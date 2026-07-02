@@ -2,10 +2,13 @@ package passwordhash
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"testing/iotest"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/encode"
 	"github.com/tecnickcom/gogen/pkg/random"
 	"golang.org/x/crypto/argon2"
 )
@@ -58,6 +61,7 @@ func Test_passwordHashData(t *testing.T) {
 
 	require.Error(t, err)
 	require.Empty(t, hash)
+	require.Contains(t, err.Error(), fmt.Sprintf("the password is too short: %d < %d", p.minPLen-1, p.minPLen))
 
 	longPassword := string(make([]byte, p.maxPLen+1))
 
@@ -131,7 +135,8 @@ func TestPasswordHash(t *testing.T) {
 func TestPasswordVerify(t *testing.T) {
 	t.Parallel()
 
-	p := New()
+	// The reference hash below was generated for a 4-character password.
+	p := New(WithMinPasswordLength(4))
 
 	hash := "eyJQIjp7IkEiOiJhcmdvbjJpZCIsIlYiOjE5LCJLIjozMiwiUyI6MTYsIlQiOjEsIk0iOjY1NTM2LCJQIjoxNn0sIlMiOiI1d25uaXRVaGV6cjFnbkdoeU1FVTdBPT0iLCJLIjoiQmNiUlRVNFNDcmQxNGJWUzRzcVBGYndvbnYreWlvZ09ueGJWMXBRTGRWMD0ifQo="
 
@@ -144,6 +149,147 @@ func TestPasswordVerify(t *testing.T) {
 
 	require.Error(t, err)
 	require.False(t, ok)
+}
+
+func TestPasswordVerifyLengthGuards(t *testing.T) {
+	t.Parallel()
+
+	p := New()
+
+	secret := "Test-Password-01234"
+
+	hash, err := p.PasswordHash(secret)
+
+	require.NoError(t, err)
+	require.NotEmpty(t, hash)
+
+	// Shorter than MinPasswordLength: rejected before any Argon2 computation.
+	ok, err := p.PasswordVerify("short", hash)
+
+	require.Error(t, err)
+	require.False(t, ok)
+	require.Contains(t, err.Error(), "the password is too short")
+
+	// Longer than MaxPasswordLength: rejected before any Argon2 computation.
+	ok, err = p.PasswordVerify(strings.Repeat("x", int(p.maxPLen)+1), hash)
+
+	require.Error(t, err)
+	require.False(t, ok)
+	require.Contains(t, err.Error(), "the password is too long")
+}
+
+func TestPasswordVerifyInvalidHashParams(t *testing.T) {
+	t.Parallel()
+
+	p := New()
+
+	validParams := func() *Params {
+		return &Params{
+			Algo:    DefaultAlgo,
+			Version: argon2.Version,
+			KeyLen:  DefaultKeyLen,
+			SaltLen: DefaultSaltLen,
+			Time:    1,
+			Memory:  DefaultMemory,
+			Threads: 1,
+		}
+	}
+
+	tests := []struct {
+		name string
+		data *Hashed
+	}{
+		{
+			name: "missing params",
+			data: &Hashed{Params: nil, Salt: make([]byte, DefaultSaltLen), Key: make([]byte, DefaultKeyLen)},
+		},
+		{
+			name: "zero time",
+			data: func() *Hashed {
+				prm := validParams()
+				prm.Time = 0
+
+				return &Hashed{Params: prm, Salt: make([]byte, DefaultSaltLen), Key: make([]byte, DefaultKeyLen)}
+			}(),
+		},
+		{
+			name: "excessive time",
+			data: func() *Hashed {
+				prm := validParams()
+				prm.Time = maxVerifyTime + 1
+
+				return &Hashed{Params: prm, Salt: make([]byte, DefaultSaltLen), Key: make([]byte, DefaultKeyLen)}
+			}(),
+		},
+		{
+			name: "zero memory",
+			data: func() *Hashed {
+				prm := validParams()
+				prm.Memory = 0
+
+				return &Hashed{Params: prm, Salt: make([]byte, DefaultSaltLen), Key: make([]byte, DefaultKeyLen)}
+			}(),
+		},
+		{
+			name: "excessive memory",
+			data: func() *Hashed {
+				prm := validParams()
+				prm.Memory = maxVerifyMemory + 1
+
+				return &Hashed{Params: prm, Salt: make([]byte, DefaultSaltLen), Key: make([]byte, DefaultKeyLen)}
+			}(),
+		},
+		{
+			name: "zero threads",
+			data: func() *Hashed {
+				prm := validParams()
+				prm.Threads = 0
+
+				return &Hashed{Params: prm, Salt: make([]byte, DefaultSaltLen), Key: make([]byte, DefaultKeyLen)}
+			}(),
+		},
+		{
+			name: "zero key length",
+			data: func() *Hashed {
+				prm := validParams()
+				prm.KeyLen = 0
+
+				return &Hashed{Params: prm, Salt: make([]byte, DefaultSaltLen), Key: make([]byte, DefaultKeyLen)}
+			}(),
+		},
+		{
+			name: "excessive key length",
+			data: func() *Hashed {
+				prm := validParams()
+				prm.KeyLen = maxVerifyKeyLen + 1
+
+				return &Hashed{Params: prm, Salt: make([]byte, DefaultSaltLen), Key: make([]byte, DefaultKeyLen)}
+			}(),
+		},
+		{
+			name: "empty salt",
+			data: &Hashed{Params: validParams(), Salt: nil, Key: make([]byte, DefaultKeyLen)},
+		},
+		{
+			name: "excessive salt",
+			data: &Hashed{Params: validParams(), Salt: make([]byte, maxVerifySaltLen+1), Key: make([]byte, DefaultKeyLen)},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			hash, err := encode.Serialize(tt.data)
+			require.NoError(t, err)
+
+			require.NotPanics(t, func() {
+				ok, verr := p.PasswordVerify("test-password", hash)
+				require.Error(t, verr)
+				require.False(t, ok)
+			})
+		})
+	}
 }
 
 func Test_PasswordHash_PasswordVerify(t *testing.T) {

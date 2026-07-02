@@ -115,6 +115,7 @@ package passwordhash
 
 import (
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"runtime"
 
@@ -169,6 +170,16 @@ const (
 	aesKeyLen128 = 16
 	aesKeyLen192 = 24
 	aesKeyLen256 = 32
+
+	// Maximum bounds accepted for parameters deserialized from a stored hash.
+	// The verify path derives a key using parameters embedded in the hash blob,
+	// so they are validated against these limits (and the min* constants above)
+	// to avoid panics inside argon2 and unbounded memory allocation when the
+	// blob is forged or corrupted.
+	maxVerifyTime    = 1 << 10 // maximum number of passes (iterations) over the memory
+	maxVerifyMemory  = 1 << 22 // maximum memory size in KiB (4 GiB)
+	maxVerifyKeyLen  = 1 << 10 // maximum derived key length in bytes
+	maxVerifySaltLen = 1 << 10 // maximum salt length in bytes
 )
 
 // Params contains the Argon2id parameters and limits used for password hashing.
@@ -302,8 +313,9 @@ func (ph *Params) PasswordHash(password string) (string, error) {
 // timing attacks.
 //
 // Returns (true, nil) on a successful match, (false, nil) on a non-match, or
-// (false, err) if the hash string is malformed or uses an incompatible
-// algorithm/version.
+// (false, err) if password falls outside the configured min/max length, or if
+// the hash string is malformed, embeds out-of-range parameters, or uses an
+// incompatible algorithm/version.
 func (ph *Params) PasswordVerify(password, hash string) (bool, error) {
 	data := &Hashed{}
 
@@ -350,8 +362,9 @@ func (ph *Params) EncryptPasswordHash(key []byte, password string) (string, erro
 // returns an error before decryption.
 //
 // Returns (true, nil) on a successful match, (false, nil) on a non-match, or
-// (false, err) if decryption fails (wrong key, tampered ciphertext) or the
-// inner hash is malformed.
+// (false, err) if password falls outside the configured min/max length, if
+// decryption fails (wrong key, tampered ciphertext), or the inner hash is
+// malformed.
 func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool, error) {
 	err := validatePepperKey(key)
 	if err != nil {
@@ -387,7 +400,7 @@ func validatePepperKey(key []byte) error {
 // The resulting hashed password, the salt and the parameters are returned as a struct.
 func (ph *Params) passwordHashData(password string) (*Hashed, error) {
 	if len(password) < int(ph.minPLen) {
-		return nil, fmt.Errorf("the password is too short: %d > %d", len(password), ph.minPLen)
+		return nil, fmt.Errorf("the password is too short: %d < %d", len(password), ph.minPLen)
 	}
 
 	if len(password) > int(ph.maxPLen) {
@@ -416,7 +429,22 @@ func (ph *Params) passwordHashData(password string) (*Hashed, error) {
 
 // passwordVerifyData verifies if a given password matches a hashed password generated with the passwordHashData method.
 // It returns true if the password matches the hashed password, otherwise false.
+// The password length limits and the deserialized parameters are validated
+// before any CPU-intensive computation takes place.
 func (ph *Params) passwordVerifyData(password string, data *Hashed) (bool, error) {
+	if len(password) < int(ph.minPLen) {
+		return false, fmt.Errorf("the password is too short: %d < %d", len(password), ph.minPLen)
+	}
+
+	if len(password) > int(ph.maxPLen) {
+		return false, fmt.Errorf("the password is too long: %d > %d", len(password), ph.maxPLen)
+	}
+
+	err := validateVerifyData(data)
+	if err != nil {
+		return false, err
+	}
+
 	if data.Params.Algo != ph.Algo {
 		return false, fmt.Errorf("different algorithm type: lib=%s, hash=%s", ph.Algo, data.Params.Algo)
 	}
@@ -428,6 +456,43 @@ func (ph *Params) passwordVerifyData(password string, data *Hashed) (bool, error
 	newkey := argon2.IDKey([]byte(password), data.Salt, data.Params.Time, data.Params.Memory, data.Params.Threads, data.Params.KeyLen)
 
 	return subtle.ConstantTimeCompare(newkey, data.Key) == 1, nil
+}
+
+// validateVerifyData checks that the parameters deserialized from a stored
+// hash are present and within sane bounds before they are fed to argon2.IDKey.
+// It returns an error for nil or out-of-range values instead of letting argon2
+// panic (or allocate unbounded memory) on forged or corrupted hash blobs.
+func validateVerifyData(data *Hashed) error {
+	if data == nil || data.Params == nil {
+		return errors.New("missing hash parameters")
+	}
+
+	if outOfRange(uint64(data.Params.Time), minTime, maxVerifyTime) {
+		return fmt.Errorf("invalid hash time parameter: %d", data.Params.Time)
+	}
+
+	if outOfRange(uint64(data.Params.Memory), minMemory, maxVerifyMemory) {
+		return fmt.Errorf("invalid hash memory parameter: %d", data.Params.Memory)
+	}
+
+	if data.Params.Threads < minThreads {
+		return fmt.Errorf("invalid hash threads parameter: %d", data.Params.Threads)
+	}
+
+	if outOfRange(uint64(data.Params.KeyLen), minKeyLen, maxVerifyKeyLen) {
+		return fmt.Errorf("invalid hash key length parameter: %d", data.Params.KeyLen)
+	}
+
+	if outOfRange(uint64(len(data.Salt)), minSaltLen, maxVerifySaltLen) {
+		return fmt.Errorf("invalid hash salt length: %d", len(data.Salt))
+	}
+
+	return nil
+}
+
+// outOfRange reports whether value falls outside the [minValue, maxValue] interval.
+func outOfRange(value, minValue, maxValue uint64) bool {
+	return (value < minValue) || (value > maxValue)
 }
 
 // adjustMemory returns the actual number of blocks is m',
