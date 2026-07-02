@@ -93,6 +93,12 @@ const (
 	DefaultAuthorizationHeader = httputil.HeaderAuthorization
 )
 
+// dummyPasswordHash is a fixed bcrypt hash (generated with bcrypt.MinCost, the
+// cost recommended for [UserHashFn]) compared against when the user is
+// unknown, so the login path takes the same time for unknown and known users
+// and does not leak account existence through response latency.
+var dummyPasswordHash = []byte("$2a$04$8irbELzC/P0jMQZnKg8Ooe7vXKCh6D689M02Tulopj9aDlk4rH4vq") //nolint:gochecknoglobals
+
 // SendResponseFn is the type of function used to send back the HTTP responses.
 type SendResponseFn func(ctx context.Context, w http.ResponseWriter, statusCode int, data string)
 
@@ -209,6 +215,11 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	hash, err := c.userHashFn(creds.Username)
 	if err != nil {
+		// Compare against a fixed dummy hash so the unknown-user path takes the
+		// same time as the known-user path below, preventing timing-based
+		// account enumeration.
+		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(creds.Password))
+
 		// invalid user
 		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, "invalid authentication credentials")
 		c.logger.With(
@@ -231,21 +242,7 @@ func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tnow := time.Now().UTC()
-	claims := Claims{
-		Username: creds.Username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(tnow.Add(c.expirationTime)), // exp
-			IssuedAt:  jwt.NewNumericDate(tnow),                       // iat
-			NotBefore: jwt.NewNumericDate(tnow),                       // nbf
-			ID:        c.rnd.UUIDv7().String(),                        // jti
-			Issuer:    c.issuer,                                       // iss
-			Subject:   c.subject,                                      // sub
-			Audience:  c.audience,                                     // aud
-		},
-	}
-
-	c.sendTokenResponse(w, r, &claims)
+	c.sendTokenResponse(w, r, c.newClaims(creds.Username))
 }
 
 // RenewHandler renews a valid token when it is close to expiration.
@@ -273,7 +270,10 @@ func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.sendTokenResponse(w, r, claims)
+	// Issue a token with fresh registered claims (exp, iat, nbf, jti) instead
+	// of re-signing the parsed ones, so the renewed token actually extends the
+	// expiration time.
+	c.sendTokenResponse(w, r, c.newClaims(claims.Username))
 }
 
 // IsAuthorized validates the bearer token on the incoming request.
@@ -292,6 +292,25 @@ func (c *JWT) IsAuthorized(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	return true
+}
+
+// newClaims builds fresh token claims for username, with expiration, issue,
+// and not-before times relative to the current time and a new unique token ID.
+func (c *JWT) newClaims(username string) *Claims {
+	tnow := time.Now().UTC()
+
+	return &Claims{
+		Username: username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(tnow.Add(c.expirationTime)), // exp
+			IssuedAt:  jwt.NewNumericDate(tnow),                       // iat
+			NotBefore: jwt.NewNumericDate(tnow),                       // nbf
+			ID:        c.rnd.UUIDv7().String(),                        // jti
+			Issuer:    c.issuer,                                       // iss
+			Subject:   c.subject,                                      // sub
+			Audience:  c.audience,                                     // aud
+		},
+	}
 }
 
 // sendTokenResponse signs claims and writes the token response.
@@ -343,9 +362,27 @@ func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
 
 			return c.key, nil
 		},
+		// Reject validly-signed tokens lacking the exp claim, which would
+		// otherwise never expire.
+		jwt.WithExpirationRequired(),
 	)
+	if err != nil {
+		return claims, err //nolint:wrapcheck
+	}
 
-	return claims, err //nolint:wrapcheck
+	return claims, ensureExpiresAt(claims)
+}
+
+// ensureExpiresAt rejects claims lacking an expiration time. Defense in depth:
+// WithExpirationRequired guarantees exp is present on parsed tokens, but this
+// check protects the ExpiresAt dereference in RenewHandler if the parser
+// behavior ever changes.
+func ensureExpiresAt(claims *Claims) error {
+	if claims.ExpiresAt == nil {
+		return errors.New("missing JWT expiration time")
+	}
+
+	return nil
 }
 
 // defaultSendResponse writes plain-text HTTP responses via httputil.HTTPResp.

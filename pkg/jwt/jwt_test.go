@@ -295,6 +295,129 @@ func TestRenewHandler(t *testing.T) {
 	}
 }
 
+func TestRenewHandlerIssuesFreshToken(t *testing.T) {
+	t.Parallel()
+
+	key := []byte("signing-key")
+
+	c, err := New(
+		key,
+		testUserHash,
+		WithExpirationTime(5*time.Second),
+		WithRenewTime(5*time.Second),
+	)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", strings.NewReader(`{"username":"test-name", "password":"test-name"}`))
+	c.LoginHandler(rr, req)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	oldToken, _ := io.ReadAll(resp.Body)
+
+	// Wait past a full second so the renewed exp (second-precision) is strictly later.
+	time.Sleep(1100 * time.Millisecond)
+
+	rr2 := httptest.NewRecorder()
+	req2, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req2.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+string(oldToken))
+	c.RenewHandler(rr2, req2)
+
+	resp2 := rr2.Result()
+	require.NotNil(t, resp2)
+
+	defer func() {
+		err := resp2.Body.Close()
+		require.NoError(t, err, "error closing resp2.Body")
+	}()
+
+	require.Equal(t, http.StatusOK, resp2.StatusCode)
+
+	newToken, _ := io.ReadAll(resp2.Body)
+
+	// The renewed token must not be a re-signed copy of the old one.
+	require.NotEqual(t, string(oldToken), string(newToken))
+
+	parseClaims := func(token string) *Claims {
+		claims := &Claims{}
+		_, perr := jwtv5.ParseWithClaims(token, claims, func(_ *jwtv5.Token) (any, error) { return key, nil })
+		require.NoError(t, perr)
+
+		return claims
+	}
+
+	oldClaims := parseClaims(string(oldToken))
+	newClaims := parseClaims(string(newToken))
+
+	require.True(t, newClaims.ExpiresAt.After(oldClaims.ExpiresAt.Time), "renewed token must expire later than the original")
+	require.NotEqual(t, oldClaims.ID, newClaims.ID, "renewed token must have a fresh jti")
+	require.Equal(t, oldClaims.Username, newClaims.Username)
+}
+
+func TestCheckTokenRejectsMissingExpiration(t *testing.T) {
+	t.Parallel()
+
+	key := []byte("signing-key")
+
+	c, err := New(key, testUserHash)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	// Craft a validly-signed token WITHOUT the exp claim: it must be rejected
+	// instead of being authorized forever (and must not panic RenewHandler).
+	claims := &Claims{Username: "test-name"}
+
+	signedToken, err := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, claims).SignedString(key)
+	require.NoError(t, err)
+
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+signedToken)
+
+	got, err := c.checkToken(req)
+	require.NotNil(t, got)
+	require.Error(t, err, "a token without exp must be rejected")
+
+	rr := httptest.NewRecorder()
+
+	require.NotPanics(t, func() { c.RenewHandler(rr, req) })
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	rr2 := httptest.NewRecorder()
+	require.False(t, c.IsAuthorized(rr2, req))
+}
+
+func TestDummyPasswordHash(t *testing.T) {
+	t.Parallel()
+
+	// The fixed dummy hash must be a valid bcrypt hash so the unknown-user
+	// login path performs a full-cost comparison (timing equalization).
+	cost, err := bcrypt.Cost(dummyPasswordHash)
+	require.NoError(t, err)
+	require.Equal(t, bcrypt.MinCost, cost)
+
+	err = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte("any-password"))
+	require.ErrorIs(t, err, bcrypt.ErrMismatchedHashAndPassword)
+}
+
 func TestIsAuthorized(t *testing.T) {
 	t.Parallel()
 
@@ -486,4 +609,17 @@ func (c *testSigningMethodError) Sign(_ string, _ any) ([]byte, error) {
 
 func (c *testSigningMethodError) Alg() string {
 	return ""
+}
+
+func Test_ensureExpiresAt(t *testing.T) {
+	t.Parallel()
+
+	require.Error(t, ensureExpiresAt(&Claims{}))
+
+	claims := &Claims{
+		RegisteredClaims: jwtv5.RegisteredClaims{
+			ExpiresAt: jwtv5.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+	}
+	require.NoError(t, ensureExpiresAt(claims))
 }
