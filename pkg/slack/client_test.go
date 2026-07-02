@@ -1,6 +1,8 @@
 package slack
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +29,21 @@ func TestNew(t *testing.T) {
 		{
 			name:        "fails with invalid character in URL",
 			serviceAddr: "http://invalid-url.domain.invalid\u007F",
+			wantErr:     true,
+		},
+		{
+			name:        "fails with empty addr",
+			serviceAddr: "",
+			wantErr:     true,
+		},
+		{
+			name:        "fails with relative addr missing scheme and host",
+			serviceAddr: "/services/T0000/B0000/token",
+			wantErr:     true,
+		},
+		{
+			name:        "fails with scheme but missing host",
+			serviceAddr: "http:///services/T0000/B0000/token",
 			wantErr:     true,
 		},
 		{
@@ -185,6 +202,70 @@ func TestClient_HealthCheck(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClient_redactWebhookURL(t *testing.T) {
+	t.Parallel()
+
+	webhookURL := "http://hooks.test.invalid/services/T0000/B0000/secret-webhook-token"
+
+	c, err := New(
+		webhookURL,
+		"",
+		"",
+		"",
+		"",
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, c.redactWebhookURL(nil), "redactWebhookURL(nil) should return nil")
+
+	// Errors that do not contain the webhook URL must be returned unchanged.
+	plain := errors.New("some transport failure")
+	require.ErrorIs(t, c.redactWebhookURL(plain), plain, "errors without the webhook URL must be passed through unchanged")
+
+	// Errors that contain the webhook URL must have it redacted, while
+	// remaining unwrappable to the original error.
+	secret := fmt.Errorf("execute request: Post %q: connection refused", webhookURL)
+	got := c.redactWebhookURL(secret)
+	require.Error(t, got)
+	require.NotContains(t, got.Error(), webhookURL, "redacted error must not contain the webhook URL")
+	require.NotContains(t, got.Error(), "secret-webhook-token", "redacted error must not contain the webhook path")
+	require.Contains(t, got.Error(), "REDACTED", "redacted error must mention REDACTED")
+	require.ErrorIs(t, got, secret, "redacted error must unwrap to the original error")
+}
+
+// TestClient_Send_redactsWebhookURL forces a real transport error (connection
+// refused) whose *url.Error message embeds the full webhook URL, and asserts
+// the error surfaced by Send does not leak the secret webhook path.
+func TestClient_Send_redactsWebhookURL(t *testing.T) {
+	t.Parallel()
+
+	// Start and immediately close a test server so the webhook address points
+	// to a closed port, forcing a transport error embedding the request URL.
+	ts := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
+	webhookURL := ts.URL + "/services/T0000/B0000/secret-webhook-token"
+
+	ts.Close()
+
+	c, err := New(
+		webhookURL,
+		"",
+		"",
+		"",
+		"",
+		WithRetryAttempts(1),
+		WithTimeout(100*time.Millisecond),
+	)
+	require.NoError(t, err)
+
+	err = c.Send(t.Context(), "test message", "", "", "", "")
+
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "secret-webhook-token", "Send error must not leak the webhook path")
+	require.NotContains(t, err.Error(), webhookURL, "Send error must not leak the webhook URL")
+	require.Contains(t, err.Error(), "REDACTED", "Send error must redact the webhook URL")
 }
 
 //nolint:contextcheck

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/tecnickcom/gogen/pkg/httpretrier"
@@ -46,9 +47,16 @@ type Client struct {
 // New constructs a Slack webhook client with defaults for timeout, retries, and optional message metadata.
 // Parameters other than addr are optional defaults that can be overridden per Send call.
 func New(addr, username, iconEmoji, iconURL, channel string, opts ...Option) (*Client, error) {
-	address, err := url.Parse(addr)
+	address, err := url.ParseRequestURI(addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse addr: %w", err)
+	}
+
+	// Reject relative or schemeless addresses at construction time; otherwise
+	// every Send would fail at request time with an obscure transport error.
+	// The addr is not echoed in the message because the webhook URL is a secret.
+	if address.Scheme == "" || address.Host == "" {
+		return nil, errors.New("invalid webhook addr: missing scheme or host")
 	}
 
 	c := &Client{
@@ -163,7 +171,8 @@ func (c *Client) sendData(ctx context.Context, reqData *message) (err error) {
 
 	r, nerr := http.NewRequestWithContext(ctx, http.MethodPost, c.address, bytes.NewReader(reqBody))
 	if nerr != nil {
-		return fmt.Errorf("create request: %w", nerr)
+		// URL parse errors quote the full webhook address (a secret): redact it.
+		return c.redactWebhookURL(fmt.Errorf("create request: %w", nerr))
 	}
 
 	r.Header.Set(httputil.HeaderContentType, httputil.MimeTypeJSON)
@@ -175,7 +184,10 @@ func (c *Client) sendData(ctx context.Context, reqData *message) (err error) {
 
 	resp, derr := hr.Do(r)
 	if derr != nil {
-		return fmt.Errorf("execute request: %w", derr)
+		// Transport failures are wrapped by Go's HTTP client in *url.Error,
+		// whose Error() includes the full request URL. The Slack webhook URL
+		// path is a secret, so redact it before returning.
+		return c.redactWebhookURL(fmt.Errorf("execute request: %w", derr))
 	}
 
 	defer func() {
@@ -188,6 +200,40 @@ func (c *Client) sendData(ctx context.Context, reqData *message) (err error) {
 
 	return nil
 }
+
+// redactWebhookURL returns an error whose message has every occurrence of the
+// client's webhook address replaced with "REDACTED". This guards against the
+// secret leaking through wrapped transport errors: Go's HTTP client returns a
+// *url.Error whose Error() string contains the full request URL, and the path
+// of a Slack webhook URL is a secret. The original error is preserved via
+// Unwrap so callers can still inspect it with errors.Is / errors.As.
+func (c *Client) redactWebhookURL(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if !strings.Contains(err.Error(), c.address) {
+		return err
+	}
+
+	return &redactedError{
+		msg: strings.ReplaceAll(err.Error(), c.address, "REDACTED"),
+		err: err,
+	}
+}
+
+// redactedError wraps an error with a sanitized message while keeping the
+// original error reachable through Unwrap for errors.Is / errors.As checks.
+type redactedError struct {
+	err error
+	msg string
+}
+
+// Error returns the sanitized error message with the webhook URL redacted.
+func (e *redactedError) Error() string { return e.msg }
+
+// Unwrap exposes the original error for errors.Is / errors.As.
+func (e *redactedError) Unwrap() error { return e.err }
 
 // newWriteHTTPRetrier builds the write-oriented retrier for webhook delivery.
 func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
