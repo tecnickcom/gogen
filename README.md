@@ -28,7 +28,7 @@ Source documentation: [pkg.go.dev/github.com/tecnickcom/gogen](https://pkg.go.de
 4. [Package Catalog](#package-catalog)
 5. [Developers Quick Start](#developers-quick-start)
 6. [Running All Tests](#running-all-tests)
-7. [How To Create a New Web Service](#web-service-project-example)
+7. [How To Create a New Web Service](#how-to-create-a-new-web-service)
 8. [Contributing](#contributing)
 
 ## Why gogen
