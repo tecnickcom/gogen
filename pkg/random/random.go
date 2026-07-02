@@ -170,16 +170,33 @@ func (r *Rnd) RandString64() string {
 }
 
 // RandString returns an n-character random string using the configured character map, suitable for passwords.
+//
+// Characters are selected with rejection sampling so each character map entry
+// is drawn uniformly, even when 256 is not a multiple of the map length.
 func (r *Rnd) RandString(n int) (string, error) {
-	b, err := r.RandomBytes(n)
-	if err != nil {
-		return "", err
-	}
+	b := make([]byte, n)
 
 	cmlen := len(r.chrMap)
 
-	for i, v := range b {
-		b[i] = r.chrMap[(int(v)*cmlen)>>8]
+	// limit is the largest multiple of cmlen not exceeding 256: random bytes
+	// at or above it are rejected to avoid modulo bias.
+	limit := 256 - (256 % cmlen)
+
+	filled := 0
+	for filled < n {
+		rb, err := r.RandomBytes(n - filled)
+		if err != nil {
+			return "", err
+		}
+
+		for _, v := range rb {
+			if int(v) >= limit {
+				continue
+			}
+
+			b[filled] = r.chrMap[int(v)%cmlen]
+			filled++
+		}
 	}
 
 	return string(b), nil

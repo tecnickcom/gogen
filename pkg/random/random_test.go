@@ -3,6 +3,7 @@ package random
 import (
 	"errors"
 	"io"
+	"strings"
 	"testing"
 	"testing/iotest"
 
@@ -126,6 +127,84 @@ func TestRandString64(t *testing.T) {
 	s := r.RandString64()
 
 	require.NotEmpty(t, s)
+}
+
+// sequentialReader deterministically emits the byte sequence 0,1,...,255,0,...
+// allowing exact verification of the rejection-sampling character selection.
+// When max > 0, it reports EOF after producing max bytes.
+type sequentialReader struct {
+	next     byte
+	produced int
+	max      int
+}
+
+func (s *sequentialReader) Read(p []byte) (int, error) {
+	for i := range p {
+		if s.max > 0 && s.produced >= s.max {
+			if i == 0 {
+				return 0, io.EOF
+			}
+
+			return i, nil
+		}
+
+		p[i] = s.next
+		s.next++
+		s.produced++
+	}
+
+	return len(p), nil
+}
+
+func TestRandStringUniformSelection(t *testing.T) {
+	t.Parallel()
+
+	// Character map of length 10: limit = 250, bytes 250-255 are rejected.
+	r := New(&sequentialReader{}, WithByteToCharMap([]byte(chrDigits)))
+
+	// The first 250 sequential bytes (0-249) are all accepted and map each
+	// character exactly 25 times: a biased mapping would skew the counts.
+	s, err := r.RandString(250)
+
+	require.NoError(t, err)
+	require.Len(t, s, 250)
+
+	for _, c := range chrDigits {
+		require.Equal(t, 25, strings.Count(s, string(c)), "character %q", c)
+	}
+
+	// Requesting 256 characters consumes bytes 0-255: the 6 bytes >= 250 are
+	// rejected and replaced by a refill read returning bytes 0-5, so exactly
+	// the characters '0'-'5' gain one extra occurrence.
+	r2 := New(&sequentialReader{}, WithByteToCharMap([]byte(chrDigits)))
+
+	s2, err := r2.RandString(256)
+
+	require.NoError(t, err)
+	require.Len(t, s2, 256)
+
+	for i, c := range chrDigits {
+		want := 25
+		if i < 6 {
+			want = 26
+		}
+
+		require.Equal(t, want, strings.Count(s2, string(c)), "character %q", c)
+	}
+}
+
+func TestRandStringRefillError(t *testing.T) {
+	t.Parallel()
+
+	// The reader is exhausted while replacing rejected bytes: bytes 250-255
+	// are all rejected, so the refill reads hit EOF and RandString must fail
+	// instead of looping or returning a short string.
+	r := New(&sequentialReader{max: 256}, WithByteToCharMap([]byte(chrDigits)))
+
+	s, err := r.RandString(252)
+
+	require.Error(t, err)
+	require.Empty(t, s)
 }
 
 func TestRandString(t *testing.T) {
