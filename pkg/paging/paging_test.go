@@ -1,6 +1,7 @@
 package paging
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -139,6 +140,40 @@ func TestNew(t *testing.T) {
 				Offset:       0,
 			},
 		},
+		{
+			name: "totalItems at max uint does not overflow total pages",
+			args: args{
+				currentPage: 1,
+				pageSize:    10,
+				totalItems:  math.MaxUint,
+			},
+			want: Paging{
+				CurrentPage:  1,
+				PageSize:     10,
+				TotalItems:   math.MaxUint,
+				TotalPages:   (math.MaxUint / 10) + 1,
+				PreviousPage: 1,
+				NextPage:     2,
+				Offset:       0,
+			},
+		},
+		{
+			name: "max currentPage and totalItems keep invariants",
+			args: args{
+				currentPage: math.MaxUint,
+				pageSize:    10,
+				totalItems:  math.MaxUint,
+			},
+			want: Paging{
+				CurrentPage:  (math.MaxUint / 10) + 1,
+				PageSize:     10,
+				TotalItems:   math.MaxUint,
+				TotalPages:   (math.MaxUint / 10) + 1,
+				PreviousPage: math.MaxUint / 10,
+				NextPage:     (math.MaxUint / 10) + 1,
+				Offset:       10 * (math.MaxUint / 10),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -237,6 +272,24 @@ func TestComputeOffsetAndLimit(t *testing.T) {
 			},
 			wantOffset: 12,
 			wantLimit:  3,
+		},
+		{
+			name: "offset overflow is clamped to max uint",
+			args: args{
+				currentPage: 190000000000000000,
+				pageSize:    100,
+			},
+			wantOffset: math.MaxUint,
+			wantLimit:  100,
+		},
+		{
+			name: "max currentPage overflow is clamped to max uint",
+			args: args{
+				currentPage: math.MaxUint,
+				pageSize:    2,
+			},
+			wantOffset: math.MaxUint,
+			wantLimit:  2,
 		},
 	}
 

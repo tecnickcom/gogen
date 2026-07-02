@@ -68,6 +68,8 @@ metadata in a single import.
 */
 package paging
 
+import "math"
+
 // Paging contains all pagination metadata computed from current page, page size, and total item count; all fields are JSON-serializable for API responses.
 type Paging struct {
 	// CurrentPage is the current page number starting from 1.
@@ -144,18 +146,32 @@ func minPageSize(pageSize uint) uint {
 	return pageSize
 }
 
-// computeOffset computes the zero-based offset for the given current page and page size.
+// computeOffset computes the zero-based offset for the given current page and page size,
+// clamping to math.MaxUint when the multiplication overflows,
+// so a wrapped offset cannot silently select the wrong rows.
 func computeOffset(currentPage, pageSize uint) uint {
-	return pageSize * (currentPage - 1)
+	offset := pageSize * (currentPage - 1)
+
+	if currentPage > 1 && offset/pageSize != currentPage-1 {
+		return math.MaxUint
+	}
+
+	return offset
 }
 
-// computeTotalPages computes the total number of pages required to contain all items.
+// computeTotalPages computes the total number of pages required to contain all items,
+// using an overflow-safe ceiling division.
 func computeTotalPages(totalItems, pageSize uint) uint {
 	if totalItems <= pageSize {
 		return 1
 	}
 
-	return (totalItems + pageSize - 1) / pageSize
+	pages := totalItems / pageSize
+	if totalItems%pageSize != 0 {
+		pages++
+	}
+
+	return pages
 }
 
 // computePreviousPage computes the previous page number.
