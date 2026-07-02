@@ -14,8 +14,9 @@ applied at log boundaries.
 
 [HTTPData] applies multiple redaction rules in sequence:
 
-  - Authorization headers (`Authorization: ...`), preserving header name while
-    replacing the value.
+  - Headers whose name contains "authorization" (`Authorization: ...`,
+    `Proxy-Authorization: ...`), preserving header name while replacing the
+    value.
   - JSON key/value pairs where the key name contains secret-like substrings
     (authentication/session, crypto markers, legal-signing, financial, and PII
     keyword groups).
@@ -91,8 +92,9 @@ const (
 var (
 	redactedBytes = []byte(RedactionMarker) //nolint:gochecknoglobals
 
-	// authorizationPrefix is the ASCII-lowercased header name used for the fast
-	// case-insensitive Authorization header scan.
+	// authorizationPrefix is the ASCII-lowercased needle used for the fast
+	// case-insensitive scan of header names containing "authorization"
+	// (e.g. Authorization, Proxy-Authorization).
 	authorizationPrefix = []byte("authorization") //nolint:gochecknoglobals
 
 	redactionBufferPool = sync.Pool{New: newRedactionBuffer} //nolint:gochecknoglobals
@@ -128,56 +130,107 @@ func LuhnCheckEnabled() bool {
 
 // normalizeKey converts a key name to a tokenized lowercase form suitable for
 // boundary-aware keyword checks (e.g., camelCase -> snake_case tokens).
+// Uppercase acronym runs followed by a lowercase letter are split before the
+// last uppercase letter (e.g., APIKey -> api_key, JWTToken -> jwt_token).
+//
+//nolint:gocognit,gocyclo,cyclop
 func normalizeKey(s string) string {
 	var b strings.Builder
 	b.Grow(len(s) * 2)
 
+	runes := []rune(s)
 	prevIsLowerOrDigit := false
+	prevIsUpper := false
 	prevIsUnderscore := true
 
-	for _, r := range s {
-		prevIsLowerOrDigit, prevIsUnderscore = appendNormalizedRune(
-			&b,
-			r,
-			prevIsLowerOrDigit,
-			prevIsUnderscore,
-		)
+	for i, r := range runes {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			isUpper := unicode.IsUpper(r)
+			nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+
+			if isUpper && !prevIsUnderscore && (prevIsLowerOrDigit || (prevIsUpper && nextIsLower)) {
+				b.WriteByte('_')
+			}
+
+			b.WriteRune(unicode.ToLower(r))
+
+			prevIsLowerOrDigit = unicode.IsLower(r) || unicode.IsDigit(r)
+			prevIsUpper = isUpper
+			prevIsUnderscore = false
+
+			continue
+		}
+
+		if !prevIsUnderscore {
+			b.WriteByte('_')
+		}
+
+		prevIsLowerOrDigit = false
+		prevIsUpper = false
+		prevIsUnderscore = true
 	}
 
 	return strings.Trim(b.String(), "_")
 }
 
-func appendNormalizedRune(b *strings.Builder, r rune, prevIsLowerOrDigit, prevIsUnderscore bool) (bool, bool) {
-	if unicode.IsLetter(r) || unicode.IsDigit(r) {
-		isUpper := unicode.IsUpper(r)
-		if isUpper && prevIsLowerOrDigit && !prevIsUnderscore {
-			b.WriteByte('_')
+// authorizationHeaderColon reports whether line looks like an HTTP header
+// whose name contains "authorization" (e.g. Authorization,
+// Proxy-Authorization), returning the index of the colon separating the
+// header name from its value.
+func authorizationHeaderColon(line []byte) (int, bool) {
+	colon := bytes.IndexByte(line, ':')
+	if colon <= 0 {
+		return 0, false
+	}
+
+	name := line[:colon]
+
+	// Allow optional whitespace between the header name and the colon.
+	for len(name) > 0 && (name[len(name)-1] == ' ' || name[len(name)-1] == '\t') {
+		name = name[:len(name)-1]
+	}
+
+	if len(name) == 0 {
+		return 0, false
+	}
+
+	// Only header-name characters are accepted, so JSON or URL-encoded lines
+	// containing a colon are left to the dedicated redaction rules.
+	for _, c := range name {
+		if !isHeaderNameByte(c) {
+			return 0, false
 		}
-
-		b.WriteRune(unicode.ToLower(r))
-
-		return unicode.IsLower(r) || unicode.IsDigit(r), false
 	}
 
-	if !prevIsUnderscore {
-		b.WriteByte('_')
-	}
-
-	return false, true
+	return colon, containsAuthorizationASCIIFold(name)
 }
 
-func hasAuthorizationPrefix(line []byte) bool {
-	if len(line) <= len(authorizationPrefix) {
-		return false
-	}
+func isHeaderNameByte(c byte) bool {
+	return isASCIIAlphaNum(c) || c == '-' || c == '_'
+}
 
-	for i, c := range authorizationPrefix {
-		if line[i]|0x20 != c { // ASCII lower-case trick.
-			return false
+// containsAuthorizationASCIIFold reports whether name contains the ASCII
+// case-insensitive substring "authorization" without allocating.
+func containsAuthorizationASCIIFold(name []byte) bool {
+	n := len(authorizationPrefix)
+
+	for i := 0; i+n <= len(name); i++ {
+		match := true
+
+		for j := range n {
+			if name[i+j]|0x20 != authorizationPrefix[j] { // ASCII lower-case trick.
+				match = false
+
+				break
+			}
+		}
+
+		if match {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 func skipInlineSpaces(src []byte, i int) int {
@@ -421,13 +474,11 @@ func redactAllInSinglePassInto(dst, src []byte) []byte {
 			}
 
 			line := src[i:lineEnd]
-			if hasAuthorizationPrefix(line) {
-				if redacted, ok := appendRedactedAuthorizationLine(dst, line); ok {
-					dst = redacted
-					i += len(line)
+			if colon, ok := authorizationHeaderColon(line); ok {
+				dst = appendRedactedAuthorizationLine(dst, line, colon)
+				i += len(line)
 
-					continue
-				}
+				continue
 			}
 		}
 
@@ -527,14 +578,8 @@ func isDigitByte(c byte) bool {
 	return c >= '0' && c <= '9'
 }
 
-func appendRedactedAuthorizationLine(dst, line []byte) ([]byte, bool) {
-	colon := bytes.IndexByte(line[len(authorizationPrefix):], ':')
-	if colon < 0 {
-		return dst, false
-	}
-
-	headerEnd := len(authorizationPrefix) + colon + 1
-	valueStart := skipInlineSpaces(line, headerEnd)
+func appendRedactedAuthorizationLine(dst, line []byte, colon int) []byte {
+	valueStart := skipInlineSpaces(line, colon+1)
 
 	dst = append(dst, line[:valueStart]...)
 	dst = append(dst, redactedBytes...)
@@ -543,7 +588,7 @@ func appendRedactedAuthorizationLine(dst, line []byte) ([]byte, bool) {
 		dst = append(dst, '\n')
 	}
 
-	return dst, true
+	return dst
 }
 
 func appendRedactedSensitiveJSONAt(src []byte, i int, dst []byte) (int, []byte, bool) {

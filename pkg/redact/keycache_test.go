@@ -55,6 +55,34 @@ func TestIsSensitiveKeyASCIIFastBranches(t *testing.T) {
 	require.False(t, result)
 }
 
+func TestIsSensitiveKeyASCIIFastAcronymRuns(t *testing.T) {
+	t.Parallel()
+
+	for _, key := range []string{
+		"APIKey",
+		"JWTToken",
+		"CCNumber",
+		"XPassword",
+		"LASTName",
+		"authorization",
+		"Proxy-Authorization",
+	} {
+		result, ok := isSensitiveKeyASCIIFast([]byte(key))
+		require.True(t, ok, key)
+		require.True(t, result, key)
+	}
+
+	for _, key := range []string{
+		"APIVersion",
+		"IDValue",
+		"Reference",
+	} {
+		result, ok := isSensitiveKeyASCIIFast([]byte(key))
+		require.True(t, ok, key)
+		require.False(t, result, key)
+	}
+}
+
 func TestIsSensitiveTokenASCIIEmptyAndUnknown(t *testing.T) {
 	t.Parallel()
 

@@ -20,74 +20,76 @@ var sensitiveKeyCache = newSensitiveKeyMemo() //nolint:gochecknoglobals
 
 // Sensitive tokens are precomputed once and matched against normalized key tokens.
 var sensitiveTokens = map[string]struct{}{ //nolint:gochecknoglobals
-	"acc":         {},
-	"account":     {},
-	"addr":        {},
-	"address":     {},
-	"amount":      {},
-	"attestation": {},
-	"auth":        {},
-	"autograph":   {},
-	"bal":         {},
-	"balance":     {},
-	"bearer":      {},
-	"bill":        {},
-	"birth":       {},
-	"card":        {},
-	"cc":          {},
-	"cell":        {},
-	"cert":        {},
-	"checksum":    {},
-	"cookie":      {},
-	"cred":        {},
-	"cv2":         {},
-	"cvc":         {},
-	"cvv":         {},
-	"dob":         {},
-	"dsa":         {},
-	"dsn":         {},
-	"ecdsa":       {},
-	"email":       {},
-	"endorse":     {},
-	"expiry":      {},
-	"fingerprint": {},
-	"hash":        {},
-	"hmac":        {},
-	"holder":      {},
-	"iban":        {},
-	"jwt":         {},
-	"key":         {},
-	"login":       {},
-	"mail":        {},
-	"pass":        {},
-	"password":    {},
-	"pay":         {},
-	"payment":     {},
-	"phone":       {},
-	"pkcs":        {},
-	"pkcs12":      {},
-	"postal":      {},
-	"proof":       {},
-	"pwd":         {},
-	"rsa":         {},
-	"salt":        {},
-	"seal":        {},
-	"secret":      {},
-	"secur":       {},
-	"secure":      {},
-	"security":    {},
-	"sess":        {},
-	"session":     {},
-	"sgn":         {},
-	"sid":         {},
-	"sig":         {},
-	"social":      {},
-	"ssn":         {},
-	"swift":       {},
-	"tax":         {},
-	"tel":         {},
-	"telephone":   {},
-	"token":       {},
+	"acc":           {},
+	"account":       {},
+	"addr":          {},
+	"address":       {},
+	"amount":        {},
+	"attestation":   {},
+	"auth":          {},
+	"authenticate":  {},
+	"authorization": {},
+	"autograph":     {},
+	"bal":           {},
+	"balance":       {},
+	"bearer":        {},
+	"bill":          {},
+	"birth":         {},
+	"card":          {},
+	"cc":            {},
+	"cell":          {},
+	"cert":          {},
+	"checksum":      {},
+	"cookie":        {},
+	"cred":          {},
+	"cv2":           {},
+	"cvc":           {},
+	"cvv":           {},
+	"dob":           {},
+	"dsa":           {},
+	"dsn":           {},
+	"ecdsa":         {},
+	"email":         {},
+	"endorse":       {},
+	"expiry":        {},
+	"fingerprint":   {},
+	"hash":          {},
+	"hmac":          {},
+	"holder":        {},
+	"iban":          {},
+	"jwt":           {},
+	"key":           {},
+	"login":         {},
+	"mail":          {},
+	"pass":          {},
+	"password":      {},
+	"pay":           {},
+	"payment":       {},
+	"phone":         {},
+	"pkcs":          {},
+	"pkcs12":        {},
+	"postal":        {},
+	"proof":         {},
+	"pwd":           {},
+	"rsa":           {},
+	"salt":          {},
+	"seal":          {},
+	"secret":        {},
+	"secur":         {},
+	"secure":        {},
+	"security":      {},
+	"sess":          {},
+	"session":       {},
+	"sgn":           {},
+	"sid":           {},
+	"sig":           {},
+	"social":        {},
+	"ssn":           {},
+	"swift":         {},
+	"tax":           {},
+	"tel":           {},
+	"telephone":     {},
+	"token":         {},
 }
 
 // sensitiveKeyMemo is a small concurrent memoization cache for sensitive-key checks.
@@ -148,10 +150,11 @@ func isSensitiveKeyBytes(key []byte) bool {
 	return result
 }
 
-//nolint:cyclop,gocognit,gocyclo,nestif
+//nolint:cyclop,gocognit,gocyclo
 func isSensitiveKeyASCIIFast(key []byte) (bool, bool) {
 	start := -1
 	prevIsLowerOrDigit := false
+	prevIsUpper := false
 	prevIsUnderscore := true
 	prevFirstOrLast := false
 
@@ -164,58 +167,77 @@ func isSensitiveKeyASCIIFast(key []byte) (bool, bool) {
 
 		if isASCIIAlphaNum(c) {
 			isUpper := c >= 'A' && c <= 'Z'
-			if isUpper && prevIsLowerOrDigit && !prevIsUnderscore && start >= 0 {
-				tok := key[start:i]
-				if isSensitiveTokenASCII(tok) {
+			isLower := c >= 'a' && c <= 'z'
+
+			switch {
+			case isUpper && prevIsLowerOrDigit && !prevIsUnderscore && start >= 0:
+				// camelCase boundary: a lower/digit-to-upper transition closes the token.
+				sensitive, firstOrLast := closeSensitiveToken(key[start:i], prevFirstOrLast)
+				if sensitive {
 					return true, true
 				}
 
-				if prevFirstOrLast && equalsASCIIFold(tok, "name") {
-					return true, true
-				}
-
-				prevFirstOrLast = equalsASCIIFold(tok, "first") || equalsASCIIFold(tok, "last")
+				prevFirstOrLast = firstOrLast
 				start = i
-			} else if start < 0 {
+			case isLower && prevIsUpper && start >= 0 && i-1 > start:
+				// Acronym-run boundary (e.g. APIKey, JWTToken, CCNumber): the last
+				// uppercase letter starts the next word, so the token ends before it.
+				sensitive, firstOrLast := closeSensitiveToken(key[start:i-1], prevFirstOrLast)
+				if sensitive {
+					return true, true
+				}
+
+				prevFirstOrLast = firstOrLast
+				start = i - 1
+			case start < 0:
 				start = i
 			}
 
-			prevIsLowerOrDigit = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+			prevIsUpper = isUpper
+			prevIsLowerOrDigit = isLower || (c >= '0' && c <= '9')
 			prevIsUnderscore = false
 
 			continue
 		}
 
 		if start >= 0 {
-			tok := key[start:i]
-			if isSensitiveTokenASCII(tok) {
+			sensitive, firstOrLast := closeSensitiveToken(key[start:i], prevFirstOrLast)
+			if sensitive {
 				return true, true
 			}
 
-			if prevFirstOrLast && equalsASCIIFold(tok, "name") {
-				return true, true
-			}
-
-			prevFirstOrLast = equalsASCIIFold(tok, "first") || equalsASCIIFold(tok, "last")
+			prevFirstOrLast = firstOrLast
 			start = -1
 		}
 
+		prevIsUpper = false
 		prevIsLowerOrDigit = false
 		prevIsUnderscore = true
 	}
 
 	if start >= 0 {
-		tok := key[start:]
-		if isSensitiveTokenASCII(tok) {
-			return true, true
-		}
-
-		if prevFirstOrLast && equalsASCIIFold(tok, "name") {
+		sensitive, _ := closeSensitiveToken(key[start:], prevFirstOrLast)
+		if sensitive {
 			return true, true
 		}
 	}
 
 	return false, true
+}
+
+// closeSensitiveToken checks a completed token: it reports whether the token
+// (or the "first"/"last" + "name" pair) is sensitive, and whether the token
+// primes the first/last-name special case for the next token.
+func closeSensitiveToken(tok []byte, prevFirstOrLast bool) (bool, bool) {
+	if isSensitiveTokenASCII(tok) {
+		return true, false
+	}
+
+	if prevFirstOrLast && equalsASCIIFold(tok, "name") {
+		return true, false
+	}
+
+	return false, equalsASCIIFold(tok, "first") || equalsASCIIFold(tok, "last")
 }
 
 func isASCIIAlphaNum(c byte) bool {
@@ -232,7 +254,8 @@ func isSensitiveTokenASCII(tok []byte) bool {
 	case 'a':
 		return equalsASCIIFold(tok, "acc") || equalsASCIIFold(tok, "account") || equalsASCIIFold(tok, "addr") ||
 			equalsASCIIFold(tok, "address") || equalsASCIIFold(tok, "amount") || equalsASCIIFold(tok, "attestation") ||
-			equalsASCIIFold(tok, "auth") || equalsASCIIFold(tok, "autograph")
+			equalsASCIIFold(tok, "auth") || equalsASCIIFold(tok, "authenticate") ||
+			equalsASCIIFold(tok, "authorization") || equalsASCIIFold(tok, "autograph")
 	case 'b':
 		return equalsASCIIFold(tok, "bal") || equalsASCIIFold(tok, "balance") || equalsASCIIFold(tok, "bearer") ||
 			equalsASCIIFold(tok, "bill") || equalsASCIIFold(tok, "birth")

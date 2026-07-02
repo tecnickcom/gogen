@@ -735,12 +735,104 @@ func TestHTTPDataDigitWordBoundaryBranch(t *testing.T) {
 	require.Equal(t, input, HTTPDataBytes(input))
 }
 
-func TestAppendRedactedAuthorizationLineNoColon(t *testing.T) {
+func TestAuthorizationHeaderColon(t *testing.T) {
 	t.Parallel()
 
-	out, ok := appendRedactedAuthorizationLine([]byte("prefix "), []byte("Authorization no-colon\n"))
+	// No colon: not a header line.
+	_, ok := authorizationHeaderColon([]byte("Authorization no-colon\n"))
 	require.False(t, ok)
-	require.Equal(t, []byte("prefix "), out)
+
+	// Empty name before the colon: not a header line.
+	_, ok = authorizationHeaderColon([]byte(": value\n"))
+	require.False(t, ok)
+
+	_, ok = authorizationHeaderColon([]byte(" : value\n"))
+	require.False(t, ok)
+
+	// Names with non-header characters are left to the JSON/URL rules.
+	_, ok = authorizationHeaderColon([]byte(`{"Authorization":"SECRET"}`))
+	require.False(t, ok)
+
+	// Header names that do not contain "authorization" are not matched.
+	_, ok = authorizationHeaderColon([]byte("X-Header: SECRET\n"))
+	require.False(t, ok)
+
+	// Plain and prefixed authorization headers are matched.
+	colon, ok := authorizationHeaderColon([]byte("Authorization: Bearer SECRET\n"))
+	require.True(t, ok)
+	require.Equal(t, len("Authorization"), colon)
+
+	colon, ok = authorizationHeaderColon([]byte("Proxy-Authorization: Basic SECRET\n"))
+	require.True(t, ok)
+	require.Equal(t, len("Proxy-Authorization"), colon)
+
+	// Optional whitespace before the colon is allowed.
+	colon, ok = authorizationHeaderColon([]byte("authorization : ApiKey=SECRET\n"))
+	require.True(t, ok)
+	require.Equal(t, len("authorization "), colon)
+}
+
+func TestHTTPDataProxyAuthorizationHeader(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"Proxy-Authorization: Basic SECRET\n", "Proxy-Authorization: ***\n"},
+		{"PROXY-AUTHORIZATION: Bearer SECRET", "PROXY-AUTHORIZATION: ***"},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+	}
+}
+
+func TestHTTPDataAuthorizationJSONKey(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`{"Authorization":"Bearer SECRET"}`, `{"Authorization":"***"}`},
+		{`{"authorization": "Basic SECRET"}`, `{"authorization": "***"}`},
+		{`{"Proxy-Authorization": "SECRET"}`, `{"Proxy-Authorization": "***"}`},
+		{`authorization=SECRET&reference=VISIBLE`, `authorization=***&reference=VISIBLE`},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+	}
+}
+
+func TestHTTPDataAcronymRunKeys(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`{"APIKey":"SECRET"}`, `{"APIKey":"***"}`},
+		{`{"JWTToken":"SECRET"}`, `{"JWTToken":"***"}`},
+		{`{"CCNumber":"SECRET"}`, `{"CCNumber":"***"}`},
+		{`{"XPassword":"SECRET"}`, `{"XPassword":"***"}`},
+		{`APIKey=SECRET&reference=VISIBLE`, `APIKey=***&reference=VISIBLE`},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+	}
+}
+
+func TestNormalizeKeyAcronymRuns(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "api_key", normalizeKey("APIKey"))
+	require.Equal(t, "jwt_token", normalizeKey("JWTToken"))
+	require.Equal(t, "cc_number", normalizeKey("CCNumber"))
+	require.Equal(t, "dsn", normalizeKey("DSN"))
+	require.Equal(t, "x_password", normalizeKey("XPassword"))
 }
 
 func TestLikelyJSONKeyStart(t *testing.T) {
