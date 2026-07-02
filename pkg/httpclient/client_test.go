@@ -18,6 +18,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
 func TestNew(t *testing.T) {
@@ -202,6 +203,65 @@ func TestClient_Do(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestClient_Do_ZeroTimeout verifies that WithTimeout(0) means "no timeout"
+// (the net/http convention) instead of an already-expired context that would
+// fail every request immediately.
+func TestClient_Do_ZeroTimeout(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	}))
+	t.Cleanup(server.Close)
+
+	client := New(WithTimeout(0))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, []byte("OK"), body)
+	require.NoError(t, resp.Body.Close())
+}
+
+// TestClient_Do_InvalidTraceIDReplaced verifies that an invalid trace ID
+// stored in the context (e.g. containing control characters) never reaches the
+// outbound header: it is replaced with a freshly generated valid ID.
+func TestClient_Do_InvalidTraceIDReplaced(t *testing.T) {
+	t.Parallel()
+
+	const invalidID = "bad\x00trace\nid"
+
+	var gotHeader string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotHeader = r.Header.Get(traceid.DefaultHeader)
+		_, _ = w.Write([]byte("OK"))
+	}))
+	t.Cleanup(server.Close)
+
+	client := New()
+
+	ctx := traceid.NewContext(t.Context(), invalidID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NoError(t, resp.Body.Close())
+
+	require.NotEmpty(t, gotHeader)
+	require.NotEqual(t, invalidID, gotHeader, "the invalid trace ID must not be propagated")
+	require.Regexp(t, `^[0-9A-Za-z\-\_\.]{1,64}$`, gotHeader)
 }
 
 func TestClient_Do_CloseBodyCancelsContext(t *testing.T) {

@@ -89,14 +89,25 @@ func (b *cancelReadCloser) Close() error {
 // leaking the timeout timer until the timeout elapses; failing to close the body
 // also leaks the underlying connection as with the standard net/http client.
 //
-//nolint:gocognit
+//nolint:gocognit,gocyclo,cyclop
 func (c *Client) Do(r *http.Request) (*http.Response, error) {
 	reqTime := time.Now().UTC()
 
 	// The cancel func is released either when the response body is closed
 	// (success path) or immediately when no response is returned (error path);
 	// calling it interrupts in-flight body reads with a context-canceled error.
-	ctx, cancel := context.WithTimeout(r.Context(), c.client.Timeout)
+	// A non-positive timeout means "no timeout" (the net/http convention), so
+	// in that case the context is only made cancelable, never given an
+	// already-expired deadline.
+	ctx := r.Context()
+
+	var cancel context.CancelFunc
+
+	if c.client.Timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, c.client.Timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
 
 	l := c.logger.With(c.logPrefix+"component", c.component)
 	debug := l.Enabled(ctx, slog.LevelDebug)
@@ -123,9 +134,11 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 		l.Info(c.logPrefix + "outbound")
 	}()
 
-	reqID := traceid.FromContext(ctx, c.rnd.UUIDv7().String())
+	// SetHTTPRequestHeaderFromContext validates the context trace ID before
+	// setting the outbound header, replacing any value that does not match the
+	// traceid pattern (a header-injection surface) with a freshly generated ID.
+	reqID := traceid.SetHTTPRequestHeaderFromContext(ctx, r, c.traceIDHeaderName, c.rnd.UUIDv7().String())
 	ctx = traceid.NewContext(ctx, reqID)
-	r.Header.Set(c.traceIDHeaderName, reqID)
 	r = r.WithContext(ctx)
 
 	l = l.With(
@@ -155,9 +168,11 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 		}
 	}
 
-	if resp == nil {
-		// No body to close: release the timeout timer immediately so it does
-		// not leak until the full timeout elapses.
+	if err != nil || resp == nil {
+		// No body left to close: release the timeout timer immediately so it
+		// does not leak until the full timeout elapses. On error paths that
+		// still carry a response (e.g. a redirect-policy error), net/http has
+		// already closed the body.
 		cancel()
 
 		return resp, err //nolint:wrapcheck
