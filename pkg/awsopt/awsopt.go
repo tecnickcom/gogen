@@ -80,9 +80,14 @@ import (
 )
 
 const (
-	// awsRegionFromURLRegexp is a regular expression used to extract the region from URL.
-	// protocol://service-code.region-code.amazonaws.com
-	awsRegionFromURLRegexp = `^https://[^\.]+\.([^\.]+)\.amazonaws\.com`
+	// awsRegionFromURLRegexp is a regular expression used to extract the region from URL:
+	// [protocol://][extra-labels.]service-code.region-code.amazonaws.com[:port][/path]
+	//
+	// The region is the label immediately preceding "amazonaws.com". The scheme is
+	// optional (so both https:// and http:// endpoints such as localstack work) and
+	// extra leading host labels are allowed (e.g. virtual-hosted-style S3 URLs like
+	// "https://bucket.s3.eu-west-1.amazonaws.com").
+	awsRegionFromURLRegexp = `^(?:[A-Za-z][A-Za-z0-9+.-]*://)?(?:[^/.\s]+\.)+([^/.\s]+)\.amazonaws\.com(?::\d+)?(?:[/?#]|$)`
 
 	// awsDefaultRegion is the region that will be used if any other way to detect the region fails.
 	awsDefaultRegion = "us-east-2"
@@ -130,9 +135,11 @@ func (c *Options) WithRegion(region string) {
 // WithRegionFromURL appends a region derived from an AWS endpoint URL.
 //
 // It removes common endpoint-parsing boilerplate by extracting the region from
-// URLs like "https://service.region.amazonaws.com" and automatically applying
-// robust fallbacks. If the URL does not contain a region, a default region is
-// selected with the following order of precedence:
+// URLs like "https://service.region.amazonaws.com". The scheme is optional,
+// extra leading host labels are supported (e.g. virtual-hosted-style
+// "https://bucket.s3.region.amazonaws.com"), and ports/paths are ignored.
+// Robust fallbacks are automatically applied: if the URL does not contain a
+// region, a default region is selected with the following order of precedence:
 //   - the specified defaultRegion;
 //   - the AWS_REGION environment variable;
 //   - the AWS_DEFAULT_REGION environment variable;

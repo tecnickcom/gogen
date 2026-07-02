@@ -86,6 +86,38 @@ func Test_WithRegionFromURL(t *testing.T) {
 			wantRegion: "af-south-1",
 		},
 		{
+			name:       "Valid AWS URL with http scheme (localstack)",
+			url:        "http://sqs.eu-west-1.amazonaws.com",
+			wantRegion: "eu-west-1",
+		},
+		{
+			name:       "Valid AWS URL without scheme",
+			url:        "sqs.eu-west-2.amazonaws.com",
+			wantRegion: "eu-west-2",
+		},
+		{
+			name:       "Valid virtual-hosted-style S3 URL",
+			url:        "https://bucket.s3.eu-west-1.amazonaws.com",
+			wantRegion: "eu-west-1",
+		},
+		{
+			name:       "Valid AWS URL with port and path",
+			url:        "https://sqs.us-west-2.amazonaws.com:443/123456789012/my-queue",
+			wantRegion: "us-west-2",
+		},
+		{
+			name:          "amazonaws.com not at the end of the host falls back",
+			url:           "https://sqs.us-east-1.amazonaws.com.evil.example.com",
+			defaultRegion: "sa-east-1",
+			wantRegion:    "sa-east-1",
+		},
+		{
+			name:          "Legacy global endpoint without region falls back",
+			url:           "https://s3.amazonaws.com",
+			defaultRegion: "us-east-1",
+			wantRegion:    "us-east-1",
+		},
+		{
 			name:          "Load default region",
 			url:           "https://no-region-2.with-default.example.com",
 			defaultRegion: "ap-southeast-2",
