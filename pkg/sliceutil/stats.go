@@ -129,7 +129,7 @@ func statsCenter[S ~[]V, V typeutil.Number](ds *DescStats[V], s, ord S, n int, n
 			freq++
 		} else {
 			if freq > ds.ModeFreq {
-				ds.Mode = ord[i]
+				ds.Mode = ord[i-1]
 				ds.ModeFreq = freq
 			}
 
@@ -171,7 +171,7 @@ func statsVariability[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf flo
 	for _, v := range ord {
 		vf := float64(v)
 		d := vf - ds.Mean
-		ds.MeanDev += d
+		ds.MeanDev += math.Abs(d)
 		ds.Variance += d * d
 
 		if entropyOK && vf > 0 {

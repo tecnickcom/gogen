@@ -40,7 +40,7 @@ func ExampleStats() {
 	// Max:        83
 	// MaxID:      1
 	// Mean:       50.500
-	// MeanDev:    0.000
+	// MeanDev:    26.833
 	// Median:     45.000
 	// Min:        13
 	// MinID:      2
