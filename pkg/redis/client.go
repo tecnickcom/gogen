@@ -90,21 +90,24 @@ func New(ctx context.Context, srvopt *SrvOptions, opts ...Option) (*Client, erro
 // Close gracefully closes Pub/Sub and Redis client resources.
 //
 // When no Pub/Sub subscription was configured at construction time, only the
-// Redis client is closed.
+// Redis client is closed. The Redis client is always closed even when closing
+// the Pub/Sub subscription fails; in that case the errors are joined.
 func (c *Client) Close() error {
+	var errPubSub error
+
 	if c.rpubsub != nil {
 		err := c.rpubsub.Close()
 		if err != nil {
-			return fmt.Errorf("failed to close Redis PubSub: %w", err)
+			errPubSub = fmt.Errorf("failed to close Redis PubSub: %w", err)
 		}
 	}
 
-	err := c.rclient.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close Redis Client: %w", err)
+	errClient := c.rclient.Close()
+	if errClient != nil {
+		errClient = fmt.Errorf("failed to close Redis Client: %w", errClient)
 	}
 
-	return nil
+	return errors.Join(errPubSub, errClient)
 }
 
 // Set stores a raw value for key with expiration; zero expiration disables TTL.

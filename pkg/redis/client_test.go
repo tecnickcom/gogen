@@ -215,6 +215,41 @@ func TestClose(t *testing.T) {
 	}
 }
 
+// TestClose_always_closes_client verifies that the Redis client is closed and
+// its error reported even when closing the Pub/Sub subscription fails.
+func TestClose_always_closes_client(t *testing.T) {
+	t.Parallel()
+
+	srvOpts := &SrvOptions{
+		Addr:     "test.redis.invalid:6379",
+		Username: "test_user",
+		Password: "test_password",
+		DB:       0,
+	}
+
+	ctx := t.Context()
+	cli, err := New(ctx, srvOpts)
+	require.NoError(t, err)
+	require.NotNil(t, cli)
+
+	clientClosed := false
+
+	cli.rclient = redisClientMock{closeFn: func() error {
+		clientClosed = true
+
+		return errors.New("client close error")
+	}}
+	cli.rpubsub = redisPubSubMock{closeFn: func() error {
+		return errors.New("pubsub close error")
+	}}
+
+	err = cli.Close()
+	require.Error(t, err)
+	require.True(t, clientClosed, "rclient.Close must be attempted even when PubSub close fails")
+	require.ErrorContains(t, err, "pubsub close error")
+	require.ErrorContains(t, err, "client close error")
+}
+
 func TestSet(t *testing.T) {
 	t.Parallel()
 
