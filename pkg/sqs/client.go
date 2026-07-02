@@ -20,6 +20,7 @@ const (
 )
 
 // regexMessageGroupID is the precompiled FIFO message-group-ID validator (compiled once at package load).
+// The same character set and length limits apply to FIFO message-deduplication IDs.
 var regexMessageGroupID = regexp.MustCompile(regexPatternMessageGroupID)
 
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
@@ -114,19 +115,33 @@ type Message struct {
 }
 
 // Send publishes a raw string message to the queue.
+//
+// NOTE: no MessageDeduplicationId is set, so for FIFO queues this requires
+// ContentBasedDeduplication to be enabled on the queue; otherwise AWS rejects
+// the request. Use SendWithDeduplicationID to supply an explicit
+// deduplication ID instead.
 func (c *Client) Send(ctx context.Context, message string) error {
-	_, err := c.sqs.SendMessage(
-		ctx,
-		&sqs.SendMessageInput{
-			QueueUrl:       c.queueURL,
-			MessageGroupId: c.messageGroupID,
-			MessageBody:    aws.String(message),
-		})
-	if err != nil {
-		return fmt.Errorf("cannot send message to the queue: %w", err)
+	return c.send(ctx, message, nil)
+}
+
+// SendWithDeduplicationID publishes a raw string message to the queue with an
+// explicit MessageDeduplicationId.
+//
+// It is only valid for FIFO queues and is required when the queue does not
+// have ContentBasedDeduplication enabled. Messages sent with the same
+// deduplication ID within the 5-minute deduplication interval are accepted but
+// not delivered again. The dedupID can contain up to 128 alphanumeric and
+// punctuation characters.
+func (c *Client) SendWithDeduplicationID(ctx context.Context, message, dedupID string) error {
+	if c.messageGroupID == nil {
+		return errors.New("a message deduplication ID can only be used with FIFO queues")
 	}
 
-	return nil
+	if !regexMessageGroupID.MatchString(dedupID) {
+		return errors.New("invalid message deduplication ID")
+	}
+
+	return c.send(ctx, message, aws.String(dedupID))
 }
 
 // Receive retrieves one raw message from the queue with configured wait/visibility settings.
@@ -194,6 +209,11 @@ func DefaultMessageDecodeFunc(_ context.Context, msg string, data any) error {
 }
 
 // SendData encodes data via configured codec and publishes it to the queue.
+//
+// NOTE: no MessageDeduplicationId is set, so for FIFO queues this requires
+// ContentBasedDeduplication to be enabled on the queue; otherwise AWS rejects
+// the request. Use SendDataWithDeduplicationID to supply an explicit
+// deduplication ID instead.
 func (c *Client) SendData(ctx context.Context, data any) error {
 	message, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
@@ -201,6 +221,18 @@ func (c *Client) SendData(ctx context.Context, data any) error {
 	}
 
 	return c.Send(ctx, message)
+}
+
+// SendDataWithDeduplicationID encodes data via configured codec and publishes
+// it to the queue with an explicit MessageDeduplicationId.
+// See SendWithDeduplicationID for the FIFO-queue deduplication constraints.
+func (c *Client) SendDataWithDeduplicationID(ctx context.Context, data any, dedupID string) error {
+	message, err := c.messageEncodeFunc(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	return c.SendWithDeduplicationID(ctx, message, dedupID)
 }
 
 // ReceiveData receives one message, decodes its payload into data, and returns the receipt handle.
@@ -232,4 +264,21 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	}
 
 	return fmt.Errorf("the AWS SQS queue is not responding: %s", aws.ToString(c.queueURL))
+}
+
+// send publishes a raw string message to the queue with an optional message deduplication ID.
+func (c *Client) send(ctx context.Context, message string, dedupID *string) error {
+	_, err := c.sqs.SendMessage(
+		ctx,
+		&sqs.SendMessageInput{
+			QueueUrl:               c.queueURL,
+			MessageGroupId:         c.messageGroupID,
+			MessageDeduplicationId: dedupID,
+			MessageBody:            aws.String(message),
+		})
+	if err != nil {
+		return fmt.Errorf("cannot send message to the queue: %w", err)
+	}
+
+	return nil
 }

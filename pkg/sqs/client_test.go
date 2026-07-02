@@ -161,6 +161,113 @@ func TestSend(t *testing.T) {
 	}
 }
 
+func TestSendWithDeduplicationID(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		queueURL string
+		grpID    string
+		dedupID  string
+		mock     SQS
+		wantErr  bool
+	}{
+		{
+			name:     "success",
+			queueURL: "https://test_queue.invalid/queue1.fifo",
+			grpID:    "TEST_MSG_GROUP_ID_1",
+			dedupID:  "TEST_DEDUP_ID_1",
+			mock: sqsmock{sendFn: func(_ context.Context, params *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+				if aws.ToString(params.MessageDeduplicationId) != "TEST_DEDUP_ID_1" {
+					return nil, errors.New("missing or wrong MessageDeduplicationId")
+				}
+
+				return &sqs.SendMessageOutput{}, nil
+			}},
+			wantErr: false,
+		},
+		{
+			name:     "error - standard queue",
+			queueURL: "https://test_queue.invalid/queue1.standard",
+			grpID:    "",
+			dedupID:  "TEST_DEDUP_ID_2",
+			mock: sqsmock{sendFn: func(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+				return &sqs.SendMessageOutput{}, nil
+			}},
+			wantErr: true,
+		},
+		{
+			name:     "error - invalid deduplication ID",
+			queueURL: "https://test_queue.invalid/queue1.fifo",
+			grpID:    "TEST_MSG_GROUP_ID_3",
+			dedupID:  "",
+			mock: sqsmock{sendFn: func(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+				return &sqs.SendMessageOutput{}, nil
+			}},
+			wantErr: true,
+		},
+		{
+			name:     "error - send failure",
+			queueURL: "https://test_queue.invalid/queue1.fifo",
+			grpID:    "TEST_MSG_GROUP_ID_4",
+			dedupID:  "TEST_DEDUP_ID_4",
+			mock: sqsmock{sendFn: func(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+				return nil, errors.New("some err")
+			}},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := t.Context()
+			cli, err := New(ctx, tt.queueURL, tt.grpID)
+			require.NoError(t, err)
+			require.NotNil(t, cli)
+
+			cli.sqs = tt.mock
+
+			err = cli.SendWithDeduplicationID(ctx, "test", tt.dedupID)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestSendDataWithDeduplicationID(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	cli, err := New(ctx, "https://test_queue.invalid/queue7.fifo", "TEST_MSG_GROUP_ID_7")
+	require.NoError(t, err)
+	require.NotNil(t, cli)
+
+	cli.sqs = sqsmock{sendFn: func(_ context.Context, params *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+		if aws.ToString(params.MessageDeduplicationId) != "TEST_DEDUP_ID_7" {
+			return nil, errors.New("missing or wrong MessageDeduplicationId")
+		}
+
+		return &sqs.SendMessageOutput{}, nil
+	}}
+
+	type TestData struct {
+		Alpha string
+		Beta  int
+	}
+
+	err = cli.SendDataWithDeduplicationID(ctx, TestData{Alpha: "abc345", Beta: -678}, "TEST_DEDUP_ID_7")
+	require.NoError(t, err)
+
+	err = cli.SendDataWithDeduplicationID(ctx, nil, "TEST_DEDUP_ID_7")
+	require.Error(t, err)
+}
+
 func TestReceive(t *testing.T) {
 	t.Parallel()
 

@@ -22,6 +22,10 @@ safe defaults.
 
   - For FIFO queues (URL ends with `.fifo`), a valid message-group ID is
     required; for standard queues it must be omitted.
+  - For FIFO queues, [Client.Send] and [Client.SendData] do not set a
+    MessageDeduplicationId, so the queue must have ContentBasedDeduplication
+    enabled; otherwise supply an explicit per-message deduplication ID via
+    [Client.SendWithDeduplicationID] or [Client.SendDataWithDeduplicationID].
   - Long polling and visibility are configurable via [WithWaitTimeSeconds] and
     [WithVisibilityTimeout], with defaults of [DefaultWaitTimeSeconds] (20s)
     and [DefaultVisibilityTimeout] (600s).
@@ -43,7 +47,8 @@ Receive flow behavior:
 # Key Features
 
   - Simple SQS workflow API: send, receive, delete, and health check.
-  - FIFO-aware safety: validates message-group usage for FIFO queues.
+  - FIFO-aware safety: validates message-group usage for FIFO queues and
+    supports explicit per-message deduplication IDs.
   - Typed payload support with customizable serialization/encryption via
     [WithMessageEncodeFunc] and [WithMessageDecodeFunc].
   - Endpoint and AWS config customization via [WithAWSOptions],
