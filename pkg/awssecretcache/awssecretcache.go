@@ -24,7 +24,9 @@ single-flight cache. The lookup flow is:
  1. On the first call for a given SecretId the cache is cold; one goroutine
     makes the real AWS API call while all other concurrent callers for the same
     key wait and share the result (single-flight).
- 2. The result is stored in the fixed-size LRU cache with the configured TTL.
+ 2. The result is stored in the fixed-size cache with the configured TTL; when
+    the cache is full, the entry with the earliest expiration time is evicted
+    (expiry-ordered / FIFO eviction, not LRU: reads do not refresh recency).
  3. Subsequent calls within the TTL window are served entirely from memory.
  4. After TTL expiry the entry is evicted and the next call triggers a fresh
     lookup with the same single-flight guarantees.
@@ -37,7 +39,9 @@ single-flight cache. The lookup flow is:
   - TTL-based expiry: each entry lives for a caller-defined duration, ensuring
     secrets are refreshed regularly for rotation compliance.
   - Fixed-size cache: the maximum number of entries is set at construction time
-    via the size parameter of [New], bounding memory usage predictably.
+    via the size parameter of [New], bounding memory usage predictably. When
+    full, eviction is expiry-ordered (FIFO), removing the entry closest to
+    expiration first.
   - Thread-safe: all cache operations are safe for concurrent use with no
     external synchronization required.
   - Flexible secret retrieval: [Cache.GetSecretData] returns the raw SDK output;
