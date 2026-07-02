@@ -1,6 +1,7 @@
 package countrycode
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -512,6 +513,41 @@ func Test_CountriesByRegionCode(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func Test_CountriesByRegionCode_deterministic_order(t *testing.T) {
+	t.Parallel()
+
+	alpha2Codes := func(data *Data) []string {
+		countries, err := data.CountriesByRegionCode("002")
+
+		require.NoError(t, err)
+		require.NotEmpty(t, countries)
+
+		codes := make([]string, len(countries))
+		for i, c := range countries {
+			codes[i] = c.Alpha2Code
+		}
+
+		return codes
+	}
+
+	dataA, err := New(nil)
+
+	require.NoError(t, err)
+	require.NotNil(t, dataA)
+
+	dataB, err := New(nil)
+
+	require.NoError(t, err)
+	require.NotNil(t, dataB)
+
+	codes := alpha2Codes(dataA)
+
+	// The grouped indexes are sorted, so the result order must be
+	// deterministic across independently built Data instances.
+	require.True(t, slices.IsSorted(codes))
+	require.Equal(t, codes, alpha2Codes(dataB))
 }
 
 func Test_CountriesByRegionName(t *testing.T) {

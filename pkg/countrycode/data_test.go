@@ -99,6 +99,122 @@ func Test_New_custom_data(t *testing.T) {
 	require.Len(t, data.dAlpha2IDsByTLD, 2)
 }
 
+func Test_New_custom_data_regions(t *testing.T) {
+	t.Parallel()
+
+	cdata := []*CountryData{
+		{
+			Status:                 "Officially assigned",
+			Alpha2Code:             "ZW",
+			Alpha3Code:             "ZWE",
+			NumericCode:            "716",
+			NameEnglish:            "Zimbabwe",
+			NameFrench:             "Zimbabwe (le)",
+			Region:                 "Africa",
+			SubRegion:              "Sub-Saharan Africa",
+			IntermediateRegion:     "Eastern Africa",
+			RegionCode:             "002",
+			SubRegionCode:          "202",
+			IntermediateRegionCode: "014",
+			TLD:                    "zw",
+		},
+		{
+			Status:                 "Officially assigned",
+			Alpha2Code:             "ZM",
+			Alpha3Code:             "ZMB",
+			NumericCode:            "894",
+			NameEnglish:            "Zambia",
+			NameFrench:             "Zambie (la)",
+			Region:                 "Africa",
+			SubRegion:              "Sub-Saharan Africa",
+			IntermediateRegion:     "Eastern Africa",
+			RegionCode:             "002",
+			SubRegionCode:          "202",
+			IntermediateRegionCode: "014",
+			TLD:                    "zm",
+		},
+	}
+
+	data, err := New(cdata)
+
+	require.NoError(t, err)
+	require.NotNil(t, data)
+
+	// The region names must resolve to the correct region IDs when encoding
+	// the custom records, so the decoded records carry the full hierarchy.
+	country, err := data.CountryByAlpha2Code("ZM")
+
+	require.NoError(t, err)
+	require.Equal(t, "Africa", country.Region)
+	require.Equal(t, "002", country.RegionCode)
+	require.Equal(t, "Sub-Saharan Africa", country.SubRegion)
+	require.Equal(t, "202", country.SubRegionCode)
+	require.Equal(t, "Eastern Africa", country.IntermediateRegion)
+	require.Equal(t, "014", country.IntermediateRegionCode)
+
+	// The grouped indexes must resolve custom records by region code and name,
+	// returning the countries in deterministic (alpha-2) order.
+	expAlpha2 := []string{"ZM", "ZW"}
+
+	countries, err := data.CountriesByRegionCode("002")
+
+	require.NoError(t, err)
+	require.Len(t, countries, 2)
+	require.Equal(t, expAlpha2, []string{countries[0].Alpha2Code, countries[1].Alpha2Code})
+
+	countries, err = data.CountriesByRegionName("Africa")
+
+	require.NoError(t, err)
+	require.Len(t, countries, 2)
+	require.Equal(t, expAlpha2, []string{countries[0].Alpha2Code, countries[1].Alpha2Code})
+
+	countries, err = data.CountriesBySubRegionName("Sub-Saharan Africa")
+
+	require.NoError(t, err)
+	require.Len(t, countries, 2)
+	require.Equal(t, expAlpha2, []string{countries[0].Alpha2Code, countries[1].Alpha2Code})
+
+	countries, err = data.CountriesByIntermediateRegionName("Eastern Africa")
+
+	require.NoError(t, err)
+	require.Len(t, countries, 2)
+	require.Equal(t, expAlpha2, []string{countries[0].Alpha2Code, countries[1].Alpha2Code})
+}
+
+func Test_New_custom_data_french_only_name(t *testing.T) {
+	t.Parallel()
+
+	cdata := []*CountryData{
+		{
+			Status:      "Officially assigned",
+			Alpha2Code:  "ZM",
+			Alpha3Code:  "ZMB",
+			NumericCode: "894",
+			NameFrench:  "Zambie (la)",
+			TLD:         "zm",
+		},
+	}
+
+	data, err := New(cdata)
+
+	require.NoError(t, err)
+	require.NotNil(t, data)
+
+	// A record without an English name must still be resolvable and preserve
+	// the French name instead of failing with an invalid key error.
+	country, err := data.CountryByAlpha2Code("ZM")
+
+	require.NoError(t, err)
+	require.Empty(t, country.NameEnglish)
+	require.Equal(t, "Zambie (la)", country.NameFrench)
+
+	country, err = data.CountryByAlpha3Code("ZMB")
+
+	require.NoError(t, err)
+	require.Empty(t, country.NameEnglish)
+	require.Equal(t, "Zambie (la)", country.NameFrench)
+}
+
 func Test_New_custom_data_error(t *testing.T) {
 	t.Parallel()
 

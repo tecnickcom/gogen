@@ -1,6 +1,7 @@
 package countrycode
 
 import (
+	"slices"
 	"sort"
 	"strings"
 )
@@ -82,14 +83,13 @@ func New(cdata []*CountryData) (*Data, error) {
 
 // loadData ingests custom country records and constructs base enum/key tables.
 //
-// It converts each record into compact internal keys and captures region,
-// sub-region, and intermediate-region catalogs needed by later index builders.
+// It works in two passes: the first pass captures the region, sub-region, and
+// intermediate-region catalogs and builds their code/name reverse indexes; the
+// second pass converts each record into compact internal keys, so the region
+// name lookups performed while encoding country keys resolve correctly.
 //
 //nolint:gocognit
 func (d *Data) loadData(cdata []*CountryData) error {
-	dCountryNamesByAlpha2ID := make(map[uint16]*Names, len(cdata))
-	dCountryKeyByAlpha2ID := make(map[uint16]uint64, len(cdata))
-
 	dRegionByID := map[string]*enumData{"": {code: "", name: ""}}
 	regionKeys := []string{""}
 
@@ -99,14 +99,8 @@ func (d *Data) loadData(cdata []*CountryData) error {
 	dIntermediateRegionByID := map[string]*enumData{"": {code: "", name: ""}}
 	intRegionKeys := []string{""}
 
+	// First pass: capture the region, sub-region, and intermediate-region catalogs.
 	for _, country := range cdata {
-		a2, ck, err := d.countryKey(country)
-		if err != nil {
-			return err
-		}
-
-		dCountryKeyByAlpha2ID[a2] = ck
-
 		if _, ok := dRegionByID[country.RegionCode]; !ok {
 			dRegionByID[country.RegionCode] = &enumData{code: country.RegionCode, name: country.Region}
 			regionKeys = append(regionKeys, country.RegionCode)
@@ -121,17 +115,7 @@ func (d *Data) loadData(cdata []*CountryData) error {
 			dIntermediateRegionByID[country.IntermediateRegionCode] = &enumData{code: country.IntermediateRegionCode, name: country.IntermediateRegion}
 			intRegionKeys = append(intRegionKeys, country.IntermediateRegionCode)
 		}
-
-		if len(country.NameEnglish) > 0 {
-			dCountryNamesByAlpha2ID[a2] = &Names{
-				EN: country.NameEnglish,
-				FR: country.NameFrench,
-			}
-		}
 	}
-
-	d.dCountryNamesByAlpha2ID = dCountryNamesByAlpha2ID
-	d.dCountryKeyByAlpha2ID = dCountryKeyByAlpha2ID
 
 	sort.Strings(regionKeys)
 
@@ -150,6 +134,30 @@ func (d *Data) loadData(cdata []*CountryData) error {
 	for _, k := range intRegionKeys {
 		d.dIntermediateRegionByID = append(d.dIntermediateRegionByID, dIntermediateRegionByID[k])
 	}
+
+	// Build the region reverse indexes required by countryKey below.
+	d.genRegionIndexes()
+
+	// Second pass: encode the country keys using the region indexes built above.
+	dCountryNamesByAlpha2ID := make(map[uint16]*Names, len(cdata))
+	dCountryKeyByAlpha2ID := make(map[uint16]uint64, len(cdata))
+
+	for _, country := range cdata {
+		a2, ck, err := d.countryKey(country)
+		if err != nil {
+			return err
+		}
+
+		dCountryKeyByAlpha2ID[a2] = ck
+
+		dCountryNamesByAlpha2ID[a2] = &Names{
+			EN: country.NameEnglish,
+			FR: country.NameFrench,
+		}
+	}
+
+	d.dCountryNamesByAlpha2ID = dCountryNamesByAlpha2ID
+	d.dCountryKeyByAlpha2ID = dCountryKeyByAlpha2ID
 
 	return nil
 }
@@ -179,6 +187,16 @@ func (d *Data) statusMap() {
 // This one-time preprocessing enables constant-time or near constant-time
 // retrieval for code/name lookups and grouped country queries.
 func (d *Data) genIndexes() {
+	d.genRegionIndexes()
+	d.genCountryIndexes()
+}
+
+// genRegionIndexes builds the region, sub-region, and intermediate-region
+// code/name reverse indexes from their catalogs.
+//
+// It is idempotent and must run before country keys are encoded, since
+// countryKey resolves region names through these indexes.
+func (d *Data) genRegionIndexes() {
 	d.dRegionIDByCode = make(map[string]uint8, len(d.dRegionByID))
 	d.dRegionIDByName = make(map[string]uint8, len(d.dRegionByID))
 
@@ -202,9 +220,10 @@ func (d *Data) genIndexes() {
 		d.dIntermediateRegionIDByCode[v.code] = uint8(k)
 		d.dIntermediateRegionIDByName[strings.ToUpper(v.name)] = uint8(k)
 	}
+}
 
-	// extra indexes
-
+// genCountryIndexes builds the country-level reverse and grouped indexes.
+func (d *Data) genCountryIndexes() {
 	d.dAlpha2IDByAlpha3ID = make(map[uint16]uint16, len(d.dCountryKeyByAlpha2ID))
 	d.dAlpha2IDByNumericID = make(map[uint16]uint16, len(d.dCountryKeyByAlpha2ID))
 	d.dAlpha2IDsByRegionID = make(map[uint8][]uint16, len(d.dRegionByID))
@@ -227,6 +246,28 @@ func (d *Data) genIndexes() {
 
 	delete(d.dAlpha2IDByAlpha3ID, 0)
 	delete(d.dAlpha2IDByNumericID, 0)
+
+	// Sort the grouped indexes so query results have a deterministic order,
+	// since the map iteration above is randomized.
+	for _, ids := range d.dAlpha2IDsByRegionID {
+		slices.Sort(ids)
+	}
+
+	for _, ids := range d.dAlpha2IDsBySubRegionID {
+		slices.Sort(ids)
+	}
+
+	for _, ids := range d.dAlpha2IDsByIntermediateRegionID {
+		slices.Sort(ids)
+	}
+
+	for _, ids := range d.dAlpha2IDsByStatusID {
+		slices.Sort(ids)
+	}
+
+	for _, ids := range d.dAlpha2IDsByTLD {
+		slices.Sort(ids)
+	}
 }
 
 // statusByID returns status metadata for an internal status ID.
