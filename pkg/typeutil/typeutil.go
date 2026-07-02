@@ -98,8 +98,11 @@ func Pointer[T any](v T) *T {
 }
 
 // Value safely dereferences pointer p, returning zero value of T if nil.
+//
+// The nil check is a direct pointer comparison (no reflection), keeping this
+// helper cheap on hot paths with frequent pointer dereferences.
 func Value[T any](p *T) T {
-	if IsNil(p) {
+	if p == nil {
 		var zero T
 		return zero
 	}
