@@ -440,16 +440,19 @@ func Test_checkConnection(t *testing.T) {
 	}
 }
 
+//nolint:gocognit
 func Test_connectOnce(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		cfgDriver   string
-		cfgDSN      string
-		setupConfig func(*config, *sql.DB)
-		want        bool
-		wantErr     bool
+		name           string
+		cfgDriver      string
+		cfgDSN         string
+		setupConfig    func(*config, *sql.DB)
+		configMockFunc func(sqlmock.Sqlmock)
+		wantErrMsg     string
+		want           bool
+		wantErr        bool
 	}{
 		{
 			name: "fail with sql error",
@@ -461,7 +464,7 @@ func Test_connectOnce(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "fail with connection check error",
+			name: "fail with connection check error and close the opened DB",
 			setupConfig: func(c *config, db *sql.DB) {
 				c.sqlOpenFunc = func(_, _ string) (*sql.DB, error) {
 					return db, nil
@@ -470,7 +473,27 @@ func Test_connectOnce(t *testing.T) {
 					return errors.New("check error")
 				}
 			},
-			wantErr: true,
+			configMockFunc: func(mock sqlmock.Sqlmock) {
+				mock.ExpectClose()
+			},
+			wantErrMsg: "failed checking database connection",
+			wantErr:    true,
+		},
+		{
+			name: "fail with connection check error joined with close error",
+			setupConfig: func(c *config, db *sql.DB) {
+				c.sqlOpenFunc = func(_, _ string) (*sql.DB, error) {
+					return db, nil
+				}
+				c.checkConnectionFunc = func(_ context.Context, _ *sql.DB) error {
+					return errors.New("check error")
+				}
+			},
+			configMockFunc: func(mock sqlmock.Sqlmock) {
+				mock.ExpectClose().WillReturnError(errors.New("close error"))
+			},
+			wantErrMsg: "close error",
+			wantErr:    true,
 		},
 		{
 			name: "succeed",
@@ -491,8 +514,12 @@ func Test_connectOnce(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db, _, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+			db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 			require.NoError(t, err)
+
+			if tt.configMockFunc != nil {
+				tt.configMockFunc(mock)
+			}
 
 			cfg := defaultConfig(tt.cfgDriver, tt.cfgDSN)
 			if tt.setupConfig != nil {
@@ -504,6 +531,12 @@ func Test_connectOnce(t *testing.T) {
 				t.Errorf("connectOnce() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
+			if tt.wantErrMsg != "" {
+				require.ErrorContains(t, err, tt.wantErrMsg)
+			}
+
+			require.NoError(t, mock.ExpectationsWereMet(), "there were unfulfilled expectations")
 
 			if tt.want {
 				require.Equal(t, db, got, "connectOnce() got = %v, want %v", got, db)

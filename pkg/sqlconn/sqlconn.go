@@ -232,7 +232,9 @@ func connectOnce(ctx context.Context, cfg *config) (*sql.DB, error) {
 
 	err = cfg.checkConnectionFunc(ctx, db)
 	if err != nil {
-		return nil, fmt.Errorf("failed checking database connection: %w", err)
+		// Close the freshly opened pool (and any connection the check
+		// established) so a failed check does not leak resources.
+		return nil, errors.Join(fmt.Errorf("failed checking database connection: %w", err), db.Close())
 	}
 
 	return db, nil

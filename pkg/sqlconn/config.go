@@ -11,10 +11,10 @@ import (
 
 // Default configuration values.
 const (
-	defaultConnMaxIdleCount = 2               // Maximum number of idle connections (0 = unlimited)
+	defaultConnMaxIdleCount = 2               // Maximum number of idle connections (must be at least 1)
 	defaultConnMaxIdleTime  = 1 * time.Minute // Maximum amount of time a connection may be idle before being closed
-	defaultConnMaxLifetime  = 1 * time.Hour   // Maximum amount of time a connection may be reused (0 = unlimited reuse)
-	defaultConnMaxOpenCount = 5               // Maximum number of open connections (0 = unlimited connections)
+	defaultConnMaxLifetime  = 1 * time.Hour   // Maximum amount of time a connection may be reused (must be at least 1 second)
+	defaultConnMaxOpenCount = 5               // Maximum number of open connections (must be at least 1)
 	defaultPingTimeout      = 5 * time.Second // Healthcheck ping timeout
 )
 
