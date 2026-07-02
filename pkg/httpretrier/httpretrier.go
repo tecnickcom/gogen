@@ -55,6 +55,7 @@ package httpretrier
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -78,6 +79,11 @@ const (
 	// (before jitter). It prevents the exponential growth from overflowing.
 	DefaultMaxDelay = 30 * time.Second
 )
+
+// ErrBodyNotReplayable is returned by [HTTPRetrier.Do] when a retry is
+// required but the request body has already been consumed and Request.GetBody
+// is not available to recreate it.
+var ErrBodyNotReplayable = errors.New("cannot retry: the request body has already been consumed and Request.GetBody is not set")
 
 // RetryIfFn decides whether a request should be retried after a response/error.
 type RetryIfFn func(r *http.Response, err error) bool
@@ -267,18 +273,9 @@ func (c *HTTPRetrier) run(r *http.Request, s *doState) bool {
 		return true
 	}
 
-	// A retry will happen: prepare the body for the next attempt lazily so it is
-	// only opened (and therefore only needs closing) when actually required.
-	if r.GetBody != nil {
-		bodyRC, err := r.GetBody()
-		if err != nil {
-			s.doError = fmt.Errorf("error while reading request body: %w", err)
-			return true
-		}
-
-		r.Body = bodyRC
-	}
-
+	// A retry will happen: close the current attempt's response body first so
+	// its connection is never leaked, regardless of whether the request body
+	// can be prepared for the next attempt.
 	if s.doError == nil {
 		// we only close the body between attempts if there was no error
 		cerr := s.doResponse.Body.Close()
@@ -286,6 +283,28 @@ func (c *HTTPRetrier) run(r *http.Request, s *doState) bool {
 			s.doError = fmt.Errorf("error while closing response body: %w", cerr)
 			return true
 		}
+	}
+
+	// Prepare the body for the next attempt lazily so it is only opened (and
+	// therefore only needs closing) when actually required.
+	switch {
+	case r.GetBody != nil:
+		bodyRC, err := r.GetBody()
+		if err != nil {
+			s.doResponse = nil
+			s.doError = fmt.Errorf("error while reading request body: %w", err)
+
+			return true
+		}
+
+		r.Body = bodyRC
+	case r.Body != nil:
+		// The body has already been consumed and cannot be recreated:
+		// retries cannot continue, as documented.
+		s.doResponse = nil
+		s.doError = ErrBodyNotReplayable
+
+		return true
 	}
 
 	s.resetTimer <- c.nextRetryDelay(s)

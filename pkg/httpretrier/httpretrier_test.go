@@ -627,6 +627,51 @@ func TestHTTPRetrier_Do_bodyReplayOnRetry(t *testing.T) {
 	require.Equal(t, 1, getBodyCalls, "GetBody should be opened exactly once, only for the retry")
 }
 
+// TestHTTPRetrier_Do_bodyNotReplayable verifies that when a retry is required
+// but the request body has already been consumed and GetBody is nil, Do stops
+// retrying and returns the documented error instead of resending a consumed
+// body.
+func TestHTTPRetrier_Do_bodyNotReplayable(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	rErr := &http.Response{
+		Status:     http.StatusText(http.StatusServiceUnavailable),
+		StatusCode: http.StatusServiceUnavailable,
+		Body:       io.NopCloser(bytes.NewReader([]byte{})),
+	}
+
+	// Only one attempt must be performed: the retry is aborted because the
+	// consumed body cannot be recreated.
+	mockHTTP.EXPECT().Do(gomock.Any()).Return(rErr, nil)
+
+	// A streaming (non-replayable) body: net/http does not auto-set GetBody
+	// for reader types it does not recognize.
+	body := struct{ io.Reader }{bytes.NewReader([]byte(`streaming payload`))}
+
+	r, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", body)
+	require.NoError(t, err)
+	require.Nil(t, r.GetBody)
+
+	retrier, err := New(
+		mockHTTP,
+		WithRetryIfFn(RetryIfForWriteRequests),
+		WithAttempts(3),
+		WithDelay(1*time.Millisecond),
+		WithJitter(1*time.Millisecond),
+	)
+	require.NoError(t, err)
+
+	resp, err := retrier.Do(r) //nolint:bodyclose // resp is nil on this error path; nothing to close.
+	require.Nil(t, resp, "the retriable response body has been closed, so no response is returned")
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrBodyNotReplayable)
+}
+
 // TestHTTPRetrier_Do_contextCancelStopsTimer verifies that when the request
 // context is canceled mid-flight, Do returns an error and the per-call timer is
 // stopped (no leak, no panic).
