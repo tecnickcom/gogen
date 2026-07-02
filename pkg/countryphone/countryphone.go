@@ -245,13 +245,14 @@ func (d *Data) loadEnums() {
 
 // insertPrefix inserts or merges prefix metadata into the trie.
 //
-// When a prefix already exists, geographic entries are merged so multiple
-// countries/areas can be represented for shared numbering spaces.
+// When a value is already stored at the exact prefix node, geographic entries
+// are merged so multiple countries/areas can be represented for shared
+// numbering spaces. Values stored at ancestor prefixes are never merged in, so
+// more specific prefixes keep only their own geographic data.
 func (d *Data) insertPrefix(prefix string, info *NumInfo) {
-	v, status := d.trie.Get(prefix)
+	v := d.trie.GetExact(prefix)
 
-	if (status == numtrie.StatusMatchFull || status == numtrie.StatusMatchPartial) &&
-		(v != nil) && (v != info) && (len(v.Geo) > 0) {
+	if (v != nil) && (v != info) && (len(v.Geo) > 0) {
 		// the node already exists > merge the data
 		if len(info.Geo) > 0 {
 			info.Geo = mergeGeo(v.Geo, info.Geo)
@@ -291,11 +292,16 @@ func mergeGeo(existing, added []*GeoInfo) []*GeoInfo {
 // insertGroups expands country group definitions into trie prefixes.
 //
 // Each group becomes one or more prefix entries that carry number type and
-// geographic annotations.
+// geographic annotations. Groups without prefixes fall back to the country
+// calling code, unless it is empty (which would install a universal fallback
+// on the trie root).
 func (d *Data) insertGroups(a2 string, cdata *InCountryData) {
 	for _, g := range cdata.Groups {
 		if len(g.Prefixes) == 0 {
-			d.insertPrefix(cdata.CC, newGroupInfo(a2, g))
+			if cdata.CC != "" {
+				d.insertPrefix(cdata.CC, newGroupInfo(a2, g))
+			}
+
 			continue
 		}
 
@@ -327,14 +333,18 @@ func newGroupInfo(a2 string, g InPrefixGroup) *NumInfo {
 // loadData constructs trie nodes from the input numbering dataset.
 //
 // It inserts one root country-calling-code entry per country and then appends
-// optional group-level prefixes for more specific matches.
+// optional group-level prefixes for more specific matches. Entries with an
+// empty country calling code (e.g. the default "__" non-geographic entry) only
+// contribute their group prefixes: inserting an empty prefix would install a
+// value on the trie root, turning it into a universal fallback that defeats
+// the documented no-match error of NumberInfo.
 func (d *Data) loadData(data InData) {
 	d.trie = numtrie.New[NumInfo]()
 
 	doneRootCC := make(map[string]bool, (26*26)+1) // all possible CCs + 1 for non-geographic
 
 	for a2, cdata := range data {
-		if _, ok := doneRootCC[a2]; !ok {
+		if _, ok := doneRootCC[a2]; !ok && cdata.CC != "" {
 			// insert the root node for the country code only once
 			d.insertPrefix(cdata.CC, &NumInfo{
 				Type: 0,

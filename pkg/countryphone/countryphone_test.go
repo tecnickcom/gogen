@@ -337,6 +337,45 @@ func TestData_NumberInfo_custom(t *testing.T) {
 	}
 }
 
+func TestData_NumberInfo_noAncestorGeoMerge(t *testing.T) {
+	t.Parallel()
+
+	// The default data contains the "__" entry (empty CC), "FI" (CC "358"),
+	// and "AX" (CC "35818"). The regression this covers depended on the map
+	// iteration order during New (e.g. "AX" inserted before "FI"), so the
+	// resolver is rebuilt multiple times to exercise different orders.
+	for range 50 {
+		data := New(nil)
+
+		require.NotNil(t, data)
+
+		got, err := data.NumberInfo("3581234567")
+
+		require.NoError(t, err)
+		require.Equal(t, 0, got.Type)
+		// Only the FI geo data must be returned: no "__" (or other ancestor)
+		// entries merged into the more specific prefix.
+		require.Len(t, got.Geo, 1)
+		require.Equal(t, "FI", got.Geo[0].Alpha2)
+	}
+}
+
+func TestData_NumberInfo_noMatch(t *testing.T) {
+	t.Parallel()
+
+	// load default data
+	data := New(nil)
+
+	require.NotNil(t, data)
+
+	// A number matching no stored prefix must return an error instead of the
+	// universal "__" fallback previously installed on the trie root.
+	got, err := data.NumberInfo("999999999")
+
+	require.Error(t, err)
+	require.Nil(t, got)
+}
+
 func TestData_NumberInfo_returnsIndependentCopy(t *testing.T) {
 	t.Parallel()
 
