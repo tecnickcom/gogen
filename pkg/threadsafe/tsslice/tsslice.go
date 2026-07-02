@@ -54,6 +54,41 @@ while enforcing synchronization around the read window.
 	_ = even
 	_ = total
 
+# Concurrency
+
+[Set] and the read helpers ([Get], [Len], [Filter], [Map], [Reduce]) receive
+the slice header by value: the header (pointer, length, capacity) is read from
+the slice variable at the call site, before the lock inside the helper is
+acquired. [Append] instead receives *S and may reassign the caller's slice
+variable under the lock.
+
+Therefore, when one goroutine grows a shared slice variable with [Append],
+other goroutines must not read that same variable outside the lock — not even
+to pass it to these helpers, since evaluating the argument reads the variable.
+Read (snapshot) the slice variable while holding the same lock before using
+it:
+
+	var (
+	    mu sync.RWMutex
+	    s  = []int{1, 2, 3}
+	)
+
+	// goroutine A: grow the shared slice.
+	tsslice.Append(&mu, &s, 4, 5)
+
+	// goroutine B: snapshot the slice variable under the same lock,
+	// then operate on the snapshot.
+	mu.RLock()
+	snap := s
+	mu.RUnlock()
+
+	v := tsslice.Get(&mu, snap, 1)
+	_ = v
+
+When the slice variable is never reassigned while the goroutines run (for
+example a pre-sized slice mutated only via [Set]), it can safely be passed to
+the helpers directly, as in the Usage example above.
+
 See also: github.com/tecnickcom/gogen/pkg/threadsafe
 */
 package tsslice
@@ -88,6 +123,10 @@ func Len[S ~[]E, E any](mux threadsafe.RLocker, s S) int {
 }
 
 // Append appends one or more values using an exclusive lock.
+//
+// Append may reassign the slice variable pointed to by s (the backing array
+// can be reallocated). Goroutines reading the same slice variable must
+// snapshot it while holding the same lock: see the package Concurrency notes.
 func Append[S ~[]E, E any](mux threadsafe.Locker, s *S, v ...E) {
 	mux.Lock()
 	defer mux.Unlock()
