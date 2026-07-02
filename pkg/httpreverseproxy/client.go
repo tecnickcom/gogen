@@ -23,6 +23,10 @@ type HTTPClient interface {
 // holding the upstream path. It can be overridden via WithPathParam.
 const defaultPathParam = "path"
 
+// defaultTimeout is the timeout applied to the default upstream HTTP client,
+// preventing a stuck upstream from pinning proxy goroutines forever.
+const defaultTimeout = 1 * time.Minute
+
 // Client implements the Reverse Proxy.
 type Client struct {
 	proxy      *httputil.ReverseProxy
@@ -65,7 +69,10 @@ func New(addr string, opts ...Option) (*Client, error) {
 			r.SetURL(proxyURL)
 			r.Out.URL.Scheme = proxyURL.Scheme
 			r.Out.URL.Host = proxyURL.Host
-			r.Out.URL.Path = "/" + libhttputil.PathParam(r.Out, c.pathParam)
+			// Preserve the base path of the configured upstream address
+			// (e.g. "/v2") while replacing the inbound route prefix with the
+			// catch-all path parameter.
+			r.Out.URL.Path = proxyURL.Path + "/" + libhttputil.PathParam(r.Out, c.pathParam)
 			r.Out.Host = proxyURL.Host
 			r.SetXForwarded()
 		}
@@ -73,7 +80,16 @@ func New(addr string, opts ...Option) (*Client, error) {
 
 	if c.proxy.Transport == nil {
 		if c.httpClient == nil {
-			c.httpClient = &http.Client{}
+			// A reverse-proxy transport must never follow redirects: 3xx
+			// responses are forwarded verbatim to the client instead of being
+			// fetched by the proxy itself (SSRF vector). A timeout also bounds
+			// how long a stuck upstream can hold a proxied request.
+			c.httpClient = &http.Client{
+				Timeout: defaultTimeout,
+				CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}
 		}
 
 		c.proxy.Transport = &httpWrapper{client: c.httpClient}

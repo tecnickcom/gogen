@@ -212,6 +212,105 @@ func TestClient_ForwardRequest(t *testing.T) {
 	}
 }
 
+// TestClient_ForwardRequest_PreservesBasePath verifies that the base path of
+// the configured upstream address (e.g. "/v2") is preserved by the default
+// rewrite instead of being clobbered by the catch-all path parameter.
+func TestClient_ForwardRequest_PreservesBasePath(t *testing.T) {
+	t.Parallel()
+
+	const timeout = 1 * time.Second
+
+	targetMux := http.NewServeMux()
+	targetServer := httptest.NewServer(targetMux)
+
+	t.Cleanup(func() { targetServer.Close() })
+
+	hres := libhttputil.NewHTTPResp(slog.Default())
+
+	targetMux.HandleFunc("/v2/users", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v2/users", r.URL.Path)
+		hres.SendStatus(r.Context(), w, http.StatusOK)
+	})
+
+	// The upstream address carries a base path that must survive the rewrite.
+	c, err := New(targetServer.URL + "/v2")
+	require.NoError(t, err)
+
+	proxyMux := testutil.RouterWithHandler(http.MethodGet, "/proxy/*path", c.ForwardRequest)
+	proxyServer := httptest.NewServer(proxyMux)
+
+	t.Cleanup(func() { proxyServer.Close() })
+
+	ctx := t.Context()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+"/proxy/users", nil)
+
+	hc := &http.Client{Timeout: timeout}
+	resp, err := hc.Do(req)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if resp != nil {
+			assert.NoError(t, resp.Body.Close())
+		}
+	})
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+// TestClient_ForwardRequest_ForwardsRedirect verifies that the default
+// upstream client does not follow 3xx responses: the redirect must be
+// forwarded verbatim to the caller instead of being fetched by the proxy.
+func TestClient_ForwardRequest_ForwardsRedirect(t *testing.T) {
+	t.Parallel()
+
+	const timeout = 1 * time.Second
+
+	targetMux := http.NewServeMux()
+	targetServer := httptest.NewServer(targetMux)
+
+	t.Cleanup(func() { targetServer.Close() })
+
+	targetMux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/redirected", http.StatusFound)
+	})
+
+	targetMux.HandleFunc("/redirected", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("FINAL"))
+	})
+
+	c, err := New(targetServer.URL)
+	require.NoError(t, err)
+
+	proxyMux := testutil.RouterWithHandler(http.MethodGet, "/proxy/*path", c.ForwardRequest)
+	proxyServer := httptest.NewServer(proxyMux)
+
+	t.Cleanup(func() { proxyServer.Close() })
+
+	ctx := t.Context()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+"/proxy/redirect", nil)
+
+	// The test client must not follow redirects either, so it observes the
+	// exact status the proxy sent back.
+	hc := &http.Client{
+		Timeout: timeout,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := hc.Do(req)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if resp != nil {
+			assert.NoError(t, resp.Body.Close())
+		}
+	})
+
+	require.Equal(t, http.StatusFound, resp.StatusCode, "the proxy must forward the 3xx instead of following it")
+	require.Equal(t, "/redirected", resp.Header.Get("Location"))
+}
+
 func TestClient_ForwardRequest_CustomPathParam(t *testing.T) {
 	t.Parallel()
 
