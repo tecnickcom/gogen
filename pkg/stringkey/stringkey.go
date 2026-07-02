@@ -16,8 +16,8 @@ inputs map to the same key more often.
 
 [New] builds a [StringKey] from one or more input fields using this pipeline:
 
- 1. Trim leading and trailing spaces for each field.
- 2. Collapse repeated whitespace to a single space.
+ 1. Trim leading and trailing Unicode whitespace for each field.
+ 2. Collapse repeated Unicode whitespace to a single space.
  3. Convert text to lowercase.
  4. Concatenate fields using a tab separator (`\t`) to preserve boundaries.
  5. Apply Unicode normalization (NFD -> NFC).
@@ -55,7 +55,6 @@ package stringkey
 
 import (
 	"bytes"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -63,12 +62,6 @@ import (
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 )
-
-// regexPatternEmptySpaces matches one or more consecutive whitespace characters.
-const regexPatternEmptySpaces = `\s{1,}`
-
-// regexEmptySpaces is the compiled regular expression for matching multiple spaces.
-var regexEmptySpaces = regexp.MustCompile(regexPatternEmptySpaces)
 
 // StringKey stores the encoded key.
 type StringKey struct {
@@ -83,7 +76,9 @@ func New(fields ...string) *StringKey {
 	var b bytes.Buffer
 
 	for _, v := range fields {
-		b.WriteString(strings.ToLower(regexEmptySpaces.ReplaceAllLiteralString(strings.TrimSpace(v), " ")))
+		// strings.Fields trims and collapses runs of Unicode whitespace
+		// (unicode.IsSpace), matching strings.TrimSpace semantics.
+		b.WriteString(strings.ToLower(strings.Join(strings.Fields(v), " ")))
 		b.WriteByte('\t') // separate input strings
 	}
 

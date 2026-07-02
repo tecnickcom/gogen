@@ -68,3 +68,37 @@ func TestNew(t *testing.T) {
 		})
 	}
 }
+
+func TestNewUnicodeWhitespace(t *testing.T) {
+	t.Parallel()
+
+	// regression: interior Unicode whitespace must be collapsed like ASCII
+	// whitespace, consistently with the Unicode-aware trimming.
+	want := New("a b").Key()
+
+	tests := []struct {
+		name string
+		arg  string
+	}{
+		{
+			name: "no-break space",
+			arg:  "a\u00a0b",
+		},
+		{
+			name: "em space run",
+			arg:  "a \u2003 b",
+		},
+		{
+			name: "ideographic space with unicode trim",
+			arg:  "\u3000a\u3000b\u3000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, want, New(tt.arg).Key())
+		})
+	}
+}
