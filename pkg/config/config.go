@@ -67,6 +67,7 @@ package config
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -287,10 +288,16 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 		_ = v.BindEnv(ev) // we ignore the error because we are always passing an argument value
 	}
 
-	// Find and read the local configuration file (if any)
+	// Find and read the local configuration file (if any).
+	// A missing local config file is not fatal: configuration can be provided
+	// entirely via defaults, environment variables, or a remote provider
+	// (e.g. the "envvar" provider for fully file-less deployments).
 	err := v.ReadInConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed reading in config: %w", err)
+		var nfErr viper.ConfigFileNotFoundError
+		if !errors.As(err, &nfErr) {
+			return nil, fmt.Errorf("failed reading in config: %w", err)
+		}
 	}
 
 	var rsCfg remoteSourceConfig
@@ -422,7 +429,8 @@ func configureSearchPath(v Viper, cmdName, configDir string) {
 // validationError formats a consistent missing-variable error for providers.
 //
 // It produces an actionable message that includes provider name and the exact
-// expected environment variable key.
+// expected environment variable key, applying the same "-" to "_" replacement
+// used when binding environment variables.
 func validationError(provider, envPrefix, varName string) error {
-	return fmt.Errorf("%s config provider requires %s_%s to be set", provider, strings.ToUpper(envPrefix), strings.ToUpper(varName))
+	return fmt.Errorf("%s config provider requires %s_%s to be set", provider, strings.ToUpper(strings.ReplaceAll(envPrefix, "-", "_")), strings.ToUpper(varName))
 }

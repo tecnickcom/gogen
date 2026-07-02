@@ -181,6 +181,19 @@ func Test_loadLocalConfig(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "succeed when the local config file is not found",
+			setupViper: func(ctrl *gomock.Controller) Viper {
+				mock := mockViper(ctrl)
+				mock.EXPECT().SetEnvKeyReplacer(gomock.Any())
+				mock.EXPECT().ReadInConfig().Return(viper.ConfigFileNotFoundError{})
+				mock.EXPECT().Unmarshal(gomock.Any())
+
+				return mock
+			},
+			want:    &remoteSourceConfig{},
+			wantErr: false,
+		},
+		{
 			name:          "succeed from empty file",
 			configContent: []byte(`{}`),
 			setupViper: func(_ *gomock.Controller) Viper {
@@ -262,6 +275,11 @@ func Test_validationError(t *testing.T) {
 
 	err := validationError("provider", "prefix", "var")
 	require.EqualError(t, err, "provider config provider requires PREFIX_VAR to be set")
+
+	// the "-" to "_" replacement applied when binding environment variables
+	// must also be applied to the variable name printed in the error message
+	err = validationError("envvar", "my-app", keyRemoteConfigData)
+	require.EqualError(t, err, "envvar config provider requires MY_APP_REMOTECONFIGDATA to be set")
 }
 
 // Test_remoteSourceConfig_validation verifies the struct validation tags on
@@ -1252,4 +1270,23 @@ func TestLoad(t *testing.T) {
 
 	err = Load("cmd", tmpConfigDir, "test", targetConfig)
 	require.NoError(t, err)
+}
+
+func TestLoad_noLocalConfigFileWithEnvVarProvider(t *testing.T) {
+	envData := base64.StdEncoding.EncodeToString([]byte(`{"string":"envvar_value","int":7}`))
+
+	t.Setenv("TESTNOFILE_REMOTECONFIGPROVIDER", "envvar")
+	t.Setenv("TESTNOFILE_REMOTECONFIGDATA", envData)
+
+	targetConfig := &testConfig{}
+
+	// The provided config directory is empty and no config.json exists in any
+	// other search path, so loading must succeed purely from the built-in
+	// defaults plus the envvar-provider data (fully file-less deployment).
+	err := Load("gogen-config-test-nofile", t.TempDir(), "testnofile", targetConfig)
+	require.NoError(t, err)
+	require.Equal(t, "envvar_value", targetConfig.String)
+	require.Equal(t, 7, targetConfig.Int)
+	require.Equal(t, defaultLogFormat, targetConfig.Log.Format)
+	require.Equal(t, int64(defaultShutdownTimeout), targetConfig.ShutdownTimeout)
 }
