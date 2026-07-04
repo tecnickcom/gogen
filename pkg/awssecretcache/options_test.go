@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
@@ -107,4 +108,16 @@ func Test_ResolveEndpoint(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_WithStaleIfError(t *testing.T) {
+	t.Parallel()
+
+	conf := &cfg{}
+
+	WithStaleIfError(30 * time.Second)(conf)
+	require.Equal(t, 30*time.Second, conf.maxStale)
+
+	WithStaleIfError(0)(conf)
+	require.Equal(t, time.Duration(0), conf.maxStale)
 }

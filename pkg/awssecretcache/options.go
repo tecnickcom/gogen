@@ -3,6 +3,7 @@ package awssecretcache
 import (
 	"context"
 	"net/url"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
@@ -46,6 +47,27 @@ func WithSrvOptionFuncs(opt ...SrvOptionFunc) Option {
 func WithSecretsManagerClient(smclient SecretsManagerClient) Option {
 	return func(c *cfg) {
 		c.smclient = smclient
+	}
+}
+
+// WithStaleIfError serves the last known good secret when a refresh fails.
+//
+// If fetching an expired secret returns an error (throttling, outage,
+// timeout), the previously cached value is returned with a nil error
+// instead, but only until its original expiration plus maxStale. Every call
+// still attempts a fresh upstream lookup, so recovery is automatic on the
+// first success. Callers cannot distinguish a stale secret from a fresh one,
+// and stale protection is best-effort: the retained value is lost to cache
+// eviction under capacity pressure, [Cache.PurgeExpired], [Cache.Remove],
+// and [Cache.Reset]. A maxStale <= 0 disables the behavior (default).
+//
+// Use this to ride out transient AWS Secrets Manager unavailability without
+// building retry logic around every secret read; size maxStale against your
+// rotation policy so a rotated-out secret cannot be served long after the
+// rotation event.
+func WithStaleIfError(maxStale time.Duration) Option {
+	return func(c *cfg) {
+		c.maxStale = maxStale
 	}
 }
 

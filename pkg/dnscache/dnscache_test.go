@@ -449,3 +449,56 @@ func Test_Remove(t *testing.T) {
 
 	require.Equal(t, 1, c.Len())
 }
+
+// Test_LookupHost_returns_copy verifies that mutating the returned slice does
+// not corrupt the cached entry shared with other callers.
+func Test_LookupHost_returns_copy(t *testing.T) {
+	t.Parallel()
+
+	var i int
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			i++
+
+			return []string{"192.0.2.1", "192.0.2.2"}, nil
+		},
+	}
+
+	c := New(resolver, 2, 1*time.Minute)
+
+	addrs, err := c.LookupHost(t.Context(), "example.com")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1", "192.0.2.2"}, addrs)
+
+	// Mutating the returned slice must not corrupt the cached entry.
+	addrs[0] = "0.0.0.0"
+
+	addrs, err = c.LookupHost(t.Context(), "example.com")
+	require.NoError(t, err)
+	require.Equal(t, []string{"192.0.2.1", "192.0.2.2"}, addrs)
+	require.Equal(t, 1, i, "the second call must be served from cache")
+}
+
+func Test_PurgeExpired(t *testing.T) {
+	t.Parallel()
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, _ string) ([]string, error) {
+			return []string{"192.0.2.1"}, nil
+		},
+	}
+
+	c := New(resolver, 3, 100*time.Millisecond)
+
+	_, err := c.LookupHost(t.Context(), "example.com")
+	require.NoError(t, err)
+	require.Equal(t, 1, c.Len())
+
+	require.Equal(t, 0, c.PurgeExpired(), "a fresh entry must not be purged")
+
+	time.Sleep(150 * time.Millisecond) // let the entry expire
+
+	require.Equal(t, 1, c.PurgeExpired())
+	require.Equal(t, 0, c.Len())
+}

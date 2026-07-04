@@ -3,6 +3,7 @@ package awssecretcache
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,7 +13,7 @@ import (
 
 // Cache provides TTL and single-flight caching for AWS Secrets Manager lookups.
 type Cache struct {
-	cache *sfcache.Cache[string]
+	cache *sfcache.Cache[string, *awssm.GetSecretValueOutput]
 }
 
 // New constructs a Secrets Manager cache with single-flight lookups and TTL-based storage.
@@ -38,7 +39,7 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 		smclient = awssm.NewFromConfig(cfg.awsConfig, cfg.srvOptFns...)
 	}
 
-	lookupFn := func(ctx context.Context, key string) (any, error) {
+	lookupFn := func(ctx context.Context, key string) (*awssm.GetSecretValueOutput, error) {
 		input := &awssm.GetSecretValueInput{
 			SecretId: aws.String(key),
 		}
@@ -46,8 +47,14 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 		return smclient.GetSecretValue(ctx, input)
 	}
 
+	var sfopts []sfcache.Option[string, *awssm.GetSecretValueOutput]
+
+	if cfg.maxStale > 0 {
+		sfopts = append(sfopts, sfcache.WithStaleIfError[string, *awssm.GetSecretValueOutput](cfg.maxStale))
+	}
+
 	return &Cache{
-		cache: sfcache.New(lookupFn, size, ttl),
+		cache: sfcache.New(lookupFn, size, ttl, sfopts...),
 	}, nil
 }
 
@@ -62,27 +69,35 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 // the secret payload.
 //
 // Error fan-out: when the upstream GetSecretValue call fails, that error is
-// returned to every caller coalesced into the same in-flight lookup; the
-// failure is not retried within a single flight. A transient AWS error
-// (throttling, timeout, network blip) therefore surfaces to all waiters for
-// that key at once. Failed lookups are not cached, so a subsequent call after
-// the flight completes triggers a fresh upstream request. Callers that need
-// resilience against transient failures should wrap this method in their own
-// retry/backoff logic rather than relying on the cache.
+// shared with the callers coalesced into the same in-flight lookup, with two
+// exceptions: a failure caused by the initiating caller's own context makes
+// one waiting caller retry the lookup with its own context instead, and a
+// caller whose own context ends while waiting receives an error wrapping
+// [github.com/tecnickcom/gogen/pkg/sfcache.ErrLookupAborted]. Failed lookups
+// are not cached, so a subsequent call after the flight completes triggers a
+// fresh upstream request. Callers that need resilience against transient
+// failures can enable [WithStaleIfError] to serve the last known good secret
+// during upstream outages, or wrap this method in their own retry/backoff
+// logic.
+//
+// The returned output is shared by reference with every other caller of the
+// same key: treat it as read-only. Use [Cache.GetSecretBinary] or
+// [Cache.GetSecretString] for values that are safe to modify.
 func (c *Cache) GetSecretData(ctx context.Context, key string) (*awssm.GetSecretValueOutput, error) {
 	val, err := c.cache.Lookup(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve secret id %s: %w", key, err)
 	}
 
-	return val.(*awssm.GetSecretValueOutput), nil //nolint:forcetypeassert
+	return val, nil
 }
 
 // GetSecretBinary returns key as bytes, regardless of how it is stored in AWS.
 //
 // If the secret is stored as SecretString, the value is converted to []byte;
-// otherwise SecretBinary is returned directly. This gives callers a uniform
-// binary-oriented API for downstream decoding or decryption workflows.
+// otherwise a copy of SecretBinary is returned. The returned slice is never
+// shared with the cache, so callers may safely zero it after use without
+// corrupting the value served to other callers.
 func (c *Cache) GetSecretBinary(ctx context.Context, key string) ([]byte, error) {
 	val, err := c.GetSecretData(ctx, key)
 	if err != nil {
@@ -93,7 +108,8 @@ func (c *Cache) GetSecretBinary(ctx context.Context, key string) ([]byte, error)
 		return []byte(aws.ToString(val.SecretString)), nil
 	}
 
-	return val.SecretBinary, nil
+	// Return a copy: the cached output is shared by reference across callers.
+	return slices.Clone(val.SecretBinary), nil
 }
 
 // GetSecretString returns key as text, regardless of how it is stored in AWS.
@@ -136,4 +152,16 @@ func (c *Cache) Reset() {
 // disrupting other hot entries.
 func (c *Cache) Remove(key string) {
 	c.cache.Remove(key)
+}
+
+// PurgeExpired removes all expired entries from the cache and returns the
+// number of entries removed.
+//
+// Use it (e.g. on a timer) to bound how long expired secret material stays
+// in process memory: expired entries are otherwise only removed lazily,
+// when capacity pressure or a new lookup replaces them. Note that it also
+// removes values retained by [WithStaleIfError], forfeiting stale
+// protection for those keys until the next successful lookup.
+func (c *Cache) PurgeExpired() int {
+	return c.cache.PurgeExpired()
 }

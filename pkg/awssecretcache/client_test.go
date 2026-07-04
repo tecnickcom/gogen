@@ -379,3 +379,98 @@ func Test_Remove(t *testing.T) {
 
 	require.Equal(t, 1, c.Len())
 }
+
+// Test_GetSecretBinary_returns_copy verifies that zeroing the returned bytes
+// (common secret hygiene) does not corrupt the cached entry shared with other
+// callers.
+func Test_GetSecretBinary_returns_copy(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+
+	smclient := &mockSecretsManagerClient{
+		getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+			calls++
+
+			return &awssm.GetSecretValueOutput{
+				SecretBinary: []byte("secret_binary_value"),
+			}, nil
+		},
+	}
+
+	c, err := New(
+		t.Context(),
+		2,
+		1*time.Minute,
+		WithSecretsManagerClient(smclient),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	val, err := c.GetSecretBinary(t.Context(), "test_key_copy")
+	require.NoError(t, err)
+	require.Equal(t, []byte("secret_binary_value"), val)
+
+	// Zeroing the returned bytes must not corrupt the cached entry.
+	for i := range val {
+		val[i] = 0
+	}
+
+	val, err = c.GetSecretBinary(t.Context(), "test_key_copy")
+	require.NoError(t, err)
+	require.Equal(t, []byte("secret_binary_value"), val)
+	require.Equal(t, 1, calls, "the second call must be served from cache")
+}
+
+// Test_stale_if_error verifies the WithStaleIfError pass-through: a failed
+// refresh serves the last known good secret, and PurgeExpired forfeits the
+// stale protection.
+func Test_stale_if_error(t *testing.T) {
+	t.Parallel()
+
+	secval := "secret_string_stale"
+
+	var calls int
+
+	smclient := &mockSecretsManagerClient{
+		getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+			calls++
+
+			if calls == 1 {
+				return &awssm.GetSecretValueOutput{SecretString: &secval}, nil
+			}
+
+			return nil, errors.New("mock AWS outage")
+		},
+	}
+
+	c, err := New(
+		t.Context(),
+		3,
+		100*time.Millisecond,
+		WithSecretsManagerClient(smclient),
+		WithStaleIfError(1*time.Minute),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	got, err := c.GetSecretString(t.Context(), "test_key_stale")
+	require.NoError(t, err)
+	require.Equal(t, secval, got)
+
+	time.Sleep(150 * time.Millisecond) // let the entry expire
+
+	// The refresh fails: the last known good secret is served.
+	got, err = c.GetSecretString(t.Context(), "test_key_stale")
+	require.NoError(t, err, "a failed refresh must serve the stale secret")
+	require.Equal(t, secval, got)
+	require.Equal(t, 2, calls)
+
+	// Purging expired entries forfeits the stale protection.
+	require.Equal(t, 1, c.PurgeExpired())
+
+	_, err = c.GetSecretString(t.Context(), "test_key_stale")
+	require.Error(t, err, "after PurgeExpired the stale secret must be gone")
+}

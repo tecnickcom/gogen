@@ -3,6 +3,7 @@ package awssecretcache
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
@@ -26,6 +27,10 @@ type cfg struct {
 
 	// smclient is the AWS SDK Secrets Manager client.
 	smclient SecretsManagerClient
+
+	// maxStale bounds how long past its TTL a secret may be served when a
+	// refresh fails (stale-if-error). Zero disables it.
+	maxStale time.Duration
 }
 
 // loadConfig applies options and materializes the AWS SDK configuration.

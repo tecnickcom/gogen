@@ -25,11 +25,16 @@ single-flight cache. The lookup flow is:
     makes the real AWS API call while all other concurrent callers for the same
     key wait and share the result (single-flight).
  2. The result is stored in the fixed-size cache with the configured TTL; when
-    the cache is full, the entry with the earliest expiration time is evicted
-    (expiry-ordered / FIFO eviction, not LRU: reads do not refresh recency).
+    the cache is full, an already-expired entry is evicted first if any exists,
+    otherwise the entry with the earliest expiration time (expiry-ordered /
+    FIFO eviction, not LRU: reads do not refresh recency).
  3. Subsequent calls within the TTL window are served entirely from memory.
- 4. After TTL expiry the entry is evicted and the next call triggers a fresh
-    lookup with the same single-flight guarantees.
+ 4. After TTL expiry the next call triggers a fresh lookup with the same
+    single-flight guarantees. Expired entries are not proactively removed at
+    TTL: they are replaced on the next lookup or lazily evicted under capacity
+    pressure, so expired secret material can remain in process memory until
+    then. Call [Cache.Remove] or [Cache.Reset] when prompt removal matters
+    (e.g. immediately after a rotation event).
 
 # Key Features
 
@@ -40,15 +45,19 @@ single-flight cache. The lookup flow is:
     secrets are refreshed regularly for rotation compliance.
   - Fixed-size cache: the maximum number of entries is set at construction time
     via the size parameter of [New], bounding memory usage predictably. When
-    full, eviction is expiry-ordered (FIFO), removing the entry closest to
-    expiration first.
+    full, expired entries are evicted first, then eviction is expiry-ordered
+    (FIFO), removing the entry closest to expiration.
   - Thread-safe: all cache operations are safe for concurrent use with no
     external synchronization required.
   - Flexible secret retrieval: [Cache.GetSecretData] returns the raw SDK output;
     [Cache.GetSecretString] and [Cache.GetSecretBinary] transparently handle
     both storage formats (string and binary), respectively.
   - Manual cache control: [Cache.Remove] evicts a single entry (useful after a
-    secret rotation event) and [Cache.Reset] clears the entire cache.
+    secret rotation event), [Cache.Reset] clears the entire cache, and
+    [Cache.PurgeExpired] promptly removes expired secret material from memory.
+  - Optional stale-if-error resilience: [WithStaleIfError] serves the last
+    known good secret during transient AWS unavailability, bounded by a
+    caller-defined maximum staleness.
   - Pluggable AWS configuration: [WithAWSOptions], [WithSrvOptionFuncs],
     [WithEndpointMutable], and [WithEndpointImmutable] cover every AWS SDK
     customisation need, including local testing against mock endpoints.

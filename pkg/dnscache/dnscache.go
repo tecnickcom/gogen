@@ -11,7 +11,8 @@ outstanding lookup is performed at a time.
 Key features:
 
   - fixed-size in-memory cache with configurable capacity
-  - per-entry TTL expiry to keep DNS data fresh
+  - TTL-based expiry (one cache-wide TTL for all entries) to keep DNS data
+    fresh; authoritative DNS record TTLs are not consulted
   - thread-safe access for concurrent goroutines
   - single-flight behavior so duplicate lookups share one network request
   - optional custom net.Resolver support with sensible default behavior
@@ -36,6 +37,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/tecnickcom/gogen/pkg/sfcache"
@@ -48,7 +50,7 @@ type Resolver interface {
 
 // Cache provides DNS resolution caching with TTL and single-flight deduplication.
 type Cache struct {
-	cache *sfcache.Cache[string]
+	cache *sfcache.Cache[string, []string]
 }
 
 // New creates a concurrent DNS cache with TTL expiry and single-flight lookups.
@@ -64,11 +66,9 @@ func New(resolver Resolver, size int, ttl time.Duration) *Cache {
 		resolver = &net.Resolver{}
 	}
 
-	lookupFn := func(ctx context.Context, key string) (any, error) {
+	lookupFn := func(ctx context.Context, key string) ([]string, error) {
 		addrs, err := resolver.LookupHost(ctx, key)
 		if err != nil {
-			// Return an untyped nil value so a failed lookup can never be
-			// mistaken for a cacheable value (typed-nil boxing).
 			return nil, fmt.Errorf("DNS lookup failed: %w", err)
 		}
 
@@ -86,13 +86,16 @@ func New(resolver Resolver, size int, ttl time.Duration) *Cache {
 // concurrent callers for the same host wait and share the result.
 //
 // This reduces resolver load and avoids thundering-herd lookups.
+// The returned slice is a copy: callers may freely modify it without
+// affecting the cached entry shared with other callers.
 func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 	val, err := c.cache.Lookup(ctx, host)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve DNS for host %s: %w", host, err)
 	}
 
-	return val.([]string), nil //nolint:forcetypeassert
+	// Return a copy: cached values are shared by reference across callers.
+	return slices.Clone(val), nil
 }
 
 // DialContext resolves address through the cache and dials resolved IPs in order.
@@ -148,4 +151,11 @@ func (c *Cache) Reset() {
 // Remove evicts a single host entry from the cache.
 func (c *Cache) Remove(host string) {
 	c.cache.Remove(host)
+}
+
+// PurgeExpired removes all expired host entries from the cache and returns
+// the number of entries removed. Expired entries are otherwise only removed
+// lazily, when capacity pressure or a new lookup replaces them.
+func (c *Cache) PurgeExpired() int {
+	return c.cache.PurgeExpired()
 }
