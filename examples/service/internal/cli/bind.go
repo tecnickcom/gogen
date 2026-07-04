@@ -104,6 +104,14 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 				if err != nil {
 					return err
 				}
+
+				// This example has no handlers to inject reldb into (see above), so it
+				// simply confirms the connections were established. A real service would
+				// pass reldb to the private and public handlers created earlier.
+				l.InfoContext(ctx, "database connections established",
+					slog.Bool("main", reldb.Main != nil),
+					slog.Bool("read", reldb.Read != nil),
+				)
 			}
 
 			// override the default healthcheck handler
