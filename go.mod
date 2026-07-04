@@ -30,8 +30,8 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/spf13/viper/remote v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tecnickcom/farmhash64 v1.9.73
-	github.com/tecnickcom/statsd v1.1.0
+	github.com/tecnickcom/farmhash64 v1.9.74
+	github.com/tecnickcom/statsd v1.1.1
 	github.com/undefinedlabs/go-mpatch v1.0.7
 	github.com/valkey-io/valkey-go v1.0.76
 	github.com/valkey-io/valkey-go/mock v1.0.76
