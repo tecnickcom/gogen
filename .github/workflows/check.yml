@@ -35,12 +35,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
           check-latest: true
-      - name: dependency cache
-        uses: actions/cache@v6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
+          cache: true
       - name: unit tests
         run: make mod deps test GOPATH=$(go env GOPATH)
       - name: coverage report

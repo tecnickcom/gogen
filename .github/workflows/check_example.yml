@@ -22,12 +22,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
           check-latest: true
-      - name: dependency cache
-        uses: actions/cache@v6
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
+          cache: true
       - name: linter
         run: cd examples/service && make mod deps linter GOPATH=$(go env GOPATH)
 
