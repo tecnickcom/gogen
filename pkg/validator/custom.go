@@ -113,7 +113,7 @@ func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 	return hasNotValue(paramField, paramKind, params[1])
 }
 
-// hasDefaultvalue returns true if the field has a default value (nil/zero) or if is unset/invalid.
+// hasDefaultValue returns true if the field has a default value (nil/zero) or if is unset/invalid.
 func hasDefaultValue(value reflect.Value, kind reflect.Kind, _ bool) bool {
 	//nolint:exhaustive
 	switch kind {
