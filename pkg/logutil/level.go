@@ -24,7 +24,8 @@ const (
 )
 
 // ParseLevel converts syslog-style level strings ("0"-"7", syslog names, or "trace") to log levels.
-// Returns error for unrecognized input.
+// For unrecognized input it returns LevelInfo together with an error, so a caller that
+// ignores the error degrades to a safe, non-verbose level rather than to debug output.
 func ParseLevel(l string) (LogLevel, error) {
 	switch strings.ToLower(l) {
 	// 0 - Emergency - System is unusable
@@ -56,7 +57,7 @@ func ParseLevel(l string) (LogLevel, error) {
 		return LevelTrace, nil
 	}
 
-	return LevelDebug, fmt.Errorf("invalid log level %q", l)
+	return LevelInfo, fmt.Errorf("invalid log level %q", l)
 }
 
 // ValidLevel reports whether the given log level is recognized.
@@ -67,6 +68,22 @@ func ValidLevel(l LogLevel) bool {
 	default:
 		return false
 	}
+}
+
+// replaceLevelName is a slog.HandlerOptions.ReplaceAttr callback that renders the
+// top-level "level" attribute using the syslog-style names from LevelName (e.g.
+// "critical", "notice", "emergency") instead of slog's numeric-offset fallbacks
+// ("ERROR+8", "INFO+2"). Unrecognized level values are left untouched so slog's own
+// "WARN+1"-style banding is preserved rather than reduced to a bare number. It leaves
+// attributes inside groups untouched.
+func replaceLevelName(groups []string, a Attr) Attr {
+	if len(groups) == 0 && a.Key == slog.LevelKey {
+		if level, ok := a.Value.Any().(LogLevel); ok && ValidLevel(level) {
+			a.Value = slog.StringValue(LevelName(level))
+		}
+	}
+
+	return a
 }
 
 // LevelName returns the string name of the specified log level (e.g., "error", "debug").

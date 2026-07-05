@@ -2,10 +2,14 @@ package logsrv
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -76,7 +80,7 @@ func TestNewLogger_nilTraceIDFn(t *testing.T) {
 	})
 
 	require.Contains(t, out.String(), "no trace id")
-	require.NotContains(t, out.String(), traceIDName, "the trace ID field must be omitted when TraceIDFn is nil")
+	require.NotContains(t, out.String(), logutil.TraceIDKey, "the trace ID field must be omitted when TraceIDFn is nil")
 }
 
 // TestNewLogger_hookReceivesOriginalLevel verifies the hook is invoked with
@@ -159,8 +163,245 @@ func TestNewLogger_concurrent(t *testing.T) {
 	wg.Wait()
 }
 
+// TestNewLogger_singleTimestamp guards against the regression where the zerolog
+// context and the slog-zerolog handler each stamped a "time" field, producing a
+// record with a duplicate JSON key.
+func TestNewLogger_singleTimestamp(t *testing.T) {
+	t.Parallel()
+
+	out := &bytes.Buffer{}
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(out),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+	)
+	require.NoError(t, err)
+
+	l := NewLogger(cfg)
+	l.Info("one ts")
+
+	require.Equal(t, 1, strings.Count(out.String(), `"time":`), "each record must carry exactly one time field")
+}
+
+// TestNewLogger_traceIDPerRecord verifies the trace ID is resolved per record
+// (matching logutil) rather than frozen at construction time.
+func TestNewLogger_traceIDPerRecord(t *testing.T) {
+	t.Parallel()
+
+	out := &bytes.Buffer{}
+
+	var n atomic.Int64
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(out),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithTraceIDFn(func() string {
+			return "trace-" + strconv.FormatInt(n.Add(1), 10)
+		}),
+	)
+	require.NoError(t, err)
+
+	l := NewLogger(cfg)
+	l.Info("first")
+	l.Info("second")
+
+	require.Contains(t, out.String(), `"trace_id":"trace-1"`)
+	require.Contains(t, out.String(), `"trace_id":"trace-2"`, "the trace ID must be re-resolved for every record")
+}
+
+// TestNewLogger_traceIDStaysAtRootUnderGroup verifies the converter keeps the trace ID
+// at the root of the record even when the logger is derived with WithGroup.
+func TestNewLogger_traceIDStaysAtRootUnderGroup(t *testing.T) {
+	t.Parallel()
+
+	out := &bytes.Buffer{}
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(out),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithTraceIDFn(func() string { return "trace-root" }),
+	)
+	require.NoError(t, err)
+
+	l := NewLogger(cfg).WithGroup("g")
+	l.Info("msg", "k", "v")
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+
+	require.Equal(t, "trace-root", got[logutil.TraceIDKey], "trace_id must stay at the root, not nest in the group")
+
+	group, ok := got["g"].(map[string]any)
+	require.True(t, ok, "the group must be present")
+	require.NotContains(t, group, logutil.TraceIDKey, "trace_id must not be nested inside the group")
+}
+
+func TestNewHandler_FormatNoneNoHookIsDiscard(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := logutil.NewConfig(logutil.WithFormat(logutil.FormatNone))
+	require.NoError(t, err)
+
+	h := NewHandler(cfg)
+	require.False(t, h.Enabled(t.Context(), logutil.LevelError), "FormatNone without a hook must be a zero-cost discard handler")
+}
+
+func TestNewLogger_FormatNoneHookFires(t *testing.T) {
+	t.Parallel()
+
+	var fired int
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithFormat(logutil.FormatNone),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithHookFn(func(_ logutil.LogLevel, _ string) { fired++ }),
+	)
+	require.NoError(t, err)
+
+	l := NewLogger(cfg)
+	l.Error("x")
+	l.Info("y")
+
+	require.Equal(t, 2, fired, "hooks must fire under FormatNone even though output is discarded")
+}
+
+func TestNewLogger_UserTraceIDKept(t *testing.T) {
+	t.Parallel()
+
+	out := &bytes.Buffer{}
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(out),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithTraceIDFn(func() string { return "CONFIGURED" }),
+	)
+	require.NoError(t, err)
+
+	NewLogger(cfg).Info("m", "trace_id", "USER")
+
+	s := out.String()
+	require.Equal(t, 1, strings.Count(s, `"trace_id":`), "exactly one trace_id key")
+	require.Contains(t, s, `"trace_id":"USER"`, "the caller-supplied trace_id wins")
+}
+
+func TestNewLogger_Source(t *testing.T) {
+	t.Parallel()
+
+	out := &bytes.Buffer{}
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(out),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithSource(true),
+	)
+	require.NoError(t, err)
+
+	NewLogger(cfg).Info("with source")
+
+	require.Contains(t, out.String(), `"source":`, "source location must be present when enabled")
+}
+
+func Test_isTerminalWriter(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, isTerminalWriter(&bytes.Buffer{}), "a non-file writer is not a terminal")
+
+	f, err := os.CreateTemp(t.TempDir(), "logsrv")
+	require.NoError(t, err)
+
+	defer func() { _ = f.Close() }()
+
+	require.False(t, isTerminalWriter(f), "a regular file is not a terminal")
+}
+
+// TestNewLogger_severeLevelsDoNotTerminate locks in the invariant that the
+// Emergency->panic and Alert->fatal mappings emit ordinary records (via zerolog's
+// WithLevel) and never terminate the process.
+func TestNewLogger_severeLevelsDoNotTerminate(t *testing.T) {
+	t.Parallel()
+
+	out := &bytes.Buffer{}
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(out),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelTrace),
+	)
+	require.NoError(t, err)
+
+	l := NewLogger(cfg)
+
+	require.NotPanics(t, func() {
+		l.Log(t.Context(), logutil.LevelEmergency, "emergency msg")
+		l.Log(t.Context(), logutil.LevelAlert, "alert msg")
+	})
+
+	require.Contains(t, out.String(), `"level":"panic"`)
+	require.Contains(t, out.String(), `"level":"fatal"`)
+	require.Contains(t, out.String(), "emergency msg")
+	require.Contains(t, out.String(), "alert msg")
+}
+
+// TestNewHandler exercises the pure constructor: it builds a working handler
+// without installing a process-wide default logger.
+func TestNewHandler(t *testing.T) {
+	t.Parallel()
+
+	out := &bytes.Buffer{}
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(out),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+	)
+	require.NoError(t, err)
+
+	h := NewHandler(cfg)
+	require.NotNil(t, h)
+
+	slog.New(h).Info("via handler")
+
+	require.Contains(t, out.String(), "via handler")
+}
+
+// TestNewLogger_nilConfig verifies a nil cfg falls back to logutil.DefaultConfig
+// instead of panicking.
+func TestNewLogger_nilConfig(t *testing.T) {
+	t.Parallel()
+
+	require.NotPanics(t, func() {
+		l := NewLogger(nil)
+		require.NotNil(t, l)
+	})
+}
+
+// TestNewHandler_nilOut verifies a nil Out writer falls back to os.Stderr instead
+// of building a handler that panics on first write.
+func TestNewHandler_nilOut(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := logutil.NewConfig(logutil.WithFormat(logutil.FormatJSON))
+	require.NoError(t, err)
+
+	cfg.Out = nil // hand-cleared writer must fall back, not panic
+
+	require.NotPanics(t, func() {
+		h := NewHandler(cfg)
+		require.NotNil(t, h)
+	})
+}
+
 func Test_writerByFormat(t *testing.T) {
 	t.Parallel()
+
+	// A non-terminal writer makes the expected NoColor value deterministic
+	// (writing console output to a buffer/file must not embed ANSI escapes).
+	consoleOut := &bytes.Buffer{}
 
 	tests := []struct {
 		name   string
@@ -177,8 +418,8 @@ func Test_writerByFormat(t *testing.T) {
 		{
 			name:   "console",
 			format: logutil.FormatConsole,
-			out:    os.Stdout,
-			want:   zerolog.ConsoleWriter{Out: os.Stdout},
+			out:    consoleOut,
+			want:   zerolog.ConsoleWriter{Out: consoleOut, NoColor: true},
 		},
 		{
 			name:   "none",

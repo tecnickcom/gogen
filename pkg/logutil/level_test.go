@@ -16,7 +16,7 @@ func TestParseLevel(t *testing.T) {
 	}{
 		{
 			value:   "invalid",
-			want:    LevelDebug,
+			want:    LevelInfo,
 			wantErr: true,
 		},
 		{

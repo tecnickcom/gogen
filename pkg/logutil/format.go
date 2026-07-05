@@ -15,7 +15,9 @@ const (
 )
 
 // ParseFormat converts a string ("json", "console", "none"/"discard"/"noop") to a log format.
-// Returns error for unrecognized input.
+// For unrecognized input it returns FormatJSON together with an error, so a caller that
+// ignores the error degrades to visible JSON logs rather than silently discarding output
+// (which returning FormatNone would cause).
 func ParseFormat(f string) (LogFormat, error) {
 	switch strings.ToLower(f) {
 	case "json":
@@ -26,7 +28,7 @@ func ParseFormat(f string) (LogFormat, error) {
 		return FormatNone, nil
 	}
 
-	return FormatNone, fmt.Errorf("invalid log format %q", f)
+	return FormatJSON, fmt.Errorf("invalid log format %q", f)
 }
 
 // ValidFormat reports whether the given log format is recognized.

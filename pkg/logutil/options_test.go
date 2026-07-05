@@ -19,6 +19,16 @@ func TestWithOutWriter(t *testing.T) {
 	require.Equal(t, os.Stdout, cfg.Out)
 }
 
+func TestWithOutWriter_nil(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{}
+
+	err := WithOutWriter(nil)(cfg)
+	require.Error(t, err)
+	require.Nil(t, cfg.Out, "a nil writer must be rejected, not stored")
+}
+
 func TestWithFormat(t *testing.T) {
 	t.Parallel()
 
@@ -182,6 +192,15 @@ func TestWithHookFn(t *testing.T) {
 	err := WithHookFn(v)(cfg)
 	require.NoError(t, err)
 	require.Equal(t, reflect.ValueOf(v).Pointer(), reflect.ValueOf(cfg.HookFn).Pointer())
+}
+
+func TestWithSource(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{}
+	err := WithSource(true)(cfg)
+	require.NoError(t, err)
+	require.True(t, cfg.Source)
 }
 
 func TestWithTraceIDFn(t *testing.T) {

@@ -16,12 +16,12 @@ func TestParseFormat(t *testing.T) {
 	}{
 		{
 			value:   "",
-			want:    FormatNone,
+			want:    FormatJSON,
 			wantErr: true,
 		},
 		{
 			value:   "xml",
-			want:    FormatNone,
+			want:    FormatJSON,
 			wantErr: true,
 		},
 		{

@@ -162,7 +162,96 @@ func TestSlogHandler_DefaultFormatHonorsOut(t *testing.T) {
 	logger.Debug("default branch")
 
 	require.Contains(t, buf.String(), "default branch", "default branch must honor the configured writer")
-	require.Contains(t, buf.String(), `"level":"DEBUG"`, "default branch must honor the configured level")
+	require.Contains(t, buf.String(), `"level":"debug"`, "default branch must honor the configured level (syslog-style name)")
+}
+
+func TestSlogHandler_NilOutFallsBackToStderr(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := NewConfig()
+	require.NoError(t, err)
+
+	cfg.Out = nil // hand-cleared writer must not panic when building the handler
+
+	require.NotPanics(t, func() {
+		h := cfg.SlogHandler()
+		require.NotNil(t, h)
+	})
+}
+
+func TestSlogHandler_FormatNoneNoHookIsDiscard(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := NewConfig(WithFormat(FormatNone))
+	require.NoError(t, err)
+	require.Nil(t, cfg.HookFn)
+
+	h := cfg.SlogHandler()
+	require.False(t, h.Enabled(t.Context(), LevelError), "FormatNone without a hook must be a zero-cost discard handler")
+}
+
+func TestSlogHandler_Source(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	cfg, err := NewConfig(WithOutWriter(&buf), WithFormat(FormatJSON), WithSource(true))
+	require.NoError(t, err)
+
+	cfg.SlogLogger().Info("with source")
+
+	require.Contains(t, buf.String(), `"source":`, "source location must be present when enabled")
+}
+
+func TestSlogHandler_UnknownLevelKeepsSlogFormat(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	cfg, err := NewConfig(WithOutWriter(&buf), WithFormat(FormatJSON), WithLevel(LevelTrace))
+	require.NoError(t, err)
+
+	cfg.SlogLogger().Log(t.Context(), LevelWarning+1, "odd") // 5: not a defined level
+
+	require.Contains(t, buf.String(), `"level":"WARN+1"`, "unrecognized levels keep slog's banded name, not a bare number")
+}
+
+func TestSlogHandler_HookFiresUnderFormatNone(t *testing.T) {
+	t.Parallel()
+
+	var fired int
+
+	cfg, err := NewConfig(
+		WithFormat(FormatNone),
+		WithLevel(LevelDebug),
+		WithHookFn(func(_ LogLevel, _ string) { fired++ }),
+	)
+	require.NoError(t, err)
+
+	l := cfg.SlogLogger()
+	l.Error("x")
+	l.Info("y")
+
+	require.Equal(t, 2, fired, "hooks must fire under FormatNone (output discarded, side effects preserved)")
+}
+
+func TestSlogHandler_SyslogLevelNames(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	cfg, err := NewConfig(WithOutWriter(&buf), WithFormat(FormatJSON), WithLevel(LevelTrace))
+	require.NoError(t, err)
+
+	l := cfg.SlogLogger()
+	l.Log(t.Context(), LevelCritical, "c")
+	l.Log(t.Context(), LevelNotice, "n")
+	l.Log(t.Context(), LevelEmergency, "e")
+
+	out := buf.String()
+	require.Contains(t, out, `"level":"critical"`, "extended levels must render as syslog names, not ERROR+8")
+	require.Contains(t, out, `"level":"notice"`)
+	require.Contains(t, out, `"level":"emergency"`)
 }
 
 func TestConfig_SlogLogger(t *testing.T) {
