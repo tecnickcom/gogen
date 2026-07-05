@@ -2,10 +2,43 @@ package traceid
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestValid(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		id   string
+		want bool
+	}{
+		{name: "empty", id: "", want: false},
+		{name: "single char", id: "a", want: true},
+		{name: "all allowed classes at max length", id: "0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz", want: true},
+		{name: "dot allowed", id: "a.b.c", want: true},
+		{name: "max length", id: strings.Repeat("a", MaxIDLen), want: true},
+		{name: "one over max length", id: strings.Repeat("a", MaxIDLen+1), want: false},
+		{name: "space", id: "ab cd", want: false},
+		{name: "tab", id: "ab\tcd", want: false},
+		{name: "trailing newline", id: "abc\n", want: false},
+		{name: "trailing carriage return newline", id: "abc\r\n", want: false},
+		{name: "colon", id: "a:b", want: false},
+		{name: "invalid punctuation", id: "0123#~'", want: false},
+		{name: "non-ascii", id: "abcé", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.want, Valid(tt.id))
+		})
+	}
+}
 
 func TestNewContext(t *testing.T) {
 	t.Parallel()
@@ -190,5 +223,52 @@ func TestFromHTTPRequestHeader(t *testing.T) {
 			v := FromHTTPRequestHeader(r, DefaultHeader, tt.def)
 			require.Equal(t, tt.want, v)
 		})
+	}
+}
+
+func TestSetHTTPRequestHeaderFromContextNilRequest(t *testing.T) {
+	t.Parallel()
+
+	// a nil request must not panic; nothing is set and an empty id is returned.
+	ctx := NewContext(t.Context(), "id-550101")
+	require.Empty(t, SetHTTPRequestHeaderFromContext(ctx, nil, DefaultHeader, DefaultValue))
+}
+
+func TestSetHTTPRequestHeaderFromContextNilHeaderMap(t *testing.T) {
+	t.Parallel()
+
+	// a request whose Header map is nil must not panic; the map is created and the id is set.
+	ctx := NewContext(t.Context(), "id-550102")
+
+	r := &http.Request{}
+
+	got := SetHTTPRequestHeaderFromContext(ctx, r, DefaultHeader, DefaultValue)
+	require.Equal(t, "id-550102", got)
+	require.Equal(t, "id-550102", r.Header.Get(DefaultHeader))
+}
+
+func TestFromHTTPRequestHeaderNilRequest(t *testing.T) {
+	t.Parallel()
+
+	// a nil request must not panic; the default value is returned.
+	require.Equal(t, "default-550103", FromHTTPRequestHeader(nil, DefaultHeader, "default-550103"))
+}
+
+func BenchmarkValid(b *testing.B) {
+	const id = "0191b2f1-8f3a-7c2d-9e4b-1a2b3c4d5e6f"
+
+	for b.Loop() {
+		_ = Valid(id)
+	}
+}
+
+func BenchmarkFromHTTPRequestHeader(b *testing.B) {
+	r, err := http.NewRequestWithContext(b.Context(), http.MethodGet, "/", nil)
+	require.NoError(b, err)
+
+	r.Header.Set(DefaultHeader, "0191b2f1-8f3a-7c2d-9e4b-1a2b3c4d5e6f")
+
+	for b.Loop() {
+		_ = FromHTTPRequestHeader(r, DefaultHeader, "")
 	}
 }

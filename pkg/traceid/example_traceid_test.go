@@ -9,6 +9,18 @@ import (
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
+func ExampleValid() {
+	// a well-formed trace ID (1 to MaxIDLen chars from [0-9A-Za-z._-])
+	fmt.Println(traceid.Valid("0191b2f1-8f3a-7c2d-9e4b-1a2b3c4d5e6f"))
+
+	// an id carrying control characters is rejected, preventing header/log injection
+	fmt.Println(traceid.Valid("evil\r\nX-Injected: 1"))
+
+	// Output:
+	// true
+	// false
+}
+
 func ExampleNewContext() {
 	// store value in context
 	ctx := traceid.NewContext(context.Background(), "test-1-218549")

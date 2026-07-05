@@ -139,7 +139,7 @@ This scaffolds a new web service from the provided configuration.
 - [tsmap](pkg/threadsafe/tsmap) - Thread-safe map implementation. `thread-safe`, `map`
 - [tsslice](pkg/threadsafe/tsslice) - Thread-safe slice implementation. `thread-safe`, `slice`
 - [timeutil](pkg/timeutil) - Time and date utilities. `time`, `date utilities`
-- [traceid](pkg/traceid) - Trace ID generation and management. `tracing`, `ids`
+- [traceid](pkg/traceid) - Trace ID propagation and context management. `tracing`, `ids`
 - [typeutil](pkg/typeutil) - Type conversion and utility functions. `type conversion`, `utilities`
 - [uhex](pkg/uhex) - Utilities for uppercase hexadecimal encoding and decoding. `hex`, `encoding`, `utilities`
 - [validator](pkg/validator) - Data validation utilities. `validation`, `utilities`
