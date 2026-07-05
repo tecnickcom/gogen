@@ -92,6 +92,39 @@ func TestCheckHttpStatus(t *testing.T) {
 			handlerStatusCode: http.StatusOK,
 			wantErr:           false,
 		},
+		{
+			name:              "succeed with non-positive timeout (no added deadline)",
+			checkMethod:       http.MethodGet,
+			checkTimeout:      0,
+			checkWantStatus:   http.StatusOK,
+			handlerMethod:     http.MethodGet,
+			handlerStatusCode: http.StatusOK,
+			wantErr:           false,
+		},
+		{
+			name:            "succeed with accept-status predicate on a 2xx",
+			checkMethod:     http.MethodGet,
+			checkTimeout:    1 * time.Second,
+			checkWantStatus: 0, // ignored when a predicate is set
+			checkOpts: []CheckOption{
+				WithAcceptStatus(func(code int) bool { return code >= 200 && code < 300 }),
+			},
+			handlerMethod:     http.MethodGet,
+			handlerStatusCode: http.StatusAccepted, // 202: a 2xx other than the default
+			wantErr:           false,
+		},
+		{
+			name:            "fails when accept-status predicate rejects",
+			checkMethod:     http.MethodGet,
+			checkTimeout:    1 * time.Second,
+			checkWantStatus: 0,
+			checkOpts: []CheckOption{
+				WithAcceptStatus(func(code int) bool { return code == http.StatusOK }),
+			},
+			handlerMethod:     http.MethodGet,
+			handlerStatusCode: http.StatusTeapot,
+			wantErr:           true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -131,4 +164,36 @@ func TestCheckHttpStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+// nilResponseClient is a misbehaving client that returns no response and no
+// error, violating the http.Client contract, to exercise the nil-response guard.
+type nilResponseClient struct{}
+
+func (nilResponseClient) Do(_ *http.Request) (*http.Response, error) {
+	return nil, nil //nolint:nilnil
+}
+
+func TestCheckHTTPStatus_NilResponse(t *testing.T) {
+	t.Parallel()
+
+	err := CheckHTTPStatus(t.Context(), nilResponseClient{}, http.MethodGet, "http://example.invalid", http.StatusOK, time.Second)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "nil response")
+}
+
+// nilBodyClient returns a response whose Body is nil, which the real http.Client
+// never does but a custom HTTPClient can, to exercise the nil-body guard.
+type nilBodyClient struct{}
+
+func (nilBodyClient) Do(_ *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: http.StatusOK}, nil
+}
+
+func TestCheckHTTPStatus_NilBody(t *testing.T) {
+	t.Parallel()
+
+	err := CheckHTTPStatus(t.Context(), nilBodyClient{}, http.MethodGet, "http://example.invalid", http.StatusOK, time.Second)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "nil response or body")
 }

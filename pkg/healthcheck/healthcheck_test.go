@@ -2,6 +2,7 @@ package healthcheck
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -37,4 +38,23 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, h)
 	require.Equal(t, "hc-id_1", h.ID)
 	require.Equal(t, h.Checker, hc)
+}
+
+func TestHealthCheckFunc(t *testing.T) {
+	t.Parallel()
+
+	called := false
+
+	var ok HealthChecker = HealthCheckFunc(func(_ context.Context) error {
+		called = true
+
+		return nil
+	})
+
+	require.NoError(t, ok.HealthCheck(t.Context()))
+	require.True(t, called)
+
+	sentinel := errors.New("boom")
+	failing := HealthCheckFunc(func(_ context.Context) error { return sentinel })
+	require.ErrorIs(t, failing.HealthCheck(t.Context()), sentinel)
 }

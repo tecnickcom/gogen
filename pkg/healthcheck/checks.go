@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+// maxDrainBytes caps how much of an unread response body is drained before close.
+// Draining lets keep-alive reuse the connection for small bodies; a larger body is
+// only partially drained and its connection is dropped, which avoids an unbounded
+// or hostile read.
+const maxDrainBytes = 4 << 10
+
 // HTTPClient is the minimal transport used by HTTP-based health checks.
 type HTTPClient interface {
 	// Do performs the HTTP request.
@@ -17,9 +23,12 @@ type HTTPClient interface {
 
 // CheckHTTPStatus probes an HTTP endpoint and validates its response status.
 //
-// The check runs with a per-call timeout, supports optional request mutation,
-// and returns an error for transport failures or mismatched status codes.
-// This helper is ideal for upstream dependency checks in readiness endpoints.
+// The check supports optional request mutation and returns an error for
+// transport failures or mismatched status codes. By default the status must equal
+// wantStatusCode; [WithAcceptStatus] replaces that with a predicate. A positive
+// timeout bounds the request via a derived context; a non-positive timeout adds no
+// deadline of its own, leaving only ctx to bound execution. This helper is ideal
+// for upstream dependency checks in readiness endpoints.
 func CheckHTTPStatus(
 	ctx context.Context,
 	httpClient HTTPClient,
@@ -35,8 +44,12 @@ func CheckHTTPStatus(
 		apply(&cfg)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
+	if timeout > 0 {
+		var cancel context.CancelFunc
+
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
 
 	req, nerr := http.NewRequestWithContext(ctx, method, url, nil)
 	if nerr != nil {
@@ -52,14 +65,33 @@ func CheckHTTPStatus(
 		return fmt.Errorf("healthcheck request: %w", derr)
 	}
 
+	if resp == nil || resp.Body == nil {
+		return errors.New("healthcheck request: nil response or body")
+	}
+
 	defer func() {
-		// Drain any remaining body so the connection can be reused by keep-alive.
-		_, _ = io.Copy(io.Discard, resp.Body)
+		// Drain a bounded amount of any remaining body so keep-alive can reuse the
+		// connection for small bodies, without reading a large/hostile body in full.
+		_, _ = io.CopyN(io.Discard, resp.Body, maxDrainBytes)
 		err = errors.Join(err, resp.Body.Close())
 	}()
 
-	if resp.StatusCode != wantStatusCode {
-		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
+	return checkStatus(resp.StatusCode, wantStatusCode, cfg.acceptStatus)
+}
+
+// checkStatus reports whether a response status is acceptable, using the optional
+// predicate when set, otherwise an exact match against wantStatusCode.
+func checkStatus(code, wantStatusCode int, accept func(code int) bool) error {
+	if accept != nil {
+		if accept(code) {
+			return nil
+		}
+
+		return fmt.Errorf("unexpected healthcheck status code: got %d", code)
+	}
+
+	if code != wantStatusCode {
+		return fmt.Errorf("unexpected healthcheck status code: got %d, want %d", code, wantStatusCode)
 	}
 
 	return nil
