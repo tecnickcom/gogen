@@ -100,6 +100,27 @@ func NewContext(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, ctxKey{}, id)
 }
 
+// ForceContext stores the trace ID in the context, overwriting any value that
+// may already be present. Unlike [NewContext], which preserves an already-stored
+// ID, this guarantees the returned context reflects the supplied ID. It is meant
+// for callers that have just determined the authoritative ID (for example after
+// replacing an invalid stored ID with a freshly generated one) and need the
+// context to agree with what was propagated downstream.
+// An empty ID is not stored and the context is returned unchanged; if the stored
+// ID already equals id the context is returned unchanged to avoid an
+// unnecessary allocation.
+func ForceContext(ctx context.Context, id string) context.Context {
+	if id == "" {
+		return ctx
+	}
+
+	if existing, ok := ctx.Value(ctxKey{}).(string); ok && existing == id {
+		return ctx
+	}
+
+	return context.WithValue(ctx, ctxKey{}, id)
+}
+
 // FromContext retrieves the trace ID from context, returning the defaultValue if not found.
 func FromContext(ctx context.Context, defaultValue string) string {
 	if v, ok := ctx.Value(ctxKey{}).(string); ok {

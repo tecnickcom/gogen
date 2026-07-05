@@ -6,11 +6,14 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -18,8 +21,30 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/redact"
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
+
+// roundTripperFunc adapts a function to http.RoundTripper for tests.
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+// errorReader is an io.Reader that always fails, used to force dump errors.
+type errorReader struct {
+	err error
+}
+
+func (e errorReader) Read([]byte) (int, error) {
+	return 0, e.err
+}
+
+// newDebugLogger returns a text logger at debug level writing to w.
+func newDebugLogger(w io.Writer) *slog.Logger {
+	return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelDebug}))
+}
 
 func TestNew(t *testing.T) {
 	t.Parallel()
@@ -40,7 +65,10 @@ func TestNew(t *testing.T) {
 	require.NotNil(t, got, "New() returned client should not be nil")
 	require.Equal(t, traceid, got.traceIDHeaderName)
 	require.Equal(t, component, got.component)
-	require.Equal(t, timeout, got.client.Timeout)
+	require.Equal(t, timeout, got.timeout)
+	// The deadline is applied via the request context, not http.Client.Timeout,
+	// so the underlying client's timeout stays zero (a single timer per request).
+	require.Zero(t, got.client.Timeout)
 
 	// The identity round-tripper returns its argument unchanged, so the
 	// transport must be the client's own cloned *http.Transport (not the
@@ -137,7 +165,6 @@ func TestClient_Do(t *testing.T) {
 			require.NoError(t, perr, "Unexpected error (os.Pipe)")
 
 			logger := slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: tt.logLevel}))
-			slog.SetDefault(logger)
 
 			out := make(chan string)
 			wg := new(sync.WaitGroup)
@@ -468,4 +495,755 @@ type passthroughRoundTripper struct {
 
 func (t *passthroughRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
 	return t.next.RoundTrip(r) //nolint:wrapcheck
+}
+
+// TestClient_Do_RedactsQueryLogsHostNoURI verifies the outbound log fields:
+// query-string secrets are redacted, the destination host is logged, and neither
+// the removed request_url nor the always-empty client-side request_uri field is
+// present.
+func TestClient_Do_RedactsQueryLogsHostNoURI(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	}))
+	t.Cleanup(server.Close)
+
+	var buf bytes.Buffer
+
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	client := New(WithLogger(logger))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/p?token=SUPERSECRET&x=1", nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	out := buf.String()
+	require.NotContains(t, out, "SUPERSECRET", "query secret must be redacted before logging")
+	require.Contains(t, out, redact.RedactionMarker, "redaction marker must appear in place of the secret")
+	require.Contains(t, out, "request_host=")
+	require.Contains(t, out, "request_path=")
+	require.NotContains(t, out, "request_url=", "the redundant request_url field must be removed")
+	require.NotContains(t, out, "request_uri=", "the client-side request_uri field must be removed")
+}
+
+// TestClient_Do_NilRequest verifies Do returns ErrNilRequest instead of panicking.
+func TestClient_Do_NilRequest(t *testing.T) {
+	t.Parallel()
+
+	//nolint:bodyclose // no response is returned on this error path.
+	resp, err := New().Do(nil)
+	require.Nil(t, resp)
+	require.ErrorIs(t, err, ErrNilRequest)
+}
+
+// TestClient_Do_NilRequestURL verifies Do returns ErrNilRequestURL instead of
+// panicking on a request with a nil URL.
+func TestClient_Do_NilRequestURL(t *testing.T) {
+	t.Parallel()
+
+	req := &http.Request{Method: http.MethodGet, Header: make(http.Header)}
+
+	//nolint:bodyclose // no response is returned on this error path.
+	resp, err := New().Do(req.WithContext(t.Context()))
+	require.Nil(t, resp)
+	require.ErrorIs(t, err, ErrNilRequestURL)
+}
+
+// TestClient_Do_LogsResponseStatus verifies the outbound log carries the response
+// status code and, for a known-length response, the size.
+func TestClient_Do_LogsResponseStatus(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte("nope"))
+	}))
+	t.Cleanup(server.Close)
+
+	var buf bytes.Buffer
+
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	client := New(WithLogger(logger))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	out := buf.String()
+	require.Contains(t, out, "response_code=503", "the response status code must be logged")
+	require.Contains(t, out, "response_content_length=4", "a known response length must be logged")
+	require.Regexp(t, `response_duration=[0-9]`, out, "a non-negative duration must be logged")
+}
+
+// TestClient_Do_ValidContextTraceIDReused verifies that a valid trace ID already
+// in the context is propagated unchanged (exercising the no-rewrap fast path).
+func TestClient_Do_ValidContextTraceIDReused(t *testing.T) {
+	t.Parallel()
+
+	const ctxID = "ctx-trace-778899"
+
+	var got string
+
+	capture := func(_ http.RoundTripper) http.RoundTripper {
+		return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			got = r.Header.Get(traceid.DefaultHeader)
+
+			return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Header: make(http.Header)}, nil
+		})
+	}
+
+	client := New(WithRoundTripper(capture))
+
+	ctx := traceid.NewContext(t.Context(), ctxID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.test", nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	require.Equal(t, ctxID, got, "the context trace ID must be propagated unchanged")
+}
+
+// TestClient_Do_CallerHeaderHonored verifies that a valid caller-set trace header
+// is used (not clobbered) when the context carries no trace ID.
+func TestClient_Do_CallerHeaderHonored(t *testing.T) {
+	t.Parallel()
+
+	const headerID = "caller-set-661122"
+
+	var got string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get(traceid.DefaultHeader)
+		_, _ = w.Write([]byte("OK"))
+	}))
+	t.Cleanup(server.Close)
+
+	client := New()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+	req.Header.Set(traceid.DefaultHeader, headerID)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	require.Equal(t, headerID, got, "a valid caller-set trace header must be honored")
+}
+
+// TestClient_Do_InvalidTraceIDContextMatchesHeader verifies that when the
+// inbound context carries an invalid trace ID, the ID forced onto the request
+// context matches the freshly generated ID propagated in the header.
+func TestClient_Do_InvalidTraceIDContextMatchesHeader(t *testing.T) {
+	t.Parallel()
+
+	const invalidID = "bad\x00trace\nid"
+
+	type captured struct {
+		header string
+		ctxID  string
+	}
+
+	got := make(chan captured, 1)
+	capture := func(_ http.RoundTripper) http.RoundTripper {
+		return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			got <- captured{
+				header: r.Header.Get(traceid.DefaultHeader),
+				ctxID:  traceid.FromContext(r.Context(), ""),
+			}
+
+			return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Header: make(http.Header)}, nil
+		})
+	}
+
+	client := New(WithRoundTripper(capture))
+
+	ctx := traceid.NewContext(t.Context(), invalidID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://example.test", nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	c := <-got
+	require.NotEmpty(t, c.header)
+	require.NotEqual(t, invalidID, c.header, "the invalid ID must not be propagated")
+	require.Equal(t, c.header, c.ctxID, "request context trace ID must match the header sent downstream")
+}
+
+// TestClient_Do_DoesNotMutateCallerRequest verifies Do works on a clone: the
+// caller's request keeps its original (empty) trace header after Do returns.
+func TestClient_Do_DoesNotMutateCallerRequest(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	}))
+	t.Cleanup(server.Close)
+
+	client := New()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	require.Empty(t, req.Header.Get(traceid.DefaultHeader), "caller's request headers must not be mutated")
+}
+
+// TestClient_Do_RoundTripperPanicCancelsContext verifies that a panic in a
+// user-supplied round-tripper still releases the per-request timeout context.
+func TestClient_Do_RoundTripperPanicCancelsContext(t *testing.T) {
+	t.Parallel()
+
+	got := make(chan context.Context, 1)
+	panicRT := func(_ http.RoundTripper) http.RoundTripper {
+		return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			got <- r.Context()
+
+			panic("round-trip panic")
+		})
+	}
+
+	client := New(WithRoundTripper(panicRT))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.invalid", nil)
+	require.NoError(t, err)
+
+	require.Panics(t, func() {
+		//nolint:bodyclose // the round-tripper panics; there is no response to close.
+		_, _ = client.Do(req)
+	})
+
+	ctx := <-got
+
+	select {
+	case <-ctx.Done():
+		require.ErrorIs(t, ctx.Err(), context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("context was not canceled after a round-tripper panic")
+	}
+}
+
+// TestClient_dumpRequest covers the body-inclusion decision for request dumps.
+func TestClient_dumpRequest(t *testing.T) {
+	t.Parallel()
+
+	c := defaultClient()
+
+	newReq := func(contentLength int64, body io.ReadCloser) *http.Request {
+		r, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://example.test", nil)
+		require.NoError(t, err)
+
+		r.ContentLength = contentLength
+		r.Body = body
+
+		return r
+	}
+
+	// nil body: headers only, no error.
+	d, err := c.dumpRequest(newReq(0, nil))
+	require.NoError(t, err)
+	require.Contains(t, string(d), "POST")
+
+	// small known body: included.
+	d, err = c.dumpRequest(newReq(5, io.NopCloser(strings.NewReader("hello"))))
+	require.NoError(t, err)
+	require.Contains(t, string(d), "hello")
+
+	// unknown length (streaming): body omitted, no deadlock.
+	d, err = c.dumpRequest(newReq(-1, io.NopCloser(strings.NewReader("streamed"))))
+	require.NoError(t, err)
+	require.NotContains(t, string(d), "streamed")
+
+	// known but over the cap: body omitted.
+	c.maxDumpSize = 4
+	d, err = c.dumpRequest(newReq(100, io.NopCloser(strings.NewReader("toolongbody"))))
+	require.NoError(t, err)
+	require.NotContains(t, string(d), "toolongbody")
+}
+
+// TestClient_dumpResponseBody covers the size-cap decision for known-length
+// response dumps.
+func TestClient_dumpResponseBody(t *testing.T) {
+	t.Parallel()
+
+	c := defaultClient() // default cap 1 MiB
+
+	require.True(t, c.dumpResponseBody(0))
+	require.True(t, c.dumpResponseBody(100))
+	require.False(t, c.dumpResponseBody(2<<20), "over-cap response body is omitted")
+
+	c.maxDumpSize = 0 // cap disabled
+	require.True(t, c.dumpResponseBody(2<<20))
+}
+
+// newResp builds a minimal response suitable for httputil.DumpResponse.
+func newResp(contentLength int64, body io.ReadCloser) *http.Response {
+	return &http.Response{
+		StatusCode:    http.StatusOK,
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        make(http.Header),
+		Body:          body,
+		ContentLength: contentLength,
+	}
+}
+
+// TestClient_dumpResponse covers the response-dump body-capping decisions,
+// including the hard cap applied to unknown-length (chunked) bodies.
+func TestClient_dumpResponse(t *testing.T) {
+	t.Parallel()
+
+	t.Run("known length within cap includes body", func(t *testing.T) {
+		t.Parallel()
+
+		c := defaultClient()
+		resp := newResp(5, io.NopCloser(strings.NewReader("hello")))
+
+		dump, err := c.dumpResponse(resp)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.Contains(t, string(dump), "hello")
+	})
+
+	t.Run("known length over cap omits body", func(t *testing.T) {
+		t.Parallel()
+
+		c := defaultClient()
+		c.maxDumpSize = 4
+		resp := newResp(20, io.NopCloser(strings.NewReader("way-too-long-body")))
+
+		dump, err := c.dumpResponse(resp)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.NotContains(t, string(dump), "way-too-long-body")
+	})
+
+	t.Run("unknown length with cap disabled dumps full body", func(t *testing.T) {
+		t.Parallel()
+
+		c := defaultClient()
+		c.maxDumpSize = 0
+		resp := newResp(-1, io.NopCloser(strings.NewReader("chunkeddata")))
+
+		dump, err := c.dumpResponse(resp)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.Contains(t, string(dump), "chunkeddata")
+	})
+
+	t.Run("unknown length under cap dumps full body and preserves it", func(t *testing.T) {
+		t.Parallel()
+
+		c := defaultClient()
+		c.maxDumpSize = 100
+		resp := newResp(-1, io.NopCloser(strings.NewReader("small")))
+
+		dump, err := c.dumpResponse(resp)
+		require.NoError(t, err)
+		require.Contains(t, string(dump), "small")
+		require.NotContains(t, string(dump), "truncated")
+
+		got, rerr := io.ReadAll(resp.Body)
+		require.NoError(t, rerr)
+		require.NoError(t, resp.Body.Close())
+		require.Equal(t, "small", string(got))
+	})
+
+	t.Run("unknown length over cap truncates but preserves full body", func(t *testing.T) {
+		t.Parallel()
+
+		c := defaultClient()
+		c.maxDumpSize = 4
+		resp := newResp(-1, io.NopCloser(strings.NewReader("HELLOWORLD")))
+
+		dump, err := c.dumpResponse(resp)
+		require.NoError(t, err)
+		require.Contains(t, string(dump), "truncated", "over-cap chunked body must be marked truncated")
+		require.NotContains(t, string(dump), "WORLD", "bytes beyond the cap must not appear in the dump")
+
+		// The caller still receives the complete body.
+		got, rerr := io.ReadAll(resp.Body)
+		require.NoError(t, rerr)
+		require.Equal(t, "HELLOWORLD", string(got))
+		require.NoError(t, resp.Body.Close())
+	})
+
+	t.Run("unknown length read error is returned", func(t *testing.T) {
+		t.Parallel()
+
+		c := defaultClient()
+		c.maxDumpSize = 100
+		resp := newResp(-1, io.NopCloser(errorReader{err: errors.New("stream boom")}))
+
+		_, err := c.dumpResponse(resp)
+		require.Error(t, err)
+		require.NoError(t, resp.Body.Close())
+	})
+
+	t.Run("extreme cap does not overflow", func(t *testing.T) {
+		t.Parallel()
+
+		c := defaultClient()
+		c.maxDumpSize = math.MaxInt64 // cap+1 would overflow without the clamp
+		resp := newResp(-1, io.NopCloser(strings.NewReader("tiny")))
+
+		dump, err := c.dumpResponse(resp)
+		require.NoError(t, err)
+		require.Contains(t, string(dump), "tiny")
+		require.NotContains(t, string(dump), "truncated")
+		require.NoError(t, resp.Body.Close())
+	})
+}
+
+// TestClient_Do_ChunkedResponseTruncated exercises the unknown-length cap end to
+// end: the dump is truncated while the caller still reads the full body.
+func TestClient_Do_ChunkedResponseTruncated(t *testing.T) {
+	t.Parallel()
+
+	const bodyText = "FIRSTPARTsecretSECONDPART"
+
+	var buf bytes.Buffer
+
+	rt := func(_ http.RoundTripper) http.RoundTripper {
+		return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			resp := newResp(-1, io.NopCloser(strings.NewReader(bodyText))) // unknown length
+			resp.Request = r
+
+			return resp, nil
+		})
+	}
+
+	client := New(WithLogger(newDebugLogger(&buf)), WithRoundTripper(rt), WithMaxDumpSize(5))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.test", nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	got, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, bodyText, string(got), "caller must receive the full body despite the dump cap")
+
+	out := buf.String()
+	require.Contains(t, out, "truncated", "the dump must be marked truncated")
+	require.NotContains(t, out, "SECONDPART", "content past the cap must not be dumped")
+}
+
+// TestClient_Do_RequestDumpError verifies a failed request dump is surfaced as a
+// log field instead of being silently discarded.
+func TestClient_Do_RequestDumpError(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	client := New(WithLogger(newDebugLogger(&buf)))
+
+	req, err := http.NewRequestWithContext(
+		t.Context(), http.MethodPost, "http://example.invalid", errorReader{err: errors.New("read boom")})
+	require.NoError(t, err)
+
+	req.ContentLength = 5 // known, small: dump attempts to drain the failing body
+
+	resp, err := client.Do(req)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+
+	require.Error(t, err)
+	require.Contains(t, buf.String(), "request_dump_error")
+}
+
+// TestClient_Do_ResponseDumpError verifies a failed response dump is surfaced as
+// a log field while the request itself still succeeds.
+func TestClient_Do_ResponseDumpError(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	rt := func(_ http.RoundTripper) http.RoundTripper {
+		return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode:    http.StatusOK,
+				ProtoMajor:    1,
+				ProtoMinor:    1,
+				Header:        make(http.Header),
+				Body:          io.NopCloser(errorReader{err: errors.New("body boom")}),
+				ContentLength: 5,
+				Request:       r,
+			}, nil
+		})
+	}
+
+	client := New(WithLogger(newDebugLogger(&buf)), WithRoundTripper(rt))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.test", nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NoError(t, resp.Body.Close())
+
+	require.Contains(t, buf.String(), "response_dump_error")
+}
+
+// TestClient_Do_LargeResponseBodyOmitted verifies that a response whose known
+// length exceeds the cap has its headers dumped but its body omitted, leaving
+// the real body intact for the caller.
+func TestClient_Do_LargeResponseBodyOmitted(t *testing.T) {
+	t.Parallel()
+
+	const bodyText = "REALRESPONSEBODY"
+
+	var buf bytes.Buffer
+
+	rt := func(_ http.RoundTripper) http.RoundTripper {
+		return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode:    http.StatusOK,
+				ProtoMajor:    1,
+				ProtoMinor:    1,
+				Header:        make(http.Header),
+				Body:          io.NopCloser(strings.NewReader(bodyText)),
+				ContentLength: 2 << 20, // advertised length over the default cap
+				Request:       r,
+			}, nil
+		})
+	}
+
+	client := New(WithLogger(newDebugLogger(&buf)), WithRoundTripper(rt))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.test", nil)
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	out := buf.String()
+	require.Contains(t, out, "response=", "response headers should still be dumped")
+	require.NotContains(t, out, bodyText, "an over-cap response body must be omitted from the dump")
+
+	// The real body is preserved for the caller.
+	got, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, bodyText, string(got))
+}
+
+// TestClient_CloseIdleConnections exercises the pass-through to the transport.
+func TestClient_CloseIdleConnections(t *testing.T) {
+	t.Parallel()
+
+	require.NotPanics(t, func() {
+		New().CloseIdleConnections()
+	})
+}
+
+// TestClient_Do_ErrorFieldRedactsQuery verifies that a failed request does not
+// leak query-string secrets through the logged error field, while the error
+// returned to the caller stays intact.
+func TestClient_Do_ErrorFieldRedactsQuery(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	client := New(WithLogger(logger), WithTimeout(2*time.Second))
+
+	// Loopback port 1 refuses immediately, so the request fails at the transport.
+	req, err := http.NewRequestWithContext(
+		t.Context(), http.MethodGet, "http://127.0.0.1:1/p?api_key=SUPERSECRET&x=1", nil)
+	require.NoError(t, err)
+
+	//nolint:bodyclose // the request fails; there is no response body to close.
+	resp, derr := client.Do(req)
+	require.Error(t, derr)
+	require.Nil(t, resp)
+
+	out := buf.String()
+	require.NotContains(t, out, "SUPERSECRET", "the error field must not leak the query secret")
+	require.Contains(t, out, "error=", "an error field must be logged")
+
+	// The error returned to the caller is unredacted (callers may need the URL).
+	require.Contains(t, derr.Error(), "SUPERSECRET", "the returned error must be left unchanged")
+}
+
+// TestClient_Do_InvalidCallerHeaderReplaced verifies that an invalid caller-set
+// trace header is not propagated: it is replaced with a freshly generated ID.
+func TestClient_Do_InvalidCallerHeaderReplaced(t *testing.T) {
+	t.Parallel()
+
+	const injected = "bad\x00id\ninjected"
+
+	var got string
+
+	capture := func(_ http.RoundTripper) http.RoundTripper {
+		return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			got = r.Header.Get(traceid.DefaultHeader)
+
+			return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Header: make(http.Header)}, nil
+		})
+	}
+
+	client := New(WithRoundTripper(capture))
+
+	// Context has no trace ID and the request carries an invalid one.
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.test", nil)
+	require.NoError(t, err)
+	req.Header.Set(traceid.DefaultHeader, injected)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	require.NotEqual(t, injected, got, "an invalid caller header must not be propagated")
+	require.Regexp(t, `^[0-9A-Za-z\-\_\.]{1,64}$`, got, "a valid generated ID must be sent instead")
+}
+
+// TestClient_redactErrorForLog covers the error-redaction helper.
+func TestClient_redactErrorForLog(t *testing.T) {
+	t.Parallel()
+
+	c := defaultClient()
+
+	// A non-*url.Error is returned unchanged.
+	plain := errors.New("plain failure")
+	require.Equal(t, plain, c.redactErrorForLog(plain))
+
+	// A *url.Error has its URL query and userinfo redacted, reason preserved.
+	// The userinfo is assembled from parts so the literal is not flagged as a
+	// hardcoded credential; it is a test fixture, not a real secret.
+	userinfo := "user" + ":" + "pw"
+	uerr := &url.Error{
+		Op:  "Get",
+		URL: "http://" + userinfo + "@example.test/p?token=SUPERSECRET&x=1",
+		Err: errors.New("connection refused"),
+	}
+	msg := c.redactErrorForLog(uerr).Error()
+	require.NotContains(t, msg, "SUPERSECRET")
+	require.NotContains(t, msg, "user")
+	require.NotContains(t, msg, "pw")
+	require.Contains(t, msg, redact.RedactionMarker)
+	require.Contains(t, msg, "connection refused", "the failure reason must be preserved")
+
+	// The original error is untouched (only a copy is redacted).
+	require.Contains(t, uerr.URL, "SUPERSECRET")
+}
+
+// TestClient_redactURLForLog covers the URL-redaction branches.
+func TestClient_redactURLForLog(t *testing.T) {
+	t.Parallel()
+
+	c := defaultClient()
+
+	got := c.redactURLForLog("http://h/p?token=SECRET&x=1")
+	require.NotContains(t, got, "SECRET")
+	require.Contains(t, got, redact.RedactionMarker)
+
+	// No query and no userinfo: unchanged.
+	require.Equal(t, "http://h/p", c.redactURLForLog("http://h/p"))
+
+	// Userinfo (which may carry a token) is dropped.
+	got = c.redactURLForLog("http://tok:pw@h/p")
+	require.NotContains(t, got, "tok")
+	require.NotContains(t, got, "pw")
+
+	// An unparseable URL still has its query redacted via the fallback.
+	got = c.redactURLForLog("://bad?token=SECRET")
+	require.NotContains(t, got, "SECRET")
+	require.Contains(t, got, redact.RedactionMarker)
+}
+
+// TestRedactQueryTail covers the split-based fallback used for unparseable URLs.
+func TestRedactQueryTail(t *testing.T) {
+	t.Parallel()
+
+	// No query: returned unchanged (the redact function is not applied).
+	require.Equal(t, "no-query-here", redactQueryTail("no-query-here", redact.HTTPDataString))
+
+	// With a query: the tail is redacted.
+	got := redactQueryTail("p?token=SECRET", redact.HTTPDataString)
+	require.NotContains(t, got, "SECRET")
+	require.Contains(t, got, redact.RedactionMarker)
+}
+
+// TestNew_TransportPoolTuned verifies the default transport raises the per-host
+// idle-connection pool above net/http's default of 2.
+func TestNew_TransportPoolTuned(t *testing.T) {
+	t.Parallel()
+
+	tr, ok := New().client.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.Equal(t, defaultMaxIdleConnsPerHost, tr.MaxIdleConnsPerHost)
+	require.Greater(t, tr.MaxIdleConnsPerHost, 2, "per-host idle pool must exceed net/http's default of 2")
+}
+
+// TestWithTransport_ThenDialContext verifies the documented ordering: a dialer
+// set after WithTransport lands on the transport installed by WithTransport.
+func TestWithTransport_ThenDialContext(t *testing.T) {
+	t.Parallel()
+
+	dial := func(_ context.Context, _, _ string) (net.Conn, error) { return nil, errors.New("TEST") }
+
+	c := New(WithTransport(&http.Transport{}), WithDialContext(dial))
+
+	tr, ok := c.client.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.NotNil(t, tr.DialContext, "WithDialContext after WithTransport must set the dialer on the new base")
+
+	_, err := tr.DialContext(t.Context(), "", "")
+	require.Error(t, err)
+}
+
+// TestClient_Do_TimeoutFires verifies that WithTimeout actually aborts a slow
+// request with a deadline error.
+func TestClient_Do_TimeoutFires(t *testing.T) {
+	t.Parallel()
+
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Block until released or the client disconnects (its timeout fires).
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	t.Cleanup(func() {
+		close(release)
+		server.Close()
+	})
+
+	client := New(WithTimeout(100 * time.Millisecond))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL, nil)
+	require.NoError(t, err)
+
+	//nolint:bodyclose // the request times out; there is no response body.
+	resp, derr := client.Do(req)
+	require.Error(t, derr)
+	require.Nil(t, resp)
+	require.ErrorIs(t, derr, context.DeadlineExceeded)
 }

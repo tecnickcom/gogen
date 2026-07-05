@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"slices"
+	"strings"
 	"time"
 
 	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
@@ -89,9 +90,9 @@ func RequestInjectHandler(
 			slog.Time("request_time", reqTime),
 			slog.String("request_method", r.Method),
 			slog.String("request_path", r.URL.Path),
-			slog.String("request_query", r.URL.RawQuery),
+			slog.String("request_query", redactFn([]byte(r.URL.RawQuery))),
 			slog.String("request_remote_address", r.RemoteAddr),
-			slog.String("request_uri", r.RequestURI),
+			slog.String("request_uri", redactRequestURI(r.RequestURI, redactFn)),
 			slog.String("request_user_agent", r.UserAgent()),
 			slog.String("request_x_forwarded_for", r.Header.Get("X-Forwarded-For")),
 		)
@@ -148,6 +149,19 @@ func requestInjectDefaults(logger *slog.Logger, redactFn RedactFn, rnd *random.R
 	}
 
 	return logger, redactFn, rnd
+}
+
+// redactRequestURI redacts the query-string portion of a raw request target
+// (r.RequestURI) so secrets carried in query parameters (for example token or
+// api_key) are not written to logs. The path portion is preserved; a target with
+// no query is returned unchanged.
+func redactRequestURI(uri string, redactFn RedactFn) string {
+	q := strings.IndexByte(uri, '?')
+	if q < 0 {
+		return uri
+	}
+
+	return uri[:q+1] + redactFn([]byte(uri[q+1:]))
 }
 
 // LoggerMiddlewareFn returns the middleware handler function to handle logs.

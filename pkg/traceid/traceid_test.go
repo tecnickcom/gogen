@@ -39,6 +39,27 @@ func TestNewContextEmptyIDSkipped(t *testing.T) {
 	require.Equal(t, "real-720932", FromContext(ctxReal, "default-720933"))
 }
 
+func TestForceContext(t *testing.T) {
+	t.Parallel()
+
+	// an empty id must not be stored and the context is returned unchanged
+	base := t.Context()
+	require.Equal(t, base, ForceContext(base, ""))
+
+	// overwrites an already-stored id (unlike NewContext, which preserves it)
+	ctxExisting := NewContext(base, "old-330011")
+	ctxForced := ForceContext(ctxExisting, "new-330012")
+	require.Equal(t, "new-330012", FromContext(ctxForced, "default-330013"))
+
+	// storing the same id again returns the same context (no re-wrap)
+	ctxSame := ForceContext(ctxForced, "new-330012")
+	require.Equal(t, ctxForced, ctxSame)
+
+	// stores the id when the context has none yet
+	ctxFresh := ForceContext(base, "fresh-330014")
+	require.Equal(t, "fresh-330014", FromContext(ctxFresh, "default-330015"))
+}
+
 func TestFromContext(t *testing.T) {
 	t.Parallel()
 
