@@ -105,3 +105,46 @@ func TestWithTimeout(t *testing.T) {
 	err = WithTimeout(v)(r)
 	require.Error(t, err)
 }
+
+func TestWithMaxDelay(t *testing.T) {
+	t.Parallel()
+
+	var v time.Duration
+
+	r := defaultRetrier()
+
+	v = 17 * time.Second
+	err := WithMaxDelay(v)(r)
+	require.NoError(t, err)
+	require.Equal(t, v, r.maxDelay)
+
+	v = 0
+	err = WithMaxDelay(v)(r)
+	require.Error(t, err)
+}
+
+func TestWithJitterStrategy(t *testing.T) {
+	t.Parallel()
+
+	r := defaultRetrier()
+
+	err := WithJitterStrategy(JitterFull)(r)
+	require.NoError(t, err)
+	require.Equal(t, JitterFull, r.strategy)
+
+	err = WithJitterStrategy(JitterStrategy(99))(r)
+	require.Error(t, err)
+}
+
+func TestWithOnRetry(t *testing.T) {
+	t.Parallel()
+
+	r := defaultRetrier()
+
+	err := WithOnRetry(func(_ uint, _ time.Duration, _ error) {})(r)
+	require.NoError(t, err)
+	require.NotNil(t, r.onRetry)
+
+	err = WithOnRetry(nil)(r)
+	require.Error(t, err)
+}

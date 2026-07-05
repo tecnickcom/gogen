@@ -319,6 +319,69 @@ func TestRetryIfFnByHTTPMethod(t *testing.T) {
 	}
 }
 
+func TestRetryIf_nilResponse(t *testing.T) {
+	t.Parallel()
+
+	// Exported policies must not panic on a nil response (e.g. a non-conforming
+	// client returning (nil, nil), or a direct caller passing nil).
+	require.False(t, RetryIfForReadRequests(nil, nil))
+	require.True(t, RetryIfForReadRequests(nil, errors.New("x")))
+	require.False(t, RetryIfForWriteRequests(nil, nil))
+	require.True(t, RetryIfForWriteRequests(nil, errors.New("x")))
+}
+
+func TestRetryAfterDelay(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 7, 5, 12, 0, 0, 0, time.UTC)
+
+	const defMax = DefaultMaxRetryAfter
+
+	tests := []struct {
+		name    string
+		nilResp bool
+		header  string // Retry-After value; empty means no header
+		maxRA   time.Duration
+		wantDur time.Duration
+		wantOk  bool
+	}{
+		{"nil response", true, "", defMax, 0, false},
+		{"no header", false, "", defMax, 0, false},
+		{"delta seconds", false, "5", defMax, 5 * time.Second, true},
+		{"zero seconds", false, "0", defMax, 0, false},
+		{"negative seconds", false, "-3", defMax, 0, false},
+		{"huge seconds capped by default", false, "999999", defMax, defMax, true},
+		{"delta capped by custom max", false, "100", 10 * time.Second, 10 * time.Second, true},
+		{"http-date future", false, now.Add(10 * time.Second).Format(http.TimeFormat), defMax, 10 * time.Second, true},
+		{"http-date past", false, now.Add(-10 * time.Second).Format(http.TimeFormat), defMax, 0, false},
+		{"http-date far future capped by default", false, now.Add(48 * time.Hour).Format(http.TimeFormat), defMax, defMax, true},
+		{"http-date capped by custom max", false, now.Add(time.Hour).Format(http.TimeFormat), 10 * time.Minute, 10 * time.Minute, true},
+		{"malformed", false, "not-a-date", defMax, 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var resp *http.Response
+
+			if !tt.nilResp {
+				h := http.Header{}
+				if tt.header != "" {
+					h.Set("Retry-After", tt.header)
+				}
+
+				resp = &http.Response{Header: h, Body: io.NopCloser(bytes.NewReader(nil))}
+				defer func() { _ = resp.Body.Close() }()
+			}
+
+			d, ok := retryAfterDelay(resp, now, tt.maxRA)
+			require.Equal(t, tt.wantOk, ok)
+			require.Equal(t, tt.wantDur, d)
+		})
+	}
+}
+
 //nolint:gocognit
 func TestHTTPRetrier_Do(t *testing.T) {
 	t.Parallel()
@@ -484,25 +547,18 @@ func TestHTTPRetrier_Do(t *testing.T) {
 
 			require.Equal(t, tt.wantErr, err != nil, "Do() error = %v, wantErr %v", err, tt.wantErr)
 
+			if tt.wantErr {
+				require.Nil(t, resp, "Do() must return a nil response on every error path")
+
+				return
+			}
+
 			if tt.wantStatus != 0 {
 				require.NotNil(t, resp, "Do() response should not be nil")
 				require.Equal(t, tt.wantStatus, resp.StatusCode, "Do() status = %v, wantStatus %v", resp.StatusCode, tt.wantStatus)
 			}
 		})
 	}
-}
-
-func TestHTTPRetrier_setTimer(t *testing.T) {
-	t.Parallel()
-
-	s := &doState{
-		timer: time.NewTimer(1 * time.Millisecond),
-	}
-
-	time.Sleep(2 * time.Millisecond)
-	s.setTimer(2 * time.Millisecond)
-
-	<-s.timer.C
 }
 
 // flakyClient is a thread-safe [HTTPClient] used by the concurrency test. It
@@ -713,39 +769,331 @@ func TestHTTPRetrier_Do_contextCancelStopsTimer(t *testing.T) {
 		_ = resp.Body.Close()
 	}
 
+	require.Nil(t, resp, "a canceled request must return a nil response, not a stale/closed one")
 	require.Error(t, err)
-	require.ErrorContains(t, err, "request context has been canceled")
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
-// TestHTTPRetrier_nextRetryDelay verifies the exponential backoff progression
-// and that the computed delay is clamped to the configured maximum.
-func TestHTTPRetrier_nextRetryDelay(t *testing.T) {
+// TestHTTPRetrier_Do_respectsRetryAfter verifies that, when enabled, the chosen
+// retry delay honors the server's Retry-After header over the (tiny) schedule.
+// The onRetry hook captures the delay so the test need not wait it out.
+func TestHTTPRetrier_Do_respectsRetryAfter(t *testing.T) {
 	t.Parallel()
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	h := http.Header{}
+	h.Set("Retry-After", "1") // 1s, far larger than the 1ms schedule
+
+	resp503 := &http.Response{
+		Status:     http.StatusText(http.StatusServiceUnavailable),
+		StatusCode: http.StatusServiceUnavailable,
+		Header:     h,
+		Body:       io.NopCloser(bytes.NewReader([]byte{})),
+	}
+	// Only one call: the context cancels during the 1s Retry-After wait.
+	mockHTTP.EXPECT().Do(gomock.Any()).Return(resp503, nil)
+
+	var gotDelay time.Duration
+
+	onRetry := func(_ uint, delay time.Duration, _ *http.Response, _ error) {
+		gotDelay = delay
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	const jitter = 50 * time.Millisecond
+
 	retrier, err := New(
-		http.DefaultClient,
-		WithDelay(100*time.Millisecond),
-		WithDelayFactor(2),
-		WithJitter(1), // 1ns ceiling: rand.Int63n(1) is always 0, so no jitter noise
-		WithMaxDelay(350*time.Millisecond),
+		mockHTTP,
+		WithRetryIfFn(RetryIfForReadRequests),
+		WithAttempts(3),
+		WithDelay(1*time.Millisecond),
+		WithJitter(jitter),
+		WithRespectRetryAfter(),
+		WithOnRetry(onRetry),
 	)
 	require.NoError(t, err)
 
-	s := &doState{nextDelay: float64(retrier.delay)}
+	resp, err := retrier.Do(r)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
 
-	// 100ms -> not clamped
-	d1 := retrier.nextRetryDelay(s)
-	require.Equal(t, 100*time.Millisecond, d1)
+	require.Error(t, err) // context canceled during the 1s Retry-After wait
+	// The honored Retry-After (1s) overrides the ~1ms schedule, and jitter is added
+	// on top so clients that got the same value do not re-synchronize.
+	require.GreaterOrEqual(t, gotDelay, time.Second, "must wait at least the Retry-After")
+	require.Less(t, gotDelay, time.Second+jitter, "jitter must be added on top of Retry-After")
+}
 
-	// 200ms -> not clamped
-	d2 := retrier.nextRetryDelay(s)
-	require.Equal(t, 200*time.Millisecond, d2)
+// trackingBody is an io.ReadCloser that records whether Close was called.
+type trackingBody struct {
+	io.Reader
 
-	// 400ms computed, clamped to 350ms max
-	d3 := retrier.nextRetryDelay(s)
-	require.Equal(t, 350*time.Millisecond, d3)
+	closed *bool
+}
 
-	// 800ms computed, still clamped to 350ms max
-	d4 := retrier.nextRetryDelay(s)
-	require.Equal(t, 350*time.Millisecond, d4)
+func (b trackingBody) Close() error {
+	*b.closed = true
+
+	return nil
+}
+
+// TestHTTPRetrier_Do_dropsResponseWhenClientReturnsBoth verifies Do upholds the
+// response-XOR-error contract (and closes the stray body) when a non-conforming
+// client returns a response alongside an error.
+func TestHTTPRetrier_Do_dropsResponseWhenClientReturnsBoth(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	closed := false
+	resp := &http.Response{
+		Status:     http.StatusText(http.StatusInternalServerError),
+		StatusCode: http.StatusInternalServerError,
+		Body:       trackingBody{bytes.NewReader(nil), &closed},
+	}
+	mockHTTP.EXPECT().Do(gomock.Any()).Return(resp, errors.New("boom")) // non-conforming: both non-nil
+
+	r, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	// retryIfFn returns false -> stop on the first attempt while an error is present.
+	retrier, err := New(mockHTTP, WithRetryIfFn(func(_ *http.Response, _ error) bool { return false }))
+	require.NoError(t, err)
+
+	gotResp, gotErr := retrier.Do(r) //nolint:bodyclose // gotResp is nil; the stray body is closed by Do.
+	require.Nil(t, gotResp, "Do must not return a response alongside an error")
+	require.Error(t, gotErr)
+	require.True(t, closed, "the stray response body must be closed")
+}
+
+// TestHTTPRetrier_Do_noBodyLeakOnCancel verifies the replay body is opened lazily:
+// a retry aborted by cancellation must not open (and thus cannot leak) a body.
+func TestHTTPRetrier_Do_noBodyLeakOnCancel(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	mockHTTP.EXPECT().Do(gomock.Any()).DoAndReturn(func(_ *http.Request) (*http.Response, error) {
+		cancel() // context ends during the (retryable) attempt
+
+		return &http.Response{
+			Status:     http.StatusText(http.StatusServiceUnavailable),
+			StatusCode: http.StatusServiceUnavailable,
+			Body:       io.NopCloser(bytes.NewReader([]byte{})),
+		}, nil
+	})
+
+	var getBodyCalls int
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "/", bytes.NewReader([]byte(`payload`)))
+	require.NoError(t, err)
+
+	origGetBody := r.GetBody
+	r.GetBody = func() (io.ReadCloser, error) {
+		getBodyCalls++
+
+		return origGetBody()
+	}
+
+	retrier, err := New(
+		mockHTTP,
+		WithRetryIfFn(RetryIfForWriteRequests),
+		WithAttempts(3),
+		WithDelay(time.Millisecond),
+		WithJitter(time.Nanosecond),
+	)
+	require.NoError(t, err)
+
+	resp, err := retrier.Do(r) //nolint:bodyclose // resp is nil on the cancellation path.
+	require.Nil(t, resp)
+	require.Error(t, err)
+	require.Zero(t, getBodyCalls, "the replay body must not be opened for a retry aborted by cancellation")
+}
+
+// TestHTTPRetrier_Do_onRetryNotCalledOnCancel verifies onRetry does not fire for
+// a retry preempted by context cancellation during the attempt.
+func TestHTTPRetrier_Do_onRetryNotCalledOnCancel(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	mockHTTP.EXPECT().Do(gomock.Any()).DoAndReturn(func(_ *http.Request) (*http.Response, error) {
+		cancel() // context ends during the attempt
+
+		return &http.Response{
+			Status:     http.StatusText(http.StatusInternalServerError),
+			StatusCode: http.StatusInternalServerError,
+			Body:       io.NopCloser(bytes.NewReader([]byte{})),
+		}, nil
+	})
+
+	var onRetryCalls int
+
+	onRetry := func(_ uint, _ time.Duration, _ *http.Response, _ error) { onRetryCalls++ }
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	retrier, err := New(
+		mockHTTP,
+		WithRetryIfFn(RetryIfForReadRequests),
+		WithAttempts(3),
+		WithDelay(time.Millisecond),
+		WithJitter(time.Nanosecond),
+		WithOnRetry(onRetry),
+	)
+	require.NoError(t, err)
+
+	resp, err := retrier.Do(r) //nolint:bodyclose // resp is nil on the cancellation path.
+	require.Nil(t, resp)
+	require.Error(t, err)
+	require.Zero(t, onRetryCalls, "onRetry must not fire for a retry preempted by cancellation")
+}
+
+// TestHTTPRetrier_Do_onRetry verifies the observability callback fires once per
+// scheduled retry with increasing 1-based attempt numbers.
+func TestHTTPRetrier_Do_onRetry(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	mockHTTP.EXPECT().Do(gomock.Any()).DoAndReturn(func(_ *http.Request) (*http.Response, error) {
+		return &http.Response{
+			Status:     http.StatusText(http.StatusInternalServerError),
+			StatusCode: http.StatusInternalServerError,
+			Body:       io.NopCloser(bytes.NewReader([]byte{})),
+		}, nil
+	}).Times(3)
+
+	var attempts []uint
+
+	onRetry := func(attempt uint, _ time.Duration, _ *http.Response, _ error) {
+		attempts = append(attempts, attempt)
+	}
+
+	r, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	retrier, err := New(
+		mockHTTP,
+		WithRetryIfFn(RetryIfForReadRequests),
+		WithAttempts(3),
+		WithDelay(1*time.Millisecond),
+		WithJitter(1*time.Nanosecond),
+		WithOnRetry(onRetry),
+	)
+	require.NoError(t, err)
+
+	resp, err := retrier.Do(r)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+
+	require.NoError(t, err)
+	require.Equal(t, []uint{1, 2}, attempts) // 3 attempts -> 2 scheduled retries
+}
+
+// TestHTTPRetrier_Do_preCanceledContext verifies Do fails fast without any HTTP
+// call when the request context is already done.
+func TestHTTPRetrier_Do_preCanceledContext(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl) // no Do call expected
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	retrier, err := New(mockHTTP, WithRetryIfFn(RetryIfForReadRequests))
+	require.NoError(t, err)
+
+	resp, err := retrier.Do(r) //nolint:bodyclose // resp is nil on the pre-cancel path; nothing to close.
+	require.Nil(t, resp)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "before first attempt")
+}
+
+// TestHTTPRetrier_Do_maxDelayCaps verifies WithMaxDelay is wired into the
+// backoff so the gap between attempts stops growing once the cap is reached.
+func TestHTTPRetrier_Do_maxDelayCaps(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHTTP := NewMockHTTPClient(ctrl)
+
+	var timestamps []time.Time
+
+	newErr := func() *http.Response {
+		return &http.Response{
+			Status:     http.StatusText(http.StatusServiceUnavailable),
+			StatusCode: http.StatusServiceUnavailable,
+			Body:       io.NopCloser(bytes.NewReader([]byte{})),
+		}
+	}
+
+	mockHTTP.EXPECT().Do(gomock.Any()).DoAndReturn(func(_ *http.Request) (*http.Response, error) {
+		timestamps = append(timestamps, time.Now())
+
+		return newErr(), nil
+	}).Times(4)
+
+	r, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	require.NoError(t, err)
+
+	retrier, err := New(
+		mockHTTP,
+		WithRetryIfFn(RetryIfForReadRequests),
+		WithAttempts(4),
+		WithDelay(10*time.Millisecond),
+		WithDelayFactor(8),            // uncapped 3rd gap would be ~640ms
+		WithJitter(1*time.Nanosecond), // 1ns ceiling -> jitter is always 0
+		WithMaxDelay(30*time.Millisecond),
+	)
+	require.NoError(t, err)
+
+	resp, err := retrier.Do(r)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+
+	require.NoError(t, err)
+	require.Len(t, timestamps, 4, "all attempts should run")
+
+	// Without the cap the third gap would be ~640ms; capped it sits near 30ms.
+	gap3 := timestamps[3].Sub(timestamps[2])
+	require.Greater(t, gap3, 15*time.Millisecond, "capped gap should still be near the cap")
+	require.Less(t, gap3, 120*time.Millisecond, "gap must be capped well below the raw exponential value")
 }

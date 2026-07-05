@@ -115,3 +115,57 @@ func TestWithMaxDelay(t *testing.T) {
 	err = WithMaxDelay(v)(c)
 	require.Error(t, err)
 }
+
+func TestWithJitterStrategy(t *testing.T) {
+	t.Parallel()
+
+	c := defaultHTTPRetrier()
+
+	err := WithJitterStrategy(JitterFull)(c)
+	require.NoError(t, err)
+	require.Equal(t, JitterFull, c.strategy)
+
+	err = WithJitterStrategy(JitterStrategy(99))(c)
+	require.Error(t, err)
+}
+
+func TestWithRespectRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	c := defaultHTTPRetrier()
+	require.False(t, c.respectRetryAfter)
+
+	err := WithRespectRetryAfter()(c)
+	require.NoError(t, err)
+	require.True(t, c.respectRetryAfter)
+}
+
+func TestWithOnRetry(t *testing.T) {
+	t.Parallel()
+
+	c := defaultHTTPRetrier()
+
+	err := WithOnRetry(func(_ uint, _ time.Duration, _ *http.Response, _ error) {})(c)
+	require.NoError(t, err)
+	require.NotNil(t, c.onRetry)
+
+	err = WithOnRetry(nil)(c)
+	require.Error(t, err)
+}
+
+func TestWithMaxRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	var v time.Duration
+
+	c := defaultHTTPRetrier()
+
+	v = 5 * time.Minute
+	err := WithMaxRetryAfter(v)(c)
+	require.NoError(t, err)
+	require.Equal(t, v, c.maxRetryAfter)
+
+	v = 0
+	err = WithMaxRetryAfter(v)(c)
+	require.Error(t, err)
+}

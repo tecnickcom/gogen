@@ -75,6 +75,7 @@ This scaffolds a new web service from the provided configuration.
 
 - [awsopt](pkg/awsopt) - Utilities for configuring common AWS options with the aws-sdk-go-v2 library. `aws`, `configuration`
 - [awssecretcache](pkg/awssecretcache) - Client for retrieving and caching secrets from AWS Secrets Manager. `aws`, `secrets`, `caching`
+- [backoff](pkg/backoff) - Exponential backoff delay schedule with jitter. `retry`, `backoff`, `jitter`
 - [bootstrap](pkg/bootstrap) - Helpers for application bootstrap and initialization. `bootstrap`, `initialization`
 - [config](pkg/config) - Utilities for configuration loading and management. `configuration`
 - [countrycode](pkg/countrycode) - Functions for country code lookup and validation. `geolocation`, `validation`

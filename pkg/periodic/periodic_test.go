@@ -2,6 +2,7 @@ package periodic
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -120,17 +121,77 @@ func Test_Start_Stop(t *testing.T) {
 
 	p.Start(ctx)
 
-	wait := 3 * interval
-	time.Sleep(wait)
-
-	d := <-p.resetTimer
-	require.GreaterOrEqual(t, wait, d)
+	time.Sleep(3 * interval)
 
 	require.NoError(t, ctx.Err())
 
 	p.Stop()
 
 	require.LessOrEqual(t, 2, <-count)
+}
+
+func Test_Start_twice_is_noop(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int64
+
+	task := func(_ context.Context) { calls.Add(1) }
+
+	p, err := New(10*time.Millisecond, 1*time.Millisecond, 1*time.Millisecond, task)
+	require.NoError(t, err)
+
+	ctx := t.Context()
+
+	p.Start(ctx)
+	p.Start(ctx) // second Start must be a no-op: no second goroutine, no data race on the timer
+
+	time.Sleep(25 * time.Millisecond)
+	p.Stop()
+
+	require.Positive(t, calls.Load())
+}
+
+func Test_Start_after_Stop_is_noop(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int64
+
+	task := func(_ context.Context) { calls.Add(1) }
+
+	p, err := New(time.Millisecond, 0, time.Millisecond, task)
+	require.NoError(t, err)
+
+	p.Stop()             // stop before start
+	p.Start(t.Context()) // must be a no-op: the loop never launches
+
+	time.Sleep(10 * time.Millisecond)
+	p.Stop()
+
+	require.Zero(t, calls.Load(), "Start after Stop must not launch the loop")
+}
+
+func Test_Start_Stop_concurrent(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	// Start and Stop race from separate goroutines; must be free of data races and
+	// deadlocks whatever the ordering, and always end stopped (must pass -race).
+	for range 20 {
+		p, err := New(time.Millisecond, 0, time.Millisecond, func(_ context.Context) {})
+		require.NoError(t, err)
+
+		var wg sync.WaitGroup
+
+		wg.Add(2)
+
+		go func() { defer wg.Done(); p.Start(ctx) }()
+		go func() { defer wg.Done(); p.Stop() }()
+
+		wg.Wait()
+
+		p.Stop() // idempotent: stops the loop if Start won the race, no-op otherwise
+	}
 }
 
 func Test_Stop_before_start(t *testing.T) {
@@ -142,21 +203,34 @@ func Test_Stop_before_start(t *testing.T) {
 	p.Stop() // must be a no-op (and must not block) when Start was never called
 }
 
-func Test_run_zero_jitter(t *testing.T) {
+func Test_nextDelay_zeroJitter(t *testing.T) {
 	t.Parallel()
 
 	p := &Periodic{
-		interval:   int64(10 * time.Millisecond),
-		jitter:     0,
-		timeout:    1 * time.Millisecond,
-		task:       func(_ context.Context) {},
-		resetTimer: make(chan time.Duration, 1),
+		interval: 10 * time.Millisecond,
+		jitter:   0,
 	}
 
-	// Must not panic on rand.Int63n(0) and must reset to exactly the interval.
-	p.run(t.Context())
+	// With jitter disabled the pause is exactly the interval (and no rand draw
+	// on a zero ceiling, so it can never panic).
+	require.Equal(t, 10*time.Millisecond, p.nextDelay())
+}
 
-	require.Equal(t, 10*time.Millisecond, <-p.resetTimer)
+func Test_nextDelay_withJitter(t *testing.T) {
+	t.Parallel()
+
+	const (
+		interval = 10 * time.Millisecond
+		jitter   = 5 * time.Millisecond
+	)
+
+	p := &Periodic{interval: interval, jitter: jitter}
+
+	for range 200 {
+		d := p.nextDelay()
+		require.GreaterOrEqual(t, d, interval)
+		require.Less(t, d, interval+jitter)
+	}
 }
 
 func Test_Stop_waits_for_running_task(t *testing.T) {
@@ -188,16 +262,4 @@ func Test_Stop_waits_for_running_task(t *testing.T) {
 	require.True(t, completed.Load(), "Stop must wait for the in-flight task to finish")
 
 	p.Stop() // safe to call again (returns immediately on the closed done channel)
-}
-
-func TestPeriodic_setTimer(t *testing.T) {
-	t.Parallel()
-
-	c := &Periodic{
-		timer: time.NewTimer(1 * time.Millisecond),
-	}
-
-	time.Sleep(10 * time.Millisecond)
-	c.setTimer(2 * time.Millisecond)
-	<-c.timer.C
 }

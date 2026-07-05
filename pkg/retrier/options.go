@@ -91,3 +91,46 @@ func WithTimeout(timeout time.Duration) Option {
 		return nil
 	}
 }
+
+// WithMaxDelay caps the pre-jitter exponential backoff delay (default: unbounded,
+// subject only to the internal safety cap). Returns error if maxDelay < 1 nanosecond.
+func WithMaxDelay(maxDelay time.Duration) Option {
+	return func(r *Retrier) error {
+		if int64(maxDelay) < 1 {
+			return errors.New("max delay must be greater than zero")
+		}
+
+		r.maxDelay = maxDelay
+
+		return nil
+	}
+}
+
+// WithJitterStrategy selects how backoff jitter is applied (default [JitterAdditive]).
+// [JitterFull] and [JitterEqual] scale jitter with the delay for better decorrelation.
+// Returns error if the strategy is not a defined [JitterStrategy].
+func WithJitterStrategy(strategy JitterStrategy) Option {
+	return func(r *Retrier) error {
+		if !strategy.Valid() {
+			return errors.New("invalid jitter strategy")
+		}
+
+		r.strategy = strategy
+
+		return nil
+	}
+}
+
+// WithOnRetry registers an observability callback invoked before each scheduled
+// retry (see [OnRetryFn]). Returns error if the callback is nil.
+func WithOnRetry(onRetry OnRetryFn) Option {
+	return func(r *Retrier) error {
+		if onRetry == nil {
+			return errors.New("the onRetry callback is required")
+		}
+
+		r.onRetry = onRetry
+
+		return nil
+	}
+}

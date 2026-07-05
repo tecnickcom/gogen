@@ -33,15 +33,18 @@ The run loop always respects parent context cancellation.
   - delay factor: [DefaultDelayFactor] (2)
   - jitter: [DefaultJitter] (1ms)
   - per-attempt timeout: [DefaultTimeout] (1s)
+  - maximum delay: unbounded (use [WithMaxDelay] to cap the pre-jitter backoff)
   - retry condition: [DefaultRetryIf] (retry on any non-nil error)
 
 # Key Features
 
   - Pluggable retry condition via [WithRetryIfFn].
-  - Bounded retry count via [WithAttempts].
-  - Configurable delay, exponential factor, and jitter via [WithDelay],
-    [WithDelayFactor], and [WithJitter].
+  - Bounded total attempts via [WithAttempts].
+  - Configurable delay, exponential factor, jitter, maximum delay, and jitter
+    strategy via [WithDelay], [WithDelayFactor], [WithJitter], [WithMaxDelay],
+    and [WithJitterStrategy].
   - Per-attempt timeout isolation via [WithTimeout].
+  - Optional retry observability via [WithOnRetry].
   - Context-aware cancellation for clean shutdown behavior.
 
 # Usage
@@ -71,13 +74,14 @@ package retrier
 import (
 	"context"
 	"fmt"
-	"math"
-	"math/rand"
 	"time"
+
+	"github.com/tecnickcom/gogen/pkg/backoff"
 )
 
 const (
-	// DefaultAttempts is the default maximum number of retry attempts.
+	// DefaultAttempts is the default maximum number of total attempts (the
+	// initial call plus retries).
 	DefaultAttempts = 4
 
 	// DefaultDelay is the default delay to apply after the first failed attempt.
@@ -93,17 +97,29 @@ const (
 	DefaultTimeout = 1 * time.Second
 )
 
-// maxBackoffDelay is the upper bound applied to the exponential backoff delay.
-// It caps nextDelay well below math.MaxInt64 nanoseconds (~146 years), so the
-// float64 to int64 conversion performed when scheduling the next attempt can
-// never overflow into a negative timer reset at high attempt counts.
-const maxBackoffDelay = float64(math.MaxInt64 / 2)
-
 // TaskFn is the type of function to be executed.
 type TaskFn func(ctx context.Context) error
 
 // RetryIfFn is the signature of the function used to decide when retry.
+// It must not panic; it runs inline in [Retrier.Run].
 type RetryIfFn func(err error) bool
+
+// OnRetryFn is an optional observability callback invoked before each scheduled
+// retry. It receives the number of the attempt that just failed (1-based), the
+// delay before the next attempt, and the error that triggered the retry. It
+// counts scheduled retries — one may still be preempted by cancellation before it
+// runs — and must not panic; it runs inline in [Retrier.Run].
+type OnRetryFn func(attempt uint, delay time.Duration, err error)
+
+// JitterStrategy selects how backoff jitter is applied. See [backoff.JitterStrategy].
+type JitterStrategy = backoff.JitterStrategy
+
+// Jitter strategies, re-exported from [backoff] so callers need not import it.
+const (
+	JitterAdditive = backoff.JitterAdditive // fixed additive ceiling (default)
+	JitterFull     = backoff.JitterFull     // rand[0, delay): best decorrelation
+	JitterEqual    = backoff.JitterEqual    // delay/2 + rand[0, delay/2)
+)
 
 // Retrier applies configurable retry logic to generic task functions.
 //
@@ -115,7 +131,10 @@ type Retrier struct {
 	delay       time.Duration
 	jitter      time.Duration
 	timeout     time.Duration
+	maxDelay    time.Duration
+	strategy    JitterStrategy
 	retryIfFn   RetryIfFn
+	onRetry     OnRetryFn
 }
 
 // defaultRetrier returns a [Retrier] initialized with package defaults.
@@ -126,6 +145,8 @@ func defaultRetrier() *Retrier {
 		delayFactor: DefaultDelayFactor,
 		jitter:      DefaultJitter,
 		timeout:     DefaultTimeout,
+		maxDelay:    0,              // unbounded by default; backoff still applies its internal safety cap
+		strategy:    JitterAdditive, // preserve the historical additive-jitter behavior
 		retryIfFn:   DefaultRetryIf,
 	}
 }
@@ -156,30 +177,41 @@ func New(opts ...Option) (*Retrier, error) {
 type run struct {
 	cfg               *Retrier
 	timer             *time.Timer
-	taskError         error
-	nextDelay         float64
+	sched             *backoff.Schedule
 	remainingAttempts uint
 }
 
 // Run executes the task with exponential backoff and jitter, respecting parent context cancellation.
+//
+// An already-canceled context fails fast without running the task. If ctx is
+// canceled during or just before the first attempt, the task may still run once
+// (with the canceled context); a well-behaved task returns promptly.
 func (r *Retrier) Run(ctx context.Context, task TaskFn) error {
-	rctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	err := ctx.Err()
+	if err != nil {
+		return fmt.Errorf("context ended before first attempt: %w", err)
+	}
 
 	st := &run{
-		cfg:               r,
-		timer:             time.NewTimer(1 * time.Nanosecond),
-		nextDelay:         float64(r.delay),
+		cfg:   r,
+		timer: time.NewTimer(1 * time.Nanosecond),
+		sched: backoff.New(backoff.Config{
+			Base:     r.delay,
+			Factor:   r.delayFactor,
+			Jitter:   r.jitter,
+			MaxDelay: r.maxDelay,
+			Strategy: r.strategy,
+		}),
 		remainingAttempts: r.attempts,
 	}
 	defer st.timer.Stop()
 
 	for {
 		select {
-		case <-rctx.Done():
-			return fmt.Errorf("main context has been canceled: %w", rctx.Err())
+		case <-ctx.Done():
+			return fmt.Errorf("context ended: %w", ctx.Err())
 		case <-st.timer.C:
-			stop, err := st.exec(rctx, task)
+			stop, err := st.exec(ctx, task)
 			if stop {
 				return err
 			}
@@ -187,46 +219,35 @@ func (r *Retrier) Run(ctx context.Context, task TaskFn) error {
 	}
 }
 
-// setTimer resets the per-run timer, draining its channel if necessary to prevent deadlocks.
-func (s *run) setTimer(d time.Duration) {
-	if !s.timer.Stop() {
-		// make sure to drain timer channel before reset
-		select {
-		case <-s.timer.C:
-		default:
-		}
-	}
-
-	s.timer.Reset(d)
-}
-
 // exec runs the task with a per-attempt timeout, evaluates the retry predicate, and schedules the next attempt if needed.
 // It returns stop=true to end retrying (success, exhausted attempts, or retry not needed) along with the last task error.
 func (s *run) exec(ctx context.Context, task TaskFn) (bool, error) {
 	tctx, cancel := context.WithTimeout(ctx, s.cfg.timeout)
-	s.taskError = task(tctx)
+	defer cancel()
 
-	cancel()
+	taskError := task(tctx)
 
 	s.remainingAttempts--
-	if s.remainingAttempts == 0 || !s.cfg.retryIfFn(s.taskError) {
-		return true, s.taskError
+	if s.remainingAttempts == 0 || !s.cfg.retryIfFn(taskError) {
+		return true, taskError
 	}
 
-	delay := int64(s.nextDelay) + rand.Int63n(int64(s.cfg.jitter)) //nolint:gosec
-	if delay < 0 {
-		// the jitter addition overflowed int64
-		delay = math.MaxInt64
+	// If the parent context ended while the task ran, stop now: Run's loop will
+	// observe cancellation and return the context error. Scheduling here would
+	// report (via onRetry) and arm a retry that never executes.
+	if ctx.Err() != nil {
+		return false, taskError
 	}
 
-	s.setTimer(time.Duration(delay))
+	delay := s.sched.Next()
 
-	s.nextDelay *= s.cfg.delayFactor
-	if s.nextDelay > maxBackoffDelay {
-		// cap the exponential growth to keep the delay conversion in the
-		// int64 range (see maxBackoffDelay)
-		s.nextDelay = maxBackoffDelay
+	if s.cfg.onRetry != nil {
+		s.cfg.onRetry(s.cfg.attempts-s.remainingAttempts, delay, taskError)
 	}
 
-	return false, s.taskError
+	// The timer just fired and was drained by Run's receive; on Go 1.23+ Reset
+	// re-arms it with no stale-value risk, so no Stop/drain dance is needed.
+	s.timer.Reset(delay)
+
+	return false, taskError
 }

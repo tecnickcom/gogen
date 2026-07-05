@@ -3,7 +3,6 @@ package retrier
 import (
 	"context"
 	"errors"
-	"math"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -37,6 +36,9 @@ func TestNew(t *testing.T) {
 				WithDelayFactor(1.3),
 				WithJitter(109 * time.Millisecond),
 				WithTimeout(131 * time.Millisecond),
+				WithMaxDelay(7 * time.Second),
+				WithJitterStrategy(JitterFull),
+				WithOnRetry(func(_ uint, _ time.Duration, _ error) {}),
 			},
 			wantErr: false,
 		},
@@ -234,43 +236,125 @@ func TestRetrier_Run_backoffGrowth(t *testing.T) {
 	require.Greater(t, gap3, gap2, "third delay should exceed the second")
 }
 
-// TestRun_exec_backoff_overflow_clamp verifies the exponential backoff delay
-// stays positive (no float64 to int64 conversion overflow) at high attempt
-// counts.
-func TestRun_exec_backoff_overflow_clamp(t *testing.T) {
+// TestRetrier_Run_maxDelayCaps verifies WithMaxDelay is wired into the backoff
+// so the gap between attempts stops growing once the cap is reached (rather than
+// following the raw exponential progression).
+func TestRetrier_Run_maxDelayCaps(t *testing.T) {
 	t.Parallel()
 
+	const maxDelay = 30 * time.Millisecond
+
 	r, err := New(
-		WithAttempts(100),
-		WithDelay(1*time.Second),
-		WithDelayFactor(2),
-		WithJitter(1*time.Millisecond),
+		WithAttempts(4),
+		WithDelay(10*time.Millisecond),
+		WithDelayFactor(8),            // uncapped 3rd gap would be ~640ms
+		WithJitter(1*time.Nanosecond), // 1ns ceiling -> jitter is always 0
+		WithMaxDelay(maxDelay),
 		WithTimeout(1*time.Second),
 	)
 	require.NoError(t, err)
 
-	s := &run{
-		cfg:               r,
-		timer:             time.NewTimer(1 * time.Hour),
-		nextDelay:         float64(r.delay),
-		remainingAttempts: r.attempts,
+	var timestamps []time.Time
+
+	task := func(_ context.Context) error {
+		timestamps = append(timestamps, time.Now())
+
+		return errTask
 	}
-	defer s.timer.Stop()
 
-	task := func(_ context.Context) error { return errTask }
+	runErr := r.Run(t.Context(), task)
+	require.Error(t, runErr)
+	require.Len(t, timestamps, 4, "all attempts should run")
 
-	// Drive exec through enough failed attempts that the uncapped delay
-	// (1s doubled on each retry) would overflow int64 after ~33 doublings.
-	for range 99 {
-		stop, execErr := s.exec(t.Context(), task)
-		require.False(t, stop)
-		require.ErrorIs(t, execErr, errTask)
+	// Without the cap the third gap would be ~640ms; capped it sits near 30ms.
+	// A generous 4x ceiling distinguishes capped from uncapped without being
+	// flaky under scheduler jitter.
+	gap3 := timestamps[3].Sub(timestamps[2])
+	require.Greater(t, gap3, maxDelay/2, "capped gap should still be near the cap")
+	require.Less(t, gap3, 4*maxDelay, "gap must be capped well below the raw exponential value")
+}
 
-		require.Positive(t, s.nextDelay)
-		require.LessOrEqual(t, s.nextDelay, maxBackoffDelay)
-		require.Positive(t, time.Duration(int64(s.nextDelay)),
-			"backoff delay must stay positive at high attempt counts")
+// TestRetrier_Run_onRetry verifies the observability callback fires once per
+// scheduled retry with increasing 1-based attempt numbers.
+func TestRetrier_Run_onRetry(t *testing.T) {
+	t.Parallel()
+
+	var attempts []uint
+
+	onRetry := func(attempt uint, _ time.Duration, err error) {
+		attempts = append(attempts, attempt)
+
+		assert.ErrorIs(t, err, errTask)
 	}
+
+	r, err := New(
+		WithAttempts(3),
+		WithDelay(1*time.Millisecond),
+		WithJitter(1*time.Millisecond),
+		WithTimeout(time.Second),
+		WithOnRetry(onRetry),
+	)
+	require.NoError(t, err)
+
+	runErr := r.Run(t.Context(), func(_ context.Context) error { return errTask })
+	require.Error(t, runErr)
+
+	// 3 attempts -> 2 retries scheduled, so onRetry fires for attempts 1 and 2
+	// (the final, exhausted attempt does not schedule a retry).
+	require.Equal(t, []uint{1, 2}, attempts)
+}
+
+// TestRetrier_Run_onRetryNotCalledOnCancel verifies onRetry does not fire for a
+// retry preempted by context cancellation during the attempt.
+func TestRetrier_Run_onRetryNotCalledOnCancel(t *testing.T) {
+	t.Parallel()
+
+	var onRetryCalls int
+
+	onRetry := func(_ uint, _ time.Duration, _ error) { onRetryCalls++ }
+
+	r, err := New(
+		WithAttempts(3),
+		WithDelay(time.Millisecond),
+		WithJitter(time.Millisecond),
+		WithTimeout(time.Second),
+		WithOnRetry(onRetry),
+	)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	runErr := r.Run(ctx, func(_ context.Context) error {
+		cancel() // context ends during the attempt
+
+		return errTask
+	})
+
+	require.Error(t, runErr)
+	require.Zero(t, onRetryCalls, "onRetry must not fire for a retry preempted by cancellation")
+}
+
+// TestRetrier_Run_preCanceledContext verifies Run fails fast without running the
+// task when the context is already done.
+func TestRetrier_Run_preCanceledContext(t *testing.T) {
+	t.Parallel()
+
+	r, err := New(WithAttempts(3), WithDelay(time.Millisecond), WithJitter(time.Millisecond))
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	var calls int
+
+	runErr := r.Run(ctx, func(_ context.Context) error {
+		calls++
+
+		return nil
+	})
+
+	require.Error(t, runErr)
+	require.Zero(t, calls, "task must not run when the context is already canceled")
 }
 
 // TestRetrier_Run_earlyStop verifies that a RetryIfFn returning false stops
@@ -329,59 +413,5 @@ func TestDefaultRetryIf(t *testing.T) {
 
 			require.Equal(t, tt.want, got)
 		})
-	}
-}
-
-func TestRun_setTimer(t *testing.T) {
-	t.Parallel()
-
-	s := &run{
-		timer: time.NewTimer(1 * time.Millisecond),
-	}
-
-	time.Sleep(2 * time.Millisecond)
-	s.setTimer(2 * time.Millisecond)
-
-	<-s.timer.C
-}
-
-func Test_setTimer_drainsFiredTimer(t *testing.T) {
-	t.Parallel()
-
-	timer := time.NewTimer(time.Nanosecond)
-
-	time.Sleep(10 * time.Millisecond) // let the timer fire so Stop returns false
-
-	s := &run{timer: timer}
-	s.setTimer(time.Hour) // must drain the fired value before resetting
-
-	require.True(t, s.timer.Stop())
-}
-
-func Test_exec_delayOverflowClamp(t *testing.T) {
-	t.Parallel()
-
-	cfg := defaultRetrier()
-	cfg.jitter = time.Duration(math.MaxInt64)
-	cfg.retryIfFn = func(error) bool { return true }
-
-	s := &run{
-		cfg:   cfg,
-		timer: time.NewTimer(time.Hour),
-	}
-	defer s.timer.Stop()
-
-	task := func(_ context.Context) error { return errTask }
-
-	// delay = maxBackoffDelay + rand[0, MaxInt64) wraps negative with
-	// probability ~1/2 per attempt, so 100 attempts make missing the
-	// overflow-clamp branch vanishingly unlikely (~2^-100).
-	for range 100 {
-		s.nextDelay = maxBackoffDelay
-		s.remainingAttempts = 2
-
-		stop, err := s.exec(t.Context(), task)
-		require.False(t, stop)
-		require.ErrorIs(t, err, errTask)
 	}
 }

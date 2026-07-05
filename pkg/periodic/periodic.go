@@ -52,6 +52,8 @@ goroutine and [Periodic.Stop] shuts it down cleanly:
   - jitter must be >= 0 (pass 0 to disable jitter entirely).
   - timeout must be > 0.
   - task must not be nil.
+  - task must not panic — it runs in the background goroutine with no recovery,
+    so a panic crashes the process (recover inside the task if needed).
 
 # Benefits
 
@@ -64,44 +66,49 @@ package periodic
 import (
 	"context"
 	"errors"
-	"math/rand"
+	"sync"
 	"time"
+
+	"github.com/tecnickcom/gogen/pkg/backoff"
 )
 
 // TaskFn is the function signature executed on each scheduler tick.
 // The context passed in carries the deadline configured via the timeout
 // parameter of [New]. Implementations should respect context cancellation
 // and return promptly when ctx.Done() is closed.
+//
+// The task runs in the scheduler's background goroutine with no panic recovery:
+// a panic in the task crashes the process. Recover inside the task if it may
+// panic and the scheduler must survive.
 type TaskFn func(context.Context)
 
 // Periodic schedules a [TaskFn] to run repeatedly with configurable interval and jitter.
 // Create one with [New], start it with [Periodic.Start], and stop it with
 // [Periodic.Stop]. The zero value is not usable; always use [New].
 type Periodic struct {
-	interval   int64         // Time in nanoseconds between two successive calls.
-	jitter     int64         // Maximum random Jitter time between each function call.
-	timeout    time.Duration // Timeout applied to each function call via context.
-	task       TaskFn        // Function to be periodically executed. It should return within the context's timeout.
-	timer      *time.Timer
-	resetTimer chan time.Duration
-	cancel     context.CancelFunc
-	done       chan struct{} // closed by loop on exit so Stop can wait for the in-flight task.
+	interval time.Duration // Time between two successive calls.
+	jitter   time.Duration // Maximum random jitter added between each function call.
+	timeout  time.Duration // Timeout applied to each function call via context.
+	task     TaskFn        // Function to be periodically executed. It should return within the context's timeout.
+	timer    *time.Timer   // Owned solely by the loop goroutine.
+	mu       sync.Mutex    // Guards stopped/cancel/done against concurrent or repeated Start/Stop.
+	stopped  bool          // set by Stop; a later Start becomes a no-op.
+	cancel   context.CancelFunc
+	done     chan struct{} // closed by loop on exit so Stop can wait for the in-flight task.
 }
 
 // New constructs a Periodic scheduler with constraints on interval, jitter, timeout, and task validation.
 // Returns error if any parameter violates its constraint; call Start() to begin execution.
 func New(interval time.Duration, jitter time.Duration, timeout time.Duration, task TaskFn) (*Periodic, error) {
-	intervalNs := int64(interval)
-	if intervalNs < 1 {
+	if interval < 1 {
 		return nil, errors.New("interval must be positive")
 	}
 
-	jitterNs := int64(jitter)
-	if jitterNs < 0 {
+	if jitter < 0 {
 		return nil, errors.New("jitter must not be negative")
 	}
 
-	if int64(timeout) < 1 {
+	if timeout < 1 {
 		return nil, errors.New("timeout must be positive")
 	}
 
@@ -110,18 +117,29 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 	}
 
 	return &Periodic{
-		interval:   intervalNs,
-		jitter:     jitterNs,
-		timeout:    timeout,
-		task:       task,
-		resetTimer: make(chan time.Duration, 1),
+		interval: interval,
+		jitter:   jitter,
+		timeout:  timeout,
+		task:     task,
 	}, nil
 }
 
 // Start begins periodic task execution in a background goroutine.
 // First invocation fires almost immediately; subsequent calls are at interval+rand(0,jitter) after each completion.
-// The loop exits when ctx is canceled or Stop() is called. Must not be called more than once on the same instance.
+// The loop exits when ctx is canceled or Stop() is called. A second Start on an
+// already-started or already-stopped instance is a no-op, so it never leaks a
+// goroutine — the instance is single-use.
+//
+// If ctx is canceled just before the first tick, the task may still run once
+// (with the already-canceled context); a well-behaved task returns promptly.
 func (p *Periodic) Start(ctx context.Context) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.cancel != nil || p.stopped {
+		return // already started, or stopped before starting; either way a no-op
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	p.cancel = cancel
 	p.done = make(chan struct{})
@@ -130,14 +148,23 @@ func (p *Periodic) Start(ctx context.Context) {
 }
 
 // Stop cancels the execution loop and waits for the current task invocation to complete.
-// Safe to call multiple times or before Start() is called.
+// Safe to call multiple times, before Start(), or concurrently with Start(): whatever
+// the ordering, once Stop returns the scheduler is stopped and will not (re)start —
+// a Stop that wins the race before Start prevents the loop from ever launching.
+// The instance is single-use and cannot be restarted after Stop.
 func (p *Periodic) Stop() {
-	if p.cancel == nil {
+	p.mu.Lock()
+	p.stopped = true
+	cancel := p.cancel
+	done := p.done
+	p.mu.Unlock()
+
+	if cancel == nil {
 		return
 	}
 
-	p.cancel()
-	<-p.done
+	cancel()
+	<-done
 }
 
 // loop runs the main periodic execution loop.
@@ -146,43 +173,32 @@ func (p *Periodic) loop(ctx context.Context) {
 	defer p.cancel()
 
 	p.timer = time.NewTimer(1 * time.Nanosecond)
+	defer p.timer.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case d := <-p.resetTimer:
-			p.setTimer(d)
 		case <-p.timer.C:
 			p.run(ctx)
 		}
 	}
 }
 
-// setTimer sets the timer to the given duration.
-func (p *Periodic) setTimer(d time.Duration) {
-	if !p.timer.Stop() {
-		// make sure to drain timer channel before reset
-		select {
-		case <-p.timer.C:
-		default:
-		}
-	}
-
-	p.timer.Reset(d)
-}
-
-// run executes the task function with a timeout context and resets the timer.
+// run executes the task function with a timeout context and schedules the next invocation.
 func (p *Periodic) run(ctx context.Context) {
 	tctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
 	p.task(tctx)
-	cancel()
 
-	// rand.Int63n panics on a zero argument, so only add jitter when configured.
-	extra := int64(0)
-	if p.jitter > 0 {
-		extra = rand.Int63n(p.jitter) //nolint:gosec
-	}
+	// The timer just fired and was drained by loop's receive; on Go 1.23+ Reset
+	// re-arms it with no stale-value risk, so no Stop/drain dance is needed.
+	p.timer.Reset(p.nextDelay())
+}
 
-	p.resetTimer <- time.Duration(p.interval + extra)
+// nextDelay returns the pause before the next invocation: the fixed interval
+// plus uniform random jitter in [0, jitter).
+func (p *Periodic) nextDelay() time.Duration {
+	return backoff.AddJitter(p.interval, p.jitter)
 }
