@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/redact"
 )
 
 type testHTTPClient struct{}
@@ -53,4 +54,28 @@ func TestWithPathParam(t *testing.T) {
 	// An empty name falls back to the default.
 	WithPathParam("")(c)
 	require.Equal(t, defaultPathParam, c.pathParam)
+}
+
+func TestWithRedactFn(t *testing.T) {
+	t.Parallel()
+
+	sentinel := func(_ []byte) string { return "REDACTED" }
+	c := &Client{redactFn: redact.HTTPDataString}
+
+	WithRedactFn(sentinel)(c)
+	require.Equal(t, "REDACTED", c.redactFn(nil))
+
+	// A nil fn is ignored and keeps the previously set function.
+	WithRedactFn(nil)(c)
+	require.Equal(t, "REDACTED", c.redactFn(nil))
+}
+
+func TestWithLaxBasePath(t *testing.T) {
+	t.Parallel()
+
+	c := &Client{}
+	require.False(t, c.laxBasePath, "base-path check is strict by default")
+
+	WithLaxBasePath()(c)
+	require.True(t, c.laxBasePath)
 }
