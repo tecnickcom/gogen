@@ -4,12 +4,15 @@ package httpserver
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -89,8 +92,8 @@ func Test_customMiddlewares(t *testing.T) {
 	defer cancel()
 
 	cfg := defaultConfig()
-	cfg.setRouter(ctx)
-	loadRoutes(ctx, binder, cfg)
+	cfg.setRouter()
+	require.NoError(t, loadRoutes(ctx, binder, cfg))
 
 	go func() {
 		select {
@@ -126,12 +129,12 @@ func TestStartServer(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		opts           []Option
-		failListenPort int
-		setupBinder    func(*MockBinder)
-		shutdownSig    bool
-		wantErr        bool
+		name        string
+		opts        []Option
+		failListen  bool
+		setupBinder func(*MockBinder)
+		shutdownSig bool
+		wantErr     bool
 	}{
 		{
 			name: "fail with invalid config",
@@ -150,19 +153,18 @@ func TestStartServer(t *testing.T) {
 		{
 			name: "fail listen port already bound",
 			opts: []Option{
-				WithServerAddr(":12345"),
 				WithShutdownTimeout(1 * time.Millisecond),
 			},
 			setupBinder: func(b *MockBinder) {
 				b.EXPECT().BindHTTP(gomock.Any()).Times(1)
 			},
-			failListenPort: 12345,
-			wantErr:        true,
+			failListen: true,
+			wantErr:    true,
 		},
 		{
 			name: "succeed",
 			opts: []Option{
-				WithServerAddr(":11111"),
+				WithServerAddr(":0"),
 				WithRequestTimeout(1 * time.Minute),
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithEnableAllDefaultRoutes(),
@@ -177,7 +179,7 @@ func TestStartServer(t *testing.T) {
 		{
 			name: "succeed and shutdown with signal",
 			opts: []Option{
-				WithServerAddr(":11112"),
+				WithServerAddr(":0"),
 				WithShutdownTimeout(1 * time.Second),
 			},
 			setupBinder: func(b *MockBinder) {
@@ -217,7 +219,7 @@ ZFAD6gD2mWt5CJzQePIQvqW0z9SVyq+Lbiyr/FzVHUn09n9L9c7/AkA1VDTPiY/H
 DSk+QcX0L58Fc7RiaBnykcJRfHnd15MlyqtUJ02iitNJOoSVBNQzr59Iyt7nGBzm
 YlAqGKDZ+A+l
 -----END PRIVATE KEY-----`)),
-				WithServerAddr(":22222"),
+				WithServerAddr(":0"),
 				WithShutdownTimeout(1 * time.Millisecond),
 				WithEnableAllDefaultRoutes(),
 			},
@@ -259,13 +261,16 @@ YlAqGKDZ+A+l
 				cancelCtx()
 			}()
 
-			if tt.failListenPort != 0 {
+			if tt.failListen {
 				var lc net.ListenConfig
 
-				l, err := lc.Listen(t.Context(), "tcp", fmt.Sprintf(":%d", tt.failListenPort))
+				l, err := lc.Listen(t.Context(), "tcp", ":0")
 				require.NoError(t, err, "failed starting pre-listener")
 
 				defer func() { _ = l.Close() }()
+
+				// Binding the already-taken ephemeral address must fail.
+				opts = append(opts, WithServerAddr(l.Addr().String()))
 			}
 
 			h, err := New(ctx, mockBinder, opts...)
@@ -309,10 +314,22 @@ func Test_Serve_error(t *testing.T) {
 			ReadTimeout:       1 * time.Millisecond,
 			WriteTimeout:      1 * time.Millisecond,
 		},
-		listener: mockListenerErr{},
+		listener:     mockListenerErr{},
+		shutdownDone: make(chan struct{}),
+		monitorDone:  make(chan struct{}),
+		serveErr:     make(chan error, 1),
 	}
 
 	h.serve()
+
+	// An abnormal Serve failure is surfaced on the ServeError channel and must
+	// trigger shutdown so the wait group is released.
+	select {
+	case err := <-h.ServeError():
+		require.Error(t, err, "expected the serve failure to be published")
+	default:
+		t.Fatal("serve failure was not published on ServeError")
+	}
 }
 
 func TestNew_setsIdleTimeout(t *testing.T) {
@@ -324,7 +341,7 @@ func TestNew_setsIdleTimeout(t *testing.T) {
 	h, err := New(
 		t.Context(),
 		NopBinder(),
-		WithServerAddr(":31811"),
+		WithServerAddr(":0"),
 		WithServerIdleTimeout(idle),
 		WithShutdownWaitGroup(shutdownWG),
 	)
@@ -346,7 +363,7 @@ func TestShutdown_idempotent(t *testing.T) {
 	h, err := New(
 		t.Context(),
 		NopBinder(),
-		WithServerAddr(":31812"),
+		WithServerAddr(":0"),
 		WithShutdownWaitGroup(shutdownWG),
 		WithShutdownTimeout(1*time.Second),
 	)
@@ -398,18 +415,20 @@ func TestShutdown_idempotent(t *testing.T) {
 func TestShutdown_neverStarted(t *testing.T) {
 	t.Parallel()
 
-	addr := ":31814"
 	shutdownWG := &sync.WaitGroup{}
 
 	h, err := New(
 		t.Context(),
 		NopBinder(),
-		WithServerAddr(addr),
+		WithServerAddr(":0"),
 		WithShutdownWaitGroup(shutdownWG),
 		WithShutdownTimeout(1*time.Second),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, h)
+
+	// Capture the concrete bound address before releasing it.
+	addr := h.Addr().String()
 
 	// Shutdown on a never-started server must not panic (no negative wait group
 	// counter) and must release the bound listener so the address can be reused.
@@ -434,7 +453,7 @@ func TestStartServerCtx_contextAlreadyCanceled(t *testing.T) {
 	h, err := New(
 		t.Context(),
 		NopBinder(),
-		WithServerAddr(":31813"),
+		WithServerAddr(":0"),
 		WithShutdownWaitGroup(shutdownWG),
 		WithShutdownTimeout(1*time.Second),
 	)
@@ -504,13 +523,140 @@ func TestRequestInjectHandler_concurrentLoggerIsolation(t *testing.T) {
 	wg.Wait()
 }
 
+func TestNew_setsMaxHeaderBytes(t *testing.T) {
+	t.Parallel()
+
+	maxHeaderBytes := 1 << 16
+
+	h, err := New(
+		t.Context(),
+		NopBinder(),
+		WithServerAddr(":0"),
+		WithServerMaxHeaderBytes(maxHeaderBytes),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, h)
+	require.Equal(t, maxHeaderBytes, h.httpServer.MaxHeaderBytes)
+	require.NoError(t, h.Shutdown(t.Context()))
+}
+
+// bodyReaderBinder binds a route that reads the whole request body and
+// answers 413 when the read fails with *http.MaxBytesError.
+type bodyReaderBinder struct{}
+
+func (b *bodyReaderBinder) BindHTTP(_ context.Context) []Route {
+	return []Route{
+		{
+			Method:      http.MethodPost,
+			Path:        "/echo-size",
+			Description: "Reads the request body.",
+			Handler: func(w http.ResponseWriter, r *http.Request) {
+				data, err := io.ReadAll(r.Body)
+				if err != nil {
+					var maxErr *http.MaxBytesError
+					if errors.As(err, &maxErr) {
+						w.WriteHeader(http.StatusRequestEntityTooLarge)
+						return
+					}
+
+					w.WriteHeader(http.StatusInternalServerError)
+
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				_, _ = fmt.Fprintf(w, "%d", len(data))
+			},
+		},
+	}
+}
+
+func TestWithMaxRequestBodyBytes_enforced(t *testing.T) {
+	t.Parallel()
+
+	h, err := New(
+		t.Context(),
+		&bodyReaderBinder{},
+		WithServerAddr(":0"),
+		WithMaxRequestBodyBytes(1<<10), // 1 KiB
+		WithShutdownTimeout(1*time.Second),
+	)
+	require.NoError(t, err)
+
+	h.StartServer()
+	defer func() { _ = h.Shutdown(t.Context()) }()
+
+	_, port, err := net.SplitHostPort(h.Addr().String())
+	require.NoError(t, err)
+
+	url := "http://" + net.JoinHostPort("127.0.0.1", port) + "/echo-size"
+
+	// A body within the limit must pass through untouched.
+	small := strings.NewReader(strings.Repeat("a", 1<<8))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, url, small)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// A body over the limit must fail the handler's read with
+	// *http.MaxBytesError, yielding 413.
+	big := strings.NewReader(strings.Repeat("a", 1<<12))
+	req, err = http.NewRequestWithContext(t.Context(), http.MethodPost, url, big)
+	require.NoError(t, err)
+
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusRequestEntityTooLarge, resp.StatusCode)
+}
+
+func TestNew_invalidTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	// A TLS configuration without certificate material must be rejected at
+	// startup (matching tls.Listen semantics), not accepted only to fail every
+	// handshake at runtime.
+	h, err := New(
+		t.Context(),
+		NopBinder(),
+		WithServerAddr(":0"),
+		WithTLSConfig(&tls.Config{MinVersion: tls.VersionTLS12}),
+	)
+	require.ErrorIs(t, err, ErrInvalidTLSConfig)
+	require.Nil(t, h)
+}
+
+func TestNew_tlsConfigWithGetCertificate(t *testing.T) {
+	t.Parallel()
+
+	// Certificate material supplied via GetCertificate (instead of the static
+	// Certificates list) must pass the startup validation.
+	h, err := New(
+		t.Context(),
+		NopBinder(),
+		WithServerAddr(":0"),
+		WithTLSConfig(&tls.Config{
+			MinVersion: tls.VersionTLS12,
+			GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				return nil, nil //nolint:nilnil // never invoked in this test
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, h)
+	require.NoError(t, h.Shutdown(t.Context()))
+}
+
 func TestShutdown_neverStartedListenerCloseError(t *testing.T) {
 	t.Parallel()
 
 	h, err := New(
 		t.Context(),
 		NopBinder(),
-		WithServerAddr(":31815"),
+		WithServerAddr(":0"),
 		WithShutdownTimeout(1*time.Second),
 	)
 	require.NoError(t, err)

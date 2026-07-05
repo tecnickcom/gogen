@@ -110,6 +110,40 @@ func TestWithServerIdleTimeout(t *testing.T) {
 	require.Equal(t, v, cfg.serverIdleTimeout)
 }
 
+func TestWithMaxRequestBodyBytes(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultConfig()
+
+	err := WithMaxRequestBodyBytes(0)(cfg)
+	require.Error(t, err)
+
+	err = WithMaxRequestBodyBytes(-1)(cfg)
+	require.Error(t, err)
+
+	v := int64(1 << 20)
+	err = WithMaxRequestBodyBytes(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, v, cfg.maxRequestBodyBytes)
+}
+
+func TestWithServerMaxHeaderBytes(t *testing.T) {
+	t.Parallel()
+
+	cfg := defaultConfig()
+
+	err := WithServerMaxHeaderBytes(0)(cfg)
+	require.Error(t, err)
+
+	err = WithServerMaxHeaderBytes(-1)(cfg)
+	require.Error(t, err)
+
+	v := 1 << 16
+	err = WithServerMaxHeaderBytes(v)(cfg)
+	require.NoError(t, err)
+	require.Equal(t, v, cfg.serverMaxHeaderBytes)
+}
+
 func TestWithShutdownTimeout(t *testing.T) {
 	t.Parallel()
 

@@ -333,3 +333,14 @@ func Test_broken_responseWriterWrapper_ReadFrom(t *testing.T) {
 	_, err := rww.ReadFrom(inputBuf)
 	require.Error(t, err)
 }
+
+func Test_responseWriterWrapper_Unwrap(t *testing.T) {
+	t.Parallel()
+
+	rr := httptest.NewRecorder()
+	ww := responseWriterWrapper{ResponseWriter: rr}
+
+	// Unwrap must return the wrapped writer so http.ResponseController can
+	// reach the underlying implementation.
+	require.Equal(t, reflect.ValueOf(rr).Pointer(), reflect.ValueOf(ww.Unwrap()).Pointer())
+}

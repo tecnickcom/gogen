@@ -46,11 +46,19 @@ func allDefaultRoutes() []DefaultRoute {
 }
 
 // newDefaultRoutes creates the default routes based on the configuration.
+// Repeated identifiers are de-duplicated (first occurrence wins).
 func newDefaultRoutes(cfg *config) []Route {
-	routes := make([]Route, 0, len(cfg.defaultEnabledRoutes)+1)
+	routes := make([]Route, 0, len(cfg.defaultEnabledRoutes))
+	seen := make(map[DefaultRoute]struct{}, len(cfg.defaultEnabledRoutes))
 
 	for _, id := range cfg.defaultEnabledRoutes {
-		_, disableLogger := cfg.disableDefaultRouteLogger[id]
+		if _, ok := seen[id]; ok {
+			continue
+		}
+
+		seen[id] = struct{}{}
+
+		disableLogger := cfg.disableDefaultRouteLogger[id]
 
 		switch id {
 		case IndexRoute:
@@ -86,6 +94,9 @@ func newDefaultRoutes(cfg *config) []Route {
 				Handler:       cfg.pprofHandlerFunc,
 				DisableLogger: disableLogger,
 				Description:   "Returns pprof data for the selected profile.",
+				// pprof CPU/trace profiles stream for ?seconds=N and must not be
+				// cut off by the global request timeout.
+				Timeout: DisableTimeout,
 			})
 		case StatusRoute:
 			routes = append(routes, Route{

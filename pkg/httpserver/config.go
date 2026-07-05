@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -43,35 +44,39 @@ func GetPublicIPDefaultFunc() GetPublicIPFunc {
 
 // config contains the configuration for the HTTP server.
 type config struct {
-	router                      *httprouter.Router
-	serverAddr                  string
-	traceIDHeaderName           string
-	requestTimeout              time.Duration
-	serverReadHeaderTimeout     time.Duration
-	serverReadTimeout           time.Duration
-	serverWriteTimeout          time.Duration
-	serverIdleTimeout           time.Duration
-	shutdownTimeout             time.Duration
-	tlsConfig                   *tls.Config
-	defaultEnabledRoutes        []DefaultRoute
-	indexHandlerFunc            IndexHandlerFunc
-	ipHandlerFunc               http.HandlerFunc
-	metricsHandlerFunc          http.HandlerFunc
-	pingHandlerFunc             http.HandlerFunc
-	pprofHandlerFunc            http.HandlerFunc
-	statusHandlerFunc           http.HandlerFunc
-	notFoundHandlerFunc         http.HandlerFunc
-	methodNotAllowedHandlerFunc http.HandlerFunc
-	panicHandlerFunc            http.HandlerFunc
-	redactFn                    RedactFn
-	middleware                  []MiddlewareFn
-	disableDefaultRouteLogger   map[DefaultRoute]bool
-	disableRouteLogger          bool
-	logger                      *slog.Logger
-	shutdownWaitGroup           *sync.WaitGroup
-	shutdownSignalChan          chan struct{}
-	httpresp                    *httputil.HTTPResp
-	rnd                         *random.Rnd
+	router                        *httprouter.Router
+	serverAddr                    string
+	traceIDHeaderName             string
+	requestTimeout                time.Duration
+	serverReadHeaderTimeout       time.Duration
+	serverReadTimeout             time.Duration
+	serverWriteTimeout            time.Duration
+	serverIdleTimeout             time.Duration
+	serverMaxHeaderBytes          int
+	maxRequestBodyBytes           int64
+	shutdownTimeout               time.Duration
+	tlsConfig                     *tls.Config
+	defaultEnabledRoutes          []DefaultRoute
+	indexHandlerFunc              IndexHandlerFunc
+	ipHandlerFunc                 http.HandlerFunc
+	metricsHandlerFunc            http.HandlerFunc
+	pingHandlerFunc               http.HandlerFunc
+	pprofHandlerFunc              http.HandlerFunc
+	statusHandlerFunc             http.HandlerFunc
+	notFoundHandlerFunc           http.HandlerFunc
+	methodNotAllowedHandlerFunc   http.HandlerFunc
+	panicHandlerFunc              http.HandlerFunc
+	redactFn                      RedactFn
+	middleware                    []MiddlewareFn
+	disableDefaultRouteLogger     map[DefaultRoute]bool
+	disableRouteLogger            bool
+	disableNotFoundLogger         bool
+	disableMethodNotAllowedLogger bool
+	logger                        *slog.Logger
+	shutdownWaitGroup             *sync.WaitGroup
+	shutdownSignalChan            chan struct{}
+	httpresp                      *httputil.HTTPResp
+	rnd                           *random.Rnd
 }
 
 // defaultConfig returns the default configuration for the HTTP server.
@@ -132,7 +137,8 @@ func validateAddr(addr string) error {
 		return addrErr
 	}
 
-	if portInt < 1 || portInt > math.MaxUint16 {
+	// Port 0 is valid: it asks the operating system for an ephemeral port.
+	if portInt < 0 || portInt > math.MaxUint16 {
 		return addrErr
 	}
 
@@ -143,12 +149,25 @@ func validateAddr(addr string) error {
 func (c *config) commonMiddleware(noRouteLogger bool, rTimeout time.Duration) []MiddlewareFn {
 	middleware := []MiddlewareFn{}
 
+	// The body-size guard is outermost so it wraps the original response
+	// writer (enabling net/http's request-too-large connection handling) and
+	// caps even the debug request dump performed by the logger middleware.
+	if c.maxRequestBodyBytes > 0 {
+		maxBodyMiddlewareFn := func(_ MiddlewareArgs, next http.Handler) http.Handler {
+			return http.MaxBytesHandler(next, c.maxRequestBodyBytes)
+		}
+
+		middleware = append(middleware, maxBodyMiddlewareFn)
+	}
+
 	if !c.disableRouteLogger && !noRouteLogger {
 		middleware = append(middleware, LoggerMiddlewareFn)
 	}
 
+	// A positive per-route timeout overrides the global one; a negative value
+	// (e.g. DisableTimeout) disables the timeout for the route entirely.
 	timeout := c.requestTimeout
-	if rTimeout > 0 {
+	if rTimeout != 0 {
 		timeout = rTimeout
 	}
 
@@ -163,64 +182,70 @@ func (c *config) commonMiddleware(noRouteLogger bool, rTimeout time.Duration) []
 	return append(middleware, c.middleware...)
 }
 
-// setRouter sets the router's default handlers if they are not already set.
-func (c *config) setRouter(_ context.Context) {
-	l := c.logger
-	middleware := c.commonMiddleware(false, 0)
+// mwArgs builds the MiddlewareArgs shared by every route and default handler.
+func (c *config) mwArgs(method, path, description string) MiddlewareArgs {
+	return MiddlewareArgs{
+		Method:            method,
+		Path:              path,
+		Description:       description,
+		TraceIDHeaderName: c.traceIDHeaderName,
+		RedactFunc:        c.redactFn,
+		Logger:            c.logger,
+		Rnd:               c.rnd,
+	}
+}
 
+// setRouter sets the router's default handlers if they are not already set.
+func (c *config) setRouter() {
 	if c.router.NotFound == nil {
 		c.router.NotFound = ApplyMiddleware(
-			MiddlewareArgs{
-				Path:              "404",
-				Description:       http.StatusText(http.StatusNotFound),
-				TraceIDHeaderName: c.traceIDHeaderName,
-				RedactFunc:        c.redactFn,
-				Logger:            l,
-				Rnd:               c.rnd,
-			},
+			c.mwArgs("", "404", http.StatusText(http.StatusNotFound)),
 			c.notFoundHandlerFunc,
-			middleware...,
+			c.commonMiddleware(c.disableNotFoundLogger, 0)...,
 		)
 	}
 
 	if c.router.MethodNotAllowed == nil {
 		c.router.MethodNotAllowed = ApplyMiddleware(
-			MiddlewareArgs{
-				Path:              "405",
-				Description:       http.StatusText(http.StatusMethodNotAllowed),
-				TraceIDHeaderName: c.traceIDHeaderName,
-				RedactFunc:        c.redactFn,
-				Logger:            l,
-				Rnd:               c.rnd,
-			},
+			c.mwArgs("", "405", http.StatusText(http.StatusMethodNotAllowed)),
 			c.methodNotAllowedHandlerFunc,
-			middleware...,
+			c.commonMiddleware(c.disableMethodNotAllowedLogger, 0)...,
 		)
 	}
 
 	if c.router.PanicHandler == nil {
-		c.router.PanicHandler = func(w http.ResponseWriter, r *http.Request, p any) {
-			c.logger.With(
-				slog.Any("error", p),
-				slog.String("stacktrace", string(debug.Stack())),
-			).Error("panic")
-			ApplyMiddleware(
-				MiddlewareArgs{
-					Path:              "500",
-					Description:       http.StatusText(http.StatusInternalServerError),
-					TraceIDHeaderName: c.traceIDHeaderName,
-					RedactFunc:        c.redactFn,
-					Logger:            l,
-					Rnd:               c.rnd,
-				},
-				c.panicHandlerFunc,
-				middleware...,
-			).ServeHTTP(w, r)
+		c.router.PanicHandler = c.newPanicHandler(c.commonMiddleware(false, 0))
+	}
+}
+
+// newPanicHandler builds the router panic handler. Panics carrying
+// http.ErrAbortHandler are re-raised so net/http can abort the connection
+// silently (its documented contract); all other panics are logged with a stack
+// trace and answered through the configured panic handler.
+func (c *config) newPanicHandler(middleware []MiddlewareFn) func(http.ResponseWriter, *http.Request, any) {
+	handler := ApplyMiddleware(
+		c.mwArgs("", "500", http.StatusText(http.StatusInternalServerError)),
+		c.panicHandlerFunc,
+		middleware...,
+	)
+
+	return func(w http.ResponseWriter, r *http.Request, p any) {
+		perr, ok := p.(error)
+		if ok && errors.Is(perr, http.ErrAbortHandler) {
+			panic(p)
 		}
+
+		c.logger.With(
+			slog.Any("error", p),
+			slog.String("stacktrace", string(debug.Stack())),
+		).Error("panic")
+
+		handler.ServeHTTP(w, r)
 	}
 }
 
 // defaultIndexHandler returns the default index handler.
+// The rendered list contains every bound route except the index route itself.
 func (c *config) defaultIndexHandler(routes []Route) http.HandlerFunc {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {

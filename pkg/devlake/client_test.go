@@ -164,7 +164,7 @@ func TestClient_HealthCheck(t *testing.T) {
 		},
 		{
 			name:                  "returns error because of timeout",
-			pingHandlerDelay:      timeout + 1,
+			pingHandlerDelay:      timeout + 50*time.Millisecond, // margin absorbs timer jitter under load
 			pingHandlerStatusCode: http.StatusOK,
 			wantErr:               true,
 		},

@@ -104,7 +104,7 @@ func TestClient_HealthCheck(t *testing.T) {
 	}{
 		{
 			name:                  "returns error because of timeout",
-			pingHandlerDelay:      timeout + 1,
+			pingHandlerDelay:      timeout + 50*time.Millisecond, // margin absorbs timer jitter under load
 			pingHandlerStatusCode: http.StatusOK,
 			pingBody:              &status{Status: "ok"},
 			wantErr:               true,
@@ -302,7 +302,7 @@ func TestClient_Send(t *testing.T) {
 		{
 			name: "fails because of timeout",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				time.Sleep(timeout + 1)
+				time.Sleep(timeout + 50*time.Millisecond) // margin absorbs timer jitter under load
 				hres.SendStatus(t.Context(), w, http.StatusOK)
 			},
 			text:      "text TIMEOUT",

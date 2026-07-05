@@ -87,9 +87,9 @@ func Test_validateAddr(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "invalid port zero",
+			name:    "valid ephemeral port zero",
 			addr:    ":0",
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name:    "invalid missing port separator",
@@ -206,7 +206,7 @@ func Test_setRouter(t *testing.T) {
 
 			cfg := defaultConfig()
 
-			cfg.setRouter(t.Context())
+			cfg.setRouter()
 
 			if tt.setupRouter != nil {
 				tt.setupRouter(cfg.router)

@@ -25,7 +25,6 @@ func TestRequestInjectHandler_debug(t *testing.T) {
 	require.NoError(t, perr, "Unexpected error (os.Pipe)")
 
 	logger := slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	slog.SetDefault(logger)
 
 	out := make(chan string)
 	wg := new(sync.WaitGroup)
@@ -75,7 +74,6 @@ func TestRequestInjectHandler_info(t *testing.T) {
 	require.NoError(t, perr, "Unexpected error (os.Pipe)")
 
 	logger := slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	slog.SetDefault(logger)
 
 	out := make(chan string)
 	wg := new(sync.WaitGroup)

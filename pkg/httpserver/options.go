@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 type Option func(*config) error
 
 // WithRouter replaces the default router used by the httpServer (mostly used for test purposes with a mock router).
+// The supplied router is mutated by New (default handlers are installed and
+// routes are registered incrementally), so it must not be reused after a
+// failed New call.
 func WithRouter(r *httprouter.Router) Option {
 	return func(cfg *config) error {
 		if r == nil {
@@ -44,6 +48,10 @@ func WithServerAddr(addr string) Option {
 
 // WithRequestTimeout sets a time limit for all routes after which a request receives a 503 Service Unavailable.
 // Alternatively a custom timeout handler like http.TimeoutHandler can be added via WithMiddlewareFn().
+//
+// The timeout is enforced with http.TimeoutHandler, which buffers the whole
+// response in memory and does not support streaming (Flusher/Hijacker); exempt
+// streaming routes with a negative Route.Timeout (see DisableTimeout).
 func WithRequestTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		if timeout <= 0 {
@@ -83,6 +91,10 @@ func WithServerReadTimeout(timeout time.Duration) Option {
 }
 
 // WithServerWriteTimeout sets the write timeout.
+// This is a server-wide connection deadline: long-running or streaming
+// responses (e.g. /pprof/profile?seconds=N) are cut off when it elapses, even
+// for routes exempted from the request timeout with DisableTimeout, so size it
+// to the longest response the server must produce.
 func WithServerWriteTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
 		if timeout <= 0 {
@@ -109,6 +121,42 @@ func WithServerIdleTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithServerMaxHeaderBytes sets the maximum number of bytes the server will
+// read parsing a request's headers (including the request line). It does not
+// limit the request body size. When not set, the net/http default
+// (http.DefaultMaxHeaderBytes, 1 MiB) applies. Lowering it is a standard
+// hardening measure for public listeners.
+func WithServerMaxHeaderBytes(n int) Option {
+	return func(cfg *config) error {
+		if n <= 0 {
+			return errors.New("invalid serverMaxHeaderBytes")
+		}
+
+		cfg.serverMaxHeaderBytes = n
+
+		return nil
+	}
+}
+
+// WithMaxRequestBodyBytes sets the maximum number of bytes the server will
+// read from a request body, complementing WithServerMaxHeaderBytes for
+// public-listener hardening. Reads beyond the limit fail with an
+// *http.MaxBytesError (see http.MaxBytesHandler), so handlers can detect it
+// and respond with 413 Request Entity Too Large. When not set, the request
+// body size is unlimited. Per-route limits can be layered on top with
+// Route.Middleware.
+func WithMaxRequestBodyBytes(n int64) Option {
+	return func(cfg *config) error {
+		if n <= 0 {
+			return errors.New("invalid maxRequestBodyBytes")
+		}
+
+		cfg.maxRequestBodyBytes = n
+
+		return nil
+	}
+}
+
 // WithShutdownTimeout sets the shutdown timeout.
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(cfg *config) error {
@@ -123,6 +171,9 @@ func WithShutdownTimeout(timeout time.Duration) Option {
 }
 
 // WithShutdownWaitGroup sets the shared waiting group to communicate externally when the server is shutdown.
+// The counter is incremented when the server starts (StartServer/StartServerCtx)
+// and decremented exactly once on shutdown, so Wait returns immediately if
+// called before the server has been started.
 func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 	return func(cfg *config) error {
 		if wg == nil {
@@ -135,8 +186,10 @@ func WithShutdownWaitGroup(wg *sync.WaitGroup) Option {
 	}
 }
 
-// WithShutdownSignalChan sets the shared channel uset to signal a shutdown.
-// When the channel signal is received the server will initiate the shutdown process.
+// WithShutdownSignalChan sets the shared channel used to signal a shutdown.
+// When a value is received on the channel the server initiates the shutdown
+// process. Close the channel (rather than sending a single value) to wake every
+// server that shares it, since a single send is delivered to only one receiver.
 func WithShutdownSignalChan(ch chan struct{}) Option {
 	return func(cfg *config) error {
 		if ch == nil {
@@ -149,7 +202,9 @@ func WithShutdownSignalChan(ch chan struct{}) Option {
 	}
 }
 
-// WithTLSCertData enable TLS with the given certificate and key data.
+// WithTLSCertData enables TLS with the given certificate and key data.
+// The resulting configuration advertises HTTP/2 and HTTP/1.1 via ALPN, so
+// clients can negotiate either protocol.
 func WithTLSCertData(pemCert, pemKey []byte) Option {
 	return func(cfg *config) error {
 		cert, err := tls.X509KeyPair(pemCert, pemKey)
@@ -160,16 +215,44 @@ func WithTLSCertData(pemCert, pemKey []byte) Option {
 		cfg.tlsConfig = &tls.Config{
 			MinVersion:   tls.VersionTLS12,
 			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"h2", "http/1.1"},
 		}
 
 		return nil
 	}
 }
 
+// WithTLSConfig sets a custom TLS configuration, giving full control over
+// certificates, client authentication, and cipher suites. When both this and
+// WithTLSCertData are supplied, the last option wins.
+// To serve HTTP/2, include "h2" (and "http/1.1") in NextProtos;
+// WithTLSCertData does this automatically.
+func WithTLSConfig(tlsConfig *tls.Config) Option {
+	return func(cfg *config) error {
+		if tlsConfig == nil {
+			return errors.New("tlsConfig is required")
+		}
+
+		cfg.tlsConfig = tlsConfig
+
+		return nil
+	}
+}
+
 // WithEnableDefaultRoutes sets the default routes to be enabled on the server.
+// An unknown route identifier returns ErrUnknownDefaultRoute.
 func WithEnableDefaultRoutes(ids ...DefaultRoute) Option {
 	return func(cfg *config) error {
+		known := allDefaultRoutes()
+
+		for _, id := range ids {
+			if !slices.Contains(known, id) {
+				return fmt.Errorf("%w: %q", ErrUnknownDefaultRoute, id)
+			}
+		}
+
 		cfg.defaultEnabledRoutes = ids
+
 		return nil
 	}
 }
@@ -183,6 +266,8 @@ func WithEnableAllDefaultRoutes() Option {
 }
 
 // WithIndexHandlerFunc replaces the index handler.
+// The handler receives every bound route except the index route itself.
+// The http.HandlerFunc it returns must not be nil.
 func WithIndexHandlerFunc(handler IndexHandlerFunc) Option {
 	return func(cfg *config) error {
 		if handler == nil {
@@ -288,9 +373,17 @@ func WithRedactFn(fn RedactFn) Option {
 
 // WithMiddlewareFn adds one or more middleware handler functions to all routes (endpoints).
 // These middleware handlers are applied in the provided order after the default ones and before the custom route ones.
+// Nil middleware functions are rejected.
 func WithMiddlewareFn(fn ...MiddlewareFn) Option {
 	return func(cfg *config) error {
+		for _, f := range fn {
+			if f == nil {
+				return errors.New("middlewareFn is required")
+			}
+		}
+
 		cfg.middleware = append(cfg.middleware, fn...)
+
 		return nil
 	}
 }
@@ -342,9 +435,35 @@ func WithoutRouteLogger() Option {
 	}
 }
 
+// WithoutNotFoundLogger disables the request logger for the 404 Not Found handler.
+// This is useful to avoid noisy logs from scanners probing unknown paths.
+func WithoutNotFoundLogger() Option {
+	return func(cfg *config) error {
+		cfg.disableNotFoundLogger = true
+		return nil
+	}
+}
+
+// WithoutMethodNotAllowedLogger disables the request logger for the 405 Method Not Allowed handler.
+func WithoutMethodNotAllowedLogger() Option {
+	return func(cfg *config) error {
+		cfg.disableMethodNotAllowedLogger = true
+		return nil
+	}
+}
+
 // WithoutDefaultRouteLogger disables the logger handler for the specified default routes.
+// An unknown route identifier returns ErrUnknownDefaultRoute.
 func WithoutDefaultRouteLogger(routes ...DefaultRoute) Option {
 	return func(cfg *config) error {
+		known := allDefaultRoutes()
+
+		for _, route := range routes {
+			if !slices.Contains(known, route) {
+				return fmt.Errorf("%w: %q", ErrUnknownDefaultRoute, route)
+			}
+		}
+
 		for _, route := range routes {
 			cfg.disableDefaultRouteLogger[route] = true
 		}

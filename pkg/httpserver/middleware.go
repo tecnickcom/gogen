@@ -9,6 +9,7 @@ import (
 
 	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/random"
+	"github.com/tecnickcom/gogen/pkg/redact"
 	"github.com/tecnickcom/gogen/pkg/traceid"
 )
 
@@ -40,6 +41,24 @@ type MiddlewareArgs struct {
 type MiddlewareFn func(args MiddlewareArgs, next http.Handler) http.Handler
 
 // RequestInjectHandler wraps all incoming requests and injects a logger in the request scoped context.
+//
+// Nil arguments fall back to safe defaults (slog.Default(), a new random
+// generator, and the redact.HTTPDataString redact function), so the returned
+// handler never panics on missing dependencies.
+//
+// The final log entry includes the response status code (response_code, with
+// the implicit 200 recorded for handlers that never call WriteHeader) and the
+// number of body bytes written (response_size). Hijacked connections (e.g.
+// WebSocket upgrades) never write an HTTP status through the writer and are
+// therefore logged with the implicit 200 as well.
+//
+// The writer passed to next forwards http.Flusher, http.Hijacker, http.Pusher,
+// io.ReaderFrom, and http.ResponseController (via Unwrap), but not the
+// deprecated http.CloseNotifier; use Request.Context() for cancelation instead.
+//
+// At debug level the whole request (headers and body) is dumped into the log
+// entry via httputil.DumpRequest, which buffers the entire body in memory; keep
+// this in mind when enabling debug logging for endpoints that accept large bodies.
 func RequestInjectHandler(
 	logger *slog.Logger,
 	traceIDHeaderName string,
@@ -47,9 +66,16 @@ func RequestInjectHandler(
 	rnd *random.Rnd,
 	next http.Handler,
 ) http.Handler {
+	logger, redactFn, rnd = requestInjectDefaults(logger, redactFn, rnd)
+
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		reqTime := time.Now().UTC()
-		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, rnd.UUIDv7().String())
+
+		// Only generate a new trace ID when the request does not carry a valid one.
+		reqID := traceid.FromHTTPRequestHeader(r, traceIDHeaderName, "")
+		if reqID == "" {
+			reqID = rnd.UUIDv7().String()
+		}
 
 		ctx := r.Context()
 		ctx = libhttputil.WithRequestTime(ctx, reqTime)
@@ -77,7 +103,22 @@ func RequestInjectHandler(
 			reqLogger = reqLogger.With(slog.String("request_dump", redactFn(reqDump)))
 		}
 
-		next.ServeHTTP(w, r.WithContext(ctx))
+		// Track the response status and size so the request log entry carries
+		// response metadata even for handlers that write directly to the writer.
+		rw := libhttputil.NewResponseWriterWrapper(w)
+
+		next.ServeHTTP(rw, r.WithContext(ctx))
+
+		status := rw.Status()
+		if status == 0 {
+			// The handler never called WriteHeader: net/http sends an implicit 200.
+			status = http.StatusOK
+		}
+
+		reqLogger = reqLogger.With(
+			slog.Int("response_code", status),
+			slog.Int("response_size", rw.Size()),
+		)
 
 		if dbglog {
 			reqLogger.Debug("request")
@@ -90,14 +131,39 @@ func RequestInjectHandler(
 	return http.HandlerFunc(fn)
 }
 
+// requestInjectDefaults replaces nil RequestInjectHandler dependencies with
+// safe defaults. The redaction fallback must fail safe: it defaults to the
+// same redacting function used by defaultConfig, never to an identity function.
+func requestInjectDefaults(logger *slog.Logger, redactFn RedactFn, rnd *random.Rnd) (*slog.Logger, RedactFn, *random.Rnd) {
+	if logger == nil {
+		logger = slog.Default()
+	}
+
+	if redactFn == nil {
+		redactFn = redact.HTTPDataString
+	}
+
+	if rnd == nil {
+		rnd = random.New(nil)
+	}
+
+	return logger, redactFn, rnd
+}
+
 // LoggerMiddlewareFn returns the middleware handler function to handle logs.
 func LoggerMiddlewareFn(args MiddlewareArgs, next http.Handler) http.Handler {
 	return RequestInjectHandler(args.Logger, args.TraceIDHeaderName, args.RedactFunc, args.Rnd, next)
 }
 
 // ApplyMiddleware returns an http Handler with all middleware handler functions applied.
+// Nil middleware entries are skipped, so the function is safe to call with
+// partially populated middleware lists.
 func ApplyMiddleware(arg MiddlewareArgs, next http.Handler, middleware ...MiddlewareFn) http.Handler {
 	for _, v := range slices.Backward(middleware) {
+		if v == nil {
+			continue
+		}
+
 		next = v(arg, next)
 	}
 

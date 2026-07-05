@@ -105,6 +105,13 @@ func (b *responseWriterWrapper) Status() int {
 	return b.status
 }
 
+// Unwrap returns the wrapped http.ResponseWriter, allowing http.ResponseController
+// to reach functionality of the underlying implementation that this wrapper does
+// not re-expose (e.g. SetReadDeadline, SetWriteDeadline, EnableFullDuplex).
+func (b *responseWriterWrapper) Unwrap() http.ResponseWriter {
+	return b.ResponseWriter
+}
+
 // Tee sets a writer to receive a copy of all bytes written to the response.
 func (b *responseWriterWrapper) Tee(w io.Writer) {
 	b.tee = w
