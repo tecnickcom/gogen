@@ -1,6 +1,8 @@
 package httputil
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -10,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tecnickcom/gogen/pkg/traceid"
 	"go.uber.org/mock/gomock"
 )
 
@@ -166,11 +169,179 @@ func TestSendXML(t *testing.T) {
 	require.Equal(t, MimeApplicationXML, resp.Header.Get("Content-Type"))
 	require.Equal(t, XMLHeader+"<string>"+data+"</string>", string(body))
 
-	// test error condition
+	// test error condition: the whole document is buffered and written in a
+	// single Write call, so exactly one Write is expected.
 	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
 	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
 	mockWriter.EXPECT().WriteHeader(http.StatusOK)
 	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
-	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
 	res.SendXML(t.Context(), mockWriter, http.StatusOK, XMLHeader, data)
+}
+
+func TestStatus_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		input       string
+		want        Status
+		wantErr     error // sentinel expected via errors.Is
+		wantJSONErr bool  // a json decoding error (not ErrInvalidStatus) is expected
+	}{
+		{name: "success", input: `"success"`, want: Status(http.StatusOK)},
+		{name: "fail", input: `"fail"`, want: Status(http.StatusBadRequest)},
+		{name: "error", input: `"error"`, want: Status(http.StatusInternalServerError)},
+		{name: "invalid status string", input: `"bogus"`, wantErr: ErrInvalidStatus},
+		{name: "invalid json type", input: `123`, wantJSONErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got Status
+
+			err := json.Unmarshal([]byte(tt.input), &got)
+
+			switch {
+			case tt.wantJSONErr:
+				require.Error(t, err)
+				require.NotErrorIs(t, err, ErrInvalidStatus)
+			case tt.wantErr != nil:
+				require.ErrorIs(t, err, tt.wantErr)
+			default:
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestHTTPResp_logResponse(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		statusCode int
+		withTrace  bool
+		wantLevel  string
+	}{
+		{name: "2xx logs at debug", statusCode: http.StatusOK, wantLevel: "DEBUG"},
+		{name: "4xx logs at warn", statusCode: http.StatusNotFound, wantLevel: "WARN"},
+		{name: "5xx logs at error with trace id", statusCode: http.StatusInternalServerError, withTrace: true, wantLevel: "ERROR"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+
+			logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+			res := NewHTTPResp(logger)
+
+			ctx := t.Context()
+			if tt.withTrace {
+				ctx = traceid.NewContext(ctx, "trace-abc")
+			}
+
+			res.logResponse(ctx, tt.statusCode, logKeyResponseDataText, "payload")
+
+			out := buf.String()
+			require.Contains(t, out, `"level":"`+tt.wantLevel+`"`)
+			require.Contains(t, out, `"response_code":`)
+
+			if tt.withTrace {
+				require.Contains(t, out, `"traceid":"trace-abc"`)
+			} else {
+				require.NotContains(t, out, "traceid")
+			}
+		})
+	}
+}
+
+func TestSendJSON_marshalError(t *testing.T) {
+	t.Parallel()
+
+	res := NewHTTPResp(slog.Default())
+
+	rr := httptest.NewRecorder()
+	// A channel cannot be marshaled to JSON, so the encode fails before any
+	// header is written and the response falls back to a clean 500.
+	res.SendJSON(t.Context(), rr, http.StatusOK, make(chan int))
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
+
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, MimeTextPlain, resp.Header.Get("Content-Type"))
+}
+
+func TestSendXML_marshalError(t *testing.T) {
+	t.Parallel()
+
+	res := NewHTTPResp(slog.Default())
+
+	rr := httptest.NewRecorder()
+	// A channel cannot be marshaled to XML, so the encode fails before any
+	// header is written and the response falls back to a clean 500.
+	res.SendXML(t.Context(), rr, http.StatusOK, XMLHeader, make(chan int))
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
+
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, MimeTextPlain, resp.Header.Get("Content-Type"))
+}
+
+func TestSendJSON_clearsStaleContentLength(t *testing.T) {
+	t.Parallel()
+
+	res := NewHTTPResp(slog.Default())
+
+	rr := httptest.NewRecorder()
+	// A stale Content-Length set by a handler before delegating must be cleared,
+	// otherwise net/http rejects the write and truncates the body on a real server.
+	rr.Header().Set("Content-Length", "5")
+
+	data := map[string]string{"key": "a value longer than five bytes"}
+	res.SendJSON(t.Context(), rr, http.StatusOK, data)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Empty(t, resp.Header.Get("Content-Length"), "stale Content-Length must be cleared")
+
+	var got map[string]string
+
+	require.NoError(t, json.Unmarshal(body, &got))
+	require.Equal(t, data, got)
+}
+
+func TestSendStatus_writeError(t *testing.T) {
+	t.Parallel()
+
+	res := NewHTTPResp(slog.Default())
+
+	mockWriter := NewMockTestHTTPResponseWriter(gomock.NewController(t))
+	mockWriter.EXPECT().Header().AnyTimes().Return(http.Header{})
+	mockWriter.EXPECT().WriteHeader(http.StatusInternalServerError)
+	mockWriter.EXPECT().Write(gomock.Any()).Return(0, errors.New("io error"))
+	res.SendStatus(t.Context(), mockWriter, http.StatusInternalServerError)
 }

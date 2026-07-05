@@ -251,7 +251,12 @@ func TestClient_HealthCheck(t *testing.T) {
 				}
 
 				if tt.bodyErr {
+					// Declare a body length but write no bytes so the client hits an
+					// unexpected EOF while reading. This bypasses SendText, which now
+					// clears a stale Content-Length set before delegating.
 					w.Header().Set("Content-Length", "1")
+
+					return
 				}
 
 				hres.SendText(r.Context(), w, tt.pingHandlerStatusCode, tt.pingBody)

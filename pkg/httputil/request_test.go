@@ -27,21 +27,7 @@ func TestClient_AddJSONHeaders(t *testing.T) {
 	require.Equal(t, wanted, r)
 }
 
-func TestClient_AddJsonHeaders(t *testing.T) {
-	t.Parallel()
-
-	ctx := t.Context()
-
-	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
-	AddJsonHeaders(r) // exercises the deprecated alias
-
-	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
-	wanted.Header.Set("Accept", "application/json")
-	wanted.Header.Set("Content-Type", "application/json")
-	require.Equal(t, wanted, r)
-}
-
-func TestAddAuthorizationHeadert(t *testing.T) {
+func TestAddAuthorizationHeader(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -52,6 +38,21 @@ func TestAddAuthorizationHeadert(t *testing.T) {
 	wanted, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
 	wanted.Header.Set("Authorization", "key")
 	require.Equal(t, wanted, r)
+}
+
+func TestAddAuthorizationHeader_replaces(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	r, _ := http.NewRequestWithContext(ctx, http.MethodGet, "", nil)
+
+	// A second call (e.g. after refreshing a token) must replace the first value,
+	// not append a second Authorization header.
+	AddAuthorizationHeader("first", r)
+	AddAuthorizationHeader("second", r)
+
+	require.Equal(t, []string{"second"}, r.Header["Authorization"])
 }
 
 func TestAddBasicAuth(t *testing.T) {
@@ -103,6 +104,13 @@ func TestPathParam(t *testing.T) {
 			paramName:   "id",
 			requestPath: "/resource/test-12345",
 			wantBody:    "test-12345",
+		},
+		{
+			name:        "preserves client-supplied leading slash in catch-all",
+			mappedPath:  "/resource/*id",
+			paramName:   "id",
+			requestPath: "/resource//test-12345",
+			wantBody:    "/test-12345",
 		},
 	}
 	for _, tt := range tests {

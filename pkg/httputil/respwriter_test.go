@@ -83,6 +83,32 @@ func (rw *mockBrokenResponseWriter) Write(_ []byte) (int, error) {
 func (rw *mockBrokenResponseWriter) WriteHeader(_ int) {
 }
 
+// recordingResponseWriter records every WriteHeader code it receives, unlike
+// httptest.ResponseRecorder which latches on the first call. This is needed to
+// verify that informational 1xx headers are forwarded to the underlying writer.
+type recordingResponseWriter struct {
+	header http.Header
+	codes  []int
+	body   bytes.Buffer
+}
+
+func newRecordingResponseWriter() *recordingResponseWriter {
+	return &recordingResponseWriter{header: http.Header{}}
+}
+
+func (w *recordingResponseWriter) Header() http.Header {
+	return w.header
+}
+
+//nolint:wrapcheck
+func (w *recordingResponseWriter) Write(b []byte) (int, error) {
+	return w.body.Write(b)
+}
+
+func (w *recordingResponseWriter) WriteHeader(code int) {
+	w.codes = append(w.codes, code)
+}
+
 func TestNewWrapResponseWriter(t *testing.T) {
 	t.Parallel()
 
@@ -164,6 +190,73 @@ func Test_responseWriterWrapper_WriteHeader(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, ww.Status())
 	ww.WriteHeader(http.StatusMovedPermanently)
 	require.Equal(t, http.StatusNoContent, ww.Status())
+}
+
+func Test_responseWriterWrapper_WriteHeader_InformationalNotLatched(t *testing.T) {
+	t.Parallel()
+
+	rec := newRecordingResponseWriter()
+	ww := responseWriterWrapper{ResponseWriter: rec}
+
+	// 1xx responses (except 101) must be forwarded without being recorded as the
+	// final status, so the real final status is still captured.
+	ww.WriteHeader(http.StatusEarlyHints)       // 103, forwarded, not latched
+	ww.WriteHeader(http.StatusProcessing)       // 102, forwarded, not latched
+	ww.WriteHeader(http.StatusNotFound)         // 404, final, latched
+	ww.WriteHeader(http.StatusMovedPermanently) // 301, ignored (already latched)
+
+	require.Equal(t, []int{
+		http.StatusEarlyHints,
+		http.StatusProcessing,
+		http.StatusNotFound,
+	}, rec.codes, "1xx forwarded then final latched; a later WriteHeader is ignored")
+	require.Equal(t, http.StatusNotFound, ww.Status())
+}
+
+func Test_responseWriterWrapper_WriteHeader_SwitchingProtocolsLatches(t *testing.T) {
+	t.Parallel()
+
+	rec := newRecordingResponseWriter()
+	ww := responseWriterWrapper{ResponseWriter: rec}
+
+	// 101 is a final status (net/http sends no further headers after it).
+	ww.WriteHeader(http.StatusSwitchingProtocols)
+	ww.WriteHeader(http.StatusOK) // ignored
+
+	require.Equal(t, []int{http.StatusSwitchingProtocols}, rec.codes)
+	require.Equal(t, http.StatusSwitchingProtocols, ww.Status())
+}
+
+// Test_responseWriterWrapper_EarlyHints_EndToEnd is a regression test: through a
+// real net/http server, a handler that sends 103 Early Hints and then a final
+// status must deliver that final status (not 200) to the client.
+func Test_responseWriterWrapper_EarlyHints_EndToEnd(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		rw := NewResponseWriterWrapper(w)
+		rw.Header().Add("Link", "</style.css>; rel=preload; as=style")
+		rw.WriteHeader(http.StatusEarlyHints)
+		rw.WriteHeader(http.StatusNotFound)
+		_, _ = rw.Write([]byte("not found"))
+	}))
+	defer srv.Close()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusNotFound, resp.StatusCode, "client must see the final status, not the 103")
+	require.Equal(t, "not found", string(body))
 }
 
 func Test_responseWriterWrapper_Hijack(t *testing.T) {

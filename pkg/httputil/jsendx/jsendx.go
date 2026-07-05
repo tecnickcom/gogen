@@ -42,7 +42,6 @@ package jsendx
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -96,15 +95,6 @@ type AppInfo struct {
 	ProgramRelease string
 }
 
-// RouterArgs contains optional extra arguments for the HTTP router setup.
-type RouterArgs struct {
-	// TraceIDHeaderName is the Trace ID header name.
-	TraceIDHeaderName string
-
-	// RedactFunc is the function used to redact HTTP request and response dumps in the logs.
-	RedactFunc httpserver.RedactFn
-}
-
 // Wrap builds a [Response] for statusCode using info metadata and data payload.
 //
 // A nil info is treated as an empty [AppInfo] so the response is still produced
@@ -135,9 +125,11 @@ type JSXResp struct {
 }
 
 // NewJSXResp returns a new [JSXResp] instance.
+//
+// A nil h falls back to a default [httputil.HTTPResp] (which logs to slog.Default()).
 func NewJSXResp(h *httputil.HTTPResp) *JSXResp {
 	if h == nil {
-		h = httputil.NewHTTPResp(slog.Default())
+		h = httputil.NewHTTPResp(nil)
 	}
 
 	return &JSXResp{
@@ -146,6 +138,10 @@ func NewJSXResp(h *httputil.HTTPResp) *JSXResp {
 }
 
 // Send writes a JSON response wrapped in the JSendX envelope.
+//
+// The data payload must be JSON-marshalable; if marshaling fails, the response
+// falls back to a plain-text 500 Internal Server Error rather than a JSendX
+// envelope (see [httputil.HTTPResp.SendJSON]).
 func (jr *JSXResp) Send(ctx context.Context, w http.ResponseWriter, statusCode int, info *AppInfo, data any) {
 	jr.httpResp.SendJSON(ctx, w, statusCode, Wrap(statusCode, info, data))
 }

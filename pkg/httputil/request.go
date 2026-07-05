@@ -1,8 +1,8 @@
 package httputil
 
 import (
+	"cmp"
 	"context"
-	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -35,19 +35,18 @@ func AddJSONHeaders(r *http.Request) {
 	r.Header.Set(HeaderContentType, MimeTypeJSON)
 }
 
-// AddJsonHeaders sets application/json Accept and Content-Type headers on the request.
-//
-// Deprecated: use AddJSONHeaders.
-func AddJsonHeaders(r *http.Request) {
-	AddJSONHeaders(r)
-}
-
-// AddAuthorizationHeader adds Authorization header with specified value to request.
+// AddAuthorizationHeader sets the Authorization header to the specified value,
+// replacing any previously set value. The Authorization header is a singleton
+// per RFC 9110 §11.6.2, so repeated calls (e.g. refreshing a token before a
+// retry) must not accumulate multiple values.
 func AddAuthorizationHeader(auth string, r *http.Request) {
-	r.Header.Add(HeaderAuthorization, auth)
+	r.Header.Set(HeaderAuthorization, auth)
 }
 
 // AddBasicAuth adds Basic Authorization header with base64-encoded "apiKey:apiSecret" credentials.
+//
+// Per RFC 7617 the user-id (apiKey) must not contain a colon, as the first colon
+// separates the user-id from the password when the credentials are decoded.
 func AddBasicAuth(apiKey, apiSecret string, r *http.Request) {
 	AddAuthorizationHeader(HeaderAuthBasic+encode.Base64EncodeString(apiKey+":"+apiSecret), r)
 }
@@ -58,12 +57,16 @@ func AddBearerToken(token string, r *http.Request) {
 }
 
 // PathParam returns the value of a named path segment from httprouter params in request context.
+//
+// httprouter prefixes catch-all parameters with a single "/"; only that router-added
+// slash is stripped, so slashes that are part of the client-supplied value are preserved.
 func PathParam(r *http.Request, name string) string {
 	v := httprouter.ParamsFromContext(r.Context()).ByName(name)
-	return strings.TrimLeft(v, "/")
+	return strings.TrimPrefix(v, "/")
 }
 
-// HeaderOrDefault returns HTTP header value or returns defaultValue if header is not set.
+// HeaderOrDefault returns the HTTP header value, or defaultValue if the header is
+// missing or set to the empty string.
 func HeaderOrDefault(r *http.Request, key string, defaultValue string) string {
 	return StringValueOrDefault(r.Header.Get(key), defaultValue)
 }
@@ -75,9 +78,11 @@ func QueryStringOrDefault(q url.Values, key string, defaultValue string) string 
 
 // QueryIntOrDefault parses query parameter as signed integer or returns defaultValue if missing or invalid.
 func QueryIntOrDefault(q url.Values, key string, defaultValue int) int {
-	v, err := strconv.ParseInt(q.Get(key), 10, 64)
-	if err == nil && v >= math.MinInt && v <= math.MaxInt {
-		return int(v)
+	// strconv.Atoi parses into a platform int and reports a range error for
+	// values that overflow it, so no explicit bounds check is needed.
+	v, err := strconv.Atoi(q.Get(key))
+	if err == nil {
+		return v
 	}
 
 	return defaultValue
@@ -85,11 +90,11 @@ func QueryIntOrDefault(q url.Values, key string, defaultValue int) int {
 
 // QueryUintOrDefault parses query parameter as unsigned integer or returns defaultValue if missing or invalid.
 func QueryUintOrDefault(q url.Values, key string, defaultValue uint) uint {
-	v, err := strconv.ParseUint(q.Get(key), 10, 64)
-	// The v <= math.MaxUint check is a tautology on 64-bit platforms (where uint
-	// is 64-bit) but guards against truncation on 32-bit platforms (where uint
-	// is 32-bit and ParseUint still returns a uint64).
-	if err == nil && v <= math.MaxUint {
+	// ParseUint with bitSize 0 parses into a platform uint and reports a range
+	// error for values that overflow it, so the result always fits a uint and no
+	// explicit bounds check is needed.
+	v, err := strconv.ParseUint(q.Get(key), 10, 0)
+	if err == nil {
 		return uint(v)
 	}
 
@@ -116,9 +121,5 @@ func GetRequestTime(r *http.Request) (time.Time, bool) {
 
 // StringValueOrDefault returns the string value or a default value.
 func StringValueOrDefault(v, def string) string {
-	if v != "" {
-		return v
-	}
-
-	return def
+	return cmp.Or(v, def)
 }

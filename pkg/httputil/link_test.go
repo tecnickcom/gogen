@@ -65,3 +65,12 @@ func TestLink(t *testing.T) {
 		})
 	}
 }
+
+func TestLink_TrailingSlashURL(t *testing.T) {
+	t.Parallel()
+
+	// A trailing slash on the base URL must not produce a double slash: Link
+	// trims it so exactly one separator joins url and template.
+	require.Equal(t, "http://host.invalid/seg", Link("http://host.invalid/", "seg"))
+	require.Equal(t, "http://host.invalid/seg", Link("http://host.invalid///", "/seg"))
+}

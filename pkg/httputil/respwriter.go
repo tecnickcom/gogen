@@ -15,10 +15,16 @@ type ResponseWriterWrapper interface {
 	// Size returns the total number of bytes sent to the client.
 	Size() int
 
-	// Status returns the HTTP status of the request.
+	// Status returns the HTTP response status code written to the client.
+	// It returns 0 until the header is written; callers that need the effective
+	// value should treat 0 as the implicit 200 that net/http sends.
 	Status() int
 
-	// Tee sets a writer that will contain a copy of the bytes written to the response writer.
+	// Tee sets a writer that receives a copy of the bytes written to the response
+	// writer. Only bytes written after this call are copied. A tee-write failure is
+	// surfaced as the error return of Write, after the client bytes have already
+	// been sent. Setting a tee also routes ReadFrom through a generic copy,
+	// disabling any io.ReaderFrom (sendfile) fast path on the underlying writer.
 	Tee(w io.Writer)
 }
 
@@ -100,7 +106,9 @@ func (b *responseWriterWrapper) ReadFrom(r io.Reader) (int64, error) {
 	return n, err
 }
 
-// Status returns the HTTP status code written to response.
+// Status returns the final HTTP status code written to the response, or 0 if no
+// final header has been written yet (in which case net/http sends an implicit
+// 200). Informational 1xx responses (except 101) are not reported here.
 func (b *responseWriterWrapper) Status() int {
 	return b.status
 }
@@ -136,12 +144,24 @@ func (b *responseWriterWrapper) Write(buf []byte) (int, error) {
 }
 
 // WriteHeader sends an HTTP response header with the provided status code.
+//
+// Informational responses (1xx, except 101 Switching Protocols) do not conclude
+// the header exchange: they are forwarded to the underlying writer without being
+// recorded as the final status, so a subsequent WriteHeader still captures the
+// real status. This mirrors net/http, which treats 101 as a final status.
 func (b *responseWriterWrapper) WriteHeader(code int) {
-	if !b.headerWritten {
-		b.status = code
-		b.headerWritten = true
-		b.ResponseWriter.WriteHeader(code)
+	if b.headerWritten {
+		return
 	}
+
+	if code >= 100 && code <= 199 && code != http.StatusSwitchingProtocols {
+		b.ResponseWriter.WriteHeader(code)
+		return
+	}
+
+	b.status = code
+	b.headerWritten = true
+	b.ResponseWriter.WriteHeader(code)
 }
 
 // maybeWriteHeader writes the header if it has not been written yet.
