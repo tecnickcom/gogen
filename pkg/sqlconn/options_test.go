@@ -111,6 +111,15 @@ func TestWithPingTimeout(t *testing.T) {
 	require.Equal(t, v, cfg.pingTimeout)
 }
 
+func TestWithValidationQuery(t *testing.T) {
+	t.Parallel()
+
+	v := "SELECT 1 FROM DUAL"
+	cfg := &config{}
+	WithValidationQuery(v)(cfg)
+	require.Equal(t, v, cfg.validationQuery)
+}
+
 func TestWithLogger(t *testing.T) {
 	t.Parallel()
 
@@ -139,4 +148,14 @@ func TestWithShutdownSignalChan(t *testing.T) {
 	v := make(chan struct{})
 	WithShutdownSignalChan(v)(cfg)
 	require.Equal(t, v, cfg.shutdownSignalChan)
+}
+
+func TestWithLifetimeContext(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config{}
+
+	v := context.Background()
+	WithLifetimeContext(v)(cfg)
+	require.Equal(t, v, cfg.lifetimeCtx)
 }

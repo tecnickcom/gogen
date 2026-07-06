@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -28,16 +30,19 @@ func TestNew(t *testing.T) {
 		driver         string
 		dsn            string
 		connectErr     error
+		nilDB          bool
 		configMockFunc func(sqlmock.Sqlmock)
 		wantConn       bool
 		shutdownSig    bool
 		wantErr        bool
+		wantErrIs      error
 	}{
 		{
-			name:    "fail with config validation error",
-			driver:  "",
-			dsn:     "",
-			wantErr: true,
+			name:      "fail with config validation error",
+			driver:    "",
+			dsn:       "",
+			wantErr:   true,
+			wantErrIs: ErrDriverRequired,
 		},
 		{
 			name:       "fail to open DB connection",
@@ -45,6 +50,14 @@ func TestNew(t *testing.T) {
 			dsn:        "user:pass@tcp(db.host.invalid:1234)/testdb",
 			connectErr: errors.New("db open error"),
 			wantErr:    true,
+		},
+		{
+			name:      "fail with nil DB from connect function",
+			driver:    "testsql",
+			dsn:       "user:pass@tcp(db.host.invalid:1234)/testdb",
+			nilDB:     true,
+			wantErr:   true,
+			wantErrIs: ErrNilDB,
 		},
 		{
 			name:   "success with close error",
@@ -90,22 +103,24 @@ func TestNew(t *testing.T) {
 			shutdownWG := &sync.WaitGroup{}
 			shutdownSG := make(chan struct{})
 
-			ctx, cancel := context.WithCancel(t.Context())
+			// The lifetime context governs shutdown; the establishment context
+			// passed to New must not tear the pool down.
+			lifeCtx, lifeCancel := context.WithCancel(context.Background())
+			defer lifeCancel()
 
 			defer func() {
 				if tt.shutdownSig {
 					close(shutdownSG)
 				} else {
-					cancel()
+					lifeCancel()
 				}
 
-				// wait to allow the disconnect goroutine to execute
-				time.Sleep(100 * time.Millisecond)
+				// Deterministically wait for the watcher's Shutdown to run: the wait
+				// group returns immediately for the error cases (never incremented)
+				// and blocks until Add(-1) for the connected cases.
+				shutdownWG.Wait()
 
-				err := mock.ExpectationsWereMet()
-				if err != nil {
-					t.Errorf("there were unfulfilled expectations: %s", err)
-				}
+				require.NoError(t, mock.ExpectationsWereMet(), "there were unfulfilled expectations")
 			}()
 
 			mockConnectFunc := newMockConnectFunc(db, nil)
@@ -113,24 +128,42 @@ func TestNew(t *testing.T) {
 				mockConnectFunc = newMockConnectFunc(nil, tt.connectErr)
 			}
 
+			if tt.nilDB {
+				mockConnectFunc = newMockConnectFunc(nil, nil)
+			}
+
 			conn, err := New(
-				ctx,
+				t.Context(),
 				tt.driver,
 				tt.dsn,
 				WithConnectFunc(mockConnectFunc),
 				WithShutdownWaitGroup(shutdownWG),
 				WithShutdownSignalChan(shutdownSG),
+				WithLifetimeContext(lifeCtx),
 			)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
+			if tt.wantErrIs != nil {
+				require.ErrorIs(t, err, tt.wantErrIs)
+			}
+
 			if (conn != nil) != tt.wantConn {
-				t.Errorf("Connect() gotConn = %v, wantConn %v", conn != nil, tt.wantConn)
+				t.Errorf("New() gotConn = %v, wantConn %v", conn != nil, tt.wantConn)
 			}
 		})
 	}
+}
+
+func TestNew_nilContext(t *testing.T) {
+	t.Parallel()
+
+	// A nil context must fail fast rather than panic deep inside context helpers.
+	conn, err := New(nil, "testsql", "user:pass@tcp(db.host.invalid:1234)/testdb") //nolint:staticcheck // intentionally nil to exercise the guard
+	require.Nil(t, conn)
+	require.ErrorIs(t, err, ErrNilContext)
 }
 
 //nolint:gocognit
@@ -198,22 +231,24 @@ func TestConnect(t *testing.T) {
 			shutdownWG := &sync.WaitGroup{}
 			shutdownSG := make(chan struct{})
 
-			ctx, cancel := context.WithCancel(t.Context())
+			// The lifetime context governs shutdown; the establishment context
+			// passed to Connect must not tear the pool down.
+			lifeCtx, lifeCancel := context.WithCancel(context.Background())
+			defer lifeCancel()
 
 			defer func() {
 				if tt.shutdownSig {
 					close(shutdownSG)
 				} else {
-					cancel()
+					lifeCancel()
 				}
 
-				// wait to allow the disconnect goroutine to execute
-				time.Sleep(100 * time.Millisecond)
+				// Deterministically wait for the watcher's Shutdown to run: the wait
+				// group returns immediately for the error cases (never incremented)
+				// and blocks until Add(-1) for the connected cases.
+				shutdownWG.Wait()
 
-				err := mock.ExpectationsWereMet()
-				if err != nil {
-					t.Errorf("there were unfulfilled expectations: %s", err)
-				}
+				require.NoError(t, mock.ExpectationsWereMet(), "there were unfulfilled expectations")
 			}()
 
 			mockConnectFunc := newMockConnectFunc(db, nil)
@@ -222,11 +257,12 @@ func TestConnect(t *testing.T) {
 			}
 
 			conn, err := Connect(
-				ctx,
+				t.Context(),
 				tt.connectURL,
 				WithConnectFunc(mockConnectFunc),
 				WithShutdownWaitGroup(shutdownWG),
 				WithShutdownSignalChan(shutdownSG),
+				WithLifetimeContext(lifeCtx),
 			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
@@ -245,20 +281,19 @@ func TestSQLConn_DB(t *testing.T) {
 
 	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 	require.NoError(t, err)
-
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
+	mock.ExpectClose()
 
 	mockConnectFunc := newMockConnectFunc(db, nil)
-	conn, err := Connect(ctx, "testsql://user:pass@tcp(db.host.invalid:1234)/testdb", WithConnectFunc(mockConnectFunc))
+	conn, err := Connect(t.Context(), "testsql://user:pass@tcp(db.host.invalid:1234)/testdb", WithConnectFunc(mockConnectFunc))
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 	require.Equal(t, db, conn.DB())
 
-	err = mock.ExpectationsWereMet()
-	if err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
+	// Shut down explicitly to close the pool and stop the watcher goroutine.
+	require.NoError(t, conn.Shutdown(t.Context()))
+	require.Nil(t, conn.DB())
+
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestSQLConn_Shutdown_idempotent(t *testing.T) {
@@ -315,6 +350,70 @@ func TestSQLConn_Shutdown_idempotent(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+// recordingHandler is a minimal slog.Handler that records emitted messages so a
+// test can observe log output without a real backend.
+type recordingHandler struct {
+	mu   *sync.Mutex
+	msgs *[]string
+}
+
+func (h recordingHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h recordingHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	*h.msgs = append(*h.msgs, r.Message)
+
+	return nil
+}
+
+func (h recordingHandler) WithAttrs(_ []slog.Attr) slog.Handler { return h }
+func (h recordingHandler) WithGroup(_ string) slog.Handler      { return h }
+
+// TestSQLConn_Shutdown_stopsWatcher verifies a direct Shutdown unblocks the
+// watcher goroutine (via the internal done channel) so it cannot leak when
+// neither the context nor the shutdown signal channel is ever triggered.
+func TestSQLConn_Shutdown_stopsWatcher(t *testing.T) {
+	t.Parallel()
+
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	mock.ExpectClose()
+
+	var (
+		mu   sync.Mutex
+		msgs []string
+	)
+
+	logger := slog.New(recordingHandler{mu: &mu, msgs: &msgs})
+
+	conn, err := New(
+		t.Context(),
+		"testsql",
+		"user:pass@tcp(db.host.invalid:1234)/testdb",
+		WithConnectFunc(newMockConnectFunc(db, nil)),
+		WithLogger(logger),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, conn)
+
+	// Only the direct Shutdown below must stop the watcher.
+	require.NoError(t, conn.Shutdown(t.Context()))
+	require.Nil(t, conn.DB())
+
+	// The watcher logs a distinct message when it wakes on the done channel; its
+	// appearance proves the goroutine observed the shutdown and is terminating.
+	require.Eventually(t, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+
+		return slices.Contains(msgs, "sqlconn direct shutdown")
+	}, time.Second, 5*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestSQLConn_HealthCheck(t *testing.T) {
 	t.Parallel()
 
@@ -353,41 +452,46 @@ func TestSQLConn_HealthCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			db, _, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+			db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 			require.NoError(t, err)
-
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
+			mock.ExpectClose()
 
 			mockConnectFunc := newMockConnectFunc(db, nil)
 
 			opts := append([]Option{WithConnectFunc(mockConnectFunc)}, tt.configOpts...)
 
-			conn, err := Connect(ctx, "testsql://user:pass@tcp(db.host.invalid:1234)/testdb", opts...)
+			conn, err := Connect(t.Context(), "testsql://user:pass@tcp(db.host.invalid:1234)/testdb", opts...)
 			require.NoError(t, err)
 			require.NotNil(t, conn)
 			require.Equal(t, db, conn.DB())
 
-			if tt.disconnectBeforeCheck {
-				cancel()
+			// Ensure the watcher goroutine is stopped and the pool closed.
+			defer func() { _ = conn.Shutdown(context.Background()) }()
 
-				// wait to allow the disconnect goroutine to execute
-				time.Sleep(100 * time.Millisecond)
+			if tt.disconnectBeforeCheck {
+				require.NoError(t, conn.Shutdown(t.Context()))
+				require.Nil(t, conn.DB())
 			}
 
 			err = conn.HealthCheck(t.Context())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HealthCheck() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
+			if tt.disconnectBeforeCheck {
+				require.ErrorIs(t, err, ErrUnavailable)
+			}
 		})
 	}
 }
 
+//nolint:gocognit
 func Test_checkConnection(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name           string
+		query          string
 		configMockFunc func(sqlmock.Sqlmock)
 		wantErr        bool
 	}{
@@ -410,7 +514,25 @@ func Test_checkConnection(t *testing.T) {
 			name: "succeed",
 			configMockFunc: func(m sqlmock.Sqlmock) {
 				m.ExpectPing()
-				m.ExpectQuery("SELECT 1").WillReturnRows(sqlmock.NewRows([]string{"1"}))
+				m.ExpectQuery("SELECT 1").WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
+			},
+			wantErr: false,
+		},
+		{
+			name:  "succeed with custom validation query",
+			query: "SELECT 1 FROM DUAL",
+			configMockFunc: func(m sqlmock.Sqlmock) {
+				m.ExpectPing()
+				m.ExpectQuery("SELECT 1 FROM DUAL").WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
+			},
+			wantErr: false,
+		},
+		{
+			name:  "succeed with non-numeric validation query result",
+			query: "SELECT 'ok'",
+			configMockFunc: func(m sqlmock.Sqlmock) {
+				m.ExpectPing()
+				m.ExpectQuery("SELECT 'ok'").WillReturnRows(sqlmock.NewRows([]string{"c"}).AddRow("ok"))
 			},
 			wantErr: false,
 		},
@@ -427,7 +549,12 @@ func Test_checkConnection(t *testing.T) {
 				tt.configMockFunc(mock)
 			}
 
-			err = checkConnection(t.Context(), db)
+			cfg := defaultConfig("testsql", "testdsn")
+			if tt.query != "" {
+				cfg.validationQuery = tt.query
+			}
+
+			err = cfg.checkConnection(t.Context(), db)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("checkConnection() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -462,6 +589,16 @@ func Test_connectOnce(t *testing.T) {
 				}
 			},
 			wantErr: true,
+		},
+		{
+			name: "fail with nil DB from sql open",
+			setupConfig: func(c *config, _ *sql.DB) {
+				c.sqlOpenFunc = func(_, _ string) (*sql.DB, error) {
+					return nil, nil //nolint:nilnil // exercise the nil-handle guard
+				}
+			},
+			wantErrMsg: "nil database handle",
+			wantErr:    true,
 		},
 		{
 			name: "fail with connection check error and close the opened DB",

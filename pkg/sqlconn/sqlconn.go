@@ -19,14 +19,20 @@ this pattern.
   - [Connect] accepts a URL-like string in the form `<DRIVER>://<DSN>` and
     delegates to [New]. If only the DSN is provided, a driver can be supplied
     via [WithDefaultDriver].
+  - The context passed to [New]/[Connect] bounds connection establishment only
+    (dialing and the initial health check). It does NOT control the pool
+    lifetime: a request- or timeout-scoped context will not close the pool when
+    it ends. To close the pool on application shutdown, wire a long-lived context
+    via [WithLifetimeContext] and/or a shutdown channel via
+    [WithShutdownSignalChan], or call [SQLConn.Shutdown] directly.
   - On successful connect, pool settings are applied (`max idle/open`, idle
-    time, lifetime), and a goroutine waits for either context cancellation or a
-    shutdown signal channel.
+    time, lifetime), and a goroutine waits for a shutdown signal channel, a
+    canceled lifetime context, or a direct [SQLConn.Shutdown] call.
   - When shutdown is triggered, [SQLConn.Shutdown] closes the underlying
     database handle, updates the shared shutdown wait group, and prevents
     further use by setting the internal DB pointer to nil. Shutdown is
-    idempotent, so the watcher goroutine and a deferred call can both fire
-    safely.
+    idempotent and also stops the watcher goroutine, so the watcher and a
+    deferred call can both fire safely without leaking the goroutine.
 
 # Key Features
 
@@ -38,7 +44,7 @@ this pattern.
   - Built-in health check through [SQLConn.HealthCheck], using a ping timeout
     ([WithPingTimeout]) and a basic validation query (`SELECT 1`).
   - Graceful shutdown integration for application lifecycles with
-    [WithShutdownSignalChan] and [WithShutdownWaitGroup].
+    [WithLifetimeContext], [WithShutdownSignalChan] and [WithShutdownWaitGroup].
   - Logger integration with [WithLogger] for lifecycle diagnostics.
 
 # Benefits
@@ -49,6 +55,9 @@ this pattern.
   - Clear integration points for health endpoints and service orchestration.
 
 # Usage
+
+Minimal: the deferred [SQLConn.Shutdown] closes the pool and stops the watcher.
+The context bounds establishment only, so it is safe to pass a short-lived one.
 
 	c, err := sqlconn.Connect(
 	    ctx,
@@ -65,6 +74,20 @@ this pattern.
 
 	defer c.Shutdown(ctx)
 
+Service lifecycle: wire the connection into a shared shutdown channel and wait
+group so a central signal closes every pool and the process waits for them.
+
+	c, err := sqlconn.Connect(
+	    ctx,
+	    "mysql://user:pass@tcp(localhost:3306)/appdb",
+	    sqlconn.WithDefaultDriver("mysql"),
+	    sqlconn.WithShutdownSignalChan(shutdownCh), // close(shutdownCh) closes the pool
+	    sqlconn.WithShutdownWaitGroup(&shutdownWG), // shutdownWG.Wait() blocks until closed
+	)
+	if err != nil {
+	    return err
+	}
+
 This package is ideal for Go applications that need a pragmatic, reusable
 database/sql connection lifecycle abstraction with health and shutdown support.
 */
@@ -80,6 +103,22 @@ import (
 	"sync"
 )
 
+// Exported sentinel errors returned by connection setup and health checks so
+// callers can match them with errors.Is.
+var (
+	// ErrNilContext is returned by [New]/[Connect] when the provided context is nil.
+	ErrNilContext = errors.New("context is required")
+
+	// ErrNilDB is returned when the configured connect (or sql open) function
+	// yields a nil database handle without an error.
+	ErrNilDB = errors.New("connect or sql open function returned a nil database handle")
+
+	// ErrUnavailable is returned by [SQLConn.HealthCheck] when the connection has
+	// already been shut down. Callers can match it with errors.Is to distinguish a
+	// shut-down pool from a genuine connectivity failure.
+	ErrUnavailable = errors.New("database is unavailable")
+)
+
 // ConnectFunc is the type of function called to perform the actual DB connection.
 type ConnectFunc func(ctx context.Context, cfg *config) (*sql.DB, error)
 
@@ -93,6 +132,7 @@ type SQLOpenFunc func(driverName, dataSourceName string) (*sql.DB, error)
 type SQLConn struct {
 	cfg    *config
 	db     *sql.DB
+	done   chan struct{} // closed once by Shutdown to stop the watcher goroutine
 	dbLock sync.RWMutex
 }
 
@@ -103,39 +143,66 @@ func (cfg *config) connect(ctx context.Context) (*SQLConn, error) {
 		return nil, err
 	}
 
+	// Guard against a misbehaving connect function so a nil handle becomes a
+	// clean error instead of a nil-pointer panic on the pool-setting calls below.
+	if db == nil {
+		return nil, ErrNilDB
+	}
+
 	db.SetConnMaxIdleTime(cfg.connMaxIdleTime)
 	db.SetConnMaxLifetime(cfg.connMaxLifetime)
 	db.SetMaxIdleConns(cfg.connMaxIdleCount)
 	db.SetMaxOpenConns(cfg.connMaxOpenCount)
 
 	c := SQLConn{
-		cfg: cfg,
-		db:  db,
+		cfg:  cfg,
+		db:   db,
+		done: make(chan struct{}),
+	}
+
+	// The watcher observes the lifetime context, never the establishment context
+	// passed to New/Connect, so a short-lived connect context cannot tear the pool
+	// down. It is intentionally independent from ctx (a configured lifetime context,
+	// or ctx with cancellation detached), so cancellation of the connect context
+	// never closes the pool.
+	lifetimeCtx := cfg.lifetimeCtx //nolint:contextcheck // deliberately decoupled from the establishment context
+	if lifetimeCtx == nil {
+		lifetimeCtx = context.WithoutCancel(ctx)
 	}
 
 	// Register with the shutdown wait group before launching the watcher
 	// goroutine so the matching Add(-1) in Shutdown can never run first.
 	cfg.shutdownWaitGroup.Add(1)
 
-	// Wait for a shutdown signal or context cancelation. The caller must pass a
-	// cancelable context or close the shutdown signal channel, otherwise this
-	// goroutine blocks until the process exits and Shutdown is never triggered.
+	// Wait for a shutdown signal, a canceled lifetime context, or a direct
+	// Shutdown call. The done case guarantees the watcher always terminates, so a
+	// direct Shutdown (e.g. a deferred call) never leaks this goroutine even when
+	// neither the signal channel nor the lifetime context ever fires.
 	go func() {
 		select {
 		case <-cfg.shutdownSignalChan:
 			cfg.logger.Debug("sqlconn shutdown signal received")
-		case <-ctx.Done():
-			cfg.logger.Warn("sqlconn context canceled")
+		case <-lifetimeCtx.Done():
+			cfg.logger.Warn("sqlconn lifetime context canceled")
+		case <-c.done:
+			cfg.logger.Debug("sqlconn direct shutdown")
 		}
 
-		_ = c.Shutdown(ctx)
+		_ = c.Shutdown(lifetimeCtx)
 	}()
 
 	return &c, nil
 }
 
-// New constructs SQL connection with connection pool tuning, health checks, and graceful shutdown orchestration.
+// New constructs a SQL connection with pool tuning, health checks, and graceful
+// shutdown orchestration. The provided context bounds connection establishment
+// only; use [WithLifetimeContext] and/or [WithShutdownSignalChan] to control the
+// pool lifetime.
 func New(ctx context.Context, driver, dsn string, opts ...Option) (*SQLConn, error) {
+	if ctx == nil {
+		return nil, ErrNilContext
+	}
+
 	cfg, err := newConfig(driver, dsn, opts...)
 	if err != nil {
 		return nil, err
@@ -159,13 +226,20 @@ func (c *SQLConn) DB() *sql.DB {
 	return c.db
 }
 
-// HealthCheck verifies database connectivity with ping and validation query, respecting ping timeout.
+// HealthCheck verifies database connectivity with a ping and validation query,
+// respecting the configured ping timeout. It returns [ErrUnavailable] when the
+// connection has already been shut down.
+//
+// The read lock is intentionally held for the full ping+query round-trip so the
+// underlying handle cannot be closed by a concurrent Shutdown mid-check; a
+// Shutdown may therefore block for up to the ping timeout behind an in-flight
+// health check.
 func (c *SQLConn) HealthCheck(ctx context.Context) error {
 	c.dbLock.RLock()
 	defer c.dbLock.RUnlock()
 
 	if c.db == nil {
-		return errors.New("database is unavailable")
+		return ErrUnavailable
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.pingTimeout)
@@ -192,6 +266,9 @@ func (c *SQLConn) Shutdown(_ context.Context) error {
 	err := c.db.Close()
 
 	c.db = nil
+	// Reached exactly once (guarded by the db == nil check under the write lock),
+	// so done is closed a single time and unblocks the watcher goroutine.
+	close(c.done)
 	c.cfg.shutdownWaitGroup.Add(-1)
 
 	c.cfg.logger.With(slog.Any("error", err)).Debug("sql connection shutdown complete")
@@ -199,22 +276,25 @@ func (c *SQLConn) Shutdown(_ context.Context) error {
 	return err //nolint:wrapcheck
 }
 
-// checkConnection performs a simple ping and query to verify the database connection is alive.
-func checkConnection(ctx context.Context, db *sql.DB) (err error) {
+// checkConnection performs a ping and the configured validation query to verify
+// the database connection is alive and able to execute statements. Ping is the
+// portable liveness check; the query (default "SELECT 1", see [WithValidationQuery])
+// additionally verifies the query path works.
+func (c *config) checkConnection(ctx context.Context, db *sql.DB) error {
 	perr := db.PingContext(ctx)
 	if perr != nil {
 		return fmt.Errorf("failed ping on database: %w", perr)
 	}
 
-	//nolint:rowserrcheck
-	rows, rerr := db.QueryContext(ctx, "SELECT 1")
-	if rerr != nil {
-		return fmt.Errorf("failed running check query on database: %w", rerr)
-	}
+	// Scan into any (not a typed int): the check only proves the query executed
+	// and returned a row, so the validation query's single column may be of any
+	// type (e.g. a string or driver-specific numeric).
+	var probe any
 
-	defer func() {
-		err = errors.Join(err, rows.Close())
-	}()
+	qerr := db.QueryRowContext(ctx, c.validationQuery).Scan(&probe)
+	if qerr != nil {
+		return fmt.Errorf("failed running check query on database: %w", qerr)
+	}
 
 	return nil
 }
@@ -225,6 +305,12 @@ func connectOnce(ctx context.Context, cfg *config) (*sql.DB, error) {
 	db, err := cfg.sqlOpenFunc(cfg.driver, cfg.dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed opening database connection: %w", err)
+	}
+
+	// Guard against a misbehaving sql open function so the check below does not
+	// dereference a nil handle.
+	if db == nil {
+		return nil, ErrNilDB
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, cfg.pingTimeout)
