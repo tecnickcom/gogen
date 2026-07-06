@@ -39,9 +39,11 @@ The standard keypad mapping (ITU E.161) used by this package:
     digit string, ready for storage, display, or dialing.
   - Case-insensitive: accepts both upper- and lower-case letters with no
     pre-processing required by the caller.
-  - Separator-tolerant: hyphens, spaces, parentheses, and any other
-    non-alphanumeric characters are silently skipped, so formatted phone
-    numbers like "1-800-FLOWERS" work without sanitisation.
+  - ASCII-scoped: only ASCII digits '0'–'9' and ASCII letters 'A'–'Z'/'a'–'z'
+    are mapped (per ITU E.161). Every other character — separators, punctuation,
+    whitespace, and any non-ASCII rune such as accented or full-width letters —
+    is silently skipped, so formatted phone numbers like "1-800-FLOWERS" work
+    without sanitisation.
   - Zero dependencies: uses only the Go standard library.
 
 # Quick Start
@@ -83,9 +85,10 @@ import (
 //	'T','U','V'         → 8
 //	'W','X','Y','Z'     → 9
 //
-// Any other rune (punctuation, whitespace, symbols) returns (-1, false).
-// This makes it safe to range over formatted phone strings like "(800) 555-1234"
-// and simply skip characters where ok is false.
+// Any rune that is not an ASCII digit or ASCII letter — punctuation, whitespace,
+// symbols, and non-ASCII letters such as 'É' or full-width digits — returns
+// (-1, false). This makes it safe to range over formatted phone strings like
+// "(800) 555-1234" and simply skip characters where ok is false.
 func KeypadDigit(r rune) (int, bool) {
 	if r >= '0' && r <= '9' {
 		return int(r - '0'), true
@@ -130,8 +133,9 @@ func keypadAlphaToDigit(r rune) (int, bool) {
 // without pre-sanitisation.
 //
 // The returned slice has the same length as the number of valid keypad
-// characters in s. Use [KeypadNumberString] when a plain digit string is
-// preferred over a slice.
+// characters in s. It is never nil: empty or all-separator input yields a
+// non-nil, zero-length slice. Use [KeypadNumberString] when a plain digit
+// string is preferred over a slice.
 func KeypadNumber(num string) []int {
 	seq := make([]int, 0, len(num))
 

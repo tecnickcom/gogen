@@ -34,8 +34,32 @@ func TestKeypadDigit(t *testing.T) {
 			wantStatus: true,
 		},
 		{
+			name:       "digit nine",
+			r:          '9',
+			want:       9,
+			wantStatus: true,
+		},
+		{
+			name:       "lowercase z",
+			r:          'z',
+			want:       9,
+			wantStatus: true,
+		},
+		{
 			name:       "invalid",
 			r:          '!',
+			want:       -1,
+			wantStatus: false,
+		},
+		{
+			name:       "accented letter is skipped",
+			r:          'é',
+			want:       -1,
+			wantStatus: false,
+		},
+		{
+			name:       "full-width digit is skipped",
+			r:          '２', // U+FF12
 			want:       -1,
 			wantStatus: false,
 		},
@@ -63,6 +87,23 @@ func TestKeypadNumber(t *testing.T) {
 
 	require.Equal(t, exp, seq)
 	require.Len(t, seq, 10+26+26)
+}
+
+func TestKeypadNumberEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// Empty input returns a non-nil, empty slice (never nil).
+	got := KeypadNumber("")
+	require.NotNil(t, got)
+	require.Empty(t, got)
+
+	// All-separator input also returns non-nil and empty.
+	got = KeypadNumber("-.()/ +#*")
+	require.NotNil(t, got)
+	require.Empty(t, got)
+
+	// Non-ASCII letters are skipped; only ASCII maps.
+	require.Equal(t, []int{2, 2, 3}, KeypadNumber("CAFÉ")) // É dropped
 }
 
 func TestKeypadNumberString(t *testing.T) {
