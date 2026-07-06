@@ -10,23 +10,23 @@ func TestNew(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		opts    []Option
-		wantErr bool
+		name      string
+		opts      []Option
+		wantErrIs error
 	}{
 		{
-			name:    "succeeds with defaults",
-			wantErr: false,
+			name:      "succeeds with defaults",
+			wantErrIs: nil,
 		},
 		{
-			name:    "fails with nil quoteIDFunc",
-			opts:    []Option{WithQuoteIDFunc(nil)},
-			wantErr: true,
+			name:      "fails with nil quoteIDFunc",
+			opts:      []Option{WithQuoteIDFunc(nil)},
+			wantErrIs: ErrNilQuoteIDFunc,
 		},
 		{
-			name:    "fails with nil quoteValueFunc",
-			opts:    []Option{WithQuoteValueFunc(nil)},
-			wantErr: true,
+			name:      "fails with nil quoteValueFunc",
+			opts:      []Option{WithQuoteValueFunc(nil)},
+			wantErrIs: ErrNilQuoteValueFunc,
 		},
 	}
 
@@ -36,7 +36,13 @@ func TestNew(t *testing.T) {
 
 			_, err := New(tt.opts...)
 
-			require.Equal(t, tt.wantErr, err != nil, "New() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErrIs == nil {
+				require.NoError(t, err)
+
+				return
+			}
+
+			require.ErrorIs(t, err, tt.wantErrIs)
 		})
 	}
 }
@@ -53,9 +59,9 @@ func Test_validate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		c       *SQLUtil
-		wantErr bool
+		name      string
+		c         *SQLUtil
+		wantErrIs error
 	}{
 		{
 			name: "fail with invalid quoteIDFunc function",
@@ -65,7 +71,7 @@ func Test_validate(t *testing.T) {
 
 				return c
 			}(),
-			wantErr: true,
+			wantErrIs: ErrNilQuoteIDFunc,
 		},
 		{
 			name: "fail with invalid quoteValueFunc function",
@@ -75,7 +81,7 @@ func Test_validate(t *testing.T) {
 
 				return c
 			}(),
-			wantErr: true,
+			wantErrIs: ErrNilQuoteValueFunc,
 		},
 		{
 			name: "succeed with no errors",
@@ -83,7 +89,7 @@ func Test_validate(t *testing.T) {
 				c := defaultSQLUtil()
 				return c
 			}(),
-			wantErr: false,
+			wantErrIs: nil,
 		},
 	}
 
@@ -93,7 +99,13 @@ func Test_validate(t *testing.T) {
 
 			err := tt.c.validate()
 
-			require.Equal(t, tt.wantErr, err != nil, "validate() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErrIs == nil {
+				require.NoError(t, err)
+
+				return
+			}
+
+			require.ErrorIs(t, err, tt.wantErrIs)
 		})
 	}
 }

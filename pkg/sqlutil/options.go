@@ -3,7 +3,7 @@ package sqlutil
 // Option configures a [SQLUtil] instance.
 type Option func(*SQLUtil)
 
-// WithQuoteIDFunc customizes identifier quoting function (e.g., for Postgres backticks vs PostgreSQL quotes).
+// WithQuoteIDFunc customizes the identifier quoting function, e.g. double-quoted identifiers for Postgres/SQLite instead of the default MySQL-style backticks.
 func WithQuoteIDFunc(fn SQLQuoteFunc) Option {
 	return func(c *SQLUtil) {
 		c.quoteIDFunc = fn

@@ -162,6 +162,27 @@ func Test_Exec_PanicRollsBackAndPropagates(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func Test_ExecWithOptions_NilDB(t *testing.T) {
+	t.Parallel()
+
+	err := Exec(t.Context(), nil, func(_ context.Context, _ *sqlx.Tx) error { return nil })
+	require.ErrorIs(t, err, ErrNilDB)
+}
+
+func Test_ExecWithOptions_NilExecFunc(t *testing.T) {
+	t.Parallel()
+
+	mockDB, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+
+	defer func() { _ = mockDB.Close() }()
+
+	db := sqlx.NewDb(mockDB, "sqlmock")
+
+	err = Exec(t.Context(), db, nil)
+	require.ErrorIs(t, err, ErrNilExecFunc)
+}
+
 type dbMock struct {
 	*sqlx.DB
 

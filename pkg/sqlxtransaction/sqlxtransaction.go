@@ -69,6 +69,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+var (
+	// ErrNilDB is returned when the provided DB is nil.
+	ErrNilDB = errors.New("db must not be nil")
+
+	// ErrNilExecFunc is returned when the provided ExecFunc is nil.
+	ErrNilExecFunc = errors.New("exec function must not be nil")
+)
+
 // ExecFunc is the type of the function to be executed inside a SQL Transaction.
 type ExecFunc func(ctx context.Context, tx *sqlx.Tx) error
 
@@ -84,6 +92,17 @@ func Exec(ctx context.Context, db DB, run ExecFunc) error {
 
 // ExecWithOptions executes function in sqlx transaction with custom isolation level or read-only option; returns joined errors if commit/rollback both fail.
 func ExecWithOptions(ctx context.Context, db DB, run ExecFunc, opts *sql.TxOptions) (err error) {
+	if db == nil {
+		return ErrNilDB
+	}
+
+	if run == nil {
+		return ErrNilExecFunc
+	}
+
+	// committed gates the deferred rollback. It is a flag rather than an
+	// `err != nil` check so the transaction is still rolled back when run panics:
+	// during a panic the named return is nil, so an error check would leak the tx.
 	var committed bool
 
 	tx, berr := db.BeginTxx(ctx, opts)

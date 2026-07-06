@@ -16,10 +16,10 @@ func TestBuildInClauseString(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "expect empty",
+			name:   "empty list yields never-matching predicate",
 			field:  "test_in_1",
 			values: []string{},
-			want:   "",
+			want:   "1 = 0",
 		},
 		{
 			name:   "expect single value",
@@ -75,10 +75,10 @@ func TestBuildNotInClauseString(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "expect empty",
+			name:   "empty list yields always-matching predicate",
 			field:  "test_notin_1",
 			values: []string{},
-			want:   "",
+			want:   "1 = 1",
 		},
 		{
 			name:   "expect single value",
@@ -122,10 +122,10 @@ func TestBuildInClauseInt(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "expect empty",
+			name:   "empty list yields never-matching predicate",
 			field:  "test_in_1",
 			values: []int{},
-			want:   "",
+			want:   "1 = 0",
 		},
 		{
 			name:   "expect single value",
@@ -169,10 +169,10 @@ func TestBuildNotInClauseInt(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "expect empty",
+			name:   "empty list yields always-matching predicate",
 			field:  "test_notin_1",
 			values: []int{},
-			want:   "",
+			want:   "1 = 1",
 		},
 		{
 			name:   "expect single value",
@@ -216,10 +216,10 @@ func TestBuildInClauseUint(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "expect empty",
+			name:   "empty list yields never-matching predicate",
 			field:  "test_in_1",
 			values: []uint64{},
-			want:   "",
+			want:   "1 = 0",
 		},
 		{
 			name:   "expect single value",
@@ -263,10 +263,10 @@ func TestBuildNotInClauseUint(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "expect empty",
+			name:   "empty list yields always-matching predicate",
 			field:  "test_notin_1",
 			values: []uint64{},
-			want:   "",
+			want:   "1 = 1",
 		},
 		{
 			name:   "expect single value",
@@ -294,6 +294,100 @@ func TestBuildNotInClauseUint(t *testing.T) {
 
 			c := defaultSQLUtil()
 			got := c.BuildNotInClauseUint(tt.field, tt.values)
+
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBuildInClauseInt64(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		field  string
+		values []int64
+		want   string
+	}{
+		{
+			name:   "empty list yields never-matching predicate",
+			field:  "test_in_1",
+			values: []int64{},
+			want:   "1 = 0",
+		},
+		{
+			name:   "expect single value",
+			field:  "test_in_2",
+			values: []int64{199},
+			want:   "`test_in_2` IN (199)",
+		},
+		{
+			name:   "expect multiple values",
+			field:  "test_in_3",
+			values: []int64{111, -113},
+			want:   "`test_in_3` IN (111,-113)",
+		},
+		{
+			name:   "composed field name",
+			field:  "schema_in_4.table_in_4",
+			values: []int64{111, -113, 9223372036854775807},
+			want:   "`schema_in_4`.`table_in_4` IN (111,-113,9223372036854775807)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c := defaultSQLUtil()
+			got := c.BuildInClauseInt64(tt.field, tt.values)
+
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBuildNotInClauseInt64(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		field  string
+		values []int64
+		want   string
+	}{
+		{
+			name:   "empty list yields always-matching predicate",
+			field:  "test_notin_1",
+			values: []int64{},
+			want:   "1 = 1",
+		},
+		{
+			name:   "expect single value",
+			field:  "test_notin_2",
+			values: []int64{299},
+			want:   "`test_notin_2` NOT IN (299)",
+		},
+		{
+			name:   "expect multiple values",
+			field:  "test_notin_3",
+			values: []int64{211, -213},
+			want:   "`test_notin_3` NOT IN (211,-213)",
+		},
+		{
+			name:   "composed field name",
+			field:  "schema_notin_4.table_notin_4",
+			values: []int64{211, -213, -9223372036854775808},
+			want:   "`schema_notin_4`.`table_notin_4` NOT IN (211,-213,-9223372036854775808)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c := defaultSQLUtil()
+			got := c.BuildNotInClauseInt64(tt.field, tt.values)
 
 			require.Equal(t, tt.want, got)
 		})
