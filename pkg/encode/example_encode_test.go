@@ -7,6 +7,9 @@ import (
 	"github.com/tecnickcom/gogen/pkg/encode"
 )
 
+// The gob wire format embeds process-global type IDs, so the encoded output is
+// not stable across runs; this example is intentionally not output-testable.
+//
 //nolint:testableexamples
 func ExampleEncode() {
 	type TestData struct {

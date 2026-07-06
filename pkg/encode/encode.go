@@ -25,6 +25,16 @@ Benefits:
   - reduce boilerplate for common serialization flows
   - avoid accidental misuse of raw binary in text-only transports
   - simplify data exchange between services and storage layers
+
+Caveats:
+
+  - Decoding reads a single encoded value; any trailing bytes are ignored.
+  - The reader- and buffer-based decoders do not bound their input. When
+    decoding from an untrusted source, wrap the reader with io.LimitReader.
+  - Gob is not designed to decode adversarial input; prefer the JSON family
+    (Serialize/Deserialize) for untrusted, interoperable payloads.
+  - The JSON encoding appends a trailing newline, which is included in the
+    encoded output.
 */
 package encode
 
@@ -46,11 +56,31 @@ func Base64EncodeString(s string) string {
 	return base64.StdEncoding.EncodeToString([]byte(s))
 }
 
+// Base64DecodeString decodes the Base64 string s into its raw bytes.
+//
+// It is the inverse of Base64EncodeString. The decoded bytes need not be valid
+// UTF-8, so they are returned as a byte slice.
+func Base64DecodeString(s string) ([]byte, error) {
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("base64 decode: %w", err)
+	}
+
+	return b, nil
+}
+
 // Base64Encoder wraps w with a streaming Base64 encoder.
 //
 // The caller should close the returned writer to flush buffered output.
 func Base64Encoder(w io.Writer) io.WriteCloser {
 	return base64.NewEncoder(base64.StdEncoding, w)
+}
+
+// Base64Decoder wraps r with a streaming Base64 decoder.
+//
+// It is the read-side counterpart to Base64Encoder.
+func Base64Decoder(r io.Reader) io.Reader {
+	return base64.NewDecoder(base64.StdEncoding, r)
 }
 
 // GobEncoder gob-encodes data into enc and closes enc.
@@ -117,7 +147,8 @@ func Encode(data any) (string, error) {
 
 // Decode decodes a gob+Base64 string into data.
 //
-// data must be a pointer to the destination type.
+// data must be a pointer to the destination type. Only the first encoded value
+// is read; any trailing bytes are ignored.
 func Decode(msg string, data any) error {
 	return BufferDecode(strings.NewReader(msg), data)
 }
@@ -136,7 +167,8 @@ func Serialize(data any) (string, error) {
 
 // Deserialize decodes a JSON+Base64 string into data.
 //
-// data must be a pointer to the destination type.
+// data must be a pointer to the destination type. Only the first encoded value
+// is read; any trailing bytes are ignored.
 func Deserialize(msg string, data any) error {
 	return BufferDeserialize(strings.NewReader(msg), data)
 }
@@ -160,7 +192,7 @@ func ByteDeserialize(msg []byte, data any) error {
 
 // BufferEncode encodes data as gob+Base64 and returns an in-memory buffer.
 //
-// It is a low-allocation building block reused by Encode and ByteEncode.
+// It is a single-buffer building block reused by Encode and ByteEncode.
 func BufferEncode(data any) (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
 
@@ -174,11 +206,11 @@ func BufferEncode(data any) (*bytes.Buffer, error) {
 
 // BufferDecode reads gob+Base64 content from reader into data.
 //
-// data must be a pointer to the destination type.
+// data must be a pointer to the destination type. Only the first encoded value
+// is read; any trailing bytes are ignored. When reading from an untrusted
+// source, wrap reader with io.LimitReader to bound the input.
 func BufferDecode(reader io.Reader, data any) error {
-	decoder := base64.NewDecoder(base64.StdEncoding, reader)
-
-	err := gob.NewDecoder(decoder).Decode(data)
+	err := gob.NewDecoder(Base64Decoder(reader)).Decode(data)
 	if err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
@@ -188,7 +220,7 @@ func BufferDecode(reader io.Reader, data any) error {
 
 // BufferSerialize encodes data as JSON+Base64 and returns an in-memory buffer.
 //
-// It is a low-allocation building block reused by Serialize and ByteSerialize.
+// It is a single-buffer building block reused by Serialize and ByteSerialize.
 func BufferSerialize(data any) (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
 
@@ -202,11 +234,11 @@ func BufferSerialize(data any) (*bytes.Buffer, error) {
 
 // BufferDeserialize reads JSON+Base64 content from reader into data.
 //
-// data must be a pointer to the destination type.
+// data must be a pointer to the destination type. Only the first encoded value
+// is read; any trailing bytes are ignored. When reading from an untrusted
+// source, wrap reader with io.LimitReader to bound the input.
 func BufferDeserialize(reader io.Reader, data any) error {
-	decoder := base64.NewDecoder(base64.StdEncoding, reader)
-
-	err := json.NewDecoder(decoder).Decode(data)
+	err := json.NewDecoder(Base64Decoder(reader)).Decode(data)
 	if err != nil {
 		return fmt.Errorf("deserialize: %w", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,6 +47,65 @@ func Test_Base64EncodeString(t *testing.T) {
 	}
 }
 
+func Test_Base64DecodeString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "empty string",
+			in:      "",
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name:    "non-empty string",
+			in:      "dGVzdCBzdHJpbmc=",
+			want:    "test string",
+			wantErr: false,
+		},
+		{
+			name:    "invalid base64",
+			in:      "你好世界", //nolint:gosmopolitan
+			want:    "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dec, err := Base64DecodeString(tt.in)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Nil(t, dec)
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, string(dec))
+		})
+	}
+}
+
+func Test_Base64EncodeDecodeString_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	const in = "arbitrary+bytes/with=padding and symbols"
+
+	dec, err := Base64DecodeString(Base64EncodeString(in))
+
+	require.NoError(t, err)
+	require.Equal(t, in, string(dec))
+}
+
 func Test_Base64Encoder(t *testing.T) {
 	t.Parallel()
 
@@ -72,6 +132,18 @@ func Test_Base64Encoder(t *testing.T) {
 			require.NotNil(t, enc)
 		})
 	}
+}
+
+func Test_Base64Decoder(t *testing.T) {
+	t.Parallel()
+
+	dec := Base64Decoder(strings.NewReader("dGVzdCBzdHJpbmc="))
+	require.NotNil(t, dec)
+
+	got, err := io.ReadAll(dec)
+
+	require.NoError(t, err)
+	require.Equal(t, "test string", string(got))
 }
 
 type mockWriteCloserCloseError struct{}
