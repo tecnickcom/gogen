@@ -2,6 +2,8 @@ package httpserver
 
 import (
 	"net/http"
+
+	"github.com/tecnickcom/gogen/pkg/profiling"
 )
 
 // DefaultRoute is the type for the default route names.
@@ -26,7 +28,7 @@ const (
 
 	// PprofRoute is the identifier to enable the pprof handler.
 	PprofRoute       DefaultRoute = "pprof"
-	pprofHandlerPath string       = "/pprof/*option"
+	pprofHandlerPath string       = "/pprof/*" + profiling.WildcardParamName
 
 	// StatusRoute is the identifier to enable the status handler.
 	StatusRoute       DefaultRoute = "status"
