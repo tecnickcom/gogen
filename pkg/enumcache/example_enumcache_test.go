@@ -161,15 +161,14 @@ func ExampleEnumCache_DecodeBinaryMap() {
 	// create a new cache
 	ec := enumcache.New()
 
-	ec.Set(0, "first")    // 00000000
-	ec.Set(1, "second")   // 00000001
-	ec.Set(2, "third")    // 00000010
-	ec.Set(4, "fourth")   // 00000100
-	ec.Set(8, "fifth")    // 00001000
-	ec.Set(16, "sixth")   // 00010000
-	ec.Set(32, "seventh") // 00100000
-	ec.Set(64, "eighth")  // 01000000
-	ec.Set(128, "ninth")  // 10000000
+	ec.Set(1, "first")    // 00000001
+	ec.Set(2, "second")   // 00000010
+	ec.Set(4, "third")    // 00000100
+	ec.Set(8, "fourth")   // 00001000
+	ec.Set(16, "fifth")   // 00010000
+	ec.Set(32, "sixth")   // 00100000
+	ec.Set(64, "seventh") // 01000000
+	ec.Set(128, "eighth") // 10000000
 
 	// convert binary code to a slice of strings
 	s, err := ec.DecodeBinaryMap(0b00101010) // 42
@@ -180,25 +179,24 @@ func ExampleEnumCache_DecodeBinaryMap() {
 	fmt.Println(s)
 
 	// Output:
-	// [third fifth seventh]
+	// [second fourth sixth]
 }
 
 func ExampleEnumCache_EncodeBinaryMap() {
 	// create a new cache
 	ec := enumcache.New()
 
-	ec.Set(0, "first")    // 00000000
-	ec.Set(1, "second")   // 00000001
-	ec.Set(2, "third")    // 00000010
-	ec.Set(4, "fourth")   // 00000100
-	ec.Set(8, "fifth")    // 00001000
-	ec.Set(16, "sixth")   // 00010000
-	ec.Set(32, "seventh") // 00100000
-	ec.Set(64, "eighth")  // 01000000
-	ec.Set(128, "ninth")  // 10000000
+	ec.Set(1, "first")    // 00000001
+	ec.Set(2, "second")   // 00000010
+	ec.Set(4, "third")    // 00000100
+	ec.Set(8, "fourth")   // 00001000
+	ec.Set(16, "fifth")   // 00010000
+	ec.Set(32, "sixth")   // 00100000
+	ec.Set(64, "seventh") // 01000000
+	ec.Set(128, "eighth") // 10000000
 
 	// convert a slice of string to the equivalent binary code
-	v, err := ec.EncodeBinaryMap([]string{"third", "fifth", "seventh"})
+	v, err := ec.EncodeBinaryMap([]string{"second", "fourth", "sixth"})
 	if err != nil {
 		log.Fatal(err)
 	}

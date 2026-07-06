@@ -14,7 +14,7 @@ SetAllIDByName, or SetAllNameByID, then perform lookups from application code.
 
 Top features:
 
-  - concurrent-safe name-to-ID and ID-to-name lookup with sync.RWMutex protection
+  - concurrent-safe name-to-ID and ID-to-name lookup guarded by an internal read/write mutex
   - bulk population helpers for loading enum definitions from code or external sources
   - deterministic sorted retrieval with SortNames and SortIDs for logs, output, and tests
   - binary-map encoding and decoding via github.com/tecnickcom/gogen/pkg/enumbitmap
@@ -30,11 +30,22 @@ Benefits:
 package enumcache
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/tecnickcom/gogen/pkg/enumbitmap"
+)
+
+var (
+	// ErrNameNotFound is returned by ID when the requested name is not cached.
+	// Match it with errors.Is.
+	ErrNameNotFound = errors.New("enumcache: name not found")
+
+	// ErrIDNotFound is returned by Name when the requested id is not cached.
+	// Match it with errors.Is.
+	ErrIDNotFound = errors.New("enumcache: ID not found")
 )
 
 // IDByName maps enum names to numeric IDs.
@@ -45,7 +56,7 @@ type NameByID map[int]string
 
 // EnumCache stores bidirectional enum mappings (name<->ID).
 type EnumCache struct {
-	sync.RWMutex
+	mu sync.RWMutex
 
 	id   IDByName
 	name NameByID
@@ -67,18 +78,34 @@ func New() *EnumCache {
 // previously associated with a different counterpart, the stale reverse mapping
 // is removed so both directions stay consistent.
 func (ec *EnumCache) Set(id int, name string) {
-	ec.Lock()
-	defer ec.Unlock()
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
 
 	ec.set(id, name)
+}
+
+// Delete removes the mapping for id together with its associated name.
+//
+// It is a no-op when id is not present. Both internal maps are kept consistent.
+func (ec *EnumCache) Delete(id int) {
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
+
+	name, ok := ec.name[id]
+	if !ok {
+		return
+	}
+
+	delete(ec.name, id)
+	delete(ec.id, name)
 }
 
 // SetAllIDByName bulk-loads enum values from name-to-id input.
 //
 // It is useful when parsing static definitions keyed by symbolic names.
 func (ec *EnumCache) SetAllIDByName(enum IDByName) {
-	ec.Lock()
-	defer ec.Unlock()
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
 
 	for name, id := range enum {
 		ec.set(id, name)
@@ -89,8 +116,8 @@ func (ec *EnumCache) SetAllIDByName(enum IDByName) {
 //
 // It is useful when loading rows from storage keyed by numeric IDs.
 func (ec *EnumCache) SetAllNameByID(enum NameByID) {
-	ec.Lock()
-	defer ec.Unlock()
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
 
 	for id, name := range enum {
 		ec.set(id, name)
@@ -99,14 +126,14 @@ func (ec *EnumCache) SetAllNameByID(enum NameByID) {
 
 // ID returns the numeric ID associated with name.
 //
-// It returns an error when name is not present.
+// It returns an error wrapping ErrNameNotFound when name is not present.
 func (ec *EnumCache) ID(name string) (int, error) {
-	ec.RLock()
-	defer ec.RUnlock()
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
 
 	id, ok := ec.id[name]
 	if !ok {
-		return 0, fmt.Errorf("cache name not found: %s", name)
+		return 0, fmt.Errorf("%w: %s", ErrNameNotFound, name)
 	}
 
 	return id, nil
@@ -114,14 +141,14 @@ func (ec *EnumCache) ID(name string) (int, error) {
 
 // Name returns the symbolic name associated with id.
 //
-// It returns an error when id is not present.
+// It returns an error wrapping ErrIDNotFound when id is not present.
 func (ec *EnumCache) Name(id int) (string, error) {
-	ec.RLock()
-	defer ec.RUnlock()
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
 
 	name, ok := ec.name[id]
 	if !ok {
-		return "", fmt.Errorf("cache ID not found: %d", id)
+		return "", fmt.Errorf("%w: %d", ErrIDNotFound, id)
 	}
 
 	return name, nil
@@ -131,8 +158,8 @@ func (ec *EnumCache) Name(id int) (string, error) {
 //
 // This is useful for deterministic output and tests.
 func (ec *EnumCache) SortNames() []string {
-	ec.RLock()
-	defer ec.RUnlock()
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
 
 	sorted := make([]string, 0, len(ec.id))
 	for name := range ec.id {
@@ -148,8 +175,8 @@ func (ec *EnumCache) SortNames() []string {
 //
 // This is useful for deterministic output and tests.
 func (ec *EnumCache) SortIDs() []int {
-	ec.RLock()
-	defer ec.RUnlock()
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
 
 	sorted := make([]int, 0, len(ec.name))
 	for id := range ec.name {
@@ -161,22 +188,56 @@ func (ec *EnumCache) SortIDs() []int {
 	return sorted
 }
 
+// Len returns the number of cached enum pairs.
+func (ec *EnumCache) Len() int {
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+
+	return len(ec.id)
+}
+
+// Has reports whether name is present in the cache.
+func (ec *EnumCache) Has(name string) bool {
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+
+	_, ok := ec.id[name]
+
+	return ok
+}
+
+// HasID reports whether id is present in the cache.
+func (ec *EnumCache) HasID(id int) bool {
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+
+	_, ok := ec.name[id]
+
+	return ok
+}
+
 // DecodeBinaryMap expands a bitmask value into enum names.
 //
-// The cache must contain bit-value IDs (1<<n) mapped to names.
+// The cache must contain bit-value IDs (single-bit powers of two, 1<<0 through
+// 1<<31) mapped to names; IDs that are 0 or multi-bit cannot be decoded and are
+// silently unreachable. On unknown set bits the returned error wraps
+// enumbitmap.ErrUnknownBitValues while known names are still returned.
 func (ec *EnumCache) DecodeBinaryMap(v int) ([]string, error) {
-	ec.RLock()
-	defer ec.RUnlock()
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
 
 	return enumbitmap.BitMapToStrings(ec.name, v) //nolint:wrapcheck
 }
 
 // EncodeBinaryMap combines enum names into a bitmask value.
 //
-// The cache must contain bit-value IDs (1<<n) mapped to names.
+// The cache must contain bit-value IDs (single-bit powers of two, 1<<0 through
+// 1<<31) mapped to names for the result to round-trip through DecodeBinaryMap. On
+// unknown names the returned error wraps enumbitmap.ErrUnknownStringValues while
+// known names are still combined into the bitmask.
 func (ec *EnumCache) EncodeBinaryMap(s []string) (int, error) {
-	ec.RLock()
-	defer ec.RUnlock()
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
 
 	return enumbitmap.StringsToBitMap(ec.id, s) //nolint:wrapcheck
 }

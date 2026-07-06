@@ -247,6 +247,88 @@ func Test_EncodeBinaryMap(t *testing.T) {
 	require.Equal(t, 9, v)
 }
 
+func Test_ID_Name_sentinelErrors(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+
+	_, err := ec.ID("missing")
+	require.ErrorIs(t, err, ErrNameNotFound)
+
+	_, err = ec.Name(99)
+	require.ErrorIs(t, err, ErrIDNotFound)
+}
+
+func Test_Set_crossRekey(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+
+	ec.Set(1, "a")
+	ec.Set(2, "b")
+	// Re-keying id 1 to name "b" must drop both the stale name "a" and the stale
+	// id 2 in a single set call.
+	ec.Set(1, "b")
+
+	require.Equal(t, []string{"b"}, ec.SortNames())
+	require.Equal(t, []int{1}, ec.SortIDs())
+
+	_, err := ec.ID("a")
+	require.ErrorIs(t, err, ErrNameNotFound)
+
+	_, err = ec.Name(2)
+	require.ErrorIs(t, err, ErrIDNotFound)
+
+	id, err := ec.ID("b")
+	require.NoError(t, err)
+	require.Equal(t, 1, id)
+}
+
+func Test_Len_Has_HasID(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	require.Equal(t, 0, ec.Len())
+	require.False(t, ec.Has("alpha"))
+	require.False(t, ec.HasID(1))
+
+	ec.Set(1, "alpha")
+	ec.Set(2, "bravo")
+
+	require.Equal(t, 2, ec.Len())
+	require.True(t, ec.Has("alpha"))
+	require.True(t, ec.HasID(2))
+	require.False(t, ec.Has("charlie"))
+	require.False(t, ec.HasID(3))
+}
+
+func Test_Delete(t *testing.T) {
+	t.Parallel()
+
+	ec := New()
+	ec.Set(1, "alpha")
+	ec.Set(2, "bravo")
+
+	// Deleting a missing id is a no-op.
+	ec.Delete(99)
+	require.Equal(t, 2, ec.Len())
+
+	ec.Delete(1)
+
+	require.Equal(t, 1, ec.Len())
+	require.False(t, ec.Has("alpha"))
+	require.False(t, ec.HasID(1))
+
+	_, err := ec.ID("alpha")
+	require.ErrorIs(t, err, ErrNameNotFound)
+
+	_, err = ec.Name(1)
+	require.ErrorIs(t, err, ErrIDNotFound)
+
+	// The unrelated entry must be untouched.
+	require.True(t, ec.Has("bravo"))
+}
+
 // Test_Concurrent_RaceSafety hammers the cache from many goroutines mixing
 // writers (Set, SetAllIDByName, SetAllNameByID) with readers (ID, Name,
 // DecodeBinaryMap, EncodeBinaryMap, SortNames, SortIDs). It must run clean under
@@ -291,10 +373,14 @@ func Test_Concurrent_RaceSafety(t *testing.T) {
 	spawn(func(i int) { ec.Set(bit(i), flag(i)) })
 	spawn(func(i int) { ec.SetAllIDByName(IDByName{flag(i): bit(i)}) })
 	spawn(func(i int) { ec.SetAllNameByID(NameByID{bit(i): flag(i)}) })
+	spawn(func(i int) { ec.Delete(bit(i)) })
 
 	spawn(func(i int) {
 		_, _ = ec.ID(flag(i))
 		_, _ = ec.Name(bit(i))
+		_ = ec.Has(flag(i))
+		_ = ec.HasID(bit(i))
+		_ = ec.Len()
 	})
 	spawn(func(i int) {
 		_, _ = ec.DecodeBinaryMap(bit(i))

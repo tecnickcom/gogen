@@ -9,17 +9,16 @@ import (
 
 func ExampleBitMapToStrings() {
 	// create a binary map
-	// each bit correspond to a different entry
+	// each bit correspond to a different entry (IDs are single-bit powers of two)
 	eis := map[int]string{
-		0:   "first",   // 00000000
-		1:   "second",  // 00000001
-		2:   "third",   // 00000010
-		4:   "fourth",  // 00000100
-		8:   "fifth",   // 00001000
-		16:  "sixth",   // 00010000
-		32:  "seventh", // 00100000
-		64:  "eighth",  // 01000000
-		128: "ninth",   // 10000000
+		1:   "first",   // 00000001
+		2:   "second",  // 00000010
+		4:   "third",   // 00000100
+		8:   "fourth",  // 00001000
+		16:  "fifth",   // 00010000
+		32:  "sixth",   // 00100000
+		64:  "seventh", // 01000000
+		128: "eighth",  // 10000000
 	}
 
 	// convert binary code to a slice of strings
@@ -31,31 +30,30 @@ func ExampleBitMapToStrings() {
 	fmt.Println(s)
 
 	// Output:
-	// [third fifth seventh]
+	// [second fourth sixth]
 }
 
 func ExampleStringsToBitMap() {
 	// create a binary map
-	// each entry is assigned to a different bit
+	// each entry is assigned to a different bit (single-bit powers of two)
 	esi := map[string]int{
-		"first":   0,   // 00000000
-		"second":  1,   // 00000001
-		"third":   2,   // 00000010
-		"fourth":  4,   // 00000100
-		"fifth":   8,   // 00001000
-		"sixth":   16,  // 00010000
-		"seventh": 32,  // 00100000
-		"eighth":  64,  // 01000000
-		"ninth":   128, // 10000000
+		"first":   1,   // 00000001
+		"second":  2,   // 00000010
+		"third":   4,   // 00000100
+		"fourth":  8,   // 00001000
+		"fifth":   16,  // 00010000
+		"sixth":   32,  // 00100000
+		"seventh": 64,  // 01000000
+		"eighth":  128, // 10000000
 	}
 
 	// convert a slice of string to the equivalent binary code
 	b, err := enumbitmap.StringsToBitMap(
 		esi,
 		[]string{
-			"third",
-			"fifth",
-			"seventh",
+			"second",
+			"fourth",
+			"sixth",
 		},
 	)
 	if err != nil {

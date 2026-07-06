@@ -23,18 +23,9 @@ func TestNew(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name: "fails prepare statement",
-			setupMock: func(m sqlmock.Sqlmock) {
-				m.ExpectPrepare(query).
-					WillReturnError(errors.New("load error"))
-			},
-			wantErr: true,
-		},
-		{
 			name: "fails query",
 			setupMock: func(m sqlmock.Sqlmock) {
-				m.ExpectPrepare(query).
-					ExpectQuery().
+				m.ExpectQuery(query).
 					WillReturnError(errors.New("query error"))
 			},
 			wantErr: true,
@@ -46,8 +37,7 @@ func TestNew(t *testing.T) {
 					NewRows([]string{"id", "name"}).
 					AddRow("wrong_type", "test_value")
 
-				m.ExpectPrepare(query).
-					ExpectQuery().
+				m.ExpectQuery(query).
 					WillReturnRows(rows).
 					RowsWillBeClosed()
 			},
@@ -61,8 +51,7 @@ func TestNew(t *testing.T) {
 					AddRow(7, "test_value").
 					RowError(0, errors.New("row error"))
 
-				m.ExpectPrepare(query).
-					ExpectQuery().
+				m.ExpectQuery(query).
 					WillReturnRows(rows).
 					RowsWillBeClosed()
 			},
@@ -77,8 +66,7 @@ func TestNew(t *testing.T) {
 					AddRow(2, "bravo").
 					AddRow(3, "charlie")
 
-				m.ExpectPrepare(query).
-					ExpectQuery().
+				m.ExpectQuery(query).
 					WillReturnRows(rows).
 					RowsWillBeClosed()
 			},

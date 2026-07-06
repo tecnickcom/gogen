@@ -17,7 +17,7 @@ Top features:
 - build github.com/tecnickcom/gogen/pkg/enumcache.EnumCache instances per table
 - provide fast runtime lookups in both directions through enumcache APIs
 - wrap query, scan, and row-iteration failures with contextual errors for easier debugging
-- close statements and rows safely, joining close errors with main execution errors
+- close rows safely, joining close errors with main execution errors
 
 Benefits:
 
@@ -58,13 +58,18 @@ type EnumTableQuery map[string]string
 //
 // Each query should return rows compatible with (id int, name string). The
 // result map is keyed by table name for direct access from application code.
+//
+// Loading is all-or-nothing: the first table that fails aborts the whole call and
+// returns a nil map with an error wrapping the underlying failure. When several
+// tables would fail, which one surfaces is not deterministic because queries is a
+// map.
 func New(ctx context.Context, db *sql.DB, queries EnumTableQuery) (EnumDB, error) {
 	enum := make(EnumDB, len(queries))
 
 	for table, query := range queries {
 		cache, err := loadTableEnumCache(ctx, db, query)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load the enumeration table '%s': %w", table, err)
+			return nil, fmt.Errorf("enumdb: failed to load the enumeration table '%s': %w", table, err)
 		}
 
 		enum[table] = cache
@@ -76,22 +81,14 @@ func New(ctx context.Context, db *sql.DB, queries EnumTableQuery) (EnumDB, error
 // loadTableEnumCache executes query and builds one in-memory EnumCache.
 //
 // It scans each row into id/name pairs and stores them for fast bidirectional
-// lookups at runtime.
+// lookups at runtime. The query carries no parameters and is run once, so it is
+// executed directly without a prepared statement.
 //
 //nolint:nonamedreturns
 func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (cache *enumcache.EnumCache, err error) {
-	stmt, perr := db.PrepareContext(ctx, query)
-	if perr != nil {
-		return nil, fmt.Errorf("failed preparing statement: %w", perr)
-	}
-
-	defer func() {
-		err = errors.Join(err, stmt.Close())
-	}()
-
-	rows, qerr := stmt.QueryContext(ctx)
+	rows, qerr := db.QueryContext(ctx, query)
 	if qerr != nil {
-		return nil, fmt.Errorf("failed executing query: %w", qerr)
+		return nil, fmt.Errorf("enumdb: failed executing query: %w", qerr)
 	}
 
 	defer func() {
@@ -108,7 +105,7 @@ func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (cache *e
 	for rows.Next() {
 		serr := rows.Scan(&id, &name)
 		if serr != nil {
-			return nil, fmt.Errorf("unable to scan row: %w", serr)
+			return nil, fmt.Errorf("enumdb: unable to scan row: %w", serr)
 		}
 
 		cache.Set(id, name)
@@ -116,7 +113,7 @@ func loadTableEnumCache(ctx context.Context, db *sql.DB, query string) (cache *e
 
 	rerr := rows.Err()
 	if rerr != nil {
-		return nil, fmt.Errorf("failed reading the rows: %w", rerr)
+		return nil, fmt.Errorf("enumdb: failed reading the rows: %w", rerr)
 	}
 
 	return cache, nil

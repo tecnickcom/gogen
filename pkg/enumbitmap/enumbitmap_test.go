@@ -110,11 +110,47 @@ func Test_BitMapToStrings_unknownBitReportsMask(t *testing.T) {
 
 	got, err := BitMapToStrings(eis, 0b10000000)
 	require.Error(t, err)
+	require.ErrorIs(t, err, ErrUnknownBitValues)
 	require.Empty(t, got)
 	// The unknown set bit must be reported as its mask value (128), not as a
 	// 1-based loop index (8).
 	require.Contains(t, err.Error(), "128")
 	require.NotContains(t, err.Error(), "[8]")
+}
+
+func Test_StringsToBitMap_unknownReportsSentinel(t *testing.T) {
+	t.Parallel()
+
+	esi, _ := testEnum()
+
+	got, err := StringsToBitMap(esi, []string{"1", "nope"})
+	require.ErrorIs(t, err, ErrUnknownStringValues)
+	require.Equal(t, 1, got)
+}
+
+func Test_BitMapToStrings_zeroIDUnreachable(t *testing.T) {
+	t.Parallel()
+
+	// An ID of 0 can never be produced as a set bit: value 0 always decodes to an
+	// empty slice, and no other input references mask 0.
+	got, err := BitMapToStrings(map[int]string{0: "none"}, 0)
+	require.NoError(t, err)
+	require.Equal(t, []string{}, got)
+}
+
+func Test_RoundTrip(t *testing.T) {
+	t.Parallel()
+
+	esi, eis := testEnum()
+
+	names := []string{"1", "1000", "10000000000000000000000000000000"}
+
+	v, err := StringsToBitMap(esi, names)
+	require.NoError(t, err)
+
+	got, err := BitMapToStrings(eis, v)
+	require.NoError(t, err)
+	require.ElementsMatch(t, names, got)
 }
 
 func Test_BitMapToStrings_highBitsIgnored(t *testing.T) {
