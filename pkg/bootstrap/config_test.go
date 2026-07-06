@@ -36,58 +36,63 @@ func Test_config_validate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
 		setupConfig func(c *config)
-		wantErr     bool
+		wantErr     error
+		name        string
 	}{
+		{
+			name:        "succeed with default config",
+			setupConfig: nil,
+			wantErr:     nil,
+		},
 		{
 			name: "fail with missing context",
 			setupConfig: func(cfg *config) {
 				cfg.context = nil
 			},
-			wantErr: true,
+			wantErr: ErrNilContext,
 		},
 		{
 			name: "fail with missing createLoggerFunc",
 			setupConfig: func(cfg *config) {
 				cfg.createLoggerFunc = nil
 			},
-			wantErr: true,
+			wantErr: ErrNilCreateLoggerFunc,
 		},
 		{
 			name: "fail with missing createMetricsClientFunc",
 			setupConfig: func(cfg *config) {
 				cfg.createMetricsClientFunc = nil
 			},
-			wantErr: true,
+			wantErr: ErrNilCreateMetricsClientFunc,
 		},
 		{
 			name: "fail with missing shutdownWaitGroup",
 			setupConfig: func(cfg *config) {
 				cfg.shutdownWaitGroup = nil
 			},
-			wantErr: true,
+			wantErr: ErrNilShutdownWaitGroup,
 		},
 		{
 			name: "fail with missing shutdownSignalChan",
 			setupConfig: func(cfg *config) {
 				cfg.shutdownSignalChan = nil
 			},
-			wantErr: true,
+			wantErr: ErrNilShutdownSignalChan,
 		},
 		{
 			name: "fail with invalid shutdown timeout",
 			setupConfig: func(cfg *config) {
 				cfg.shutdownTimeout = 0
 			},
-			wantErr: true,
+			wantErr: ErrInvalidShutdownTimeout,
 		},
 		{
 			name: "fail with nil logConfig set via WithLogConfig",
 			setupConfig: func(cfg *config) {
 				WithLogConfig(nil)(cfg)
 			},
-			wantErr: true,
+			wantErr: ErrNilLogConfig,
 		},
 	}
 
@@ -101,9 +106,13 @@ func Test_config_validate(t *testing.T) {
 			}
 
 			err := cfg.validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("validate() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr == nil {
+				require.NoError(t, err)
+
+				return
 			}
+
+			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }

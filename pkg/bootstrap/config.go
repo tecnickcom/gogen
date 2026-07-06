@@ -12,6 +12,38 @@ import (
 	"github.com/tecnickcom/gogen/pkg/metrics"
 )
 
+// Exported sentinel errors returned by Bootstrap and its configuration validation
+// so callers can match them with errors.Is.
+var (
+	// ErrNilBindFunc is returned when Bootstrap is called with a nil BindFunc.
+	ErrNilBindFunc = errors.New("bindFn is required")
+
+	// ErrNilContext is returned when the application context is nil.
+	ErrNilContext = errors.New("context is required")
+
+	// ErrNilCreateLoggerFunc is returned when the logger factory is nil.
+	ErrNilCreateLoggerFunc = errors.New("createLoggerFunc is required")
+
+	// ErrNilLogConfig is returned when WithLogConfig was used with a nil logutil.Config.
+	ErrNilLogConfig = errors.New("logConfig is required when using WithLogConfig")
+
+	// ErrNilCreateMetricsClientFunc is returned when the metrics client factory is nil.
+	ErrNilCreateMetricsClientFunc = errors.New("createMetricsClientFunc is required")
+
+	// ErrInvalidShutdownTimeout is returned when the shutdown timeout is not positive.
+	ErrInvalidShutdownTimeout = errors.New("invalid shutdownTimeout")
+
+	// ErrNilShutdownWaitGroup is returned when the shutdown WaitGroup is nil.
+	ErrNilShutdownWaitGroup = errors.New("shutdownWaitGroup is required")
+
+	// ErrNilShutdownSignalChan is returned when the shutdown signal channel is nil.
+	ErrNilShutdownSignalChan = errors.New("shutdownSignalChan is required")
+
+	// ErrShutdownTimeout is wrapped into the error returned by Bootstrap when the
+	// registered dependants do not finish within the configured shutdown timeout.
+	ErrShutdownTimeout = errors.New("graceful shutdown timed out")
+)
+
 // CreateLoggerFunc constructs the root logger used by Bootstrap.
 type CreateLoggerFunc func() *slog.Logger
 
@@ -87,37 +119,63 @@ func (c *config) newLogger() *slog.Logger {
 	return logsrv.NewLogger(c.logConfig)
 }
 
+// logConfigWithMetricHook returns a copy of c.logConfig whose HookFn first
+// increments a per-level metric counter on m and then chains any caller-installed
+// hook, giving instant observability into log rates by level.
+//
+// It works on a shallow copy so the caller-owned logutil.Config is never mutated.
+// When no log config was supplied (WithLogConfig unused) it returns nil unchanged;
+// in that case the configured logger factory does not consult it.
+func (c *config) logConfigWithMetricHook(m metrics.Client) *logutil.Config {
+	if c.logConfig == nil {
+		return nil
+	}
+
+	logCfg := *c.logConfig
+	callerHookFn := logCfg.HookFn
+
+	logCfg.HookFn = func(level logutil.LogLevel, message string) {
+		m.IncLogLevelCounter(logutil.LevelName(level))
+
+		if callerHookFn != nil {
+			callerHookFn(level, message)
+		}
+	}
+
+	return &logCfg
+}
+
 // validate checks that required configuration fields are usable.
 //
 // It fails fast before service startup so invalid lifecycle dependencies are
 // caught early rather than during shutdown-critical paths.
 func (c *config) validate() error {
 	if c.context == nil {
-		return errors.New("context is required")
+		return ErrNilContext
 	}
 
 	if c.createLoggerFunc == nil {
-		return errors.New("createLoggerFunc is required")
+		return ErrNilCreateLoggerFunc
 	}
 
 	if c.logConfigSet && c.logConfig == nil {
-		return errors.New("logConfig is required when using WithLogConfig")
+		return ErrNilLogConfig
 	}
 
 	if c.createMetricsClientFunc == nil {
-		return errors.New("createMetricsClientFunc is required")
+		return ErrNilCreateMetricsClientFunc
 	}
 
 	if c.shutdownTimeout <= 0 {
-		return errors.New("invalid shutdownTimeout")
+		return ErrInvalidShutdownTimeout
 	}
 
 	if c.shutdownWaitGroup == nil {
-		return errors.New("shutdownWaitGroup is required")
+		return ErrNilShutdownWaitGroup
 	}
 
 	if c.shutdownSignalChan == nil {
-		return errors.New("shutdownSignalChan is required")
+		return ErrNilShutdownSignalChan
 	}
 
 	return nil

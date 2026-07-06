@@ -28,7 +28,7 @@ list of [Option] values that tune the runtime behavior:
     level — giving instant observability into error rates.
  4. BindFunc is called. This is where the caller registers HTTP servers,
     database connections, background workers, etc.
- 5. Bootstrap blocks until it receives os.Interrupt, SIGTERM, or SIGINT, or
+ 5. Bootstrap blocks until it receives os.Interrupt (SIGINT), SIGTERM, or
     until the context is canceled externally.
  6. A shutdown signal is broadcast on the shared channel
     (see [WithShutdownSignalChan]) and the application context is canceled, so
@@ -36,7 +36,8 @@ list of [Option] values that tune the runtime behavior:
     ctx.Done() — can start its own teardown.
  7. Bootstrap waits for all dependants to finish via a [sync.WaitGroup]
     (see [WithShutdownWaitGroup]), bounded by a configurable timeout
-    (see [WithShutdownTimeout]) to prevent hanging indefinitely.
+    (see [WithShutdownTimeout]) to prevent hanging indefinitely. If the timeout
+    fires first, Bootstrap returns an error wrapping [ErrShutdownTimeout].
  8. The metrics client is closed so buffered measurements are flushed before
     the process exits.
 
@@ -55,6 +56,14 @@ list of [Option] values that tune the runtime behavior:
     a deadline so a stuck goroutine can never block the process forever.
   - Testable by design: [WithContext] lets tests inject a cancellable context
     to drive the shutdown path without sending real OS signals.
+
+# Notes
+
+Bootstrap installs process-global OS signal handling via [os/signal.Notify], so
+it is intended to be called once per process (for example from main) and not
+concurrently with another Bootstrap call in the same process. Supplying a
+[logutil.Config] with [WithLogConfig] also replaces the process-wide default
+logger (via slog.SetDefault) and redirects the standard library log package.
 
 # Usage
 
@@ -98,7 +107,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/logutil"
 	"github.com/tecnickcom/gogen/pkg/metrics"
 )
 
@@ -112,9 +120,18 @@ import (
 // dependants, waits for shutdown signals, broadcasts a shutdown event to all
 // listeners, then waits for dependant completion up to the configured timeout.
 //
+// It returns a wrapped error when configuration is invalid, when metrics or
+// application binding fails, or — wrapping [ErrShutdownTimeout] — when dependants
+// do not finish within the configured shutdown timeout. All returned errors are
+// matchable with errors.Is.
+//
 // The main benefit is predictable service lifecycle behavior with less
 // boilerplate and fewer shutdown edge-case bugs.
 func Bootstrap(bindFn BindFunc, opts ...Option) error {
+	if bindFn == nil {
+		return ErrNilBindFunc
+	}
+
 	cfg := defaultConfig()
 
 	for _, applyOpt := range opts {
@@ -135,24 +152,27 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 		return fmt.Errorf("error creating application metric: %w", err)
 	}
 
-	if cfg.logConfig != nil {
-		// Work on a shallow copy so the caller-owned logutil.Config is never mutated.
-		logCfg := *cfg.logConfig
-		callerHookFn := logCfg.HookFn
-
-		// metric hook to count logs by level, chained with any caller-installed hook
-		logCfg.HookFn = func(level logutil.LogLevel, message string) {
-			m.IncLogLevelCounter(logutil.LevelName(level))
-
-			if callerHookFn != nil {
-				callerHookFn(level, message)
-			}
-		}
-
-		cfg.logConfig = &logCfg
-	}
+	// Wire a metric counter for every log line, chained after any caller-installed
+	// hook. This works on a shallow copy so the caller-owned logutil.Config is
+	// never mutated, and is a no-op when WithLogConfig was not used.
+	cfg.logConfig = cfg.logConfigWithMetricHook(m)
 
 	l := cfg.createLoggerFunc()
+	if l == nil {
+		// A logger factory must never return nil; fall back to the process default
+		// so a misconfigured factory can never take the whole service down.
+		l = slog.Default()
+	}
+
+	// Register signal handling before binding so a termination signal delivered
+	// while bindFn is still wiring dependants is retained (quit is buffered) and
+	// honored immediately afterwards, rather than hard-killing the process.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+	// stop relaying OS signals to quit once shutdown handling is done so the
+	// registration does not outlive this Bootstrap call.
+	defer signal.Stop(quit)
 
 	l.Debug("binding application components")
 
@@ -165,28 +185,7 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 
 	l.Info("application started")
 
-	done := make(chan struct{})
-
-	// handle shutdown signals
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-
-	// stop relaying OS signals to quit once shutdown handling is done so the
-	// registration does not outlive this Bootstrap call.
-	defer signal.Stop(quit)
-
-	go func() {
-		defer close(done)
-
-		select {
-		case <-quit:
-			l.Debug("shutdown signal received")
-		case <-ctx.Done():
-			l.Warn("context canceled")
-		}
-	}()
-
-	<-done
+	waitForShutdown(ctx, quit, l)
 	l.Info("application stopping")
 
 	// Send shutdown signal to all dependants (e.g. HTTP servers) by closing the
@@ -202,14 +201,33 @@ func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	cancel()
 
 	// wait for graceful shutdown of dependants
-	syncWaitGroupTimeout(cfg.shutdownWaitGroup, cfg.shutdownTimeout, l)
+	completed := syncWaitGroupTimeout(cfg.shutdownWaitGroup, cfg.shutdownTimeout, l)
 
 	// flush and release the metrics backend resources
 	closeMetricsClient(m, l)
 
 	l.Info("application stopped")
 
+	if !completed {
+		return fmt.Errorf("shutdown exceeded %s: %w", cfg.shutdownTimeout, ErrShutdownTimeout)
+	}
+
 	return nil
+}
+
+// waitForShutdown blocks until an OS termination signal is received on quit or the
+// application context is canceled, logging which trigger fired.
+//
+// Context cancellation is a normal, expected shutdown trigger (for example a parent
+// context or signal.NotifyContext), so it is logged at Info rather than Warn to
+// avoid inflating error-rate metrics derived from the log-level hook.
+func waitForShutdown(ctx context.Context, quit <-chan os.Signal, l *slog.Logger) {
+	select {
+	case <-quit:
+		l.Debug("shutdown signal received")
+	case <-ctx.Done():
+		l.Info("context canceled")
+	}
 }
 
 // closeMetricsClient closes the metrics client, logging any close error.
@@ -223,7 +241,8 @@ func closeMetricsClient(m metrics.Client, l *slog.Logger) {
 	}
 }
 
-// syncWaitGroupTimeout waits for wg completion with an upper time bound.
+// syncWaitGroupTimeout waits for wg completion with an upper time bound, returning
+// true if wg completed and false if the timeout fired first.
 //
 // It prevents shutdown from hanging forever when a dependant goroutine fails to
 // signal completion, and logs whether shutdown completed normally or timed out.
@@ -234,7 +253,7 @@ func closeMetricsClient(m metrics.Client, l *slog.Logger) {
 // the remaining process lifetime. This is an accepted trade-off: the typical
 // caller exits right after Bootstrap returns, and the alternative would change
 // the public WaitGroup-based dependant contract.
-func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *slog.Logger) {
+func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *slog.Logger) bool {
 	wait := make(chan struct{})
 
 	go func() {
@@ -245,8 +264,12 @@ func syncWaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration, l *slog.Log
 
 	select {
 	case <-wait:
-		l.Debug("dependands shutdown complete")
+		l.Debug("dependents shutdown complete")
+
+		return true
 	case <-time.After(timeout):
-		l.Warn("dependands shutdown timeout")
+		l.Warn("dependents shutdown timeout")
+
+		return false
 	}
 }

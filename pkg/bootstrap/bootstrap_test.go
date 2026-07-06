@@ -17,6 +17,12 @@ import (
 	"github.com/tecnickcom/gogen/pkg/metrics/prometheus"
 )
 
+// noopBind is a BindFunc that wires nothing and never fails; used by cases that
+// are expected to fail before (or succeed without) touching application binding.
+func noopBind(context.Context, *slog.Logger, metrics.Client) error {
+	return nil
+}
+
 //nolint:gocognit,paralleltest
 func TestBootstrap(t *testing.T) {
 	shutdownWG := &sync.WaitGroup{}
@@ -28,6 +34,7 @@ func TestBootstrap(t *testing.T) {
 		bindFunc                BindFunc
 		createLoggerFunc        CreateLoggerFunc
 		createMetricsClientFunc CreateMetricsClientFunc
+		wantErrIs               error
 		stopAfter               time.Duration
 		sigterm                 bool
 		wantErr                 bool
@@ -37,20 +44,23 @@ func TestBootstrap(t *testing.T) {
 			opts: []Option{
 				WithShutdownTimeout(0),
 			},
-			wantErr: true,
+			bindFunc:  noopBind,
+			wantErr:   true,
+			wantErrIs: ErrInvalidShutdownTimeout,
 		},
 		{
-			name: "fail with nil log config",
-			opts: []Option{
-				WithLogConfig(nil),
-			},
-			wantErr: true,
+			name:      "fail with nil log config",
+			bindFunc:  noopBind,
+			opts:      []Option{WithLogConfig(nil)},
+			wantErr:   true,
+			wantErrIs: ErrNilLogConfig,
 		},
 		{
 			name: "should fail due to create metrics function",
 			opts: []Option{
 				WithShutdownTimeout(1 * time.Millisecond),
 			},
+			bindFunc: noopBind,
 			createMetricsClientFunc: func() (metrics.Client, error) {
 				return nil, errors.New("metrics error")
 			},
@@ -71,23 +81,29 @@ func TestBootstrap(t *testing.T) {
 			opts: []Option{
 				WithShutdownTimeout(100 * time.Millisecond),
 			},
-			bindFunc: func(context.Context, *slog.Logger, metrics.Client) error {
-				return nil
-			},
+			bindFunc:  noopBind,
 			stopAfter: 500 * time.Millisecond,
 			wantErr:   false,
+		},
+		{
+			name: "should succeed with a logger factory that returns nil",
+			opts: []Option{
+				WithShutdownTimeout(100 * time.Millisecond),
+			},
+			bindFunc:         noopBind,
+			createLoggerFunc: func() *slog.Logger { return nil },
+			stopAfter:        500 * time.Millisecond,
+			wantErr:          false,
 		},
 		{
 			name: "should succeed and exit with SIGTERM",
 			opts: []Option{
 				WithLogConfig(logutil.DefaultConfig()),
-				WithShutdownTimeout(1 * time.Millisecond),
+				WithShutdownTimeout(1 * time.Second),
 				WithShutdownWaitGroup(shutdownWG),
 				WithShutdownSignalChan(shutdownSG),
 			},
-			bindFunc: func(context.Context, *slog.Logger, metrics.Client) error {
-				return nil
-			},
+			bindFunc:  noopBind,
 			stopAfter: 500 * time.Millisecond,
 			sigterm:   true,
 			wantErr:   false,
@@ -118,6 +134,10 @@ func TestBootstrap(t *testing.T) {
 			}
 			opts = append(opts, tt.opts...)
 
+			if tt.createLoggerFunc != nil {
+				opts = append(opts, WithCreateLoggerFunc(tt.createLoggerFunc))
+			}
+
 			if tt.createMetricsClientFunc != nil {
 				opts = append(opts, WithCreateMetricsClientFunc(tt.createMetricsClientFunc))
 			} else {
@@ -131,8 +151,67 @@ func TestBootstrap(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Bootstrap() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
+			if tt.wantErrIs != nil {
+				require.ErrorIs(t, err, tt.wantErrIs)
+			}
 		})
 	}
+}
+
+//nolint:paralleltest // cannot run in parallel because signals are received by all parallel tests
+func TestBootstrap_nilBindFuncReturnsError(t *testing.T) {
+	err := Bootstrap(nil)
+	require.ErrorIs(t, err, ErrNilBindFunc)
+}
+
+//nolint:paralleltest // cannot run in parallel because signals are received by all parallel tests
+func TestBootstrap_contextCancelLogsBelowWarn(t *testing.T) {
+	var sawWarnOrAbove atomic.Bool
+
+	logCfg := logutil.DefaultConfig()
+	logCfg.Format = logutil.FormatNone
+	logCfg.HookFn = func(level logutil.LogLevel, _ string) {
+		if level >= slog.LevelWarn {
+			sawWarnOrAbove.Store(true)
+		}
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	time.AfterFunc(100*time.Millisecond, cancel)
+
+	err := Bootstrap(
+		noopBind,
+		WithContext(ctx),
+		WithLogConfig(logCfg),
+		WithShutdownTimeout(1*time.Second),
+	)
+	require.NoError(t, err)
+	require.False(t, sawWarnOrAbove.Load(),
+		"a normal context-driven shutdown must not emit warn-or-higher log records")
+}
+
+//nolint:paralleltest // cannot run in parallel because signals are received by all parallel tests
+func TestBootstrap_returnsErrOnShutdownTimeout(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(1) // a dependant that never calls Done, forcing the shutdown timeout
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	time.AfterFunc(100*time.Millisecond, cancel)
+
+	err := Bootstrap(
+		noopBind,
+		WithContext(ctx),
+		WithShutdownTimeout(50*time.Millisecond),
+		WithShutdownWaitGroup(wg),
+	)
+	require.ErrorIs(t, err, ErrShutdownTimeout)
+
+	wg.Done() // release the internal wg.Wait goroutine left blocked by the timeout
 }
 
 //nolint:paralleltest // cannot run in parallel because signals are received by all parallel tests
@@ -279,10 +358,10 @@ func Test_syncWaitGroupTimeout(t *testing.T) {
 	wg.Add(1)
 
 	// timeout
-	syncWaitGroupTimeout(wg, 1*time.Millisecond, slog.Default())
+	require.False(t, syncWaitGroupTimeout(wg, 1*time.Millisecond, slog.Default()))
 
 	wg.Add(-1)
 
 	// wait complete
-	syncWaitGroupTimeout(wg, 1*time.Second, slog.Default())
+	require.True(t, syncWaitGroupTimeout(wg, 1*time.Second, slog.Default()))
 }

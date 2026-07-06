@@ -27,6 +27,10 @@ func WithContext(ctx context.Context) Option {
 // It should be used as an alternative to WithLogger and
 // WithCreateLoggerFunc. The benefit is centralized logger policy with optional
 // hooks (including log-level metrics wiring performed by Bootstrap).
+//
+// As a side effect of building the logger from the config, Bootstrap replaces the
+// process-wide default logger (via slog.SetDefault) and redirects the standard
+// library log package's output through it.
 func WithLogConfig(c *logutil.Config) Option {
 	return func(cfg *config) {
 		cfg.logConfig = c
@@ -70,7 +74,8 @@ func WithCreateMetricsClientFunc(fn CreateMetricsClientFunc) Option {
 // WithShutdownTimeout sets the maximum graceful-shutdown wait duration.
 //
 // Bootstrap returns after this timeout even if dependant goroutines have not
-// completed, preventing indefinite process hangs.
+// completed, preventing indefinite process hangs. When the timeout fires before
+// dependants finish, Bootstrap returns an error wrapping ErrShutdownTimeout.
 func WithShutdownTimeout(timeout time.Duration) Option {
 	return func(cfg *config) {
 		cfg.shutdownTimeout = timeout
