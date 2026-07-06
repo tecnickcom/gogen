@@ -12,8 +12,8 @@ func ExampleSet() {
 	mux := &sync.Mutex{}
 
 	s := make([]string, 2)
-	tsslice.Set(mux, s, 0, "Hello")
-	tsslice.Set(mux, s, 1, "World")
+	tsslice.Set(mux, &s, 0, "Hello")
+	tsslice.Set(mux, &s, 1, "World")
 
 	fmt.Println(s)
 
@@ -21,23 +21,54 @@ func ExampleSet() {
 	// [Hello World]
 }
 
+func ExampleSetOK() {
+	mux := &sync.Mutex{}
+
+	s := make([]string, 2)
+
+	fmt.Println(tsslice.SetOK(mux, &s, 0, "Hello"))
+	fmt.Println(tsslice.SetOK(mux, &s, 9, "World"))
+	fmt.Println(s)
+
+	// Output:
+	// true
+	// false
+	// [Hello ]
+}
+
 func ExampleGet() {
 	mux := &sync.RWMutex{}
 
 	s := []string{"Hello", "World"}
-	fmt.Println(tsslice.Get(mux, s, 0))
-	fmt.Println(tsslice.Get(mux, s, 1))
+	fmt.Println(tsslice.Get(mux, &s, 0))
+	fmt.Println(tsslice.Get(mux, &s, 1))
 
 	// Output:
 	// Hello
 	// World
 }
 
+func ExampleGetOK() {
+	mux := &sync.RWMutex{}
+
+	s := []string{"Hello", "World"}
+
+	v, ok := tsslice.GetOK(mux, &s, 1)
+	fmt.Println(v, ok)
+
+	v, ok = tsslice.GetOK(mux, &s, 5)
+	fmt.Println(v, ok)
+
+	// Output:
+	// World true
+	//  false
+}
+
 func ExampleLen() {
 	mux := &sync.RWMutex{}
 
 	s := []string{"Hello", "World"}
-	fmt.Println(tsslice.Len(mux, s))
+	fmt.Println(tsslice.Len(mux, &s))
 
 	// Output:
 	// 2
@@ -113,7 +144,7 @@ func ExampleFilter() {
 
 	filterFn := func(_ int, v string) bool { return v == "World" }
 
-	s2 := tsslice.Filter(mux, s, filterFn)
+	s2 := tsslice.Filter(mux, &s, filterFn)
 
 	fmt.Println(s2)
 
@@ -128,7 +159,7 @@ func ExampleMap() {
 
 	mapFn := func(k int, v string) int { return k + len(v) }
 
-	s2 := tsslice.Map(mux, s, mapFn)
+	s2 := tsslice.Map(mux, &s, mapFn)
 
 	fmt.Println(s2)
 
@@ -144,10 +175,76 @@ func ExampleReduce() {
 	init := 97
 	reduceFn := func(k, v, r int) int { return k + v + r }
 
-	r := tsslice.Reduce(mux, s, init, reduceFn)
+	r := tsslice.Reduce(mux, &s, init, reduceFn)
 
 	fmt.Println(r)
 
 	// Output:
 	// 135
+}
+
+func ExampleDo() {
+	mux := &sync.Mutex{}
+
+	s := []int{1, 2, 3}
+
+	// Atomically append 4 only if it is not already the last element.
+	tsslice.Do(mux, &s, func(sp *[]int) {
+		if len(*sp) == 0 || (*sp)[len(*sp)-1] != 4 {
+			*sp = append(*sp, 4)
+		}
+	})
+
+	fmt.Println(s)
+
+	// Output:
+	// [1 2 3 4]
+}
+
+func ExampleRDo() {
+	mux := &sync.RWMutex{}
+
+	s := []int{1, 2, 3, 4}
+
+	sum := 0
+
+	tsslice.RDo(mux, &s, func(sv []int) {
+		for _, v := range sv {
+			sum += v
+		}
+	})
+
+	fmt.Println(sum)
+
+	// Output:
+	// 10
+}
+
+func ExampleDelete() {
+	mux := &sync.Mutex{}
+
+	s := []string{"a", "b", "c", "d"}
+
+	tsslice.Delete(mux, &s, 1)
+	fmt.Println(s)
+
+	fmt.Println(tsslice.Delete(mux, &s, 9))
+
+	// Output:
+	// [a c d]
+	// false
+}
+
+func ExampleSnapshot() {
+	mux := &sync.RWMutex{}
+
+	s := []int{1, 2, 3}
+
+	// Snapshot returns a copy that is safe to use after the lock is released.
+	snap := tsslice.Snapshot(mux, &s)
+
+	fmt.Println(snap)
+
+	// Output:
+	// [1 2 3]
 }

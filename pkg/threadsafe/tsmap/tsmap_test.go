@@ -132,3 +132,56 @@ func TestInvert(t *testing.T) {
 	require.Equal(t, 1, got[10])
 	require.Equal(t, 2, got[20])
 }
+
+func TestDo(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.Mutex{}
+
+	m := map[string]int{"a": 1}
+
+	// Atomic check-then-set compound operation.
+	Do(mux, m, func(mm map[string]int) {
+		if _, ok := mm["b"]; !ok {
+			mm["b"] = 2
+		}
+
+		mm["a"]++
+	})
+
+	require.Equal(t, 2, m["a"])
+	require.Equal(t, 2, m["b"])
+}
+
+func TestRDo(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.RWMutex{}
+
+	m := map[string]int{"a": 1, "b": 2, "c": 3}
+
+	sum := 0
+
+	RDo(mux, m, func(mm map[string]int) {
+		for _, v := range mm {
+			sum += v
+		}
+	})
+
+	require.Equal(t, 6, sum)
+}
+
+func TestSnapshot(t *testing.T) {
+	t.Parallel()
+
+	mux := &sync.RWMutex{}
+
+	m := map[string]int{"a": 1, "b": 2}
+
+	snap := Snapshot(mux, m)
+	snap["a"] = 99 // mutating the copy must not affect the original
+
+	require.Equal(t, 1, m["a"])
+	require.Len(t, snap, 2)
+	require.Equal(t, 99, snap["a"])
+}

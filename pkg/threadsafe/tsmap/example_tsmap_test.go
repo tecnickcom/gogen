@@ -128,3 +128,56 @@ func ExampleInvert() {
 	// Output:
 	// map[10:1 20:2]
 }
+
+func ExampleDo() {
+	mux := &sync.Mutex{}
+
+	m := map[string]int{"a": 1}
+
+	// Atomically set "b" only if it is absent, then bump "a".
+	tsmap.Do(mux, m, func(mm map[string]int) {
+		if _, ok := mm["b"]; !ok {
+			mm["b"] = 2
+		}
+
+		mm["a"]++
+	})
+
+	fmt.Println(m["a"], m["b"])
+
+	// Output:
+	// 2 2
+}
+
+func ExampleRDo() {
+	mux := &sync.RWMutex{}
+
+	m := map[string]int{"a": 1, "b": 2, "c": 3}
+
+	sum := 0
+
+	tsmap.RDo(mux, m, func(mm map[string]int) {
+		for _, v := range mm {
+			sum += v
+		}
+	})
+
+	fmt.Println(sum)
+
+	// Output:
+	// 6
+}
+
+func ExampleSnapshot() {
+	mux := &sync.RWMutex{}
+
+	m := map[string]int{"a": 1, "b": 2}
+
+	// Snapshot returns a copy that is safe to use after the lock is released.
+	snap := tsmap.Snapshot(mux, m)
+
+	fmt.Println(len(snap), snap["a"], snap["b"])
+
+	// Output:
+	// 2 1 2
+}
