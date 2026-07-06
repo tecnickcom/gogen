@@ -68,6 +68,11 @@ type Client interface {
 
 	// InstrumentHandler wraps an inbound HTTP handler to collect request metrics
 	// (for example latency, status code, and request counts).
+	//
+	// path is used as a metrics label (or metric-name segment) and MUST be a
+	// low-cardinality route template (for example "/users/{id}"), never a raw
+	// request URI containing identifiers. Passing high-cardinality paths causes
+	// unbounded label/series growth in the backend.
 	InstrumentHandler(path string, handler http.HandlerFunc) http.Handler
 
 	// InstrumentRoundTripper wraps an outbound HTTP transport to collect client
@@ -75,13 +80,27 @@ type Client interface {
 	InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper
 
 	// MetricsHandlerFunc returns the HTTP handler for the metrics endpoint.
+	//
+	// The response contract depends on the backend:
+	//   - pull-based backends (Prometheus) return the scrape payload with 200 OK;
+	//   - push-based backends expose no scrape payload and return a fixed
+	//     response instead: a health-style 200 "OK" (opentel, Default) or
+	//     501 Not Implemented (statsd).
+	// Callers must not assume the endpoint always exposes a scrape body.
 	MetricsHandlerFunc() http.HandlerFunc
 
 	// IncLogLevelCounter increments a counter by log severity level.
+	//
+	// This is a context-free instrumentation point by design: it is typically
+	// driven by a logging hook that has no request context to propagate, so
+	// implementations do not correlate the increment with a trace.
 	IncLogLevelCounter(level string)
 
 	// IncErrorCounter increments an application error counter partitioned by
 	// task, operation, and code labels.
+	//
+	// Like [Client.IncLogLevelCounter], this is context-free by design; the
+	// task/operation/code labels must be low-cardinality values.
 	IncErrorCounter(task, operation, code string)
 
 	// Close flushes or tears down backend resources.
@@ -124,14 +143,12 @@ func (c *Default) MetricsHandlerFunc() http.HandlerFunc {
 
 // IncLogLevelCounter increments a counter by log severity level (no-op in Default).
 func (c *Default) IncLogLevelCounter(_ string) {
-	// Do nothing.
-	_ = 0
+	// Intentionally a no-op: Default records no metrics.
 }
 
 // IncErrorCounter increments an application error counter partitioned by task, operation, and code (no-op in Default).
 func (c *Default) IncErrorCounter(_, _, _ string) {
-	// Do nothing.
-	_ = 0
+	// Intentionally a no-op: Default records no metrics.
 }
 
 // Close flushes or tears down backend resources (no-op in Default).

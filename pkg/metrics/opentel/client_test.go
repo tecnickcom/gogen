@@ -11,6 +11,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
@@ -87,11 +88,11 @@ func TestNew(t *testing.T) {
 		{
 			name: "succeeds with in-memory exporter",
 			opts: []Option{
-				WithTracerProviderFn(func(ctx context.Context, _ *sdkresource.Resource) *sdktrace.TracerProvider {
-					return DefaultTracerProviderWithExporter(DefaultSDKResource(ctx, "gogen-test", "0.0.0-1"), tracetest.NewInMemoryExporter())
+				WithTracerProviderFn(func(ctx context.Context, _ *sdkresource.Resource) (*sdktrace.TracerProvider, error) {
+					return DefaultTracerProviderWithExporter(DefaultSDKResource(ctx, "gogen-test", "0.0.0-1"), tracetest.NewInMemoryExporter()), nil
 				}),
-				WithMeterProviderFn(func(ctx context.Context, _ *sdkresource.Resource) *sdkmetric.MeterProvider {
-					return sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewManualReader()))
+				WithMeterProviderFn(func(_ context.Context, _ *sdkresource.Resource) (*sdkmetric.MeterProvider, error) {
+					return sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewManualReader())), nil
 				}),
 			},
 			wantErr: false,
@@ -99,6 +100,24 @@ func TestNew(t *testing.T) {
 		{
 			name:    "fails with invalid option",
 			opts:    []Option{func(_ *Client) error { return errors.New("Error") }},
+			wantErr: true,
+		},
+		{
+			name: "fails when tracer provider construction errors",
+			opts: []Option{
+				WithTracerProviderFn(func(context.Context, *sdkresource.Resource) (*sdktrace.TracerProvider, error) {
+					return nil, errors.New("tracer boom")
+				}),
+			},
+			wantErr: true,
+		},
+		{
+			name: "fails when meter provider construction errors",
+			opts: []Option{
+				WithMeterProviderFn(func(context.Context, *sdkresource.Resource) (*sdkmetric.MeterProvider, error) {
+					return nil, errors.New("meter boom")
+				}),
+			},
 			wantErr: true,
 		},
 	}
@@ -293,17 +312,37 @@ func TestInstrumentDB(t *testing.T) {
 func Test_setInt64CounterError(t *testing.T) {
 	t.Parallel()
 
-	_, err := setInt64Counter(&errMeter{}, "test")
+	_, err := setInt64Counter(&errMeter{}, "test", "test description", "{test}")
 	require.Error(t, err)
 }
 
-//nolint:paralleltest // mutates the package-level newErrorMeter seam and reads the otel globals
+func Test_resolveResource(t *testing.T) {
+	t.Parallel()
+
+	attrs := []attribute.KeyValue{attribute.String("service.name", "gogen-test")}
+	res := sdkresource.NewSchemaless(attrs...)
+
+	// A usable resource is passed through even when a non-fatal error is reported
+	// alongside it.
+	require.Same(t, res, resolveResource(res, errors.New("non-fatal"), attrs))
+
+	// No error and a resource: pass-through.
+	require.Same(t, res, resolveResource(res, nil, attrs))
+
+	// No resource at all: a schemaless fallback carrying the explicit attributes
+	// is built so service metadata is not dropped.
+	got := resolveResource(nil, errors.New("fatal"), attrs)
+	require.NotNil(t, got)
+	require.Contains(t, got.Attributes(), attribute.String("service.name", "gogen-test"))
+}
+
+//nolint:paralleltest // mutates the package-level newMeter seam and reads the otel globals
 func TestNew_counterSetupError(t *testing.T) {
-	orig := newErrorMeter
+	orig := newMeter
 
-	t.Cleanup(func() { newErrorMeter = orig })
+	t.Cleanup(func() { newMeter = orig })
 
-	newErrorMeter = func(*sdkmetric.MeterProvider) metric.Meter {
+	newMeter = func(*sdkmetric.MeterProvider) metric.Meter {
 		return &errMeter{}
 	}
 

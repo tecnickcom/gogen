@@ -130,6 +130,16 @@ func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
 }
 
 // InstrumentHandler wraps an http.Handler to collect Prometheus metrics.
+//
+// path is curried into the "handler" label of every inbound collector and MUST
+// be a low-cardinality route template (for example "/users/{id}"), never a raw
+// request URI containing identifiers: high-cardinality handler labels multiply
+// the series count and can exhaust the scrape target's memory.
+//
+// Note the deliberately asymmetric label sets: only the request counter
+// ([NameAPIRequests]) is partitioned by status "code"; the duration and
+// request/response size histograms are labeled by "handler" and "method" only,
+// to avoid multiplying histogram series by every observed status code.
 func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
 	var h http.Handler
 

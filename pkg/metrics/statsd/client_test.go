@@ -1,6 +1,7 @@
 package statsd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -272,6 +273,50 @@ TEST.outbound.GET.out:1\|c`
 		err := resp.Body.Close()
 		require.NoError(t, err, "error closing resp.Body")
 	}()
+}
+
+func TestInstrumentRoundTripperError(t *testing.T) {
+	t.Parallel()
+
+	srv, err := newTestStatsdServer(t, func(p []byte) {
+		// A transport-level failure must emit a dedicated "error" bucket
+		// (count + timing) rather than a status-code bucket.
+		exp := `TEST.outbound.GET.in:1\|c
+TEST.outbound.GET.error.count:1\|c
+TEST.outbound.GET.error.time:[0-9]+\|ms
+TEST.outbound.GET.out:1\|c`
+		re := regexp.MustCompile(exp)
+		got := string(p)
+
+		if !re.MatchString(got) {
+			t.Errorf("expected: %v\n\ngot: %v", exp, got)
+		}
+	})
+
+	require.NoError(t, err, "newTestStatsdServer() unexpected error = %v", err)
+
+	defer srv.Close()
+
+	c, err := New(
+		WithPrefix("TEST"),
+		WithNetwork(statsdTestNetwork),
+		WithAddress(srv.addr),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	defer c.Close()
+
+	wantErr := errors.New("transport failure")
+	rt := c.InstrumentRoundTripper(roundTripperFunc(func(_ *http.Request) (*http.Response, error) {
+		return nil, wantErr
+	}))
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com", nil)
+	require.NoError(t, err, "failed creating http request: %s", err)
+
+	resp, err := rt.RoundTrip(req) //nolint:bodyclose // resp is nil on transport error
+	require.ErrorIs(t, err, wantErr, "expected the transport error to be returned")
+	require.Nil(t, resp, "expected a nil response on transport error")
 }
 
 func TestIncLogLevelCounter(t *testing.T) {

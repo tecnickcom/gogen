@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/XSAM/otelsql"
@@ -30,6 +32,10 @@ import (
 const (
 	traceBatchTimeoutSec = 5
 	metricIntervalSec    = 60
+
+	// shutdownTimeoutSec bounds the context-free [Client.Close] so a hung
+	// exporter cannot block process shutdown forever.
+	shutdownTimeoutSec = 10
 )
 
 const (
@@ -41,14 +47,37 @@ const (
 )
 
 const (
-	// NameErrorMeter is the name of the meter that counts errors statistics.
-	NameErrorMeter = "errors"
+	// instrumentationScope is the OpenTelemetry instrumentation scope (meter and
+	// tracer name). Per OTel conventions it is the instrumenting library's
+	// import path rather than a metric category.
+	instrumentationScope = "github.com/tecnickcom/gogen/pkg/metrics/opentel"
 
-	// NameErrorLevel is the name of the collector that counts the number of errors for each log severity level.
-	NameErrorLevel = "level"
+	// NameLogLevel is the name of the counter that records the number of log
+	// lines emitted for each log severity level.
+	NameLogLevel = "log_level_total"
 
-	// NameErrorCode is the name of the collector that counts the number of errors by task, operation and error code.
-	NameErrorCode = "code"
+	// NameErrorCode is the name of the counter that records the number of errors
+	// by task, operation and error code.
+	NameErrorCode = "error_code_total"
+
+	// NameErrorLevel is the previous name of the log-level counter.
+	//
+	// Deprecated: the counter records every log line by severity level (not only
+	// errors) and is no longer registered under an "errors" meter, so it has been
+	// renamed from "level" to "log_level_total". Use [NameLogLevel] instead.
+	NameErrorLevel = NameLogLevel
+
+	// descLogLevel documents the log-level counter.
+	descLogLevel = "Number of log lines emitted for each severity level."
+
+	// descErrorCode documents the error-code counter.
+	descErrorCode = "Number of errors by task, operation and error code."
+
+	// unitLogRecord is the UCUM unit annotation for a count of log records.
+	unitLogRecord = "{log_record}"
+
+	// unitError is the UCUM unit annotation for a count of errors.
+	unitError = "{error}"
 )
 
 // TShutdownFuncs aliases a shutdown callback used to flush/close OTel resources.
@@ -58,10 +87,18 @@ type TShutdownFuncs = func(ctx context.Context) error
 type SDKResourceFunc = func(ctx context.Context, name, version string) *sdkresource.Resource
 
 // TraceProviderFunc is a function that returns an SDK Trace Provider.
-type TraceProviderFunc = func(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider
+//
+// It returns an error so custom implementations can surface exporter or
+// provider construction failures instead of panicking or silently swallowing
+// them.
+type TraceProviderFunc = func(ctx context.Context, res *sdkresource.Resource) (*sdktrace.TracerProvider, error)
 
 // MetricProviderFunc is a function that returns an SDK meter provider.
-type MetricProviderFunc = func(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider
+//
+// It returns an error so custom implementations can surface exporter or
+// provider construction failures instead of panicking or silently swallowing
+// them.
+type MetricProviderFunc = func(ctx context.Context, res *sdkresource.Resource) (*sdkmetric.MeterProvider, error)
 
 // Client is an OpenTelemetry-backed implementation of the shared metrics
 // interface.
@@ -75,6 +112,7 @@ type Client struct {
 	tracerProvider      *sdktrace.TracerProvider
 	meterProviderFn     MetricProviderFunc
 	meterProvider       *sdkmetric.MeterProvider
+	mu                  sync.Mutex // guards shutdownFuncs
 	shutdownFuncs       []TShutdownFuncs
 	collectorErrorLevel metric.Int64Counter
 	collectorErrorCode  metric.Int64Counter
@@ -90,6 +128,10 @@ type Client struct {
 //
 // The same attributes can also be supplied through OTEL_RESOURCE_ATTRIBUTES
 // using keys: service.name, service.version, deployment.environment.name.
+//
+// New installs process-global OpenTelemetry providers (tracer, meter,
+// propagator) on success, so at most one opentel [Client] should be created per
+// process; constructing a second one overwrites the global providers.
 func New(ctx context.Context, name, version string, opts ...Option) (*Client, error) {
 	c := initClient()
 
@@ -139,12 +181,9 @@ func (c *Client) InstrumentDB(dbName string, db *sql.DB) error {
 		return fmt.Errorf("failed instrumenting the database: %w", err)
 	}
 
-	c.shutdownFuncs = append(
-		c.shutdownFuncs,
-		func(_ context.Context) error {
-			return reg.Unregister()
-		},
-	)
+	c.appendShutdown(func(_ context.Context) error {
+		return reg.Unregister()
+	})
 
 	return nil
 }
@@ -158,20 +197,34 @@ func defRegisterDBStatsMetrics(db *sql.DB, opts ...otelsql.Option) (metric.Regis
 }
 
 // InstrumentHandler wraps handler with OpenTelemetry HTTP server
-// instrumentation using the configured meter provider.
+// instrumentation bound to this client's providers and propagator.
+//
+// path is used as the span/operation name and MUST be a low-cardinality route
+// template, never a raw request URI containing identifiers.
 func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
-	return otelhttp.NewHandler(handler, path, otelhttp.WithMeterProvider(c.meterProvider))
+	return otelhttp.NewHandler(
+		handler,
+		path,
+		otelhttp.WithMeterProvider(c.meterProvider),
+		otelhttp.WithTracerProvider(c.tracerProvider),
+		otelhttp.WithPropagators(c.propagator),
+	)
 }
 
 // InstrumentRoundTripper wraps next with OpenTelemetry HTTP client
-// instrumentation.
+// instrumentation bound to this client's providers and propagator.
 // If next is nil, http.DefaultTransport is used.
 func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
 	if next == nil {
 		next = http.DefaultTransport
 	}
 
-	return otelhttp.NewTransport(next)
+	return otelhttp.NewTransport(
+		next,
+		otelhttp.WithMeterProvider(c.meterProvider),
+		otelhttp.WithTracerProvider(c.tracerProvider),
+		otelhttp.WithPropagators(c.propagator),
+	)
 }
 
 // MetricsHandlerFunc returns a minimal health-style handler.
@@ -182,10 +235,13 @@ func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`OK`)) }
 }
 
-// IncLogLevelCounter counts the number of errors for each log severity level.
+// IncLogLevelCounter counts the number of log lines emitted for each log severity level.
 func (c *Client) IncLogLevelCounter(level string) {
+	// context.Background is intentional: this is a context-free instrumentation
+	// point (see metrics.Client) typically driven by a logging hook with no
+	// request context to propagate.
 	c.collectorErrorLevel.Add(
-		context.TODO(),
+		context.Background(),
 		1,
 		metric.WithAttributes(
 			attribute.String(labelLevel, level),
@@ -194,8 +250,9 @@ func (c *Client) IncLogLevelCounter(level string) {
 
 // IncErrorCounter increments the number of errors by task, operation and error code.
 func (c *Client) IncErrorCounter(task, operation, code string) {
+	// context.Background is intentional: see [Client.IncLogLevelCounter].
 	c.collectorErrorCode.Add(
-		context.TODO(),
+		context.Background(),
 		1,
 		metric.WithAttributes(
 			attribute.String(labelTask, task),
@@ -205,24 +262,45 @@ func (c *Client) IncErrorCounter(task, operation, code string) {
 	)
 }
 
-// Close runs all registered shutdown callbacks using context.TODO().
+// Close runs all registered shutdown callbacks using a bounded context.
 //
-// Use [Client.CloseCtx] when an explicit shutdown deadline is required.
+// It applies a fixed timeout so a stalled exporter cannot block shutdown
+// indefinitely. Use [Client.CloseCtx] when an explicit shutdown deadline is
+// required.
 func (c *Client) Close() error {
-	return c.CloseCtx(context.TODO())
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeoutSec*time.Second)
+	defer cancel()
+
+	return c.CloseCtx(ctx)
 }
 
 // CloseCtx runs all registered shutdown callbacks with ctx, joining any errors.
+//
+// Callbacks run in reverse registration order (last registered first), so
+// resources are torn down in the opposite order they were set up: DB-stats
+// registrations are unregistered before the meter/tracer providers they depend
+// on are shut down. It is safe to call concurrently and is idempotent.
 func (c *Client) CloseCtx(ctx context.Context) error {
+	c.mu.Lock()
+	funcs := c.shutdownFuncs
+	c.shutdownFuncs = nil
+	c.mu.Unlock()
+
 	var err error
 
-	for _, fn := range c.shutdownFuncs {
+	for _, fn := range slices.Backward(funcs) {
 		err = errors.Join(err, fn(ctx))
 	}
 
-	c.shutdownFuncs = nil
-
 	return err
+}
+
+// appendShutdown registers a shutdown callback under the client mutex so it is
+// safe to call concurrently with [Client.CloseCtx].
+func (c *Client) appendShutdown(fn TShutdownFuncs) {
+	c.mu.Lock()
+	c.shutdownFuncs = append(c.shutdownFuncs, fn)
+	c.mu.Unlock()
 }
 
 // otelsqlOpts merges default otelsql options with additional opts.
@@ -251,24 +329,32 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 		c.tracerProviderFn = DefaultTracerProvider
 	}
 
-	c.tracerProvider = c.tracerProviderFn(ctx, c.res)
+	tracerProvider, err := c.tracerProviderFn(ctx, c.res)
+	if err != nil {
+		return fmt.Errorf("failed to create the tracer provider: %w", err)
+	}
 
-	c.shutdownFuncs = append(c.shutdownFuncs, c.tracerProvider.Shutdown)
+	c.tracerProvider = tracerProvider
+	c.appendShutdown(tracerProvider.Shutdown)
 
 	// meter provider
 	if c.meterProviderFn == nil {
 		c.meterProviderFn = DefaultMeterProvider
 	}
 
-	c.meterProvider = c.meterProviderFn(ctx, c.res)
+	meterProvider, err := c.meterProviderFn(ctx, c.res)
+	if err != nil {
+		return fmt.Errorf("failed to create the meter provider: %w", err)
+	}
 
-	c.shutdownFuncs = append(c.shutdownFuncs, c.meterProvider.Shutdown)
+	c.meterProvider = meterProvider
+	c.appendShutdown(meterProvider.Shutdown)
 
-	errMeter := newErrorMeter(c.meterProvider)
-	cel, erra := setInt64Counter(errMeter, NameErrorLevel)
-	cec, errb := setInt64Counter(errMeter, NameErrorCode)
+	meter := newMeter(meterProvider)
+	cel, erra := setInt64Counter(meter, NameLogLevel, descLogLevel, unitLogRecord)
+	cec, errb := setInt64Counter(meter, NameErrorCode, descErrorCode, unitError)
 
-	err := errors.Join(erra, errb)
+	err = errors.Join(erra, errb)
 	if err != nil {
 		return err
 	}
@@ -286,18 +372,22 @@ func (c *Client) set(ctx context.Context, name, version string) error {
 	return nil
 }
 
-// newErrorMeter returns the meter used to register the internal error counters.
+// newMeter returns the meter used to register the internal counters.
 // It is a package-level indirection so tests can force a counter-setup failure;
 // in production it always delegates to the configured meter provider.
-var newErrorMeter = func(mp *sdkmetric.MeterProvider) metric.Meter { //nolint:gochecknoglobals
-	return mp.Meter(NameErrorMeter)
+var newMeter = func(mp *sdkmetric.MeterProvider) metric.Meter { //nolint:gochecknoglobals
+	return mp.Meter(instrumentationScope)
 }
 
-// setInt64Counter creates a named Int64 counter on the given meter.
-// On failure it returns the wrapped error without tearing down the client;
-// the caller (set/New) decides how to clean up.
-func setInt64Counter(errMeter metric.Meter, name string) (metric.Int64Counter, error) {
-	counter, err := errMeter.Int64Counter(name)
+// setInt64Counter creates a named Int64 counter with a description and unit on
+// the given meter. On failure it returns the wrapped error without tearing down
+// the client; the caller (set/New) decides how to clean up.
+func setInt64Counter(meter metric.Meter, name, description, unit string) (metric.Int64Counter, error) {
+	counter, err := meter.Int64Counter(
+		name,
+		metric.WithDescription(description),
+		metric.WithUnit(unit),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create %q counter: %w", name, err)
 	}
@@ -338,10 +428,23 @@ func DefaultSDKResource(ctx context.Context, name, version string) *sdkresource.
 		attrs = append(attrs, semconv.DeploymentEnvironmentName(env))
 	}
 
-	res, _ := sdkresource.New(
+	res, err := sdkresource.New(
 		ctx,
 		sdkresource.WithAttributes(attrs...),
 	)
+
+	return resolveResource(res, err, attrs)
+}
+
+// resolveResource keeps resource construction robust: sdkresource.New can report
+// detection or schema-URL conflict errors and, in the worst case, return no
+// resource at all. Rather than silently propagating a nil resource (which would
+// drop all service metadata), it falls back to a schemaless resource carrying
+// the explicit attributes.
+func resolveResource(res *sdkresource.Resource, err error, attrs []attribute.KeyValue) *sdkresource.Resource {
+	if err != nil && res == nil {
+		return sdkresource.NewSchemaless(attrs...)
+	}
 
 	return res
 }
@@ -397,10 +500,10 @@ func DefaultTracerProviderWithExporter(res *sdkresource.Resource, exp sdktrace.S
 }
 
 // DefaultTracerProviderStdout provides a default STDOUT OpenTelemetry Tracer Provider.
-func DefaultTracerProviderStdout(_ context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
-	exp, _ := stdouttrace.New() // no error
+func DefaultTracerProviderStdout(_ context.Context, res *sdkresource.Resource) (*sdktrace.TracerProvider, error) {
+	exp, err := stdouttrace.New()
 
-	return DefaultTracerProviderWithExporter(res, exp)
+	return DefaultTracerProviderWithExporter(res, exp), err
 }
 
 // DefaultTracerProviderOTLP provides a default OTLP OpenTelemetry Tracer Provider.
@@ -408,16 +511,16 @@ func DefaultTracerProviderStdout(_ context.Context, res *sdkresource.Resource) *
 //   - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 //   - OTEL_EXPORTER_OTLP_ENDPOINT
 //   - "localhost:4318"
-func DefaultTracerProviderOTLP(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
-	exp, _ := otlptracehttp.New(ctx) // no error
+func DefaultTracerProviderOTLP(ctx context.Context, res *sdkresource.Resource) (*sdktrace.TracerProvider, error) {
+	exp, err := otlptracehttp.New(ctx)
 
-	return DefaultTracerProviderWithExporter(res, exp)
+	return DefaultTracerProviderWithExporter(res, exp), err
 }
 
 // DefaultTracerProvider provides a default OpenTelemetry Tracer Provider.
 // If neither OTEL_EXPORTER_OTLP_TRACES_ENDPOINT or OTEL_EXPORTER_OTLP_ENDPOINT are defined,
 // the default STDOUT provider is returned.
-func DefaultTracerProvider(ctx context.Context, res *sdkresource.Resource) *sdktrace.TracerProvider {
+func DefaultTracerProvider(ctx context.Context, res *sdkresource.Resource) (*sdktrace.TracerProvider, error) {
 	if os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") != "" || os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
 		return DefaultTracerProviderOTLP(ctx, res)
 	}
@@ -442,10 +545,10 @@ func DefaultMeterProviderWithExporter(
 }
 
 // DefaultMeterProviderStdout provides a default STDOUT OpenTelemetry Meter Provider.
-func DefaultMeterProviderStdout(_ context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
-	exp, _ := stdoutmetric.New() // returned error is always nil
+func DefaultMeterProviderStdout(_ context.Context, res *sdkresource.Resource) (*sdkmetric.MeterProvider, error) {
+	exp, err := stdoutmetric.New()
 
-	return DefaultMeterProviderWithExporter(res, exp)
+	return DefaultMeterProviderWithExporter(res, exp), err
 }
 
 // DefaultMeterProviderOTLP provides a default OTLP OpenTelemetry Meter Provider.
@@ -453,16 +556,16 @@ func DefaultMeterProviderStdout(_ context.Context, res *sdkresource.Resource) *s
 //   - OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
 //   - OTEL_EXPORTER_OTLP_ENDPOINT
 //   - "localhost:4318"
-func DefaultMeterProviderOTLP(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
-	exp, _ := otlpmetrichttp.New(ctx) // no error
+func DefaultMeterProviderOTLP(ctx context.Context, res *sdkresource.Resource) (*sdkmetric.MeterProvider, error) {
+	exp, err := otlpmetrichttp.New(ctx)
 
-	return DefaultMeterProviderWithExporter(res, exp)
+	return DefaultMeterProviderWithExporter(res, exp), err
 }
 
 // DefaultMeterProvider provides a default OTLP OpenTelemetry Meter Provider.
 // If neither OTEL_EXPORTER_OTLP_METRICS_ENDPOINT or OTEL_EXPORTER_OTLP_ENDPOINT are defined,
 // the default STDOUT provider is returned.
-func DefaultMeterProvider(ctx context.Context, res *sdkresource.Resource) *sdkmetric.MeterProvider {
+func DefaultMeterProvider(ctx context.Context, res *sdkresource.Resource) (*sdkmetric.MeterProvider, error) {
 	if os.Getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT") != "" || os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
 		return DefaultMeterProviderOTLP(ctx, res)
 	}

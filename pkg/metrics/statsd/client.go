@@ -101,10 +101,18 @@ func (c *Client) InstrumentDB(_ string, _ *sql.DB) error {
 }
 
 // InstrumentHandler wraps an http.Handler to collect StatsD metrics.
+//
+// path becomes part of the emitted bucket names and MUST be a low-cardinality
+// route template (for example "users"), never a raw request URI containing
+// identifiers, otherwise the StatsD/Graphite key space grows unbounded.
 func (c *Client) InstrumentHandler(path string, handler http.HandlerFunc) http.Handler {
+	// The bucket prefix up to the method segment is invariant per handler, so it
+	// is built once here instead of on every request.
+	pathPrefix := labelInbound + labelSeparator + path + labelSeparator
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t := c.statsd.NewTiming()
-		labelInboundPath := labelInbound + labelSeparator + path + labelSeparator + r.Method + labelSeparator
+		labelInboundPath := pathPrefix + r.Method + labelSeparator
 
 		c.statsd.Increment(labelInboundPath + labelIn)
 		defer c.statsd.Increment(labelInboundPath + labelOut)
@@ -158,8 +166,12 @@ func requestSize(r *http.Request) int {
 
 // InstrumentRoundTripper wraps next to emit outbound HTTP metrics.
 //
-// For successful requests it records in/out counters, status counts, and
-// request duration timing grouped by method and status code.
+// It always records in/out counters. The request outcome is grouped by method
+// and by result segment: the HTTP status code on success, or a dedicated
+// "error" bucket when the transport itself fails (DNS failure, connection
+// refused, timeout, ...), so transport-level failures remain observable rather
+// than only inferable from the in/out delta. A count and a duration timer are
+// recorded for both outcomes.
 func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTripper {
 	return roundTripperFunc(func(r *http.Request) (*http.Response, error) {
 		t := c.statsd.NewTiming()
@@ -169,12 +181,15 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 		defer c.statsd.Increment(labelOutboundPath + labelOut)
 
 		resp, err := next.RoundTrip(r)
-		if err == nil {
-			labelStatus := labelOutboundPath + strconv.Itoa(resp.StatusCode) + labelSeparator
 
-			c.statsd.Increment(labelStatus + labelCount)
-			defer t.Send(labelStatus + labelTime)
+		// On error resp may be nil, so the result segment must not dereference it.
+		labelResult := labelOutboundPath + labelError + labelSeparator
+		if err == nil {
+			labelResult = labelOutboundPath + strconv.Itoa(resp.StatusCode) + labelSeparator
 		}
+
+		c.statsd.Increment(labelResult + labelCount)
+		defer t.Send(labelResult + labelTime)
 
 		return resp, err //nolint:wrapcheck
 	})
@@ -202,6 +217,11 @@ func (c *Client) IncErrorCounter(task, operation, code string) {
 }
 
 // Close flushes and closes the underlying StatsD client.
+//
+// Instrumentation calls made after Close (for example by requests still in
+// flight during shutdown) are dropped rather than panicking: the underlying
+// client serializes buffer access, so a write to the closed connection is a
+// benign no-op.
 func (c *Client) Close() error {
 	c.statsd.Close()
 	return nil
