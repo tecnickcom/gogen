@@ -231,3 +231,27 @@ func TestRandString(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, s)
 }
+
+func TestRandomBytes_NegativeLength(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+
+	// A negative length must return ErrNegativeLength instead of panicking in make().
+	b, err := r.RandomBytes(-1)
+
+	require.ErrorIs(t, err, ErrNegativeLength)
+	require.Nil(t, b)
+}
+
+func TestRandString_NegativeLength(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+
+	// A negative length must return ErrNegativeLength instead of panicking in make().
+	s, err := r.RandString(-1)
+
+	require.ErrorIs(t, err, ErrNegativeLength)
+	require.Empty(t, s)
+}

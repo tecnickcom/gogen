@@ -7,7 +7,8 @@ import (
 	"github.com/tecnickcom/gogen/pkg/uhex"
 )
 
-// TUID128 holds the 128-bit random value.
+// TUID128 is a time-ordered 128-bit identifier: the high 64 bits (t) are the
+// generation time in Unix nanoseconds and the low 64 bits (r) are random.
 type TUID128 struct {
 	t uint64
 	r uint64

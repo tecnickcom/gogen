@@ -51,8 +51,10 @@ func (r *Rnd) UUIDv7() UUID {
 	// approximate map remaining nanoseconds in the range [0, 4095]
 	// Note:
 	// 4294 = (4095 * 2^20) / 1,000,000
-	// shifting right by 20 bits is roughly equivalent to dividing byiding by 1,048,576.
-	ns := ((now.Nanosecond() % 1e6) * 4294) >> 20
+	// shifting right by 20 bits is roughly equivalent to dividing by 1,048,576.
+	// The multiplication is done in int64 because the intermediate product can
+	// reach 999999*4294 = 4293995706, which overflows a 32-bit int.
+	ns := int((int64(now.Nanosecond()%1e6) * 4294) >> 20)
 
 	// ver:
 	// 4-bit version field set to 0b0111 (7)

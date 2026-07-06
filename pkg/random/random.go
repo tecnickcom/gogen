@@ -78,6 +78,7 @@ package random
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	mrand "math/rand/v2"
@@ -85,6 +86,10 @@ import (
 
 	"github.com/tecnickcom/gogen/pkg/uhex"
 )
+
+// ErrNegativeLength is returned when a negative length is requested from a
+// size-taking helper such as [Rnd.RandomBytes] or [Rnd.RandString].
+var ErrNegativeLength = errors.New("random: negative length")
 
 // Character sets for random string generation.
 const (
@@ -96,7 +101,7 @@ const (
 	chrMapMaxLen  = 256
 )
 
-// Rnd defines then random number generator.
+// Rnd defines the random number generator.
 type Rnd struct {
 	reader io.Reader
 	chrMap []byte
@@ -124,8 +129,13 @@ func New(r io.Reader, opts ...Option) *Rnd {
 //
 // It uses [io.ReadFull] so the destination is always fully populated; a custom
 // [io.Reader] that returns a short read with a nil error is treated as an error
-// rather than silently truncating the randomness.
+// rather than silently truncating the randomness. A negative n returns
+// [ErrNegativeLength] instead of panicking; n == 0 returns an empty slice.
 func (r *Rnd) RandomBytes(n int) ([]byte, error) {
+	if n < 0 {
+		return nil, ErrNegativeLength
+	}
+
 	b := make([]byte, n)
 
 	_, err := io.ReadFull(r.reader, b)
@@ -172,8 +182,14 @@ func (r *Rnd) RandString64() string {
 // RandString returns an n-character random string using the configured character map, suitable for passwords.
 //
 // Characters are selected with rejection sampling so each character map entry
-// is drawn uniformly, even when 256 is not a multiple of the map length.
+// is drawn uniformly, even when 256 is not a multiple of the map length. A
+// negative n returns [ErrNegativeLength] instead of panicking; n == 0 returns
+// an empty string.
 func (r *Rnd) RandString(n int) (string, error) {
+	if n < 0 {
+		return "", ErrNegativeLength
+	}
+
 	b := make([]byte, n)
 
 	cmlen := len(r.chrMap)
