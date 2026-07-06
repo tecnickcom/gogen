@@ -151,6 +151,64 @@ func TestDecryptErrors(t *testing.T) {
 	}
 }
 
+func TestDecrypt_InvalidInputSizeSentinel(t *testing.T) {
+	t.Parallel()
+
+	_, err := Decrypt([]byte("abcdefghijklmnop"), []byte("short"))
+
+	require.ErrorIs(t, err, ErrInvalidInputSize)
+}
+
+func TestDecrypt_TamperAndWrongKey(t *testing.T) {
+	t.Parallel()
+
+	key := []byte("abcdefghijklmnopqrstuvwxyz012345")
+
+	enc, err := Encrypt(key, []byte("secret payload"))
+	require.NoError(t, err)
+
+	// A bit-flip in the ciphertext body is detected by the GCM tag.
+	tampered := bytes.Clone(enc)
+	tampered[len(tampered)-1] ^= 0x01
+	_, err = Decrypt(key, tampered)
+	require.Error(t, err)
+
+	// A bit-flip inside the nonce prefix is detected too.
+	tamperedNonce := bytes.Clone(enc)
+	tamperedNonce[0] ^= 0x01
+	_, err = Decrypt(key, tamperedNonce)
+	require.Error(t, err)
+
+	// A different key of valid length fails authentication.
+	_, err = Decrypt([]byte("00000000000000000000000000000000"), enc)
+	require.Error(t, err)
+}
+
+func TestEncryptDecrypt_AAD(t *testing.T) {
+	t.Parallel()
+
+	key := []byte("abcdefghijklmnopqrstuvwxyz012345")
+	msg := []byte("bound to context")
+	aad := []byte("record-id-42")
+
+	enc, err := EncryptWith(key, msg, WithAAD(aad))
+	require.NoError(t, err)
+	require.NotNil(t, enc)
+
+	// Matching AAD round-trips.
+	dec, err := DecryptWith(key, enc, WithAAD(aad))
+	require.NoError(t, err)
+	require.Equal(t, msg, dec)
+
+	// Missing AAD fails authentication.
+	_, err = Decrypt(key, enc)
+	require.Error(t, err)
+
+	// Wrong AAD fails authentication.
+	_, err = DecryptWith(key, enc, WithAAD([]byte("record-id-99")))
+	require.Error(t, err)
+}
+
 func Test_ByteEncryptAny_ByteDecryptAny(t *testing.T) {
 	t.Parallel()
 

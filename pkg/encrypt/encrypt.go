@@ -15,6 +15,8 @@ Top features:
     for AES-128, AES-192, and AES-256)
   - nonce generation via secure random bytes and nonce-prefix output format for
     self-contained ciphertext payloads
+  - additional authenticated data (AAD) support via [WithAAD] to bind contextual
+    data (such as a record ID) into the authentication tag
   - base64 encoded byte and string helpers for transport-safe interchange
   - gob and JSON wrappers for encrypting and decrypting structured Go values
   - layered error propagation from encoding, base64, and cryptographic operations
@@ -24,6 +26,27 @@ Benefits:
   - reduce boilerplate for secure payload handling
   - avoid accidental use of insecure or unauthenticated encryption modes
   - simplify encryption of structured data in distributed systems
+
+# Security and caveats
+
+  - Random-nonce message limit: each call generates a fresh 96-bit random nonce.
+    With random nonces the number of messages that may safely be encrypted under a
+    single key is bounded by the birthday paradox (see NIST SP 800-38D). Rotate
+    keys well before ~2^32 messages per key to keep the nonce-collision probability
+    negligible. A nonce collision under the same key breaks both confidentiality
+    and authentication.
+  - Nonce uniqueness depends entirely on the randomness source. [Encrypt] uses
+    [crypto/rand.Reader]. Override it (via [EncryptWith] and [WithRandReader]) only
+    in tests; a non-cryptographic or repeating reader causes nonce reuse.
+  - The gob helpers ([ByteEncryptAny]/[ByteDecryptAny] and their string wrappers)
+    decode with [encoding/gob], which is not designed for adversarial input.
+    Because the payload is authenticated before decoding, only data produced by a
+    holder of the key ever reaches the decoder; even so, prefer the JSON family
+    (the *SerializeAny helpers) for cross-language or lower-trust payloads.
+  - The Base64 output uses standard encoding (RFC 4648 with '+' and '/'), which is
+    not URL- or filename-safe. Re-encode at the call site if you need to embed the
+    payload in a URL or path.
+  - All exported functions are stateless and safe for concurrent use.
 */
 package encrypt
 
@@ -31,39 +54,58 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-
-	"github.com/tecnickcom/gogen/pkg/random"
 )
 
-// config holds the resolved options for an encryption call.
+// ErrInvalidInputSize is returned by [Decrypt] and [DecryptWith] when the payload
+// is shorter than the AES-GCM nonce, so it cannot contain a nonce plus ciphertext.
+var ErrInvalidInputSize = errors.New("encrypt: input shorter than nonce size")
+
+// config holds the resolved options for an encryption or decryption call.
 //
-// The zero value uses a nil random reader, which random.New interprets as
-// crypto/rand.Reader. This keeps Encrypt non-failing in production while
-// allowing tests to inject a deterministic or failing reader via Option,
+// The zero value uses a nil random reader, which [EncryptWith] interprets as
+// crypto/rand.Reader, and a nil AAD. This keeps Encrypt non-failing in production
+// while allowing tests to inject a deterministic or failing reader via Option,
 // without any runtime-mutated package global.
 type config struct {
 	randReader io.Reader
+	aad        []byte
 }
 
-// Option customizes the behavior of EncryptWith.
+// Option customizes the behavior of [EncryptWith] and [DecryptWith].
 //
 // Options are additive: existing Encrypt/Decrypt signatures are unchanged and
-// always use the secure default reader (crypto/rand.Reader).
+// always use the secure default reader (crypto/rand.Reader) with no AAD.
 type Option func(*config)
 
 // WithRandReader overrides the random source used to generate the AES-GCM nonce.
 //
-// It is primarily useful for tests that need a deterministic or failing reader.
-// Production code should rely on the default (crypto/rand.Reader) via Encrypt.
+// SECURITY: the reader MUST be a cryptographically secure source of unique bytes.
+// Reusing a nonce under the same key breaks AES-GCM confidentiality and
+// authentication, so this option is intended for tests only. Production code must
+// use [Encrypt] (or [EncryptWith] without this option), which reads from
+// crypto/rand.Reader. It has no effect on [DecryptWith].
 func WithRandReader(r io.Reader) Option {
 	return func(c *config) {
 		c.randReader = r
+	}
+}
+
+// WithAAD binds additional authenticated data (AAD) to the ciphertext.
+//
+// The AAD is authenticated but not encrypted: the exact same value must be
+// supplied to [DecryptWith] or decryption fails. Use it to bind contextual data
+// (such as a record ID or schema version) to a payload. The high-level
+// Any/Serialize helpers do not expose AAD; use [EncryptWith]/[DecryptWith] for it.
+func WithAAD(aad []byte) Option {
+	return func(c *config) {
+		c.aad = aad
 	}
 }
 
@@ -88,8 +130,9 @@ func Encrypt(key, msg []byte) ([]byte, error) {
 	return EncryptWith(key, msg)
 }
 
-// EncryptWith behaves like Encrypt but accepts options that customize the
-// random source used for nonce generation (see WithRandReader).
+// EncryptWith behaves like [Encrypt] but accepts options that customize the
+// random source used for nonce generation (see [WithRandReader]) and bind
+// additional authenticated data (see [WithAAD]).
 //
 // Without options it is identical to Encrypt and uses crypto/rand.Reader.
 func EncryptWith(key, msg []byte, opts ...Option) ([]byte, error) {
@@ -103,18 +146,37 @@ func EncryptWith(key, msg []byte, opts ...Option) ([]byte, error) {
 		return nil, err
 	}
 
-	nonce, err := random.New(cfg.randReader).RandomBytes(aesgcm.NonceSize())
-	if err != nil {
-		return nil, err //nolint:wrapcheck
+	reader := cfg.randReader
+	if reader == nil {
+		reader = rand.Reader
 	}
 
-	return aesgcm.Seal(nonce, nonce, msg, nil), nil
+	nonce := make([]byte, aesgcm.NonceSize())
+
+	_, err = io.ReadFull(reader, nonce)
+	if err != nil {
+		return nil, fmt.Errorf("generate nonce: %w", err)
+	}
+
+	return aesgcm.Seal(nonce, nonce, msg, cfg.aad), nil
 }
 
-// Decrypt opens a nonce-prefixed AES-GCM payload produced by Encrypt.
+// Decrypt opens a nonce-prefixed AES-GCM payload produced by [Encrypt].
 //
 // key must match the key used during encryption.
 func Decrypt(key, msg []byte) ([]byte, error) {
+	return DecryptWith(key, msg)
+}
+
+// DecryptWith behaves like [Decrypt] but accepts options. Only [WithAAD] is
+// honored: the AAD must match the value passed to [EncryptWith] or decryption
+// fails. [WithRandReader] has no effect on decryption.
+func DecryptWith(key, msg []byte, opts ...Option) ([]byte, error) {
+	cfg := &config{}
+	for _, applyOpt := range opts {
+		applyOpt(cfg)
+	}
+
 	aesgcm, err := newAESGCM(key)
 	if err != nil {
 		return nil, err
@@ -122,10 +184,10 @@ func Decrypt(key, msg []byte) ([]byte, error) {
 
 	ns := aesgcm.NonceSize()
 	if len(msg) < ns {
-		return nil, errors.New("invalid input size")
+		return nil, ErrInvalidInputSize
 	}
 
-	return aesgcm.Open(nil, msg[:ns], msg[ns:], nil) //nolint:wrapcheck
+	return aesgcm.Open(nil, msg[:ns], msg[ns:], cfg.aad) //nolint:wrapcheck
 }
 
 // byteEncryptEncoded encrypts data and returns Base64-encoded ciphertext bytes.
@@ -188,7 +250,7 @@ func ByteDecryptAny(key, msg []byte, data any) error {
 func EncryptAny(key []byte, data any) (string, error) {
 	b, err := ByteEncryptAny(key, data)
 	if err != nil {
-		return "", fmt.Errorf("encrypt: %w", err)
+		return "", err
 	}
 
 	return string(b), nil
@@ -234,7 +296,7 @@ func ByteDecryptSerializeAny(key, msg []byte, data any) error {
 func EncryptSerializeAny(key []byte, data any) (string, error) {
 	b, err := ByteEncryptSerializeAny(key, data)
 	if err != nil {
-		return "", fmt.Errorf("encrypt: %w", err)
+		return "", err
 	}
 
 	return string(b), nil
