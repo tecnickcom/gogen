@@ -44,7 +44,7 @@ func TestStats(t *testing.T) {
 		{
 			name:    "Two elements",
 			data:    []int{29, 13},
-			want:    &DescStats[int]{Count: 2, Entropy: 0.6187, ExKurtosis: 0, Max: 29, MaxID: 0, Mean: 21, MeanDev: 8, Median: 21, Min: 13, MinID: 1, Mode: 29, ModeFreq: 1, Range: 16, Skewness: 0, StdDev: 11.3137, Sum: 42, Variance: 128},
+			want:    &DescStats[int]{Count: 2, Entropy: 0.6187, ExKurtosis: 0, Max: 29, MaxID: 0, Mean: 21, MeanDev: 8, Median: 21, Min: 13, MinID: 1, Mode: 13, ModeFreq: 1, Range: 16, Skewness: 0, StdDev: 11.3137, Sum: 42, Variance: 128},
 			wantErr: false,
 		},
 		{
@@ -56,19 +56,19 @@ func TestStats(t *testing.T) {
 		{
 			name:    "Four elements",
 			data:    []int{53, 13, 37, 29},
-			want:    &DescStats[int]{Count: 4, Entropy: 1.2841, ExKurtosis: 0.3905, Max: 53, MaxID: 0, Mean: 33, MeanDev: 12, Median: 33, Min: 13, MinID: 1, Mode: 53, ModeFreq: 1, Range: 40, Skewness: 0, StdDev: 16.6533, Sum: 132, Variance: 277.3333},
+			want:    &DescStats[int]{Count: 4, Entropy: 1.2841, ExKurtosis: 0.3905, Max: 53, MaxID: 0, Mean: 33, MeanDev: 12, Median: 33, Min: 13, MinID: 1, Mode: 13, ModeFreq: 1, Range: 40, Skewness: 0, StdDev: 16.6533, Sum: 132, Variance: 277.3333},
 			wantErr: false,
 		},
 		{
 			name:    "Five elements",
 			data:    []int{53, 13, 79, 37, 29},
-			want:    &DescStats[int]{Count: 5, Entropy: 1.4645, ExKurtosis: 0.1751, Max: 79, MaxID: 2, Mean: 42.2, MeanDev: 19.04, Median: 37, Min: 13, MinID: 1, Mode: 53, ModeFreq: 1, Range: 66, Skewness: 0.6242, StdDev: 25.1236, Sum: 211, Variance: 631.2},
+			want:    &DescStats[int]{Count: 5, Entropy: 1.4645, ExKurtosis: 0.1751, Max: 79, MaxID: 2, Mean: 42.2, MeanDev: 19.04, Median: 37, Min: 13, MinID: 1, Mode: 13, ModeFreq: 1, Range: 66, Skewness: 0.6242, StdDev: 25.1236, Sum: 211, Variance: 631.2},
 			wantErr: false,
 		},
 		{
 			name:    "Six elements",
 			data:    []int{53, 83, 13, 79, 37, 29},
-			want:    &DescStats[int]{Count: 6, Entropy: 1.6462, ExKurtosis: -1.6680, Max: 83, MaxID: 1, Mean: 49, MeanDev: 22.6667, Median: 45, Min: 13, MinID: 2, Mode: 53, ModeFreq: 1, Range: 70, Skewness: 0.1368, StdDev: 27.9714, Sum: 294, Variance: 782.4},
+			want:    &DescStats[int]{Count: 6, Entropy: 1.6462, ExKurtosis: -1.6680, Max: 83, MaxID: 1, Mean: 49, MeanDev: 22.6667, Median: 45, Min: 13, MinID: 2, Mode: 13, ModeFreq: 1, Range: 70, Skewness: 0.1368, StdDev: 27.9714, Sum: 294, Variance: 782.4},
 			wantErr: false,
 		},
 		{
@@ -194,4 +194,44 @@ func TestStatsFloatDatasets(t *testing.T) {
 			requireFiniteStats(t, got)
 		})
 	}
+}
+
+func TestStatsErrEmptySlice(t *testing.T) {
+	t.Parallel()
+
+	_, err := Stats([]int(nil))
+	require.ErrorIs(t, err, ErrEmptySlice)
+
+	_, err = Stats([]int{})
+	require.ErrorIs(t, err, ErrEmptySlice)
+}
+
+func TestStatsNamedSliceType(t *testing.T) {
+	t.Parallel()
+
+	type samples []int64
+
+	got, err := Stats(samples{5, 1, 3, 3})
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, 4, got.Count)
+	require.Equal(t, int64(12), got.Sum)
+	require.Equal(t, int64(1), got.Min)
+	require.Equal(t, int64(5), got.Max)
+	require.Equal(t, int64(3), got.Mode)
+	require.Equal(t, 2, got.ModeFreq)
+}
+
+func TestStatsUnsignedType(t *testing.T) {
+	t.Parallel()
+
+	got, err := Stats([]uint{4, 2, 2, 8})
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, uint(16), got.Sum)
+	require.Equal(t, uint(2), got.Min)
+	require.Equal(t, uint(8), got.Max)
+	require.Equal(t, uint(6), got.Range)
+	require.Equal(t, uint(2), got.Mode)
+	require.Equal(t, 2, got.ModeFreq)
 }

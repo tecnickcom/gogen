@@ -39,3 +39,20 @@ func TestReduce(t *testing.T) {
 
 	require.Equal(t, 135, got)
 }
+
+func TestFilterNoMatch(t *testing.T) {
+	t.Parallel()
+
+	got := Filter([]int{1, 2, 3}, func(_, v int) bool { return v > 10 })
+
+	require.NotNil(t, got)
+	require.Empty(t, got)
+}
+
+func TestSliceNilInputs(t *testing.T) {
+	t.Parallel()
+
+	require.NotNil(t, Filter([]int(nil), func(_, _ int) bool { return true }))
+	require.NotNil(t, Map([]int(nil), func(_, v int) int { return v }))
+	require.Equal(t, 7, Reduce([]int(nil), 7, func(_, v, acc int) int { return v + acc }))
+}

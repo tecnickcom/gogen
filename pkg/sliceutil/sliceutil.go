@@ -30,8 +30,8 @@ Descriptive statistics for numeric slices:
   - Functional helpers include element index in callbacks for context-aware
     transforms.
   - Numeric statistics are available for all [typeutil.Number] types.
-  - Safe error behavior for invalid input: [Stats] returns an error for empty
-    slices.
+  - Safe error behavior for invalid input: [Stats] returns [ErrEmptySlice] for
+    empty slices.
   - Clear composition model: use [Filter], [Map], and [Reduce] in pipelines,
     then summarize results with [Stats].
 
@@ -59,7 +59,7 @@ package sliceutil
 
 // Filter returns a new slice containing only elements for which f returns true.
 func Filter[S ~[]E, E any](s S, f func(int, E) bool) S {
-	r := make(S, 0)
+	r := make(S, 0, len(s))
 
 	for k, v := range s {
 		if f(k, v) {

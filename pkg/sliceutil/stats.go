@@ -8,21 +8,28 @@ import (
 	"github.com/tecnickcom/gogen/pkg/typeutil"
 )
 
+// ErrEmptySlice is returned by Stats when the input slice contains no elements.
+var ErrEmptySlice = errors.New("input slice is empty")
+
 // DescStats contains descriptive statistics items for a data set.
 type DescStats[V typeutil.Number] struct {
 	// Count is the total number of items in the data set.
 	Count int `json:"count"`
 
-	// Entropy computes the Shannon entropy of a distribution.
+	// Entropy is the entropy of the value distribution, expressed in nats
+	// (natural logarithm, base e); divide by ln(2) to convert to bits.
 	// It is meaningful only for non-negative data with a positive sum, where the
 	// values can be interpreted as an unnormalized probability distribution.
 	// For data whose sum is not strictly positive (e.g. signed data, all zeros,
-	// or a zero/negative total) the entropy is reported as 0 to avoid NaN/Inf.
+	// or a zero/negative total) the entropy is reported as 0 to avoid NaN/Inf;
+	// individual non-positive values are skipped for the same reason.
 	Entropy float64 `json:"entropy"`
 
-	// ExKurtosis is the population excess kurtosis of the data set.
-	// The kurtosis is defined by the 4th moment of the mean divided by the squared variance.
-	// The excess kurtosis subtracts 3.0 so that the excess kurtosis of the normal distribution is zero.
+	// ExKurtosis is the sample excess kurtosis (G2) of the data set: the
+	// bias-corrected fourth standardized moment with 3.0 subtracted, so that the
+	// excess kurtosis of a normal distribution is zero.
+	// It is defined only for n >= 4 with a non-zero standard deviation; otherwise
+	// it is reported as 0.
 	ExKurtosis float64 `json:"exkurtosis"`
 
 	// Max is the maximum value of the data.
@@ -34,8 +41,9 @@ type DescStats[V typeutil.Number] struct {
 	// Mean or Average is a central tendency of the data.
 	Mean float64 `json:"mean"`
 
-	// MeanDev is the Mean Deviation or Mean Absolute Deviation.
-	// It is an average of absolute differences between each value in the data, and the average of all values.
+	// MeanDev is the Mean Absolute Deviation: the average of the absolute
+	// differences between each value and Mean, normalized by n (unlike the
+	// sample Variance, which divides by n-1).
 	MeanDev float64 `json:"meandev"`
 
 	// Median is the value that divides the data into 2 equal parts.
@@ -48,37 +56,48 @@ type DescStats[V typeutil.Number] struct {
 	// MinID is the index (key) of the Min malue in a data set.
 	MinID int `json:"minid"`
 
-	// Mode is the term appearing maximum time in data set.
-	// It is the term that has the highest frequency.
+	// Mode is the value with the highest frequency in the data set. Ties are
+	// broken deterministically by choosing the smallest tied value.
+	// When ModeFreq == 1 no value repeats and there is no true mode; Mode is
+	// then the smallest value in the data set.
 	Mode V `json:"mode"`
 
-	// ModeFreq is the frequency of the Mode value.
+	// ModeFreq is the frequency of the Mode value. A value of 1 means no value
+	// repeats in the data set (see Mode).
 	ModeFreq int `json:"modefreq"`
 
-	// Range is the difference between the highest (Max) and lowest (Min) value.
+	// Range is the difference between the highest (Max) and lowest (Min) value,
+	// using the element type V. As with Sum, this can overflow for narrow signed
+	// integer element types with extreme values.
 	Range V `json:"range"`
 
-	// Skewness is a measure of the asymmetry of the probability distribution of a real-valued random variable about its mean.
-	// Provides the adjusted Fisher-Pearson standardized moment coefficient.
+	// Skewness measures the asymmetry of the distribution about its mean, as the
+	// adjusted Fisher-Pearson standardized moment coefficient (sample G1).
+	// It is defined only for n >= 3 with a non-zero standard deviation; otherwise
+	// it is reported as 0.
 	Skewness float64 `json:"skewness"`
 
-	// StdDev is the Standard deviation of the data.
-	// It measures the average distance between each quantity and mean.
+	// StdDev is the sample standard deviation: the square root of the sample
+	// Variance (which uses the n-1 divisor).
 	StdDev float64 `json:"stddev"`
 
-	// Sum of all the values in the data.
+	// Sum is the total of all values, using the element type V. For narrow
+	// integer element types or very large data sets it can overflow; use a wide
+	// element type (int64/float64) when exact large totals are required.
 	Sum V `json:"sum"`
 
-	// Variance is a square of average distance between each quantity and Mean.
+	// Variance is the sample variance: the sum of squared deviations from Mean
+	// divided by n-1 (Bessel's correction). It is 0 for a single element, where
+	// the sample variance is undefined.
 	Variance float64 `json:"variance"`
 }
 
 // Stats computes a DescStats summary for a numeric slice including count, sum, min/max, range, mode, mean, median, and shape metrics.
-// Returns error if the slice is empty.
+// It returns ErrEmptySlice if s has no elements.
 func Stats[S ~[]V, V typeutil.Number](s S) (*DescStats[V], error) {
 	n := len(s)
 	if n < 1 {
-		return nil, errors.New("input slice is empty")
+		return nil, ErrEmptySlice
 	}
 
 	ds := &DescStats[V]{
@@ -100,6 +119,11 @@ func Stats[S ~[]V, V typeutil.Number](s S) (*DescStats[V], error) {
 
 	ord := slices.Clone(s)
 	slices.Sort(ord)
+
+	// For all-distinct data (no value repeats) the mode logic never overrides
+	// this fallback, so seed it with the smallest value for a deterministic,
+	// order-independent result.
+	ds.Mode = ord[0]
 
 	statsCenter(ds, s, ord, n, nf)
 	statsVariability(ds, ord, nf)
@@ -207,5 +231,8 @@ func statsShape[S ~[]V, V typeutil.Number](ds *DescStats[V], ord S, nf float64) 
 		return
 	}
 
-	ds.ExKurtosis = (ds.ExKurtosis * (((nf + 1) / (nf - 1)) * (nf / (nf - 2)) * (1 / (nf - 3)))) - (3 * ((nf - 1) / (nf - 2)) * ((nf - 1) / (nf - 3)))
+	// Sample excess kurtosis (G2): bias-corrected scale minus the correction term.
+	scale := ((nf + 1) / (nf - 1)) * (nf / (nf - 2)) * (1 / (nf - 3))
+	bias := 3 * ((nf - 1) / (nf - 2)) * ((nf - 1) / (nf - 3))
+	ds.ExKurtosis = ds.ExKurtosis*scale - bias
 }
