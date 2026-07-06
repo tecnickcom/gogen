@@ -39,16 +39,21 @@ func IntToFloat(v int64) float64 {
 // while preserving the package's fixed-point representation.
 //
 // Unlike FloatToInt, which clamps non-finite and out-of-range values, this
-// function returns an error when the parsed value is NaN, infinite, or outside
-// the safe range [-MaxFloat, MaxFloat].
+// function returns an error wrapping ErrInvalidNumber when the string cannot be
+// parsed or is NaN or infinite, and ErrOutOfRange when the value is outside the
+// safe range [-MaxFloat, MaxFloat].
 func StringToInt(s string) (int64, error) {
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return 0, fmt.Errorf("unable to parse string number '%s': %w", s, err)
+		return 0, fmt.Errorf("%w: unable to parse '%s': %w", ErrInvalidNumber, s, err)
 	}
 
-	if math.IsNaN(v) || math.IsInf(v, 0) || v > MaxFloat || v < -MaxFloat {
-		return 0, fmt.Errorf("number '%s' is not a finite value within the safe range [-%g, %g]", s, MaxFloat, MaxFloat)
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return 0, fmt.Errorf("%w: '%s' is not finite", ErrInvalidNumber, s)
+	}
+
+	if v > MaxFloat || v < -MaxFloat {
+		return 0, fmt.Errorf("%w: '%s' is outside [-%d, %d] scaled", ErrOutOfRange, s, int64(MaxInt), int64(MaxInt))
 	}
 
 	return FloatToInt(v), nil
@@ -56,7 +61,16 @@ func StringToInt(s string) (int64, error) {
 
 // IntToString formats a scaled int64 value as a six-decimal string.
 //
-// The fixed format provides stable output for serialization and comparisons.
+// The value is formatted directly from the integer, so the output is exact for
+// every int64 (including values outside the safe range) and independent of
+// float64 precision.
 func IntToString(v int64) string {
-	return fmt.Sprintf(stringFormat, IntToFloat(v))
+	sign := ""
+
+	u := uint64(v)
+	if v < 0 {
+		sign, u = "-", -u // modular negation yields the magnitude, even for math.MinInt64
+	}
+
+	return fmt.Sprintf("%s%d.%06d", sign, u/scale, u%scale)
 }

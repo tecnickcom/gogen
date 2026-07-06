@@ -116,10 +116,10 @@ func TestStringToInt(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		v       string
-		want    int64
-		wantErr bool
+		name  string
+		v     string
+		want  int64
+		errIs error
 	}{
 		{
 			name: "zero",
@@ -128,54 +128,75 @@ func TestStringToInt(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    "9007199254.740992",
+			v:    "8589934592",
 			want: MaxInt,
 		},
 		{
 			name: "min",
-			v:    "-9007199254.740992",
+			v:    "-8589934592",
 			want: -MaxInt,
 		},
 		{
-			name:    "error",
-			v:       "ERROR",
-			want:    0,
-			wantErr: true,
+			name:  "error",
+			v:     "ERROR",
+			want:  0,
+			errIs: ErrInvalidNumber,
 		},
 		{
-			name:    "nan returns error",
-			v:       "NaN",
-			want:    0,
-			wantErr: true,
+			name:  "nan returns invalid number error",
+			v:     "NaN",
+			want:  0,
+			errIs: ErrInvalidNumber,
 		},
 		{
-			name:    "positive infinity returns error",
-			v:       "Inf",
-			want:    0,
-			wantErr: true,
+			name:  "positive infinity returns invalid number error",
+			v:     "Inf",
+			want:  0,
+			errIs: ErrInvalidNumber,
 		},
 		{
-			name:    "negative infinity returns error",
-			v:       "-Inf",
-			want:    0,
-			wantErr: true,
+			name:  "negative infinity returns invalid number error",
+			v:     "-Inf",
+			want:  0,
+			errIs: ErrInvalidNumber,
 		},
 		{
-			name:    "over range returns error",
-			v:       "9007199255",
-			want:    0,
-			wantErr: true,
+			name:  "over range returns out of range error",
+			v:     "9007199255",
+			want:  0,
+			errIs: ErrOutOfRange,
 		},
 		{
-			name:    "under range returns error",
-			v:       "-9007199255",
-			want:    0,
-			wantErr: true,
+			name:  "under range returns out of range error",
+			v:     "-9007199255",
+			want:  0,
+			errIs: ErrOutOfRange,
+		},
+		{
+			name:  "just above max returns out of range error", // 2^33 + 1e-6, first float-unsafe value
+			v:     "8589934592.000001",
+			want:  0,
+			errIs: ErrOutOfRange,
 		},
 		{
 			name: "exact decimal rounds correctly", // regression: truncation returned 8199999
 			v:    "8.2",
 			want: 8200000,
+		},
+		{
+			name: "rounds seventh decimal half away from zero up",
+			v:    "1.2345675",
+			want: 1234568,
+		},
+		{
+			name: "rounds seventh decimal half away from zero down",
+			v:    "1.2345665",
+			want: 1234567,
+		},
+		{
+			name: "rounds negative seventh decimal half away from zero",
+			v:    "-1.2345675",
+			want: -1234568,
 		},
 	}
 
@@ -185,7 +206,12 @@ func TestStringToInt(t *testing.T) {
 
 			got, err := StringToInt(tt.v)
 
-			require.Equal(t, tt.wantErr, err != nil)
+			if tt.errIs != nil {
+				require.ErrorIs(t, err, tt.errIs)
+			} else {
+				require.NoError(t, err)
+			}
+
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -207,12 +233,22 @@ func TestIntToString(t *testing.T) {
 		{
 			name: "max",
 			v:    MaxInt,
-			want: "9007199254.740992",
+			want: "8589934592.000000",
 		},
 		{
 			name: "min",
 			v:    -MaxInt,
-			want: "-9007199254.740992",
+			want: "-8589934592.000000",
+		},
+		{
+			name: "just below max is exact", // regression: float64 formatting printed a wrong last digit
+			v:    MaxInt - 1,
+			want: "8589934591.999999",
+		},
+		{
+			name: "just above negative min is exact",
+			v:    -(MaxInt - 1),
+			want: "-8589934591.999999",
 		},
 		{
 			name: "exact decimal round-trip",

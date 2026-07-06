@@ -82,7 +82,7 @@ func TestUintToFloat(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    MaxInt, // 2^53
+			v:    MaxInt, // 2^33 * 1e6
 			want: MaxFloat,
 		},
 	}
@@ -101,10 +101,10 @@ func TestStringToUint(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		v       string
-		want    uint64
-		wantErr bool
+		name  string
+		v     string
+		want  uint64
+		errIs error
 	}{
 		{
 			name: "zero",
@@ -113,48 +113,64 @@ func TestStringToUint(t *testing.T) {
 		},
 		{
 			name: "max",
-			v:    "9007199254.740992",
+			v:    "8589934592",
 			want: MaxInt,
 		},
 		{
-			name: "min",
-			v:    "-9007199254.740992",
+			name: "negative clamps to zero",
+			v:    "-8589934592",
 			want: 0,
 		},
 		{
-			name:    "error",
-			v:       "ERROR",
-			want:    0,
-			wantErr: true,
+			name: "below range negative clamps to zero", // finite non-positive clamps, never errors
+			v:    "-9007199255",
+			want: 0,
 		},
 		{
-			name:    "nan returns error",
-			v:       "NaN",
-			want:    0,
-			wantErr: true,
+			name:  "error",
+			v:     "ERROR",
+			want:  0,
+			errIs: ErrInvalidNumber,
 		},
 		{
-			name:    "positive infinity returns error",
-			v:       "Inf",
-			want:    0,
-			wantErr: true,
+			name:  "nan returns invalid number error",
+			v:     "NaN",
+			want:  0,
+			errIs: ErrInvalidNumber,
 		},
 		{
-			name:    "negative infinity returns error",
-			v:       "-Inf",
-			want:    0,
-			wantErr: true,
+			name:  "positive infinity returns invalid number error",
+			v:     "Inf",
+			want:  0,
+			errIs: ErrInvalidNumber,
 		},
 		{
-			name:    "over range returns error",
-			v:       "9007199255",
-			want:    0,
-			wantErr: true,
+			name:  "negative infinity returns invalid number error",
+			v:     "-Inf",
+			want:  0,
+			errIs: ErrInvalidNumber,
+		},
+		{
+			name:  "over range returns out of range error",
+			v:     "9007199255",
+			want:  0,
+			errIs: ErrOutOfRange,
+		},
+		{
+			name:  "just above max returns out of range error", // 2^33 + 1e-6, first float-unsafe value
+			v:     "8589934592.000001",
+			want:  0,
+			errIs: ErrOutOfRange,
 		},
 		{
 			name: "exact decimal rounds correctly", // regression: truncation returned 8199999
 			v:    "8.2",
 			want: 8200000,
+		},
+		{
+			name: "rounds seventh decimal half away from zero",
+			v:    "1.2345675",
+			want: 1234568,
 		},
 	}
 
@@ -164,7 +180,12 @@ func TestStringToUint(t *testing.T) {
 
 			got, err := StringToUint(tt.v)
 
-			require.Equal(t, tt.wantErr, err != nil)
+			if tt.errIs != nil {
+				require.ErrorIs(t, err, tt.errIs)
+			} else {
+				require.NoError(t, err)
+			}
+
 			require.Equal(t, tt.want, got)
 		})
 	}
@@ -186,7 +207,12 @@ func TestUintToString(t *testing.T) {
 		{
 			name: "max",
 			v:    MaxInt,
-			want: "9007199254.740992",
+			want: "8589934592.000000",
+		},
+		{
+			name: "just below max is exact", // regression: float64 formatting printed a wrong last digit
+			v:    MaxInt - 1,
+			want: "8589934591.999999",
 		},
 		{
 			name: "exact decimal round-trip",
