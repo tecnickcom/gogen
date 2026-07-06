@@ -22,6 +22,9 @@ type Number interface {
 
 // Ordered is a constraint that permits any ordered type:
 // any type that supports the operators < <= >= >.
+//
+// It matches the standard library's cmp.Ordered; it is kept here so consumers
+// can use a single constraints vocabulary alongside [Number].
 type Ordered interface {
 	Number | ~string
 }

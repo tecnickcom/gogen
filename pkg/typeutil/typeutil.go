@@ -40,8 +40,13 @@ correct, idiomatic solutions to all four in one small dependency.
 	var i any = p
 	typeutil.IsNil(i) // true, whereas i == nil is false
 
-	// Zero value of an arbitrary generic type:
-	func empty[T any]() T { return typeutil.Zero(*new(T)) }
+	// Zero value inferred from an existing value — handy as a sentinel return:
+	func check[T any](v T) (T, error) {
+		if !valid(v) {
+			return typeutil.Zero(v), errInvalid
+		}
+		return v, nil
+	}
 
 	// Safe pointer dereference:
 	var timeout *time.Duration
@@ -68,6 +73,9 @@ func IsNil(v any) bool {
 
 	value := reflect.ValueOf(v)
 
+	// reflect.ValueOf unwraps the interface, so Kind is never Interface for a
+	// top-level any argument; that case is kept only for safety in case IsNil is
+	// ever changed to inspect interface-typed fields.
 	switch value.Kind() { //nolint:exhaustive
 	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
 		return value.IsNil()
@@ -78,13 +86,18 @@ func IsNil(v any) bool {
 
 // IsZero returns true if value equals type T's zero value without requiring comparable constraint.
 //
-// It uses reflection, which causes v to escape to the heap; prefer a direct
-// comparison when the type is known and the call is on a hot path.
+// It goes through reflection. The call is inlinable and normally allocates
+// nothing, but if v (or its address) escapes at the call site it is
+// heap-allocated; prefer a direct v == zero comparison on hot paths where T is a
+// known comparable type.
 func IsZero[T any](v T) bool {
 	return reflect.ValueOf(&v).Elem().IsZero()
 }
 
 // Zero returns zero value for type T as a generic sentinel, useful for readable error returns.
+//
+// The argument exists only to infer T; it is evaluated but otherwise unused, so
+// avoid passing an expensive or panic-prone expression.
 func Zero[T any](_ T) T {
 	var zero T
 	return zero
@@ -110,15 +123,27 @@ func Value[T any](p *T) T {
 	return *p
 }
 
-// BoolToInt converts bool to 0 or 1 with compiler optimization to MOVBLZX; avoids branch in hot paths.
-func BoolToInt(b bool) int {
-	var i int
+// BoolToNum converts bool to 0 or 1 of any numeric type T, saving a cast at
+// numeric call sites; see [BoolToInt] for the int-specific version.
+//
+// Integer instantiations keep the branch-free MOVBLZX codegen of [BoolToInt];
+// float instantiations compile to a small conditional load.
+func BoolToNum[T Number](b bool) T {
+	var n T
 
 	if b {
-		i = 1
+		n = 1
 	} else {
-		i = 0
+		n = 0
 	}
 
-	return i
+	return n
+}
+
+// BoolToInt converts bool to 0 or 1 with compiler optimization to MOVBLZX; avoids branch in hot paths.
+//
+// It delegates to [BoolToNum]; the int shape is inlined to the same single
+// MOVBLZX instruction, so there is no cost over an open-coded version.
+func BoolToInt(b bool) int {
+	return BoolToNum[int](b)
 }

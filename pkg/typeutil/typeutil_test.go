@@ -1,7 +1,9 @@
 package typeutil
 
 import (
+	"math"
 	"testing"
+	"unsafe"
 
 	"github.com/stretchr/testify/require"
 )
@@ -41,12 +43,12 @@ func TestIsNil(t *testing.T) {
 		require.True(t, got)
 	})
 
-	t.Run("nil interface", func(t *testing.T) {
+	t.Run("nil pointer to any", func(t *testing.T) {
 		t.Parallel()
 
-		var nilInterface *any
+		var nilPtrToAny *any
 
-		got := IsNil(nilInterface)
+		got := IsNil(nilPtrToAny)
 		require.True(t, got)
 	})
 
@@ -75,6 +77,55 @@ func TestIsNil(t *testing.T) {
 
 		got := IsNil(nilPointer)
 		require.True(t, got)
+	})
+
+	t.Run("nil unsafe pointer", func(t *testing.T) {
+		t.Parallel()
+
+		var nilUnsafe unsafe.Pointer
+
+		got := IsNil(nilUnsafe)
+		require.True(t, got)
+	})
+
+	// Headline case from the package doc: a nil concrete pointer stored in a
+	// non-nil interface. IsNil sees through it, whereas i == nil would be false.
+	t.Run("nil struct pointer wrapped in interface", func(t *testing.T) {
+		t.Parallel()
+
+		type myStruct struct{}
+
+		var p *myStruct
+
+		got := IsNil(any(p))
+		require.True(t, got)
+	})
+
+	t.Run("non-nil nilable kinds return false", func(t *testing.T) {
+		t.Parallel()
+
+		n := 1
+		ch := make(chan int)
+
+		tests := []struct {
+			name  string
+			value any
+		}{
+			{name: "non-nil pointer", value: &n},
+			{name: "non-nil map", value: map[int]int{}},
+			{name: "non-nil slice", value: []int{}},
+			{name: "non-nil func", value: func() {}},
+			{name: "non-nil chan", value: ch},
+			{name: "non-nil unsafe pointer", value: unsafe.Pointer(&n)},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+
+				require.False(t, IsNil(tt.value))
+			})
+		}
 	})
 }
 
@@ -115,12 +166,12 @@ func TestIsZero(t *testing.T) {
 		require.True(t, got)
 	})
 
-	t.Run("nil interface", func(t *testing.T) {
+	t.Run("nil pointer to any", func(t *testing.T) {
 		t.Parallel()
 
-		var nilInterface *any
+		var nilPtrToAny *any
 
-		got := IsZero(nilInterface)
+		got := IsZero(nilPtrToAny)
 		require.True(t, got)
 	})
 
@@ -149,6 +200,50 @@ func TestIsZero(t *testing.T) {
 
 		got := IsZero(nilPointer)
 		require.True(t, got)
+	})
+
+	t.Run("non-zero int", func(t *testing.T) {
+		t.Parallel()
+
+		require.False(t, IsZero(1))
+	})
+
+	t.Run("non-nil pointer", func(t *testing.T) {
+		t.Parallel()
+
+		n := 0
+
+		require.False(t, IsZero(&n))
+	})
+
+	t.Run("non-nil slice", func(t *testing.T) {
+		t.Parallel()
+
+		require.False(t, IsZero([]int{}))
+	})
+
+	t.Run("non-zero struct", func(t *testing.T) {
+		t.Parallel()
+
+		require.False(t, IsZero(struct{ A int }{A: 1}))
+	})
+
+	t.Run("true bool", func(t *testing.T) {
+		t.Parallel()
+
+		require.False(t, IsZero(true))
+	})
+
+	t.Run("negative zero float is zero", func(t *testing.T) {
+		t.Parallel()
+
+		require.True(t, IsZero(math.Copysign(0, -1)))
+	})
+
+	t.Run("NaN is not zero", func(t *testing.T) {
+		t.Parallel()
+
+		require.False(t, IsZero(math.NaN()))
 	})
 }
 
@@ -267,5 +362,53 @@ func TestBoolToInt(t *testing.T) {
 
 		got := BoolToInt(false)
 		require.Equal(t, 0, got)
+	})
+}
+
+func TestBoolToNum(t *testing.T) {
+	t.Parallel()
+
+	t.Run("int true", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, 1, BoolToNum[int](true))
+	})
+
+	t.Run("int false", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, 0, BoolToNum[int](false))
+	})
+
+	t.Run("int8 true", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, int8(1), BoolToNum[int8](true))
+	})
+
+	t.Run("uint64 false", func(t *testing.T) {
+		t.Parallel()
+
+		require.Equal(t, uint64(0), BoolToNum[uint64](false))
+	})
+
+	t.Run("float64 true", func(t *testing.T) {
+		t.Parallel()
+
+		require.InDelta(t, 1.0, BoolToNum[float64](true), 1e-9)
+	})
+
+	t.Run("float64 false", func(t *testing.T) {
+		t.Parallel()
+
+		require.InDelta(t, 0.0, BoolToNum[float64](false), 1e-9)
+	})
+
+	t.Run("custom numeric type", func(t *testing.T) {
+		t.Parallel()
+
+		type myInt int
+
+		require.Equal(t, myInt(1), BoolToNum[myInt](true))
 	})
 }
