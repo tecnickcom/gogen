@@ -83,9 +83,9 @@ func TestNewLogger_nilTraceIDFn(t *testing.T) {
 	require.NotContains(t, out.String(), logutil.TraceIDKey, "the trace ID field must be omitted when TraceIDFn is nil")
 }
 
-// TestNewLogger_hookReceivesOriginalLevel verifies the hook is invoked with
-// the original slog record level instead of the zerolog-collapsed one
-// (zerolog maps Notice->Info and Critical->Error).
+// TestNewLogger_hookReceivesOriginalLevel verifies the hook runs at the slog layer and is
+// invoked with the original record level (Notice, Critical), which a zerolog-level hook could
+// not see since the handler hands zerolog a NoLevel event.
 func TestNewLogger_hookReceivesOriginalLevel(t *testing.T) {
 	t.Parallel()
 
@@ -124,9 +124,9 @@ func TestNewLogger_hookReceivesOriginalLevel(t *testing.T) {
 }
 
 // TestNewLogger_concurrent creates many loggers concurrently while each one is
-// actively logging. Before the sync.Once fix, NewLogger reassigned the global
-// szlog.LogLevels map on every call while previously created handlers read it
-// at log time, which the race detector flags. This test must pass under -race.
+// actively logging. The native handler holds no process-global state (the level
+// mapping is a pure function), so construction and logging must be race-free.
+// This test must pass under -race.
 func TestNewLogger_concurrent(t *testing.T) {
 	t.Parallel()
 
@@ -163,9 +163,40 @@ func TestNewLogger_concurrent(t *testing.T) {
 	wg.Wait()
 }
 
-// TestNewLogger_singleTimestamp guards against the regression where the zerolog
-// context and the slog-zerolog handler each stamped a "time" field, producing a
-// record with a duplicate JSON key.
+// TestNewHandler_concurrentWriterSafe verifies the handler serializes writes so a
+// non-thread-safe cfg.Out (here a bytes.Buffer) is safe under concurrent logging, matching
+// logutil's standard-library backend. It must pass under -race.
+func TestNewHandler_concurrentWriterSafe(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(&bytes.Buffer{}),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelInfo),
+	)
+	require.NoError(t, err)
+
+	l := slog.New(NewHandler(cfg))
+
+	var wg sync.WaitGroup
+
+	wg.Add(16)
+
+	for range 16 {
+		go func() {
+			defer wg.Done()
+
+			for range 100 {
+				l.Info("concurrent", "k", "v")
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+// TestNewLogger_singleTimestamp guards against a record carrying a duplicate
+// "time" field: the handler must stamp the record time exactly once.
 func TestNewLogger_singleTimestamp(t *testing.T) {
 	t.Parallel()
 
@@ -211,8 +242,8 @@ func TestNewLogger_traceIDPerRecord(t *testing.T) {
 	require.Contains(t, out.String(), `"trace_id":"trace-2"`, "the trace ID must be re-resolved for every record")
 }
 
-// TestNewLogger_traceIDStaysAtRootUnderGroup verifies the converter keeps the trace ID
-// at the root of the record even when the logger is derived with WithGroup.
+// TestNewLogger_traceIDStaysAtRootUnderGroup verifies logutil's trace-ID handler keeps
+// the trace ID at the root of the record even when the logger is derived with WithGroup.
 func TestNewLogger_traceIDStaysAtRootUnderGroup(t *testing.T) {
 	t.Parallel()
 
@@ -319,9 +350,9 @@ func Test_isTerminalWriter(t *testing.T) {
 	require.False(t, isTerminalWriter(f), "a regular file is not a terminal")
 }
 
-// TestNewLogger_severeLevelsDoNotTerminate locks in the invariant that the
-// Emergency->panic and Alert->fatal mappings emit ordinary records (via zerolog's
-// WithLevel) and never terminate the process.
+// TestNewLogger_severeLevelsDoNotTerminate locks in the invariant that the most severe levels
+// emit ordinary records carrying their full syslog name and never terminate the process (the
+// handler uses zerolog's NoLevel, so no Panic/Fatal event behavior is ever triggered).
 func TestNewLogger_severeLevelsDoNotTerminate(t *testing.T) {
 	t.Parallel()
 
@@ -341,8 +372,8 @@ func TestNewLogger_severeLevelsDoNotTerminate(t *testing.T) {
 		l.Log(t.Context(), logutil.LevelAlert, "alert msg")
 	})
 
-	require.Contains(t, out.String(), `"level":"panic"`)
-	require.Contains(t, out.String(), `"level":"fatal"`)
+	require.Contains(t, out.String(), `"level":"emergency"`)
+	require.Contains(t, out.String(), `"level":"alert"`)
 	require.Contains(t, out.String(), "emergency msg")
 	require.Contains(t, out.String(), "alert msg")
 }
