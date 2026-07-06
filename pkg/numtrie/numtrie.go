@@ -73,6 +73,18 @@ The six named constants encode every meaningful combination:
 	StatusMatchPrefix        (   2) — stored key is prefix of input, leaf node
 	StatusMatchPartialPrefix (   3) — stored key is prefix of input, non-leaf node
 
+When bit 7 is set the status is a standalone sentinel (StatusMatchEmpty or
+StatusMatchNo): only bit 7 is significant, the low bits carry no meaning, and
+[Node.Get] returns a nil value for these statuses even when a root/default value
+is present.
+
+# Concurrency
+
+A [Node] is not safe for concurrent modification: [Node.Add] mutates the trie in
+place. Once the trie is fully built it may be queried concurrently by any number
+of goroutines via [Node.Get] and [Node.GetExact], provided no [Node.Add] runs
+concurrently.
+
 # Benefits
 
 This package delivers O(k) longest-prefix match over numerical keys in a
@@ -92,11 +104,14 @@ import (
 // Status codes to be returned when searching for a number in the trie.
 const (
 	// StatusMatchEmpty indicates that the input string contained no recognizable
-	// digit characters and no match was found.
+	// digit characters and no match was found. [Node.Get] returns a nil value
+	// for this status, even when a root/default value is present.
 	StatusMatchEmpty int8 = -127 // 0b10000001
 
 	// StatusMatchNo indicates that no match was found because the first digit
-	// of the input does not correspond to any child of the trie root.
+	// of the input does not correspond to any child of the trie root. [Node.Get]
+	// returns a nil value for this status, even when a root/default value is
+	// present.
 	StatusMatchNo int8 = -125 // 0b10000011
 
 	// StatusMatchFull indicates an exact match: every digit of the input was
@@ -109,8 +124,9 @@ const (
 	StatusMatchPartial int8 = 1 // 0b00000001
 
 	// StatusMatchPrefix indicates that the trie path was exhausted before all
-	// input digits were consumed: a stored key is a prefix of the input. The
-	// value at the last matched node (a leaf) is returned.
+	// input digits were consumed: a stored key is a prefix of the input. The last
+	// non-nil value found along the path is returned (normally the value at the
+	// matched leaf).
 	StatusMatchPrefix int8 = 2 // 0b00000010
 
 	// StatusMatchPartialPrefix indicates that the trie path was exhausted
@@ -119,7 +135,9 @@ const (
 	StatusMatchPartialPrefix int8 = 3 // 0b00000011
 )
 
-// indexSize is the number of possible children for each trie node.
+// indexSize is the number of possible children for each trie node. It matches
+// the [0, 10) range guaranteed by [github.com/tecnickcom/gogen/pkg/phonekeypad.KeypadDigit],
+// whose result indexes the children array directly; the two must stay in sync.
 const indexSize = 10 // digits from 0 to 9
 
 // Node is a generic numerical-indexed trie node that stores a value of type T.
@@ -129,6 +147,11 @@ const indexSize = 10 // digits from 0 to 9
 // numbers (e.g. "+1-800-555-0100") and vanity letter sequences.
 //
 // The zero value is not usable; create a root node with [New].
+//
+// A Node is not safe for concurrent modification: [Node.Add] mutates the trie in
+// place. Once the trie is fully built it may be queried concurrently by any
+// number of goroutines via [Node.Get] and [Node.GetExact], provided no
+// [Node.Add] runs concurrently.
 type Node[T any] struct {
 	value       *T
 	numChildren int
@@ -142,8 +165,21 @@ func New[T any]() *Node[T] {
 
 // Add stores val at the trie position defined by num.
 // Non-digit characters are skipped and letters are mapped to keypad digits.
-// It returns true when the key was new, or false when an existing value was overwritten.
+// It returns true when the key was new, or false when an existing value was
+// overwritten.
+//
+// Storing a value at the empty key (Add("", v)) sets a default returned by
+// [Node.Get] as the longest-prefix fallback for any input that matches at least
+// one digit.
+//
+// A nil val is rejected as a no-op: the trie is left unchanged and Add returns
+// false, since the trie cannot store or distinguish a nil value from an absent
+// one.
 func (t *Node[T]) Add(num string, val *T) bool {
+	if val == nil {
+		return false
+	}
+
 	node := t
 
 	for _, v := range num {
@@ -185,11 +221,14 @@ func (t *Node[T]) Add(num string, val *T) bool {
 //	StatusMatchPartial       (   1) — exact match, non-leaf node
 //	StatusMatchPrefix        (   2) — stored key is prefix of input, leaf node
 //	StatusMatchPartialPrefix (   3) — stored key is prefix of input, non-leaf node
+//
+// For the two negative sentinels (StatusMatchEmpty and StatusMatchNo) the
+// returned value is nil, even when a root/default value is present.
 func (t *Node[T]) Get(num string) (*T, int8) {
 	var match, digit int
 
 	node := t
-	val := node.value // the root node value is also the default value
+	val := node.value // the root node value is the empty-prefix (default) match
 
 	for _, v := range num {
 		i, ok := phonekeypad.KeypadDigit(v)
@@ -201,11 +240,8 @@ func (t *Node[T]) Get(num string) (*T, int8) {
 		digit++
 
 		if node.children[i] == nil {
-			// there are no more children to match
-			if node.value != nil {
-				val = node.value
-			}
-
+			// no child for this digit: stop. val already holds the last non-nil
+			// value seen on the path, including the current node.
 			break
 		}
 
@@ -220,7 +256,15 @@ func (t *Node[T]) Get(num string) (*T, int8) {
 		match++
 	}
 
-	return val, node.matchStatus(match, digit)
+	status := node.matchStatus(match, digit)
+
+	if match == 0 {
+		// Pure no-match (empty input or first digit absent from the trie):
+		// report no value, even when a root/default value is present.
+		return nil, status
+	}
+
+	return val, status
 }
 
 // matchStatus derives the Get status code for a traversal that ended on the
@@ -236,8 +280,8 @@ func (t *Node[T]) matchStatus(match, digit int) int8 {
 		return StatusMatchNo
 	}
 
-	return (int8(typeutil.BoolToInt(digit > match)<<1) |
-		int8(typeutil.BoolToInt(t.numChildren > 0)))
+	return typeutil.BoolToNum[int8](digit > match)<<1 |
+		typeutil.BoolToNum[int8](t.numChildren > 0)
 }
 
 // GetExact retrieves the value stored at the exact trie position defined by num.

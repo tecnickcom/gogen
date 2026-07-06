@@ -30,6 +30,11 @@ func TestNode_Add(t *testing.T) {
 	require.False(t, node.Add("12", &val))
 	require.True(t, node.Add("CFZ", &val))
 	require.False(t, node.Add("239", &val))
+
+	// a nil value is rejected as a no-op: nothing is stored and no node is
+	// created, so it reports false regardless of the position being new.
+	require.False(t, node.Add("5", nil))
+	require.Nil(t, node.children[5])
 }
 
 func TestNode_Get(t *testing.T) {
@@ -214,6 +219,82 @@ func TestNode_Get_empty_trie(t *testing.T) {
 
 	require.Nil(t, got)
 	require.Equal(t, StatusMatchNo, status)
+}
+
+func TestNode_Get_root_default(t *testing.T) {
+	t.Parallel()
+
+	node := New[int]()
+
+	def := 100
+	node.Add("", &def)
+
+	valB := 41
+	node.Add("12", &valB)
+
+	tests := []struct {
+		name   string
+		num    string
+		exp    *int
+		status int8
+	}{
+		{
+			// no-match statuses never leak the root/default value
+			name:   "empty input returns nil despite default",
+			num:    "",
+			exp:    nil,
+			status: StatusMatchEmpty,
+		},
+		{
+			name:   "separators only returns nil despite default",
+			num:    "---",
+			exp:    nil,
+			status: StatusMatchEmpty,
+		},
+		{
+			name:   "no match returns nil despite default",
+			num:    "9",
+			exp:    nil,
+			status: StatusMatchNo,
+		},
+		{
+			// once at least one digit matches, the default is the longest-prefix
+			// fallback for any node that has no value of its own
+			name:   "matched digit falls back to default",
+			num:    "1",
+			exp:    &def,
+			status: StatusMatchPartial,
+		},
+		{
+			name:   "partial prefix falls back to default",
+			num:    "13",
+			exp:    &def,
+			status: StatusMatchPartialPrefix,
+		},
+		{
+			name:   "exact match overrides default",
+			num:    "12",
+			exp:    &valB,
+			status: StatusMatchFull,
+		},
+		{
+			name:   "prefix match keeps stored value",
+			num:    "129",
+			exp:    &valB,
+			status: StatusMatchPrefix,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, status := node.Get(tt.num)
+
+			require.Equal(t, tt.exp, got)
+			require.Equal(t, tt.status, status)
+		})
+	}
 }
 
 func TestNode_GetExact(t *testing.T) {
