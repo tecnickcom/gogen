@@ -30,3 +30,22 @@ func ExampleJoinFnError() {
 	// original error
 	// function error
 }
+
+func ExampleJoinFnError_defer() {
+	// JoinFnError is designed for defer/cleanup: err must be a named return
+	// value so the deferred call can amend it after the function body runs.
+	process := func() (err error) { //nolint:nonamedreturns // JoinFnError amends the return via its address
+		closer := func() error {
+			return errors.New("close failed")
+		}
+		defer errutil.JoinFnError(&err, closer)
+
+		return errors.New("primary failure")
+	}
+
+	fmt.Println(process())
+
+	// Output:
+	// primary failure
+	// close failed
+}
