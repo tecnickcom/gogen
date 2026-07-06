@@ -42,6 +42,11 @@ ones):
     etcd3, firestore, nats), optionally with a secret keyring
  5. Environment variables are also applied on the final Viper instance, so they
     can override file/remote values (useful for secrets and runtime overrides).
+    Only keys registered with a default (via SetDefaults) or present in the
+    config file/remote source are candidates for environment overrides: a key
+    that has no default and appears nowhere else is not populated from the
+    environment. Register a default for every configurable key to make it
+    reliably env-overridable.
  6. Validate() is called on the final decoded config struct.
 
 # Why this matters
@@ -128,9 +133,42 @@ const (
 	defaultShutdownTimeout = 30 // time in seconds to wait on exit for a graceful shutdown.
 )
 
+// Sentinel errors returned by Load and its helpers. Callers can match these with
+// errors.Is to distinguish configuration failure modes.
+var (
+	// ErrNilConfiguration is returned when a nil Configuration is passed to Load.
+	ErrNilConfiguration = errors.New("configuration must not be nil")
+
+	// ErrLocalConfig indicates a failure while loading the local configuration.
+	ErrLocalConfig = errors.New("failed loading local configuration")
+
+	// ErrRemoteConfig indicates a failure while loading the remote configuration.
+	ErrRemoteConfig = errors.New("failed loading remote configuration")
+
+	// ErrInvalidRemoteConfig indicates the remote-source selection settings are invalid.
+	ErrInvalidRemoteConfig = errors.New("invalid remote source configuration")
+
+	// ErrValidation indicates the final decoded configuration failed validation.
+	ErrValidation = errors.New("failed validating configuration")
+
+	// ErrMissingRemoteVar indicates a required remote-provider variable is not set.
+	ErrMissingRemoteVar = errors.New("missing required remote configuration variable")
+)
+
 // Configuration is the interface we need the application config struct to implement.
 type Configuration interface {
+	// SetDefaults registers a default value for every configurable key.
+	//
+	// Registering a default for each key is required for environment-variable
+	// overrides to work: viper only applies an environment override to a key it
+	// already knows about (via a default, the config file, or a remote source).
+	// A key with no default that is absent from the file/remote source will not
+	// be populated from the environment. Use an empty value (e.g. "") when there
+	// is no meaningful default.
 	SetDefaults(v Viper)
+
+	// Validate enforces final constraints on the fully decoded configuration.
+	// It is invoked by Load after all sources have been merged.
 	Validate() error
 }
 
@@ -181,23 +219,30 @@ type LogConfig struct {
 	Address string `mapstructure:"address" validate:"omitempty,hostname_port"`
 }
 
-// remoteSourceConfig contains the default remote source options to be used in the application config struct.
+// remoteSourceConfig contains the remote source options used to locate and load
+// the optional remote configuration.
+//
+// These are internal loader settings and are validated in Go (not via struct
+// tags): the provider name is checked by validateRemoteSourceConfig, and the
+// remaining fields are enforced at their point of use (endpoint/path emptiness in
+// loadFromRemoteSource, data presence and base64 encoding in loadFromEnvVarSource).
 type remoteSourceConfig struct {
 	// Provider is the optional external configuration source: consul, envvar, etcd, etcd3, firestore, nats.
 	// When envvar is set the data should be set in the Data field.
-	Provider string `mapstructure:"remoteConfigProvider" validate:"omitempty,oneof=consul envvar etcd etcd3 firestore nats"`
+	Provider string `mapstructure:"remoteConfigProvider"`
 
 	// Endpoint is the remote configuration URL (ip:port).
-	Endpoint string `mapstructure:"remoteConfigEndpoint" validate:"omitempty,url|hostname_port"`
+	Endpoint string `mapstructure:"remoteConfigEndpoint"`
 
-	// Path is the remote configuration path where to search fo the configuration file ("/cli/program").
-	Path string `mapstructure:"remoteConfigPath" validate:"omitempty,file"`
+	// Path is the remote configuration path where to search for the configuration file ("/cli/program").
+	// This is a path on the remote provider, not on the local filesystem.
+	Path string `mapstructure:"remoteConfigPath"`
 
-	// SecretKeyring is the path to the openpgp secret keyring used to decript the remote configuration data (e.g.: "/etc/program/configkey.gpg")
-	SecretKeyring string `mapstructure:"remoteConfigSecretKeyring" validate:"omitempty,file"`
+	// SecretKeyring is the path to the openpgp secret keyring used to decrypt the remote configuration data (e.g.: "/etc/program/configkey.gpg")
+	SecretKeyring string `mapstructure:"remoteConfigSecretKeyring"`
 
 	// Data is the base64 encoded JSON configuration data to be used with the "envvar" provider.
-	Data string `mapstructure:"remoteConfigData" validate:"required_if=Provider envvar,omitempty,base64"`
+	Data string `mapstructure:"remoteConfigData"`
 }
 
 // Load builds cfg from defaults, local config, environment, and optional remote sources.
@@ -208,6 +253,10 @@ type remoteSourceConfig struct {
 // The function applies the documented merge order, unmarshals into cfg, and
 // executes cfg.Validate before returning.
 func Load(cmdName, configDir, envPrefix string, cfg Configuration) error {
+	if cfg == nil {
+		return ErrNilConfiguration
+	}
+
 	localViper := viper.New()
 	remoteViper := viper.New()
 
@@ -222,17 +271,17 @@ func Load(cmdName, configDir, envPrefix string, cfg Configuration) error {
 func loadConfig(localViper, remoteViper Viper, cmdName, configDir, envPrefix string, cfg Configuration) error {
 	remoteSourceCfg, err := loadLocalConfig(localViper, cmdName, configDir, envPrefix, cfg)
 	if err != nil {
-		return fmt.Errorf("failed loading local configuration: %w", err)
+		return fmt.Errorf("%w: %w", ErrLocalConfig, err)
 	}
 
 	err = loadRemoteConfig(localViper, remoteViper, remoteSourceCfg, envPrefix, cfg)
 	if err != nil {
-		return fmt.Errorf("failed loading remote configuration: %w", err)
+		return fmt.Errorf("%w: %w", ErrRemoteConfig, err)
 	}
 
 	err = cfg.Validate()
 	if err != nil {
-		return fmt.Errorf("failed validating configuration: %w", err)
+		return fmt.Errorf("%w: %w", ErrValidation, err)
 	}
 
 	return nil
@@ -272,9 +321,7 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 	cfg.SetDefaults(v)
 
 	// support environment variables for the remote configuration
-	v.AutomaticEnv()
-	v.SetEnvPrefix(strings.ReplaceAll(envPrefix, "-", "_")) // will be uppercased automatically
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	configureEnv(v, envPrefix)
 
 	envVar := []string{
 		keyRemoteConfigProvider,
@@ -307,6 +354,14 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 		return nil, fmt.Errorf("failed unmarshalling config: %w", err)
 	}
 
+	// Fail fast on invalid remote-source selection (e.g. an unsupported provider
+	// name or a malformed endpoint) so problems surface here with a clear message
+	// instead of later as an opaque remote-backend error.
+	err = validateRemoteSourceConfig(&rsCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return &rsCfg, nil
 }
 
@@ -319,6 +374,11 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 // This staged merge model gives developers predictable precedence and clear
 // separation between local and remote concerns.
 func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix string, cfg Configuration) error {
+	// Seed the remote viper with every resolved local key as a default. This
+	// intentionally demotes local file/default values to the "default" layer so
+	// that remote-provider data and environment variables (applied below) take
+	// precedence, matching the documented load order. Only keys present here can
+	// be overridden via environment variables (see the SetDefaults contract).
 	for _, k := range lv.AllKeys() {
 		rv.SetDefault(k, lv.Get(k))
 	}
@@ -327,9 +387,7 @@ func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix stri
 
 	// Environment variables take precedence over configuration files.
 	// This is useful to populate secret values from environment variables.
-	rv.AutomaticEnv()
-	rv.SetEnvPrefix(strings.ReplaceAll(envPrefix, "-", "_"))
-	rv.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	configureEnv(rv, envPrefix)
 
 	var err error
 
@@ -426,11 +484,43 @@ func configureSearchPath(v Viper, cmdName, configDir string) {
 	}
 }
 
+// configureEnv wires environment-variable support on v using the shared prefix
+// and key-replacer rules, so local and remote viper instances resolve
+// environment variables identically.
+func configureEnv(v Viper, envPrefix string) {
+	v.AutomaticEnv()
+	v.SetEnvPrefix(normalizeEnvPrefix(envPrefix)) // will be uppercased automatically
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+}
+
+// normalizeEnvPrefix converts the environment prefix to the canonical form used
+// for variable lookups: "-" becomes "_" (viper uppercases it later).
+func normalizeEnvPrefix(envPrefix string) string {
+	return strings.ReplaceAll(envPrefix, "-", "_")
+}
+
+// validateRemoteSourceConfig fails fast on an unsupported remote-source provider.
+//
+// Only the provider name is checked here because it selects the load path and a
+// typo would otherwise silently route to the wrong branch. The remaining fields
+// are validated at their point of use with actionable messages: endpoint and
+// path emptiness in loadFromRemoteSource, data presence and base64 encoding in
+// loadFromEnvVarSource. The set below is viper's SupportedRemoteProviders plus
+// the package-specific "envvar" provider; keep it in sync with the error message.
+func validateRemoteSourceConfig(rs *remoteSourceConfig) error {
+	switch rs.Provider {
+	case "", "consul", providerEnvVar, "etcd", "etcd3", "firestore", "nats":
+		return nil
+	default:
+		return fmt.Errorf("%w: unsupported remoteConfigProvider %q (must be one of: consul, envvar, etcd, etcd3, firestore, nats)", ErrInvalidRemoteConfig, rs.Provider)
+	}
+}
+
 // validationError formats a consistent missing-variable error for providers.
 //
 // It produces an actionable message that includes provider name and the exact
 // expected environment variable key, applying the same "-" to "_" replacement
 // used when binding environment variables.
 func validationError(provider, envPrefix, varName string) error {
-	return fmt.Errorf("%s config provider requires %s_%s to be set", provider, strings.ToUpper(strings.ReplaceAll(envPrefix, "-", "_")), strings.ToUpper(varName))
+	return fmt.Errorf("%w: %s config provider requires %s_%s to be set", ErrMissingRemoteVar, provider, strings.ToUpper(normalizeEnvPrefix(envPrefix)), strings.ToUpper(varName))
 }

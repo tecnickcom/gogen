@@ -14,7 +14,6 @@ import (
 	"strings"
 	"testing"
 
-	vt "github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -43,7 +42,7 @@ type testConfig struct {
 	Int32       int32                        `mapstructure:"int32"`
 	UInt32      uint32                       `mapstructure:"uint32"`
 	Float32     float32                      `mapstructure:"float32"`
-	Float64     float32                      `mapstructure:"float64"`
+	Float64     float64                      `mapstructure:"float64"`
 	Int16       int16                        `mapstructure:"int16"`
 	UInt16      uint16                       `mapstructure:"uint16"`
 	Boolean     bool                         `mapstructure:"bool"`
@@ -212,22 +211,34 @@ func Test_loadLocalConfig(t *testing.T) {
 			name: "succeed from populated file",
 			configContent: []byte(`
 {
-  "remoteConfigProvider": "external",
+  "remoteConfigProvider": "consul",
   "remoteConfigEndpoint": "remote:1234",
-  "remoteConfigPath": "/config/path",
-  "remoteConfigSecretKeyring": "super_secret"
+  "remoteConfigPath": "/config/path"
 }`),
 			setupViper: func(_ *gomock.Controller) Viper {
 				return viper.New()
 			},
 			want: &remoteSourceConfig{
-				Provider:      "external",
+				Provider:      "consul",
 				Endpoint:      "remote:1234",
 				Path:          "/config/path",
-				SecretKeyring: "super_secret",
+				SecretKeyring: "",
 				Data:          "",
 			},
 			wantErr: false,
+		},
+		{
+			// F1: an unsupported provider name must fail fast at load time instead
+			// of silently falling through to the remote-backend path.
+			name: "fails validation with unsupported provider",
+			configContent: []byte(`
+{
+  "remoteConfigProvider": "notaprovider"
+}`),
+			setupViper: func(_ *gomock.Controller) Viper {
+				return viper.New()
+			},
+			wantErr: true,
 		},
 	}
 
@@ -245,7 +256,6 @@ func Test_loadLocalConfig(t *testing.T) {
 
 			if tt.configContent != nil {
 				configDir = t.TempDir()
-				require.NoError(t, err, "failed creating temp config dir: %v", err)
 
 				defer func() { _ = os.RemoveAll(configDir) }()
 
@@ -274,18 +284,19 @@ func Test_validationError(t *testing.T) {
 	t.Parallel()
 
 	err := validationError("provider", "prefix", "var")
-	require.EqualError(t, err, "provider config provider requires PREFIX_VAR to be set")
+	require.EqualError(t, err, "missing required remote configuration variable: provider config provider requires PREFIX_VAR to be set")
+	require.ErrorIs(t, err, ErrMissingRemoteVar)
 
 	// the "-" to "_" replacement applied when binding environment variables
 	// must also be applied to the variable name printed in the error message
 	err = validationError("envvar", "my-app", keyRemoteConfigData)
-	require.EqualError(t, err, "envvar config provider requires MY_APP_REMOTECONFIGDATA to be set")
+	require.EqualError(t, err, "missing required remote configuration variable: envvar config provider requires MY_APP_REMOTECONFIGDATA to be set")
 }
 
-// Test_remoteSourceConfig_validation verifies the struct validation tags on
-// remoteSourceConfig, in particular that the required_if rule on Data fires
-// when Provider is set to the real provider name ("envvar").
-func Test_remoteSourceConfig_validation(t *testing.T) {
+// Test_validateRemoteSourceConfig verifies the imperative provider check: the
+// empty value and every supported provider pass, and an unsupported provider
+// name fails fast with ErrInvalidRemoteConfig.
+func Test_validateRemoteSourceConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -293,43 +304,23 @@ func Test_remoteSourceConfig_validation(t *testing.T) {
 		cfg     remoteSourceConfig
 		wantErr bool
 	}{
-		{
-			name:    "envvar provider without data fails required_if",
-			cfg:     remoteSourceConfig{Provider: providerEnvVar},
-			wantErr: true,
-		},
-		{
-			name: "envvar provider with data passes",
-			cfg: remoteSourceConfig{
-				Provider: providerEnvVar,
-				Data:     "eyJrZXkiOiJvbmUifQ==", // {"key":"one"} in base64
-			},
-			wantErr: false,
-		},
-		{
-			name:    "no provider without data passes",
-			cfg:     remoteSourceConfig{},
-			wantErr: false,
-		},
-		{
-			name: "other provider without data passes",
-			cfg: remoteSourceConfig{
-				Provider: "consul",
-				Endpoint: "remote:1234",
-			},
-			wantErr: false,
-		},
+		{name: "empty provider passes", cfg: remoteSourceConfig{}},
+		{name: "consul passes", cfg: remoteSourceConfig{Provider: "consul"}},
+		{name: "envvar passes", cfg: remoteSourceConfig{Provider: providerEnvVar}},
+		{name: "etcd passes", cfg: remoteSourceConfig{Provider: "etcd"}},
+		{name: "etcd3 passes", cfg: remoteSourceConfig{Provider: "etcd3"}},
+		{name: "firestore passes", cfg: remoteSourceConfig{Provider: "firestore"}},
+		{name: "nats passes", cfg: remoteSourceConfig{Provider: "nats"}},
+		{name: "unsupported provider fails", cfg: remoteSourceConfig{Provider: "notaprovider"}, wantErr: true},
 	}
-
-	val := vt.New()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := val.Struct(tt.cfg)
+			err := validateRemoteSourceConfig(&tt.cfg)
 			if tt.wantErr {
-				require.Error(t, err)
+				require.ErrorIs(t, err, ErrInvalidRemoteConfig)
 			} else {
 				require.NoError(t, err)
 			}
@@ -568,7 +559,7 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "succeed with envvar data",
+			name: "succeed with envvar JSON data payload",
 			setupConfigSource: func() *remoteSourceConfig {
 				return &remoteSourceConfig{
 					Provider: "envvar",
@@ -1177,7 +1168,6 @@ func Test_loadConfig(t *testing.T) {
 
 			if tt.configContent != nil {
 				tmpConfigDir = t.TempDir()
-				require.NoError(t, err, "failed creating temp config dir: %v", err)
 
 				defer func() { _ = os.RemoveAll(tmpConfigDir) }()
 
@@ -1234,13 +1224,7 @@ func TestLoad(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	var (
-		tmpConfigDir string
-		err          error
-	)
-
-	tmpConfigDir = t.TempDir()
-	require.NoError(t, err, "failed creating temp config dir: %v", err)
+	tmpConfigDir := t.TempDir()
 
 	defer func() { _ = os.RemoveAll(tmpConfigDir) }()
 
@@ -1264,11 +1248,11 @@ func TestLoad(t *testing.T) {
   }
 }
 `)
-	require.NoError(t, os.WriteFile(tmpFilePath, configContent, 0o600), "failed writing temp config file: %v", err)
+	require.NoError(t, os.WriteFile(tmpFilePath, configContent, 0o600), "failed writing temp config file")
 
 	targetConfig := &testConfig{}
 
-	err = Load("cmd", tmpConfigDir, "test", targetConfig)
+	err := Load("cmd", tmpConfigDir, "test", targetConfig)
 	require.NoError(t, err)
 }
 
@@ -1289,4 +1273,37 @@ func TestLoad_noLocalConfigFileWithEnvVarProvider(t *testing.T) {
 	require.Equal(t, 7, targetConfig.Int)
 	require.Equal(t, defaultLogFormat, targetConfig.Log.Format)
 	require.Equal(t, int64(defaultShutdownTimeout), targetConfig.ShutdownTimeout)
+}
+
+func TestLoad_nilConfiguration(t *testing.T) {
+	t.Parallel()
+
+	err := Load("cmd", t.TempDir(), "test", nil)
+	require.ErrorIs(t, err, ErrNilConfiguration)
+}
+
+// TestLoad_invalidRemoteProviderFailsFast verifies F1: an unsupported provider
+// name (here injected via environment variable) is rejected by Load with a
+// wrapped ErrInvalidRemoteConfig instead of silently reaching the remote backend.
+// Being a local-load failure, the error also matches ErrLocalConfig.
+func TestLoad_invalidRemoteProviderFailsFast(t *testing.T) {
+	t.Setenv("TESTBADPROV_REMOTECONFIGPROVIDER", "notaprovider")
+
+	err := Load("gogen-config-test-badprov", t.TempDir(), "testbadprov", &testConfig{})
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidRemoteConfig)
+	require.ErrorIs(t, err, ErrLocalConfig)
+}
+
+// TestLoad_envOverridesRegisteredDefault verifies F3: a key that has a registered
+// default (log.format) is overridable via environment variable. A key without a
+// default would not be picked up (see the SetDefaults contract).
+func TestLoad_envOverridesRegisteredDefault(t *testing.T) {
+	t.Setenv("TESTENVOVR_LOG_FORMAT", "CONSOLE")
+
+	targetConfig := &testConfig{}
+
+	err := Load("gogen-config-test-envovr", t.TempDir(), "testenvovr", targetConfig)
+	require.NoError(t, err)
+	require.Equal(t, "CONSOLE", targetConfig.Log.Format)
 }
