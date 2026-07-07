@@ -14,14 +14,12 @@ import (
 // Regular expression patterns for custom validations.
 const (
 	regexPatternE164NoPlus = `^[1-9][0-9]{7,14}$`
-	regexPatternEIN        = `^[0-9]{2}-?[0-9]{7}$`
 	regexPatternUSZIPCode  = `^[0-9]{5}(?:-[0-9]{4})?$`
 )
 
 // Precompiled regular expressions for performance.
 var (
 	regexE164NoPlus = regexp.MustCompile(regexPatternE164NoPlus)
-	regexEIN        = regexp.MustCompile(regexPatternEIN)
 	regexUSZIPCode  = regexp.MustCompile(regexPatternUSZIPCode)
 )
 
@@ -30,7 +28,6 @@ func CustomValidationTags() map[string]vt.FuncCtx {
 	return map[string]vt.FuncCtx{
 		"falseif":                  isFalseIf,
 		"e164noplus":               isE164NoPlus,
-		"ein":                      isEIN,
 		"zipcode":                  isUSZIPCode,
 		"usstate":                  isUSState,
 		"usterritory":              isUSTerritory,
@@ -42,18 +39,20 @@ func CustomValidationTags() map[string]vt.FuncCtx {
 // isE164NoPlus checks if the fields value is a valid E.164 phone number format without the leading '+' (e.g.: 123456789012345).
 func isE164NoPlus(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
-	return regexE164NoPlus.MatchString(field.String())
-}
+	if field.Kind() != reflect.String {
+		return false
+	}
 
-// isEIN checks if the fields value is a valid EIN US tax code (e.g.: 12-3456789 or 123456789).
-func isEIN(_ context.Context, fl vt.FieldLevel) bool {
-	field := fl.Field()
-	return regexEIN.MatchString(field.String())
+	return regexE164NoPlus.MatchString(field.String())
 }
 
 // isUSZIPCode checks if the fields value is a valid US ZIP code (e.g.: 12345 or 12345-6789).
 func isUSZIPCode(_ context.Context, fl vt.FieldLevel) bool {
 	field := fl.Field()
+	if field.Kind() != reflect.String {
+		return false
+	}
+
 	return regexUSZIPCode.MatchString(field.String())
 }
 
@@ -85,13 +84,24 @@ func isUSTerritory(_ context.Context, fl vt.FieldLevel) bool {
 }
 
 // isFalseIf is a special tag to be used in "OR" combination with another tag.
-// It returns false if the specified parameter exist and has the specified value.
-// This tag should never be used alone.
-// The combined tag will be checked only if this validator returns false.
-// Examples:
+// It returns false if the referenced parameter field exists and holds the
+// specified value; the combined tag is then checked only when this validator
+// returns false. This tag must never be used alone.
+//
+// The parameter is either "FieldName" or "FieldName value":
 //
 //	"falseif=Country US|usstate" checks if the field is a valid US state only if the Country field is set to "US".
 //	"falseif=Country|usstate" checks if the field is a valid US state only if the Country field is set and not empty.
+//
+// Notes:
+//   - The comparison value may contain spaces and is matched in full, e.g.
+//     "falseif=State New York|usstate" matches the whole "New York" value.
+//   - For a slice, map, or array reference field the value is compared against
+//     the field length, e.g. "falseif=Tags 3" matches when Tags has 3 elements.
+//   - Numeric values are parsed in base 10 ("010" means ten, not octal).
+//   - If the referenced field name does not exist (e.g. a typo) the combined
+//     tag is silently skipped, so a misspelled field disables the paired rule
+//     without raising an error: double-check referenced field names.
 func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 	param := strings.TrimSpace(fl.Param())
 	if param == "" {
@@ -99,7 +109,7 @@ func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 	}
 
 	params := strings.SplitN(param, " ", 2)
-	paramField, paramKind, nullable, found := fl.GetStructFieldOKAdvanced2(fl.Parent(), params[0])
+	paramField, paramKind, _, found := fl.GetStructFieldOKAdvanced2(fl.Parent(), params[0])
 
 	if !found {
 		// the field in the param do not exist
@@ -107,14 +117,14 @@ func isFalseIf(_ context.Context, fl vt.FieldLevel) bool {
 	}
 
 	if len(params) == 1 {
-		return hasDefaultValue(paramField, paramKind, nullable)
+		return hasDefaultValue(paramField, paramKind)
 	}
 
 	return hasNotValue(paramField, paramKind, params[1])
 }
 
 // hasDefaultValue returns true if the field has a default value (nil/zero) or if is unset/invalid.
-func hasDefaultValue(value reflect.Value, kind reflect.Kind, _ bool) bool {
+func hasDefaultValue(value reflect.Value, kind reflect.Kind) bool {
 	//nolint:exhaustive
 	switch kind {
 	case reflect.Invalid:
@@ -136,13 +146,13 @@ func hasNotValue(value reflect.Value, kind reflect.Kind, paramValue string) bool
 	case reflect.String:
 		return value.String() != paramValue
 	case reflect.Slice, reflect.Map, reflect.Array:
-		p, err := strconv.ParseInt(paramValue, 0, 64)
+		p, err := strconv.ParseInt(paramValue, 10, 64)
 		return err != nil || int64(value.Len()) != p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, err := strconv.ParseInt(paramValue, 0, 64)
+		p, err := strconv.ParseInt(paramValue, 10, 64)
 		return err != nil || value.Int() != p
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, err := strconv.ParseUint(paramValue, 0, 64)
+		p, err := strconv.ParseUint(paramValue, 10, 64)
 		return err != nil || value.Uint() != p
 	case reflect.Float32:
 		// Parse at float32 precision so params such as "0.1" round to the same

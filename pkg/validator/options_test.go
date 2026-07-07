@@ -134,6 +134,11 @@ func TestWithErrorTemplates(t *testing.T) {
 			arg:     map[string]string{"test": "{{.Something} missing closing curly brace"},
 			wantErr: true,
 		},
+		{
+			name:    "error with template referencing unknown field",
+			arg:     map[string]string{"test": "{{.DoesNotExist}}"},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

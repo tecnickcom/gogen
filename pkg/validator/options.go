@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"io"
 	"reflect"
 	"strings"
 	"text/template"
@@ -62,12 +63,20 @@ func WithErrorTemplates(t map[string]string) Option {
 		}
 
 		for tag, tpl := range t {
-			t, err := template.New(tag).Parse(tpl)
+			parsed, err := template.New(tag).Parse(tpl)
 			if err != nil {
-				return fmt.Errorf("failed adding error template: %w", err)
+				return fmt.Errorf("failed adding error template %q: %w", tag, err)
 			}
 
-			v.tpl[tag] = t
+			// text/template only reports references to non-existent fields at
+			// execution time, so exercise the template against a sample Error to
+			// fail fast instead of silently degrading to the generic message.
+			err = parsed.Execute(io.Discard, &Error{})
+			if err != nil {
+				return fmt.Errorf("failed validating error template %q: %w", tag, err)
+			}
+
+			v.tpl[tag] = parsed
 		}
 
 		return nil

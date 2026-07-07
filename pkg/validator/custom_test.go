@@ -11,7 +11,6 @@ import (
 type testCustomTagStruct struct {
 	E164NoPlus             string  `json:"e164_no_plus"             validate:"e164noplus"`
 	EIN                    string  `json:"ein"                      validate:"ein"`
-	EINB                   string  `json:"ein_b"                    validate:"ein"`
 	USZIPCode              string  `json:"zip"                      validate:"zipcode"`
 	USZIPCodeB             string  `json:"zip_b"                    validate:"zipcode"`
 	Country                string  `json:"country"                  validate:"iso3166_1_alpha2"`
@@ -44,7 +43,6 @@ func getTestCustomTagData() testCustomTagStruct {
 	return testCustomTagStruct{
 		E164NoPlus:             "123456789012345",
 		EIN:                    "12-3456789",
-		EINB:                   "123456789",
 		USZIPCode:              "12345",
 		USZIPCodeB:             "12345-1234",
 		Country:                "US",
@@ -303,7 +301,7 @@ func Test_hasDefaultValue_invalid(t *testing.T) {
 	var i any
 
 	vi := reflect.ValueOf(i)
-	got := hasDefaultValue(vi, vi.Kind(), true)
+	got := hasDefaultValue(vi, vi.Kind())
 	require.True(t, got, "Expecting true value")
 }
 
@@ -325,4 +323,26 @@ func Test_hasNotValue_float64(t *testing.T) {
 	require.False(t, hasNotValue(v, reflect.Float64, "0.1"))
 	require.True(t, hasNotValue(v, reflect.Float64, "0.2"))
 	require.True(t, hasNotValue(v, reflect.Float64, "not-a-number"))
+}
+
+// TestCustomTags_nonStringField ensures the string-based custom validators
+// reject non-string fields instead of matching them or panicking.
+func TestCustomTags_nonStringField(t *testing.T) {
+	t.Parallel()
+
+	type intFieldStruct struct {
+		E164 int `json:"e164" validate:"e164noplus"`
+		Zip  int `json:"zip"  validate:"zipcode"`
+	}
+
+	v, err := New(
+		WithFieldNameTag("json"),
+		WithCustomValidationTags(CustomValidationTags()),
+		WithErrorTemplates(ErrorTemplates()),
+	)
+	require.NoError(t, err)
+
+	err = v.ValidateStruct(intFieldStruct{E164: 123456789012345, Zip: 12345})
+	require.Error(t, err, "non-string fields must fail the string-based custom validators")
+	require.Len(t, multierr.Errors(err), 2, "both custom validators must reject the int fields")
 }

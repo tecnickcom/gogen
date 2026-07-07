@@ -37,13 +37,13 @@ produces an independent, meaningful error.
   - Human-readable errors: [WithErrorTemplates] maps any validation tag to a
     text/template string. Templates receive an [Error] value, giving access to
     the namespace, field name, tag, parameter, kind, and actual value.
-    [ErrorTemplates] returns a ready-to-use map covering every built-in
-    go-playground/validator tag.
-  - Custom domain rules: [CustomValidationTags] registers eight production-ready
+    [ErrorTemplates] returns a ready-to-use map covering the built-in
+    go-playground/validator tags (for the supported upstream version) plus the
+    custom tags below.
+  - Custom domain rules: [CustomValidationTags] registers seven production-ready
     validators not in the upstream library:
   - falseif — conditional negation combinator
   - e164noplus — E.164 phone number without the leading '+'
-  - ein — US Employer Identification Number (12-3456789 or 123456789)
   - zipcode — US ZIP code (12345 or 12345-6789)
   - usstate — two-letter US state code (including DC)
   - usterritory — two-letter US territory code (AS, GU, MP, PR, VI)
@@ -121,7 +121,10 @@ func (v *Validator) ValidateStruct(obj any) error {
 	return v.ValidateStructCtx(context.Background(), obj)
 }
 
-// ValidateStructCtx validates struct fields with context cancellation support, returning a multierror of structured Errors if any fail.
+// ValidateStructCtx validates struct fields, threading ctx through to any
+// context-aware custom validators, and returns a multierror of structured
+// Errors if any fail. The built-in custom validators do not inspect ctx, so
+// cancellation only affects user-supplied context-aware rules.
 func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 	vErr := v.v.StructCtx(ctx, obj)
 
@@ -137,14 +140,7 @@ func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 
 	for _, fe := range valErr {
 		// separate tags grouped by OR
-		tags := strings.SplitSeq(fe.Tag(), "|")
-		for tag := range tags {
-			tagKey, _, _ := strings.Cut(tag, "=")
-			if tagKey == "falseif" {
-				// the "falseif" tag only works in combination with other tags
-				continue
-			}
-
+		for tag := range strings.SplitSeq(fe.Tag(), "|") {
 			err = multierr.Append(err, v.tagError(fe, tag))
 		}
 	}
@@ -153,14 +149,17 @@ func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 	return err
 }
 
-// tagError set the error message associated with the validation tag.
+// tagError builds the structured Error for a single validation tag.
+// It returns nil for the "falseif" helper tag, which only works in combination
+// with another tag and must never surface as an error on its own.
 func (v *Validator) tagError(fe vt.FieldError, tag string) error {
-	tagParts := strings.SplitN(tag, "=", 2)
-	tagKey := tagParts[0]
-	tagParam := fe.Param()
+	tagKey, tagParam, hasParam := strings.Cut(tag, "=")
+	if tagKey == "falseif" {
+		return nil
+	}
 
-	if len(tagParts) == 2 {
-		tagParam = tagParts[1]
+	if !hasParam {
+		tagParam = fe.Param()
 	}
 
 	namespace := fe.Namespace()

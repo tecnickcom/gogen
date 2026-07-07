@@ -26,7 +26,9 @@ type Error struct {
 	// Kind is the Field's string representation of the kind (e.g. Int,Slice,...).
 	Kind string
 
-	// Value is the actual field's value.
+	// Value is the actual field's value. It holds the raw input and is exposed
+	// to error templates, so avoid echoing it into messages for sensitive
+	// fields (passwords, tokens) to prevent leaking secrets into logs or responses.
 	Value any
 
 	// Err is the translated error message.
