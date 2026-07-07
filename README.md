@@ -117,7 +117,7 @@ This scaffolds a new web service from the provided configuration.
 - [phonekeypad](pkg/phonekeypad) - Phone keypad mapping utilities. `phone`, `mapping`, `utilities`
 - [profiling](pkg/profiling) - Application profiling tools. `profiling`, `performance`
 - [random](pkg/random) - Utilities for random data generation, including UUID. `random`, `utilities`
-- [redact](pkg/redact) - Data redaction helpers. `redaction`, `privacy`
+- [redact](pkg/redact) - Fast single-pass redaction of secrets (headers, JSON, form data, DSNs, JWTs, PEM keys, card numbers) in logs and HTTP dumps. `redaction`, `privacy`
 - [redis](pkg/redis) - Redis client and utilities. `redis`, `database`, `caching`
 - [retrier](pkg/retrier) - Retry logic for operations. `retry`, `utilities`
 - [s3](pkg/s3) - Helpers for AWS S3 integration. `aws`, `s3`

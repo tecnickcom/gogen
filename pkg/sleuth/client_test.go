@@ -194,7 +194,6 @@ func TestClient_HealthCheck(t *testing.T) {
 		pingHandlerStatusCode int
 		pingURL               string
 		pingBody              string
-		bodyErr               bool
 		wantErr               bool
 	}{
 		{
@@ -202,13 +201,6 @@ func TestClient_HealthCheck(t *testing.T) {
 			pingHandlerStatusCode: http.StatusOK,
 			pingURL:               "%^*&-ERROR",
 			pingBody:              "Deployment - Not Found",
-			wantErr:               true,
-		},
-		{
-			name:                  "fails because body read error",
-			pingHandlerStatusCode: http.StatusNotFound,
-			pingBody:              "Deployment - Not Found",
-			bodyErr:               true,
 			wantErr:               true,
 		},
 		{
@@ -248,15 +240,6 @@ func TestClient_HealthCheck(t *testing.T) {
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if tt.pingHandlerDelay != 0 {
 					time.Sleep(tt.pingHandlerDelay)
-				}
-
-				if tt.bodyErr {
-					// Declare a body length but write no bytes so the client hits an
-					// unexpected EOF while reading. This bypasses SendText, which now
-					// clears a stale Content-Length set before delegating.
-					w.Header().Set("Content-Length", "1")
-
-					return
 				}
 
 				hres.SendText(r.Context(), w, tt.pingHandlerStatusCode, tt.pingBody)
@@ -433,6 +416,42 @@ func TestClient_HealthCheck_redactsAPIKey(t *testing.T) {
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), testAPIKey, "HealthCheck error must not leak the api key")
 	require.Contains(t, err.Error(), "REDACTED", "HealthCheck error must redact the api key")
+}
+
+// errReadCloser is an io.ReadCloser whose Read always fails, used to exercise
+// the response-body read error path.
+type errReadCloser struct{}
+
+func (errReadCloser) Read([]byte) (int, error) { return 0, errors.New("read failure") }
+func (errReadCloser) Close() error             { return nil }
+
+// TestClient_HealthCheck_bodyReadError returns the expected 404 status but a body
+// that fails on read, so HealthCheck reaches the drain step and surfaces the error.
+func TestClient_HealthCheck_bodyReadError(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mc := NewMockHTTPClient(ctrl)
+	mc.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		StatusCode: http.StatusNotFound,
+		Body:       errReadCloser{},
+	}, nil).Times(1)
+
+	c, err := New(
+		"https://test.invalid",
+		"testorg",
+		testAPIKey,
+		WithHTTPClient(mc),
+		WithRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	err = c.HealthCheck(t.Context())
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed reading response body")
 }
 
 func Test_httpRequest(t *testing.T) {

@@ -7,32 +7,97 @@ obscuring sensitive data before logging or debugging output is emitted.
 Operational logs and diagnostics often include raw HTTP headers, JSON payloads,
 or URL-encoded form data. Without sanitization, these records can leak secrets
 such as credentials, tokens, API keys, session identifiers, personal data, or
-payment details. This package offers a fast, simple redaction pass that can be
-applied at log boundaries.
+payment details. This package offers a fast, single-pass redaction step that
+can be applied at log boundaries.
+
+# API
+
+The canonical entry points are [String], [Bytes], [AppendTo], [BytesToString]
+and [Pooled]; they all run the same redaction engine and differ only in input
+and output handling. The HTTPData* functions are retained as compatibility
+aliases.
+
+# Custom Redactors
+
+The package-level functions use the default configuration ([Default]). [New]
+builds an independent [Redactor] instance with the same API when a component
+needs different behavior:
+
+	re := redact.New(
+		redact.WithMarker("#REDACTED#"),          // custom placeholder
+		redact.WithLuhnCheck(true),                // instance-scoped Luhn gate
+		redact.WithExtraTokens("floof"),           // company-specific key tokens
+		redact.WithoutTokens("amount", "balance"), // keep fintech fields readable
+		redact.WithoutRules(redact.RuleCards),     // disable whole rule classes
+	)
+	safe := re.String(rawPayload)
+
+Instances are immutable after construction and safe for concurrent use.
 
 # What It Redacts
 
-[HTTPData] applies multiple redaction rules in sequence:
+Each call applies multiple redaction rules in a single pass:
 
-  - Headers whose name contains "authorization" (`Authorization: ...`,
-    `Proxy-Authorization: ...`), preserving header name while replacing the
-    value.
-  - JSON key/value pairs where the key name contains secret-like substrings
+  - HTTP headers whose name is sensitive (`Authorization`,
+    `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-Api-Key`,
+    `X-Auth-Token`, `X-Amz-Security-Token`, ...), preserving the header name
+    while replacing the whole value. Sensitivity uses the same tokenized
+    keyword check as JSON and URL-encoded keys.
+  - JSON key/value pairs whose key name contains sensitive keywords
     (authentication/session, crypto markers, legal-signing, financial, and PII
-    keyword groups).
+    keyword groups), including closed-compound names such as `apikey` or
+    `passphrase`. When the value is a JSON object or array, the entire nested
+    container is replaced with the marker.
   - URL-encoded key/value pairs with matching sensitive key names.
-  - Credit-card-like numeric patterns bounded by non-word separators.
+  - XML/HTML elements with sensitive names and flat text content
+    (`<password>...</password>`); sensitive XML attributes are covered by the
+    URL-encoded rule.
+  - URL userinfo passwords anywhere in the text
+    (`postgres://user:secret@host` -> `postgres://user:***@host`), catching
+    bare DSNs in error messages.
+  - JWT/JWE compact tokens (`eyJ...`) in free text, query strings, and JSON
+    values.
+  - Well-known vendor credential literals by their unmistakable prefixes:
+    GitHub (`ghp_`, `github_pat_`, ...), Slack (`xoxb-`, ...), Stripe
+    (`sk_live_`, `whsec_`, ...), OpenAI/Anthropic (`sk-`), Hugging Face
+    (`hf_`), SendGrid (`SG.`), AWS access key ids (`AKIA`, `ASIA`), Google
+    (`AIza`), GitLab (`glpat-`), DigitalOcean, Docker Hub, and Shopify
+    tokens.
+  - PEM `-----BEGIN ... PRIVATE KEY-----` blocks: the base64 body is replaced
+    with a single marker line (public blocks such as CERTIFICATE stay
+    visible). Blocks embedded mid-line — e.g. a JSON string carrying a blob
+    with escaped `\n` sequences — are redacted too.
+  - Credit-card numbers: contiguous digit runs, and runs grouped by single
+    spaces or dashes (`4012 8888 8888 1881`), bounded by non-word characters.
 
-All matched sensitive values are replaced with a constant marker so output
-remains structurally useful while hiding private content.
+Keyword matching is token-exact after normalization (camelCase, snake_case,
+kebab-case, and acronym runs all tokenize), so near-miss words like "monkey"
+never match "key". CRLF line endings (as produced by httputil.DumpRequest and
+DumpResponse) are preserved. All matched sensitive values are replaced with a
+constant marker so output remains structurally useful while hiding private
+content. Redaction is convergent: re-redacting output never reveals more, is
+byte-stable in a single pass on well-formed input, and reaches a fixed point
+after at most one extra pass on pathological (structurally ambiguous) input —
+so layered redaction does not keep mangling logs.
 
 # Credit-Card Detection and the Optional Luhn Gate
 
-By default, any 13-16 digit run that matches a known card prefix (Visa,
-Mastercard, Amex, Discover, Diners, JCB, ...) and is bounded by non-word
+By default, any 13-19 digit run (contiguous, or grouped by single spaces or
+dashes) that matches a known card prefix and network length (Visa, Mastercard,
+Amex, Discover, Diners, JCB, UnionPay, ...) and is bounded by non-word
 characters is redacted. This is deliberate over-redaction: it is the safe
-default and may also redact unrelated numeric identifiers that happen to share a
-card prefix and length.
+default and may also redact unrelated numeric identifiers that happen to share
+a card prefix and length. Grouped-format detection excludes the 14-digit
+Diners and legacy 15-digit JCB ranges, whose prefixes collide with common
+phone-number formats ("1 800 555 0199 1234"); those still match as contiguous
+runs.
+
+Maestro is handled conservatively: its well-known 4-digit issuer prefixes
+(5018, 5020, 5038, 5893, 6304, 6759, 6761-6763) are detected at 16-19 digits by
+default, while the short 12-15 digit Maestro forms are only detected when the
+Luhn gate below is enabled, because a short prefix-and-length match alone would
+collide with far too many ordinary identifiers. The broader Maestro ranges
+(50, 56-69) are never matched.
 
 Callers that prefer fewer false positives can enable an additional Luhn-checksum
 gate. When enabled, a digit run is only redacted if it matches a known prefix AND
@@ -47,21 +112,21 @@ be left visible.
 
 # Key Features
 
-  - Single-call redaction API for common HTTP-style payloads.
+  - Generic single-pass redaction for logs, HTTP dumps, JSON, and form data.
   - Broad keyword families to catch many real-world secret field names.
   - Preserves surrounding structure to keep logs searchable and debuggable.
   - No external dependencies beyond the Go standard library.
 
 # Usage
 
-	safe := redact.HTTPData(rawHTTPPayload)
+	safe := redact.String(rawPayload)
 	logger.Info("request", "payload", safe)
 
 For high-throughput paths, reuse an output buffer to avoid per-call allocations:
 
 	var dst []byte
 	for _, payload := range payloads {
-		dst = redact.HTTPDataBytesInto(dst, payload)
+		dst = redact.AppendTo(dst, payload)
 		logger.Info("request", "payload", string(dst))
 	}
 
@@ -70,16 +135,17 @@ For high-throughput paths, reuse an output buffer to avoid per-call allocations:
 This package is best-effort pattern redaction, not a formal data-loss
 prevention system. Always treat output as potentially sensitive and combine this
 with least-privilege logging practices and structured logging controls.
+
+Deliberate non-goals (too collision-prone to match on shape alone): Telegram
+bot tokens (digits:base64 collides with host:port shapes) and bare
+"Basic <base64>" blobs in prose (header-positioned Basic credentials are
+covered by the Authorization rule); obsolete obs-fold header continuation
+lines.
 */
 package redact
 
 import (
-	"bytes"
-	"slices"
-	"strings"
 	"sync"
-	"sync/atomic"
-	"unicode"
 )
 
 // Redaction patterns and replacements.
@@ -92,414 +158,79 @@ const (
 var (
 	redactedBytes = []byte(RedactionMarker) //nolint:gochecknoglobals
 
-	// authorizationPrefix is the ASCII-lowercased needle used for the fast
-	// case-insensitive scan of header names containing "authorization"
-	// (e.g. Authorization, Proxy-Authorization).
-	authorizationPrefix = []byte("authorization") //nolint:gochecknoglobals
-
 	redactionBufferPool = sync.Pool{New: newRedactionBuffer} //nolint:gochecknoglobals
-
-	// luhnCheckEnabled gates the optional Luhn-checksum validation for
-	// credit-card detection. It defaults to false (disabled) so the package's
-	// out-of-the-box redaction output is unchanged: any 13-16 digit run matching
-	// a known card prefix is redacted (deliberate over-redaction as a safe
-	// default). When enabled, such a run is only redacted if it ALSO passes the
-	// Luhn checksum, reducing false positives at the cost of missing malformed
-	// or test card numbers.
-	luhnCheckEnabled atomic.Bool //nolint:gochecknoglobals
 )
 
-// SetLuhnCheck enables or disables the optional Luhn-checksum gate for
-// credit-card detection.
+// String redacts sensitive data from s (headers, secret fields, and card
+// patterns; see the package documentation) and returns the sanitized string.
+// It routes through the pooled output buffer to avoid a dedicated per-call
+// allocation.
+func String(s string) string {
+	return defaultRedactor.String(s)
+}
+
+// Bytes redacts sensitive data from b and returns the result as a new byte
+// slice. The input is never modified.
+func Bytes(b []byte) []byte {
+	return defaultRedactor.Bytes(b)
+}
+
+// AppendTo redacts sensitive data from src and appends the result into dst
+// (after resetting its length to zero), allowing callers to reuse output
+// buffers across calls. Like the append built-in, it returns the possibly
+// reallocated destination slice.
+func AppendTo(dst, src []byte) []byte {
+	return defaultRedactor.AppendTo(dst, src)
+}
+
+// Pooled redacts sensitive data from src using an internal pooled buffer and
+// passes the result to consume.
 //
-// This setting is process-wide and safe for concurrent use. It is additive and
-// off by default: with the default (disabled) behavior, every 13-16 digit run
-// matching a known card prefix is redacted (a deliberate, safe over-redaction).
-// When enabled, only digit runs that match a known prefix AND pass the Luhn
-// checksum are redacted, which reduces over-redaction of unrelated numeric
-// identifiers at the cost of possibly missing malformed numbers.
-func SetLuhnCheck(enabled bool) {
-	luhnCheckEnabled.Store(enabled)
+// The passed slice is only valid during the consume call and must not be
+// retained after consume returns.
+func Pooled(src []byte, consume func([]byte)) {
+	defaultRedactor.Pooled(src, consume)
 }
 
-// LuhnCheckEnabled reports whether the optional Luhn-checksum gate for
-// credit-card detection is currently enabled. It is safe for concurrent use.
-func LuhnCheckEnabled() bool {
-	return luhnCheckEnabled.Load()
+// BytesToString redacts sensitive data from a byte slice and returns the
+// result as a string. It uses a pooled output buffer to reduce allocations and
+// is the preferred form when the caller already holds a []byte (e.g. from
+// httputil.DumpRequest / DumpResponse) and needs a string.
+func BytesToString(b []byte) string {
+	return defaultRedactor.BytesToString(b)
 }
 
-// normalizeKey converts a key name to a tokenized lowercase form suitable for
-// boundary-aware keyword checks (e.g., camelCase -> snake_case tokens).
-// Uppercase acronym runs followed by a lowercase letter are split before the
-// last uppercase letter (e.g., APIKey -> api_key, JWTToken -> jwt_token).
+// redactInto applies all enabled redaction rules while appending output into
+// dst, which is reset to length 0 before use.
 //
-//nolint:gocognit,gocyclo,cyclop
-func normalizeKey(s string) string {
-	var b strings.Builder
-	b.Grow(len(s) * 2)
-
-	runes := []rune(s)
-	prevIsLowerOrDigit := false
-	prevIsUpper := false
-	prevIsUnderscore := true
-
-	for i, r := range runes {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			isUpper := unicode.IsUpper(r)
-			nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
-
-			if isUpper && !prevIsUnderscore && (prevIsLowerOrDigit || (prevIsUpper && nextIsLower)) {
-				b.WriteByte('_')
-			}
-
-			b.WriteRune(unicode.ToLower(r))
-
-			prevIsLowerOrDigit = unicode.IsLower(r) || unicode.IsDigit(r)
-			prevIsUpper = isUpper
-			prevIsUnderscore = false
-
-			continue
-		}
-
-		if !prevIsUnderscore {
-			b.WriteByte('_')
-		}
-
-		prevIsLowerOrDigit = false
-		prevIsUpper = false
-		prevIsUnderscore = true
-	}
-
-	return strings.Trim(b.String(), "_")
-}
-
-// authorizationHeaderColon reports whether line looks like an HTTP header
-// whose name contains "authorization" (e.g. Authorization,
-// Proxy-Authorization), returning the index of the colon separating the
-// header name from its value.
-func authorizationHeaderColon(line []byte) (int, bool) {
-	colon := bytes.IndexByte(line, ':')
-	if colon <= 0 {
-		return 0, false
-	}
-
-	name := line[:colon]
-
-	// Allow optional whitespace between the header name and the colon.
-	for len(name) > 0 && (name[len(name)-1] == ' ' || name[len(name)-1] == '\t') {
-		name = name[:len(name)-1]
-	}
-
-	if len(name) == 0 {
-		return 0, false
-	}
-
-	// Only header-name characters are accepted, so JSON or URL-encoded lines
-	// containing a colon are left to the dedicated redaction rules.
-	for _, c := range name {
-		if !isHeaderNameByte(c) {
-			return 0, false
-		}
-	}
-
-	return colon, containsAuthorizationASCIIFold(name)
-}
-
-func isHeaderNameByte(c byte) bool {
-	return isASCIIAlphaNum(c) || c == '-' || c == '_'
-}
-
-// containsAuthorizationASCIIFold reports whether name contains the ASCII
-// case-insensitive substring "authorization" without allocating.
-func containsAuthorizationASCIIFold(name []byte) bool {
-	n := len(authorizationPrefix)
-
-	for i := 0; i+n <= len(name); i++ {
-		match := true
-
-		for j := range n {
-			if name[i+j]|0x20 != authorizationPrefix[j] { // ASCII lower-case trick.
-				match = false
-
-				break
-			}
-		}
-
-		if match {
-			return true
-		}
-	}
-
-	return false
-}
-
-func skipInlineSpaces(src []byte, i int) int {
-	for i < len(src) && (src[i] == ' ' || src[i] == '\t') {
-		i++
-	}
-
-	return i
-}
-
-func findJSONValueStart(src []byte, q2 int) (int, bool, bool) {
-	j := skipJSONWhitespace(src, q2+1)
-	if j >= len(src) {
-		return 0, false, true
-	}
-
-	if src[j] != ':' {
-		return 0, false, false
-	}
-
-	valueStart := skipJSONWhitespace(src, j+1)
-	if valueStart >= len(src) {
-		return 0, false, true
-	}
-
-	return valueStart, true, false
-}
-
-func skipJSONWhitespace(src []byte, i int) int {
-	for i < len(src) && (src[i] == ' ' || src[i] == '\t' || src[i] == '\n' || src[i] == '\r') {
-		i++
-	}
-
-	return i
-}
-
-func jsonValueEnd(src []byte, j int) int {
-	if src[j] == '"' {
-		return parseJSONStringEnd(src, j)
-	}
-
-	if literalEnd := jsonLiteralEnd(src, j); literalEnd > 0 {
-		return literalEnd
-	}
-
-	if src[j] == '-' || (src[j] >= '0' && src[j] <= '9') {
-		return parseJSONNumberEnd(src, j)
-	}
-
-	return 0
-}
-
-func jsonLiteralEnd(src []byte, j int) int {
-	switch {
-	case hasPrefixAt(src, j, "true"):
-		return j + len("true")
-	case hasPrefixAt(src, j, "false"):
-		return j + len("false")
-	case hasPrefixAt(src, j, "null"):
-		return j + len("null")
-	default:
-		return 0
-	}
-}
-
-func parseJSONStringEnd(src []byte, j int) int {
-	vEnd := j + 1
-	for vEnd < len(src) {
-		if src[vEnd] == '\\' {
-			vEnd += 2
-			continue
-		}
-
-		if src[vEnd] == '"' {
-			return vEnd + 1
-		}
-
-		vEnd++
-	}
-
-	return vEnd
-}
-
-func hasPrefixAt(src []byte, i int, lit string) bool {
-	if i+len(lit) > len(src) {
-		return false
-	}
-
-	for j := range len(lit) {
-		if src[i+j] != lit[j] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func parseJSONNumberEnd(src []byte, j int) int {
-	vEnd := j
-	for vEnd < len(src) {
-		c := src[vEnd]
-		if c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E' || (c >= '0' && c <= '9') {
-			vEnd++
-			continue
-		}
-
-		break
-	}
-
-	return vEnd
-}
-
-func isWordChar(c byte) bool {
-	return c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
-}
-
-//nolint:cyclop,gocognit,gocyclo,nestif
-func matchesCardPattern(digits []byte) bool {
-	n := len(digits)
-	if n < 13 || n > 16 {
-		return false
-	}
-
-	if digits[0] == '4' && (n == 13 || n == 16) {
-		return true
-	}
-
-	if n == 16 {
-		if (digits[0] == '2' || digits[0] == '5') && digits[1] >= '1' && digits[1] <= '7' {
-			return true
-		}
-
-		if digits[0] == '6' {
-			if digits[1] == '0' && digits[2] == '1' && digits[3] == '1' {
-				return true
-			}
-
-			if digits[1] == '5' && digits[2] >= '0' && digits[2] <= '9' && digits[3] >= '0' && digits[3] <= '9' {
-				return true
-			}
-		}
-
-		if digits[0] == '3' && digits[1] == '5' && digits[2] >= '0' && digits[2] <= '9' && digits[3] >= '0' && digits[3] <= '9' && digits[4] >= '0' && digits[4] <= '9' {
-			return true
-		}
-	}
-
-	if n == 15 {
-		if digits[0] == '3' && (digits[1] == '4' || digits[1] == '7') {
-			return true
-		}
-
-		if digits[0] == '2' && digits[1] == '1' && digits[2] == '3' && digits[3] == '1' {
-			return true
-		}
-
-		if digits[0] == '1' && digits[1] == '8' && digits[2] == '0' && digits[3] == '0' {
-			return true
-		}
-	}
-
-	if n == 14 && digits[0] == '3' {
-		if digits[1] == '0' && digits[2] >= '0' && digits[2] <= '5' {
-			return true
-		}
-
-		if digits[1] == '6' || digits[1] == '8' {
-			return true
-		}
-	}
-
-	return false
-}
-
-// isCreditCard reports whether a run of ASCII digits should be redacted as a
-// credit-card number. It always requires a known card prefix; when the optional
-// Luhn gate is enabled it additionally requires a valid Luhn checksum.
-func isCreditCard(digits []byte) bool {
-	if !matchesCardPattern(digits) {
-		return false
-	}
-
-	if luhnCheckEnabled.Load() {
-		return passesLuhn(digits)
-	}
-
-	return true
-}
-
-// passesLuhn reports whether a run of ASCII digits satisfies the Luhn checksum.
-func passesLuhn(digits []byte) bool {
-	sum := 0
-	double := false
-
-	for _, c := range slices.Backward(digits) {
-		d := int(c - '0')
-
-		if double {
-			d *= 2
-			if d > 9 {
-				d -= 9
-			}
-		}
-
-		sum += d
-		double = !double
-	}
-
-	return sum%10 == 0
-}
-
-func urlEncodedValueEnd(src []byte, i int) int {
-	for i < len(src) {
-		c := src[i]
-		if c == '&' || c == '\n' {
-			break
-		}
-
-		i++
-	}
-
-	return i
-}
-
-// redactAllInSinglePassInto applies all redaction rules while appending output
-// into dst, which is reset to length 0 before use.
-//
-//nolint:cyclop,funlen,gocognit,gocyclo
-func redactAllInSinglePassInto(dst, src []byte) []byte {
+//nolint:gocognit // Deliberately flat hot loop: one dispatch pass per byte class.
+func (re *Redactor) redactInto(dst, src []byte) []byte {
 	dst = dst[:0]
 
 	for i := 0; i < len(src); {
 		if i == 0 || src[i-1] == '\n' {
-			lineEnd := i
-			for lineEnd < len(src) && src[lineEnd] != '\n' {
-				lineEnd++
-			}
-
-			if lineEnd < len(src) {
-				lineEnd++
-			}
-
-			line := src[i:lineEnd]
-			if colon, ok := authorizationHeaderColon(line); ok {
-				dst = appendRedactedAuthorizationLine(dst, line, colon)
-				i += len(line)
+			if next, redacted, ok := re.appendLineStartRedactionAt(src, i, dst); ok {
+				dst = redacted
+				i = next
 
 				continue
 			}
 		}
 
-		if src[i] == '"' && likelyJSONKeyStart(src, i) {
-			nextIndex, redacted, ok := appendRedactedSensitiveJSONAt(src, i, dst)
-			if ok {
-				dst = redacted
-				i = nextIndex
+		// Digit runs are handled before the rule dispatch: no trigger byte is
+		// a digit, and identifier-heavy logs (trace ids, UUIDs) are dominated
+		// by digit runs, so they skip the dispatch call entirely.
+		if isDigitByte(src[i]) {
+			i, dst = re.appendDigitRunAt(src, i, dst)
 
-				continue
-			}
+			continue
 		}
 
-		if src[i] == '=' {
-			valueEnd, redacted, ok := appendRedactedURLEncodedValueAt(src, i, dst)
-			if ok {
-				dst = redacted
-				i = valueEnd
+		if next, redacted, ok := re.appendTriggeredRedactionAt(src, i, dst); ok {
+			dst = redacted
+			i = next
 
-				continue
-			}
+			continue
 		}
 
 		if src[i] == '\n' {
@@ -509,49 +240,7 @@ func redactAllInSinglePassInto(dst, src []byte) []byte {
 			continue
 		}
 
-		if !isDigitByte(src[i]) {
-			j := i + 1
-			for j < len(src) {
-				c := src[j]
-				if c == '"' || c == '=' || c == '\n' || isDigitByte(c) {
-					break
-				}
-
-				j++
-			}
-
-			dst = append(dst, src[i:j]...)
-			i = j
-
-			continue
-		}
-
-		if i > 0 && isWordChar(src[i-1]) {
-			dst = append(dst, src[i])
-			i++
-
-			continue
-		}
-
-		j := i
-		for j < len(src) && src[j] >= '0' && src[j] <= '9' {
-			j++
-		}
-
-		if j < len(src) && isWordChar(src[j]) {
-			dst = append(dst, src[i:j]...)
-			i = j
-
-			continue
-		}
-
-		if isCreditCard(src[i:j]) {
-			dst = append(dst, redactedBytes...)
-			i = j
-
-			continue
-		}
-
+		j := bulkTextEnd(src, i)
 		dst = append(dst, src[i:j]...)
 		i = j
 	}
@@ -559,141 +248,178 @@ func redactAllInSinglePassInto(dst, src []byte) []byte {
 	return dst
 }
 
-func likelyJSONKeyStart(src []byte, i int) bool {
-	for j := i - 1; j >= 0; j-- {
-		switch src[j] {
-		case ' ', '\t', '\n', '\r':
-			continue
-		case '{', ',':
-			return true
-		default:
-			return false
+// appendLineStartRedactionAt applies the line-anchored rules (PEM blocks and
+// sensitive HTTP headers) at the line beginning at src[i].
+func (re *Redactor) appendLineStartRedactionAt(src []byte, i int, dst []byte) (int, []byte, bool) {
+	if src[i] == '-' && re.enabled(RulePEM) {
+		if next, redacted, ok := re.appendRedactedPEMKeyAt(src, i, dst); ok {
+			return next, redacted, true
 		}
 	}
 
-	return true
+	if re.enabled(RuleHeaders) {
+		if valueStart, ok := re.sensitiveHeaderValueStart(src, i); ok {
+			dst = append(dst, src[i:valueStart]...)
+			dst = append(dst, re.marker...)
+
+			return headerValueEnd(src, valueStart), dst, true
+		}
+	}
+
+	return 0, dst, false
+}
+
+// appendTriggeredRedactionAt dispatches the byte-triggered rules: JSON keys,
+// URL-encoded pairs, URL userinfo passwords, JWTs, XML elements, inline PEM
+// blocks, and vendor credential tokens.
+//
+//nolint:gocyclo,cyclop // Irreducible one-case-per-rule dispatch switch.
+func (re *Redactor) appendTriggeredRedactionAt(src []byte, i int, dst []byte) (int, []byte, bool) {
+	if rule := triggerRule(src[i]); rule == 0 || !re.enabled(rule) {
+		return 0, dst, false
+	}
+
+	switch src[i] {
+	case '"':
+		if re.likelyJSONKeyStart(src, i) {
+			return re.appendRedactedSensitiveJSONAt(src, i, dst)
+		}
+	case '=':
+		return re.appendRedactedURLEncodedValueAt(src, i, dst)
+	case ':':
+		return re.appendRedactedURLPasswordAt(src, i, dst)
+	case 'e':
+		return re.appendRedactedJWTAt(src, i, dst)
+	case '<':
+		return re.appendRedactedXMLValueAt(src, i, dst)
+	case '-':
+		return re.appendRedactedInlinePEMKeyAt(src, i, dst)
+	case 'g', 'x', 's', 'r', 'w', 'd', 'A', 'h', 'S':
+		return re.appendRedactedVendorTokenAt(src, i, dst)
+	}
+
+	return 0, dst, false
+}
+
+// triggerRule maps a dispatch byte to the rule class it triggers, or 0 when
+// the byte triggers no rule.
+func triggerRule(c byte) Rule {
+	switch c {
+	case '"':
+		return RuleJSON
+	case '=':
+		return RuleURLEncoded
+	case ':':
+		return RuleUserinfo
+	case 'e':
+		return RuleJWT
+	case '<':
+		return RuleXML
+	case '-':
+		return RulePEM
+	case 'g', 'x', 's', 'r', 'w', 'd', 'A', 'h', 'S':
+		return RuleVendorTokens
+	}
+
+	return 0
+}
+
+// Trigger classes for the bulk-copy scan: most bytes are trigNone and cost a
+// single table load; the rare candidate classes run their cheap prefilter
+// before breaking out to the rule dispatch.
+const (
+	trigNone byte = iota
+	trigStop
+	trigColon
+	trigJWT
+	trigDash
+	trigVendor
+)
+
+// bulkTrigger classifies every byte for bulkTextEnd: hard stops (rule bytes
+// and digits), and the prefiltered candidate starts of the userinfo (':'),
+// JWT ('e'), inline-PEM ('-'), and vendor-token rules.
+var bulkTrigger = [256]byte{ //nolint:gochecknoglobals
+	'"': trigStop, '=': trigStop, '\n': trigStop, '<': trigStop,
+	'0': trigStop, '1': trigStop, '2': trigStop, '3': trigStop, '4': trigStop,
+	'5': trigStop, '6': trigStop, '7': trigStop, '8': trigStop, '9': trigStop,
+	':': trigColon,
+	'e': trigJWT,
+	'-': trigDash,
+	'g': trigVendor, 'x': trigVendor, 's': trigVendor, 'r': trigVendor,
+	'w': trigVendor, 'd': trigVendor, 'A': trigVendor, 'h': trigVendor,
+	'S': trigVendor,
+}
+
+// bulkTextEnd returns the end of the plain-text run starting at src[i]: the
+// scan stops at bytes that begin a redaction rule. Ordinary bytes cost one
+// table load; candidate bytes run a short prefilter so the bulk copy stays
+// tight for ordinary text.
+//
+//nolint:gocognit,gocyclo,cyclop // Deliberately flat hot loop: prefilters must stay inline.
+func bulkTextEnd(src []byte, i int) int {
+	j := i + 1
+	for j < len(src) {
+		switch bulkTrigger[src[j]] {
+		case trigStop:
+			return j
+		case trigColon:
+			if j+2 < len(src) && src[j+1] == '/' && src[j+2] == '/' {
+				return j
+			}
+		case trigJWT:
+			if j+2 < len(src) && src[j+1] == 'y' && src[j+2] == 'J' && !isWordChar(src[j-1]) {
+				return j
+			}
+		case trigDash:
+			if hasPrefixAt(src, j, "-----B") {
+				return j
+			}
+		case trigVendor:
+			if !isWordChar(src[j-1]) && isVendorTokenStart(src, j) {
+				return j
+			}
+		}
+
+		j++
+	}
+
+	return j
+}
+
+// appendDigitRunAt handles a digit at src[i]: digit runs glued to word
+// characters are identifiers and copied verbatim; free-standing runs are
+// checked as contiguous and grouped card numbers.
+func (re *Redactor) appendDigitRunAt(src []byte, i int, dst []byte) (int, []byte) {
+	if i > 0 && isWordChar(src[i-1]) {
+		j := scanDigits(src, i)
+
+		return j, append(dst, src[i:j]...)
+	}
+
+	j := scanDigits(src, i)
+
+	if !re.enabled(RuleCards) || (j < len(src) && isWordChar(src[j])) {
+		return j, append(dst, src[i:j]...)
+	}
+
+	if re.isCreditCard(src[i:j]) {
+		return j, append(dst, re.marker...)
+	}
+
+	if end, ok := re.scanGroupedCardSpan(src, i, j); ok {
+		return end, append(dst, re.marker...)
+	}
+
+	return j, append(dst, src[i:j]...)
+}
+
+func isWordChar(c byte) bool {
+	return c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 }
 
 func isDigitByte(c byte) bool {
 	return c >= '0' && c <= '9'
-}
-
-func appendRedactedAuthorizationLine(dst, line []byte, colon int) []byte {
-	valueStart := skipInlineSpaces(line, colon+1)
-
-	dst = append(dst, line[:valueStart]...)
-	dst = append(dst, redactedBytes...)
-
-	if len(line) > 0 && line[len(line)-1] == '\n' {
-		dst = append(dst, '\n')
-	}
-
-	return dst
-}
-
-func appendRedactedSensitiveJSONAt(src []byte, i int, dst []byte) (int, []byte, bool) {
-	q2, ok := findJSONStringClosingQuote(src, i+1)
-	if !ok {
-		return 0, dst, false
-	}
-
-	key := src[i+1 : q2]
-
-	valueStart, hasKV, done := findJSONValueStart(src, q2)
-	if done || !hasKV {
-		return 0, dst, false
-	}
-
-	valueEnd := jsonValueEnd(src, valueStart)
-	if valueEnd == 0 || !isSensitiveKeyBytes(key) {
-		return 0, dst, false
-	}
-
-	sep := src[q2+1 : valueStart]
-
-	dst = append(dst, '"')
-	dst = append(dst, key...)
-	dst = append(dst, '"')
-	dst = append(dst, sep...)
-	dst = append(dst, '"')
-	dst = append(dst, redactedBytes...)
-	dst = append(dst, '"')
-
-	return valueEnd, dst, true
-}
-
-func findJSONStringClosingQuote(src []byte, i int) (int, bool) {
-	for i < len(src) {
-		if src[i] == '\\' {
-			i += 2
-
-			continue
-		}
-
-		if src[i] == '"' {
-			return i, true
-		}
-
-		i++
-	}
-
-	return 0, false
-}
-
-func appendRedactedURLEncodedValueAt(src []byte, eq int, dst []byte) (int, []byte, bool) {
-	keyStart := eq
-	for k := eq - 1; k >= 0; k-- {
-		c := src[k]
-		if c == '&' || c == '?' || c == '\n' {
-			keyStart = k + 1
-
-			break
-		}
-
-		if k == 0 {
-			keyStart = 0
-		}
-	}
-
-	rawKey := src[keyStart:eq]
-	if bytes.IndexByte(rawKey, '/') >= 0 || !isSensitiveKeyBytes(rawKey) {
-		return 0, dst, false
-	}
-
-	valueEnd := urlEncodedValueEnd(src, eq+1)
-
-	dst = append(dst, '=')
-	dst = append(dst, redactedBytes...)
-
-	return valueEnd, dst, true
-}
-
-// HTTPDataBytes redacts sensitive HTTP-like data (Authorization headers, secret fields, and card patterns).
-func HTTPDataBytes(b []byte) []byte {
-	return redactAllInSinglePassInto(make([]byte, 0, len(b)), b)
-}
-
-// HTTPDataBytesInto redacts sensitive HTTP-like data and appends the result
-// into dst (after resetting its length to zero), allowing callers to reuse
-// output buffers across calls.
-func HTTPDataBytesInto(dst, src []byte) []byte {
-	return redactAllInSinglePassInto(dst, src)
-}
-
-// HTTPDataBytesPooled redacts sensitive HTTP-like data using an internal
-// pooled buffer and passes the result to consume.
-//
-// The passed slice is only valid during the consume call and must not be
-// retained after consume returns.
-func HTTPDataBytesPooled(src []byte, consume func([]byte)) {
-	if consume == nil {
-		return
-	}
-
-	dst := getPooledRedactionBuffer(len(src))
-	out := redactAllInSinglePassInto(dst, src)
-	consume(out)
-	putPooledRedactionBuffer(out)
 }
 
 // newRedactionBuffer is the sync.Pool factory for reusable output buffers.
@@ -728,22 +454,4 @@ func putPooledRedactionBuffer(b []byte) {
 
 	b = b[:0]
 	redactionBufferPool.Put(&b)
-}
-
-// HTTPDataString redacts sensitive HTTP-like data from a byte slice and returns the result as a string.
-// It uses a pooled output buffer to reduce allocations and is the preferred form when the caller
-// already holds a []byte (e.g. from httputil.DumpRequest / DumpResponse).
-func HTTPDataString(b []byte) string {
-	var out string
-
-	HTTPDataBytesPooled(b, func(redacted []byte) {
-		out = string(redacted)
-	})
-
-	return out
-}
-
-// HTTPData redacts sensitive HTTP-like data (Authorization headers, secret fields, and card patterns).
-func HTTPData(s string) string {
-	return string(HTTPDataBytes([]byte(s)))
 }

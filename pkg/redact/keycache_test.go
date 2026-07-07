@@ -1,8 +1,6 @@
 package redact
 
 import (
-	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -42,15 +40,15 @@ func TestSensitiveKeyMemoSetEvictsBatchWhenFull(t *testing.T) {
 func TestIsSensitiveKeyASCIIFastBranches(t *testing.T) {
 	t.Parallel()
 
-	result, ok := isSensitiveKeyASCIIFast([]byte("firstNameToken"))
+	result, ok := defaultRedactor.sensitiveKeyASCIIFast([]byte("firstNameToken"))
 	require.True(t, ok)
 	require.True(t, result)
 
-	result, ok = isSensitiveKeyASCIIFast([]byte("first_name-token"))
+	result, ok = defaultRedactor.sensitiveKeyASCIIFast([]byte("first_name-token"))
 	require.True(t, ok)
 	require.True(t, result)
 
-	result, ok = isSensitiveKeyASCIIFast([]byte("p\xc3\xa4ssword"))
+	result, ok = defaultRedactor.sensitiveKeyASCIIFast([]byte("p\xc3\xa4ssword"))
 	require.False(t, ok)
 	require.False(t, result)
 }
@@ -67,7 +65,7 @@ func TestIsSensitiveKeyASCIIFastAcronymRuns(t *testing.T) {
 		"authorization",
 		"Proxy-Authorization",
 	} {
-		result, ok := isSensitiveKeyASCIIFast([]byte(key))
+		result, ok := defaultRedactor.sensitiveKeyASCIIFast([]byte(key))
 		require.True(t, ok, key)
 		require.True(t, result, key)
 	}
@@ -77,7 +75,7 @@ func TestIsSensitiveKeyASCIIFastAcronymRuns(t *testing.T) {
 		"IDValue",
 		"Reference",
 	} {
-		result, ok := isSensitiveKeyASCIIFast([]byte(key))
+		result, ok := defaultRedactor.sensitiveKeyASCIIFast([]byte(key))
 		require.True(t, ok, key)
 		require.False(t, result, key)
 	}
@@ -86,102 +84,37 @@ func TestIsSensitiveKeyASCIIFastAcronymRuns(t *testing.T) {
 func TestIsSensitiveTokenASCIIEmptyAndUnknown(t *testing.T) {
 	t.Parallel()
 
-	require.False(t, isSensitiveTokenASCII([]byte{}))
-	require.False(t, isSensitiveTokenASCII([]byte("zzz")))
+	require.False(t, defaultRedactor.sensitiveTokenASCII([]byte{}))
+	require.False(t, defaultRedactor.sensitiveTokenASCII([]byte("zzz")))
 }
 
-// TestSensitiveTokenSourcesInSync guards against drift between the two parallel
-// representations of the sensitive-token set: the sensitiveTokens map (used by
-// the normalized-key path) and the isSensitiveTokenASCII switch (the ASCII
-// fast-path). Every token in the map must be recognized by the ASCII fast-path
-// in every case variant, and the ASCII fast-path must not accept any extra
-// single-token literal that is absent from the map.
-func TestSensitiveTokenSourcesInSync(t *testing.T) {
+// TestSensitiveTokensLookup verifies that every token in the sensitiveTokens
+// map (the single source of truth) is matched case-insensitively by the
+// allocation-free ASCII lookup, and that the length bound assumed by the
+// lookup's stack buffer holds for all tokens.
+func TestSensitiveTokensLookup(t *testing.T) {
 	t.Parallel()
 
 	for tok := range sensitiveTokens {
+		// Every token must fit the lookup's fixed lowercase buffer.
+		require.LessOrEqualf(t, len(tok), maxSensitiveTokenLen,
+			"token %q exceeds maxSensitiveTokenLen; increase the bound", tok)
+
 		// Lowercase token from the map must be accepted by the ASCII path.
-		require.Truef(t, isSensitiveTokenASCII([]byte(tok)),
+		require.Truef(t, defaultRedactor.sensitiveTokenASCII([]byte(tok)),
 			"map token %q not recognized by isSensitiveTokenASCII", tok)
 
 		// Case-insensitivity: upper- and mixed-case variants must also match.
-		require.Truef(t, isSensitiveTokenASCII([]byte(strings.ToUpper(tok))),
+		require.Truef(t, defaultRedactor.sensitiveTokenASCII([]byte(strings.ToUpper(tok))),
 			"upper-case variant of map token %q not recognized by isSensitiveTokenASCII", tok)
 
 		mixed := strings.ToUpper(tok[:1]) + tok[1:]
-		require.Truef(t, isSensitiveTokenASCII([]byte(mixed)),
+		require.Truef(t, defaultRedactor.sensitiveTokenASCII([]byte(mixed)),
 			"mixed-case variant of map token %q not recognized by isSensitiveTokenASCII", tok)
 	}
 
-	// Reverse direction: extract every literal compared inside the ASCII
-	// fast-path switch and assert the literal set equals the map key set
-	// exactly. This catches a literal added to the switch but not the map.
-	asciiLiterals := asciiSwitchLiterals(t)
-
-	require.Len(t, asciiLiterals, len(sensitiveTokens),
-		"sensitiveTokens map and isSensitiveTokenASCII switch have different token counts")
-
-	for lit := range asciiLiterals {
-		_, inMap := sensitiveTokens[lit]
-		require.Truef(t, inMap,
-			"isSensitiveTokenASCII accepts %q which is missing from the sensitiveTokens map", lit)
-	}
-}
-
-// asciiSwitchLiterals parses keycache.go and returns the set of string literals
-// compared via equalsASCIIFold inside the isSensitiveTokenASCII function body.
-//
-// The "first"/"last"/"name" comparisons live in isSensitiveKeyASCIIFast (a
-// distinct multi-token special case) and are intentionally excluded.
-func asciiSwitchLiterals(t *testing.T) map[string]struct{} {
-	t.Helper()
-
-	src, err := os.ReadFile("keycache.go")
-	require.NoError(t, err)
-
-	body := funcBody(t, string(src), "func isSensitiveTokenASCII(")
-
-	re := regexp.MustCompile(`equalsASCIIFold\(tok, "([^"]+)"\)`)
-
-	literals := make(map[string]struct{})
-	for _, m := range re.FindAllStringSubmatch(body, -1) {
-		literals[m[1]] = struct{}{}
-	}
-
-	require.NotEmpty(t, literals, "no equalsASCIIFold literals found in isSensitiveTokenASCII")
-
-	return literals
-}
-
-// funcBody returns the brace-balanced body of the function whose declaration
-// begins with decl, within src.
-func funcBody(t *testing.T, src, decl string) string {
-	t.Helper()
-
-	start := strings.Index(src, decl)
-	require.GreaterOrEqual(t, start, 0, "function %q not found", decl)
-
-	open := strings.IndexByte(src[start:], '{')
-	require.GreaterOrEqual(t, open, 0, "opening brace for %q not found", decl)
-
-	open += start
-	depth := 0
-
-	for i := open; i < len(src); i++ {
-		switch src[i] {
-		case '{':
-			depth++
-		case '}':
-			depth--
-			if depth == 0 {
-				return src[open : i+1]
-			}
-		}
-	}
-
-	require.Fail(t, "unbalanced braces", "function %q", decl)
-
-	return ""
+	// Candidates longer than any token are rejected before the map lookup.
+	require.False(t, defaultRedactor.sensitiveTokenASCII([]byte(strings.Repeat("a", maxSensitiveTokenLen+1))))
 }
 
 func TestIsSensitiveKeyBytesFallbackPath(t *testing.T) {
@@ -189,18 +122,18 @@ func TestIsSensitiveKeyBytesFallbackPath(t *testing.T) {
 
 	// Non-ASCII input bypasses ASCII fast path and exercises normalize/cache fallback.
 	key := []byte("p\xc3\xa4ssword")
-	require.False(t, isSensitiveKeyBytes(key))
+	require.False(t, defaultRedactor.isSensitiveKey(key))
 	// Second call hits memoized fallback result.
-	require.False(t, isSensitiveKeyBytes(key))
+	require.False(t, defaultRedactor.isSensitiveKey(key))
 }
 
 func TestIsSensitiveNormalizedKeyDirect(t *testing.T) {
 	t.Parallel()
 
-	require.False(t, isSensitiveNormalizedKey(""))
-	require.True(t, isSensitiveNormalizedKey("token"))
-	require.True(t, isSensitiveNormalizedKey("first_name"))
-	require.False(t, isSensitiveNormalizedKey("public_value"))
+	require.False(t, defaultRedactor.isSensitiveNormalizedKeyTokens(""))
+	require.True(t, defaultRedactor.isSensitiveNormalizedKeyTokens("token"))
+	require.True(t, defaultRedactor.isSensitiveNormalizedKeyTokens("first_name"))
+	require.False(t, defaultRedactor.isSensitiveNormalizedKeyTokens("public_value"))
 }
 
 func TestNormalizeKeyDirect(t *testing.T) {
@@ -208,4 +141,164 @@ func TestNormalizeKeyDirect(t *testing.T) {
 
 	require.Equal(t, "api_key_name", normalizeKey("ApiKey Name"))
 	require.Equal(t, "x_1", normalizeKey("X-1"))
+}
+
+func TestHTTPDataKeywordBoundaries(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		// no false-positive substring match for short keyword fragments
+		{`{"access_log": "VISIBLE", "monkey": "VISIBLE"}`, `{"access_log": "VISIBLE", "monkey": "VISIBLE"}`},
+		// old broad "user" matching is removed
+		{`{"user_agent": "VISIBLE"}`, `{"user_agent": "VISIBLE"}`},
+		// token-based sensitive keys still redact
+		{`{"apiKey": "SECRET", "acc_number": "SECRET", "firstName": "SECRET"}`, `{"apiKey": "***", "acc_number": "***", "firstName": "***"}`},
+		{`access_log=VISIBLE&monkey=VISIBLE`, `access_log=VISIBLE&monkey=VISIBLE`},
+		{`apiKey=SECRET&acc_number=SECRET&firstName=SECRET`, `apiKey=***&acc_number=***&firstName=***`},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+	}
+}
+
+func TestIsSensitiveNormalizedKeyEmpty(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, defaultRedactor.isSensitiveNormalizedKeyTokens(""))
+}
+
+func TestHTTPDataAcronymRunKeys(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`{"APIKey":"SECRET"}`, `{"APIKey":"***"}`},
+		{`{"JWTToken":"SECRET"}`, `{"JWTToken":"***"}`},
+		{`{"CCNumber":"SECRET"}`, `{"CCNumber":"***"}`},
+		{`{"XPassword":"SECRET"}`, `{"XPassword":"***"}`},
+		{`APIKey=SECRET&reference=VISIBLE`, `APIKey=***&reference=VISIBLE`},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+	}
+}
+
+func TestNormalizeKeyAcronymRuns(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "api_key", normalizeKey("APIKey"))
+	require.Equal(t, "jwt_token", normalizeKey("JWTToken"))
+	require.Equal(t, "cc_number", normalizeKey("CCNumber"))
+	require.Equal(t, "dsn", normalizeKey("DSN"))
+	require.Equal(t, "x_password", normalizeKey("XPassword"))
+}
+
+// TestHTTPDataClosedCompoundKeys covers closed-compound (concatenated, lowercase)
+// key names that previously leaked because token matching is exact-word.
+func TestHTTPDataClosedCompoundKeys(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`{"apikey":"SECRET"}`, `{"apikey":"***"}`},
+		{`apikey=SECRET`, `apikey=***`},
+		{`{"credential":"SECRET"}`, `{"credential":"***"}`},
+		{`{"credentials":"SECRET"}`, `{"credentials":"***"}`},
+		{`{"passcode":"SECRET"}`, `{"passcode":"***"}`},
+		{`{"passphrase":"SECRET"}`, `{"passphrase":"***"}`},
+		{`{"secretkey":"SECRET"}`, `{"secretkey":"***"}`},
+		{`{"privatekey":"SECRET"}`, `{"privatekey":"***"}`},
+		{`{"accesstoken":"SECRET"}`, `{"accesstoken":"***"}`},
+		{`{"authtoken":"SECRET"}`, `{"authtoken":"***"}`},
+		{`{"pin":"SECRET"}`, `{"pin":"***"}`},
+		{`{"otp":"SECRET"}`, `{"otp":"***"}`},
+		{`{"totp":"SECRET"}`, `{"totp":"***"}`},
+		{`{"mfa":"SECRET"}`, `{"mfa":"***"}`},
+		{`{"signature":"SECRET"}`, `{"signature":"***"}`},
+		{`{"clientsecret":"SECRET"}`, `{"clientsecret":"***"}`},
+		{`{"refreshtoken":"SECRET"}`, `{"refreshtoken":"***"}`},
+		{`{"idtoken":"SECRET"}`, `{"idtoken":"***"}`},
+		{`{"accesskey":"SECRET"}`, `{"accesskey":"***"}`},
+		{`{"apisecret":"SECRET"}`, `{"apisecret":"***"}`},
+		{`{"appsecret":"SECRET"}`, `{"appsecret":"***"}`},
+		{`{"bearertoken":"SECRET"}`, `{"bearertoken":"***"}`},
+		{`{"sessionid":"SECRET"}`, `{"sessionid":"***"}`},
+		{`{"sessionkey":"SECRET"}`, `{"sessionkey":"***"}`},
+		{`{"sessiontoken":"SECRET"}`, `{"sessiontoken":"***"}`},
+		{`{"csrf":"SECRET"}`, `{"csrf":"***"}`},
+		{`{"csrftoken":"SECRET"}`, `{"csrftoken":"***"}`},
+		{`{"xsrf":"SECRET"}`, `{"xsrf":"***"}`},
+		{`{"xsrftoken":"SECRET"}`, `{"xsrftoken":"***"}`},
+		{`{"nonce":"SECRET"}`, `{"nonce":"***"}`},
+		{`PHPSESSID=SECRET`, `PHPSESSID=***`},
+		{`JSESSIONID=SECRET`, `JSESSIONID=***`},
+		{`X-Amz-Signature=SECRET`, `X-Amz-Signature=***`},
+		// Near-miss words must remain visible: exact-token matching, not substring.
+		{`{"monkey":"VISIBLE"}`, `{"monkey":"VISIBLE"}`},
+		{`{"spinner":"VISIBLE"}`, `{"spinner":"VISIBLE"}`},
+		{`{"pinboard":"VISIBLE"}`, `{"pinboard":"VISIBLE"}`},
+		{`{"apikeys":"VISIBLE"}`, `{"apikeys":"VISIBLE"}`},
+		{`{"signatures":"VISIBLE"}`, `{"signatures":"VISIBLE"}`},
+		{`{"announced":"VISIBLE"}`, `{"announced":"VISIBLE"}`},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+	}
+}
+
+// FuzzKeyClassificationParity asserts the ASCII fast path and the
+// normalize+lookup fallback classify every ASCII key identically, guarding
+// against future drift between the two implementations.
+func FuzzKeyClassificationParity(f *testing.F) {
+	seeds := []string{
+		"password", "apiKey", "APIKey", "JWTToken", "CCNumber", "IDToken",
+		"keyID", "firstName", "LASTName", "first_name", "last-name",
+		"X-1", "access_log", "monkey", "user_agent", "apikey", "credential",
+		"AccessToken", "x_api_key", "", "a", "A", "1", "_", "aA", "Aa",
+		"ABc", "aBC", "camelCaseKey", "snake_case_key", "SCREAMING_SNAKE",
+		"first-name-token", "lastName", "pin", "otp", "mfa", "secretKey",
+	}
+	for _, s := range seeds {
+		f.Add(s)
+	}
+
+	f.Fuzz(func(t *testing.T, key string) {
+		fast, ok := defaultRedactor.sensitiveKeyASCIIFast([]byte(key))
+		if !ok {
+			return // non-ASCII: the fast path defers to the fallback; nothing to compare.
+		}
+
+		slow := defaultRedactor.isSensitiveNormalizedKeyTokens(normalizeKey(key))
+		require.Equalf(t, slow, fast, "divergence for key %q (normalized %q)", key, normalizeKey(key))
+	})
+}
+
+// TestEnvVarCompoundTokens covers ALLCAPS closed-compound environment secrets.
+func TestEnvVarCompoundTokens(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"PGPASSWORD=secret", "PGPASSWORD=***"},
+		{"export PGPASSWORD=secret", "export PGPASSWORD=***"},
+		{"HTPASSWD=x", "HTPASSWD=***"},
+		{`{"dbpassword":"S"}`, `{"dbpassword":"***"}`},
+		{`{"connectionstring":"S"}`, `{"connectionstring":"***"}`},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+	}
 }

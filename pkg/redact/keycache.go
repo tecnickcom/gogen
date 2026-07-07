@@ -1,8 +1,55 @@
 package redact
 
 import (
+	"strings"
 	"sync"
+	"unicode"
 )
+
+// normalizeKey converts a key name to a tokenized lowercase form suitable for
+// boundary-aware keyword checks (e.g., camelCase -> snake_case tokens).
+// Uppercase acronym runs followed by a lowercase letter are split before the
+// last uppercase letter (e.g., APIKey -> api_key, JWTToken -> jwt_token).
+//
+//nolint:gocognit,gocyclo,cyclop
+func normalizeKey(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) * 2)
+
+	runes := []rune(s)
+	prevIsLowerOrDigit := false
+	prevIsUpper := false
+	prevIsUnderscore := true
+
+	for i, r := range runes {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			isUpper := unicode.IsUpper(r)
+			nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+
+			if isUpper && !prevIsUnderscore && (prevIsLowerOrDigit || (prevIsUpper && nextIsLower)) {
+				b.WriteByte('_')
+			}
+
+			b.WriteRune(unicode.ToLower(r))
+
+			prevIsLowerOrDigit = unicode.IsLower(r) || unicode.IsDigit(r)
+			prevIsUpper = isUpper
+			prevIsUnderscore = false
+
+			continue
+		}
+
+		if !prevIsUnderscore {
+			b.WriteByte('_')
+		}
+
+		prevIsLowerOrDigit = false
+		prevIsUpper = false
+		prevIsUnderscore = true
+	}
+
+	return strings.Trim(b.String(), "_")
+}
 
 const (
 	// sensitiveKeyCacheMaxEntries bounds the key-sensitivity memoization cache.
@@ -14,82 +61,119 @@ const (
 	sensitiveKeyCacheEvictBatch = 512
 )
 
-// sensitiveKeyCache maps raw key strings to their isSensitive result, avoiding
-// repeated normalisation and regex work for keys that appear on every request.
+// sensitiveKeyCache memoizes the isSensitive result for keys that take the
+// non-ASCII fallback path; pure-ASCII keys (the common case) are classified
+// directly by isSensitiveKeyASCIIFast without touching this cache. It avoids
+// repeated tokenization/normalization of the same non-ASCII keys.
 var sensitiveKeyCache = newSensitiveKeyMemo() //nolint:gochecknoglobals
 
 // Sensitive tokens are precomputed once and matched against normalized key tokens.
 var sensitiveTokens = map[string]struct{}{ //nolint:gochecknoglobals
-	"acc":           {},
-	"account":       {},
-	"addr":          {},
-	"address":       {},
-	"amount":        {},
-	"attestation":   {},
-	"auth":          {},
-	"authenticate":  {},
-	"authorization": {},
-	"autograph":     {},
-	"bal":           {},
-	"balance":       {},
-	"bearer":        {},
-	"bill":          {},
-	"birth":         {},
-	"card":          {},
-	"cc":            {},
-	"cell":          {},
-	"cert":          {},
-	"checksum":      {},
-	"cookie":        {},
-	"cred":          {},
-	"cv2":           {},
-	"cvc":           {},
-	"cvv":           {},
-	"dob":           {},
-	"dsa":           {},
-	"dsn":           {},
-	"ecdsa":         {},
-	"email":         {},
-	"endorse":       {},
-	"expiry":        {},
-	"fingerprint":   {},
-	"hash":          {},
-	"hmac":          {},
-	"holder":        {},
-	"iban":          {},
-	"jwt":           {},
-	"key":           {},
-	"login":         {},
-	"mail":          {},
-	"pass":          {},
-	"password":      {},
-	"pay":           {},
-	"payment":       {},
-	"phone":         {},
-	"pkcs":          {},
-	"pkcs12":        {},
-	"postal":        {},
-	"proof":         {},
-	"pwd":           {},
-	"rsa":           {},
-	"salt":          {},
-	"seal":          {},
-	"secret":        {},
-	"secur":         {},
-	"secure":        {},
-	"security":      {},
-	"sess":          {},
-	"session":       {},
-	"sgn":           {},
-	"sid":           {},
-	"sig":           {},
-	"social":        {},
-	"ssn":           {},
-	"swift":         {},
-	"tax":           {},
-	"tel":           {},
-	"telephone":     {},
-	"token":         {},
+	"acc":              {},
+	"accesskey":        {},
+	"accesstoken":      {},
+	"account":          {},
+	"addr":             {},
+	"address":          {},
+	"amount":           {},
+	"apikey":           {},
+	"apisecret":        {},
+	"appsecret":        {},
+	"attestation":      {},
+	"auth":             {},
+	"authenticate":     {},
+	"authorization":    {},
+	"authtoken":        {},
+	"autograph":        {},
+	"bal":              {},
+	"balance":          {},
+	"bearer":           {},
+	"bearertoken":      {},
+	"bill":             {},
+	"birth":            {},
+	"card":             {},
+	"cc":               {},
+	"cell":             {},
+	"cert":             {},
+	"checksum":         {},
+	"clientsecret":     {},
+	"connectionstring": {},
+	"cookie":           {},
+	"cred":             {},
+	"credential":       {},
+	"credentials":      {},
+	"csrf":             {},
+	"csrftoken":        {},
+	"cv2":              {},
+	"cvc":              {},
+	"cvv":              {},
+	"dbpassword":       {},
+	"dob":              {},
+	"dsa":              {},
+	"dsn":              {},
+	"ecdsa":            {},
+	"email":            {},
+	"endorse":          {},
+	"expiry":           {},
+	"fingerprint":      {},
+	"hash":             {},
+	"hmac":             {},
+	"holder":           {},
+	"htpasswd":         {},
+	"iban":             {},
+	"idtoken":          {},
+	"jsessionid":       {},
+	"jwt":              {},
+	"key":              {},
+	"login":            {},
+	"mail":             {},
+	"mfa":              {},
+	"nonce":            {},
+	"otp":              {},
+	"pass":             {},
+	"passcode":         {},
+	"passphrase":       {},
+	"password":         {},
+	"pay":              {},
+	"payment":          {},
+	"pgpassword":       {},
+	"phone":            {},
+	"phpsessid":        {},
+	"pin":              {},
+	"pkcs":             {},
+	"pkcs12":           {},
+	"postal":           {},
+	"privatekey":       {},
+	"proof":            {},
+	"pwd":              {},
+	"refreshtoken":     {},
+	"rsa":              {},
+	"salt":             {},
+	"seal":             {},
+	"secret":           {},
+	"secretkey":        {},
+	"secur":            {},
+	"secure":           {},
+	"security":         {},
+	"sess":             {},
+	"session":          {},
+	"sessionid":        {},
+	"sessionkey":       {},
+	"sessiontoken":     {},
+	"sgn":              {},
+	"sid":              {},
+	"sig":              {},
+	"signature":        {},
+	"social":           {},
+	"ssn":              {},
+	"swift":            {},
+	"tax":              {},
+	"tel":              {},
+	"telephone":        {},
+	"token":            {},
+	"totp":             {},
+	"xsrf":             {},
+	"xsrftoken":        {},
 }
 
 // sensitiveKeyMemo is a small concurrent memoization cache for sensitive-key checks.
@@ -133,25 +217,26 @@ func (c *sensitiveKeyMemo) set(k string, v bool) {
 	c.mu.Unlock()
 }
 
-// isSensitiveKey reports whether a key contains a sensitive token after normalization.
-func isSensitiveKeyBytes(key []byte) bool {
-	if result, ok := isSensitiveKeyASCIIFast(key); ok {
+// isSensitiveKey reports whether a key contains a sensitive token after
+// normalization, honoring the instance's extra and dropped tokens.
+func (re *Redactor) isSensitiveKey(key []byte) bool {
+	if result, ok := re.sensitiveKeyASCIIFast(key); ok {
 		return result
 	}
 
 	k := string(key)
-	if v, ok := sensitiveKeyCache.get(k); ok {
+	if v, ok := re.keyMemo.get(k); ok {
 		return v
 	}
 
-	result := isSensitiveNormalizedKey(normalizeKey(k))
-	sensitiveKeyCache.set(k, result)
+	result := re.isSensitiveNormalizedKeyTokens(normalizeKey(k))
+	re.keyMemo.set(k, result)
 
 	return result
 }
 
 //nolint:cyclop,gocognit,gocyclo
-func isSensitiveKeyASCIIFast(key []byte) (bool, bool) {
+func (re *Redactor) sensitiveKeyASCIIFast(key []byte) (bool, bool) {
 	start := -1
 	prevIsLowerOrDigit := false
 	prevIsUpper := false
@@ -172,7 +257,7 @@ func isSensitiveKeyASCIIFast(key []byte) (bool, bool) {
 			switch {
 			case isUpper && prevIsLowerOrDigit && !prevIsUnderscore && start >= 0:
 				// camelCase boundary: a lower/digit-to-upper transition closes the token.
-				sensitive, firstOrLast := closeSensitiveToken(key[start:i], prevFirstOrLast)
+				sensitive, firstOrLast := re.closeSensitiveToken(key[start:i], prevFirstOrLast)
 				if sensitive {
 					return true, true
 				}
@@ -182,7 +267,7 @@ func isSensitiveKeyASCIIFast(key []byte) (bool, bool) {
 			case isLower && prevIsUpper && start >= 0 && i-1 > start:
 				// Acronym-run boundary (e.g. APIKey, JWTToken, CCNumber): the last
 				// uppercase letter starts the next word, so the token ends before it.
-				sensitive, firstOrLast := closeSensitiveToken(key[start:i-1], prevFirstOrLast)
+				sensitive, firstOrLast := re.closeSensitiveToken(key[start:i-1], prevFirstOrLast)
 				if sensitive {
 					return true, true
 				}
@@ -201,7 +286,7 @@ func isSensitiveKeyASCIIFast(key []byte) (bool, bool) {
 		}
 
 		if start >= 0 {
-			sensitive, firstOrLast := closeSensitiveToken(key[start:i], prevFirstOrLast)
+			sensitive, firstOrLast := re.closeSensitiveToken(key[start:i], prevFirstOrLast)
 			if sensitive {
 				return true, true
 			}
@@ -216,7 +301,7 @@ func isSensitiveKeyASCIIFast(key []byte) (bool, bool) {
 	}
 
 	if start >= 0 {
-		sensitive, _ := closeSensitiveToken(key[start:], prevFirstOrLast)
+		sensitive, _ := re.closeSensitiveToken(key[start:], prevFirstOrLast)
 		if sensitive {
 			return true, true
 		}
@@ -228,8 +313,8 @@ func isSensitiveKeyASCIIFast(key []byte) (bool, bool) {
 // closeSensitiveToken checks a completed token: it reports whether the token
 // (or the "first"/"last" + "name" pair) is sensitive, and whether the token
 // primes the first/last-name special case for the next token.
-func closeSensitiveToken(tok []byte, prevFirstOrLast bool) (bool, bool) {
-	if isSensitiveTokenASCII(tok) {
+func (re *Redactor) closeSensitiveToken(tok []byte, prevFirstOrLast bool) (bool, bool) {
+	if re.sensitiveTokenASCII(tok) {
 		return true, false
 	}
 
@@ -244,61 +329,47 @@ func isASCIIAlphaNum(c byte) bool {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
 }
 
-//nolint:cyclop,gocognit,gocyclo
-func isSensitiveTokenASCII(tok []byte) bool {
-	if len(tok) == 0 {
+// maxSensitiveTokenLen is an upper bound on the length of any sensitiveTokens
+// key ("authorization" is the longest at 13 bytes). Longer candidates cannot
+// match and are rejected before the lookup; TestSensitiveTokenLengths guards
+// the bound when new tokens are added.
+const maxSensitiveTokenLen = 16
+
+// sensitiveTokenASCII reports whether tok is a sensitive keyword,
+// case-insensitively. It lowercases into a fixed stack buffer and relies on
+// the compiler's allocation-free map[string(bytes)] lookup optimization, so
+// sensitiveTokens stays the single source of truth for the built-in set,
+// adjusted by the instance's extra and dropped tokens.
+func (re *Redactor) sensitiveTokenASCII(tok []byte) bool {
+	if len(tok) == 0 || len(tok) > maxSensitiveTokenLen {
 		return false
 	}
 
-	switch lowerASCIIByte(tok[0]) {
-	case 'a':
-		return equalsASCIIFold(tok, "acc") || equalsASCIIFold(tok, "account") || equalsASCIIFold(tok, "addr") ||
-			equalsASCIIFold(tok, "address") || equalsASCIIFold(tok, "amount") || equalsASCIIFold(tok, "attestation") ||
-			equalsASCIIFold(tok, "auth") || equalsASCIIFold(tok, "authenticate") ||
-			equalsASCIIFold(tok, "authorization") || equalsASCIIFold(tok, "autograph")
-	case 'b':
-		return equalsASCIIFold(tok, "bal") || equalsASCIIFold(tok, "balance") || equalsASCIIFold(tok, "bearer") ||
-			equalsASCIIFold(tok, "bill") || equalsASCIIFold(tok, "birth")
-	case 'c':
-		return equalsASCIIFold(tok, "card") || equalsASCIIFold(tok, "cc") || equalsASCIIFold(tok, "cell") ||
-			equalsASCIIFold(tok, "cert") || equalsASCIIFold(tok, "checksum") || equalsASCIIFold(tok, "cookie") ||
-			equalsASCIIFold(tok, "cred") || equalsASCIIFold(tok, "cv2") || equalsASCIIFold(tok, "cvc") ||
-			equalsASCIIFold(tok, "cvv")
-	case 'd':
-		return equalsASCIIFold(tok, "dob") || equalsASCIIFold(tok, "dsa") || equalsASCIIFold(tok, "dsn")
-	case 'e':
-		return equalsASCIIFold(tok, "ecdsa") || equalsASCIIFold(tok, "email") || equalsASCIIFold(tok, "endorse") ||
-			equalsASCIIFold(tok, "expiry")
-	case 'f':
-		return equalsASCIIFold(tok, "fingerprint")
-	case 'h':
-		return equalsASCIIFold(tok, "hash") || equalsASCIIFold(tok, "hmac") || equalsASCIIFold(tok, "holder")
-	case 'i':
-		return equalsASCIIFold(tok, "iban")
-	case 'j':
-		return equalsASCIIFold(tok, "jwt")
-	case 'k':
-		return equalsASCIIFold(tok, "key")
-	case 'l':
-		return equalsASCIIFold(tok, "login")
-	case 'm':
-		return equalsASCIIFold(tok, "mail")
-	case 'p':
-		return equalsASCIIFold(tok, "pass") || equalsASCIIFold(tok, "password") || equalsASCIIFold(tok, "pay") ||
-			equalsASCIIFold(tok, "payment") || equalsASCIIFold(tok, "phone") || equalsASCIIFold(tok, "pkcs") ||
-			equalsASCIIFold(tok, "pkcs12") || equalsASCIIFold(tok, "postal") || equalsASCIIFold(tok, "proof") ||
-			equalsASCIIFold(tok, "pwd")
-	case 'r':
-		return equalsASCIIFold(tok, "rsa")
-	case 's':
-		return equalsASCIIFold(tok, "salt") || equalsASCIIFold(tok, "seal") || equalsASCIIFold(tok, "secret") ||
-			equalsASCIIFold(tok, "secur") || equalsASCIIFold(tok, "secure") || equalsASCIIFold(tok, "security") ||
-			equalsASCIIFold(tok, "sess") || equalsASCIIFold(tok, "session") || equalsASCIIFold(tok, "sgn") ||
-			equalsASCIIFold(tok, "sid") || equalsASCIIFold(tok, "sig") || equalsASCIIFold(tok, "social") ||
-			equalsASCIIFold(tok, "ssn") || equalsASCIIFold(tok, "swift")
-	case 't':
-		return equalsASCIIFold(tok, "tax") || equalsASCIIFold(tok, "tel") || equalsASCIIFold(tok, "telephone") ||
-			equalsASCIIFold(tok, "token")
+	var buf [maxSensitiveTokenLen]byte
+	for i, c := range tok {
+		buf[i] = lowerASCIIByte(c)
+	}
+
+	return re.sensitiveToken(string(buf[:len(tok)]))
+}
+
+// sensitiveToken checks a lowercased token against the built-in set adjusted
+// by the instance configuration.
+func (re *Redactor) sensitiveToken(lowered string) bool {
+	if re.dropTokens != nil {
+		if _, dropped := re.dropTokens[lowered]; dropped {
+			return false
+		}
+	}
+
+	if _, ok := sensitiveTokens[lowered]; ok {
+		return true
+	}
+
+	if re.extraTokens != nil {
+		if _, ok := re.extraTokens[lowered]; ok {
+			return true
+		}
 	}
 
 	return false
@@ -332,7 +403,7 @@ func equalsASCIIFold(tok []byte, lit string) bool {
 }
 
 //nolint:cyclop,gocognit,gocyclo
-func isSensitiveNormalizedKey(normalized string) bool {
+func (re *Redactor) isSensitiveNormalizedKeyTokens(normalized string) bool {
 	if normalized == "" {
 		return false
 	}
@@ -348,7 +419,7 @@ func isSensitiveNormalizedKey(normalized string) bool {
 
 		if i > start {
 			tok := normalized[start:i]
-			if _, ok := sensitiveTokens[tok]; ok {
+			if re.sensitiveToken(tok) {
 				return true
 			}
 

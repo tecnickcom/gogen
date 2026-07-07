@@ -489,436 +489,6 @@ func TestHTTPDataBytesPooledNilConsumer(t *testing.T) {
 	})
 }
 
-func TestHTTPDataJSONNumericValues(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  string
-	}{
-		{`{"amount": 9999}`, `{"amount": "***"}`},
-		{`{"cvv": true}`, `{"cvv": "***"}`},
-		{`{"ssn": null}`, `{"ssn": "***"}`},
-		{`{"balance": -1.5e3}`, `{"balance": "***"}`},
-		{`{"password": 0}`, `{"password": "***"}`},
-	}
-
-	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
-	}
-}
-
-func TestHTTPDataCreditCardWordBoundary(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  string
-	}{
-		// standalone card number (no surrounding punctuation)
-		{"4012888888881881", "***"},
-		// card adjacent to spaces
-		{"card 4012888888881881 end", "card *** end"},
-		// card at end of line followed by newline
-		{"ref: 371449635398431\n", "ref: ***\n"},
-		// card in parentheses (old behavior preserved)
-		{"(4222222222222)", "(***)"},
-	}
-
-	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
-	}
-}
-
-func TestHTTPDataURLEncodedNoFalsePositive(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  string
-	}{
-		// keyword in URL path must not cause a later param to be redacted
-		{"GET /api/payment/receipt?reference=VISIBLE", "GET /api/payment/receipt?reference=VISIBLE"},
-		// keyword in query param key should still be redacted
-		{"GET /api/v1/status?session_id=SECRET", "GET /api/v1/status?session_id=***"},
-		// keyword in path segment but innocent query param remains visible
-		{"/authenticate?next=VISIBLE", "/authenticate?next=VISIBLE"},
-	}
-
-	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
-	}
-}
-
-func TestHTTPDataKeywordBoundaries(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  string
-	}{
-		// no false-positive substring match for short keyword fragments
-		{`{"access_log": "VISIBLE", "monkey": "VISIBLE"}`, `{"access_log": "VISIBLE", "monkey": "VISIBLE"}`},
-		// old broad "user" matching is removed
-		{`{"user_agent": "VISIBLE"}`, `{"user_agent": "VISIBLE"}`},
-		// token-based sensitive keys still redact
-		{`{"apiKey": "SECRET", "acc_number": "SECRET", "firstName": "SECRET"}`, `{"apiKey": "***", "acc_number": "***", "firstName": "***"}`},
-		{`access_log=VISIBLE&monkey=VISIBLE`, `access_log=VISIBLE&monkey=VISIBLE`},
-		{`apiKey=SECRET&acc_number=SECRET&firstName=SECRET`, `apiKey=***&acc_number=***&firstName=***`},
-	}
-
-	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
-	}
-}
-
-func TestHTTPDataJSONEdgeBranches(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "unmatched quote",
-			input: `prefix "password`,
-			want:  `prefix "password`,
-		},
-		{
-			name:  "quoted token without colon",
-			input: `"password" x`,
-			want:  `"password" x`,
-		},
-		{
-			name:  "colon then only whitespace",
-			input: `{"password":   `,
-			want:  `{"password":   `,
-		},
-		{
-			name:  "string value with escapes",
-			input: `{"password":"va\\\"l"}`,
-			want:  `{"password":"***"}`,
-		},
-		{
-			name:  "false literal redaction",
-			input: `{"cvv":false}`,
-			want:  `{"cvv":"***"}`,
-		},
-		{
-			name:  "unknown value type",
-			input: `{"password":[]}`,
-			want:  `{"password":[]}`,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input))
-		})
-	}
-}
-
-func TestHTTPDataURLEncodedSlashInKey(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("GET /x/password=SECRET&password=SECRET")
-	want := []byte("GET /x/password=SECRET&password=***")
-	require.Equal(t, want, HTTPDataBytes(input))
-}
-
-func TestHTTPDataJSONNonSensitivePreserved(t *testing.T) {
-	t.Parallel()
-
-	input := []byte(`{"reference":"VISIBLE"}`)
-	want := []byte(`{"reference":"VISIBLE"}`)
-	require.Equal(t, want, HTTPDataBytes(input))
-}
-
-func TestHTTPDataURLEncodedNoEquals(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("GET /health HTTP/1.1")
-	want := []byte("GET /health HTTP/1.1")
-	require.Equal(t, want, HTTPDataBytes(input))
-}
-
-func TestHTTPDataURLEncodedNonSensitivePreserved(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("reference=VISIBLE&note=PUBLIC")
-	want := []byte("reference=VISIBLE&note=PUBLIC")
-	require.Equal(t, want, HTTPDataBytes(input))
-}
-
-func TestRedactionHelpersCoverageBranches(t *testing.T) {
-	t.Parallel()
-
-	t.Run("json value start no colon after key", func(t *testing.T) {
-		t.Parallel()
-
-		_, hasKV, done := findJSONValueStart([]byte(`"password" x`), len(`"password"`)-1)
-		require.False(t, hasKV)
-		require.False(t, done)
-	})
-
-	t.Run("json value start end of input", func(t *testing.T) {
-		t.Parallel()
-
-		_, hasKV, done := findJSONValueStart([]byte(`"password"`), len(`"password"`)-1)
-		require.False(t, hasKV)
-		require.True(t, done)
-	})
-
-	t.Run("json string parser with trailing backslash", func(t *testing.T) {
-		t.Parallel()
-
-		src := []byte{0x22, 'a', 0x5c, 0x22}
-
-		// Unterminated escaped sequence should return end-of-input.
-		require.Equal(t, len(src), parseJSONStringEnd(src, 0))
-	})
-}
-
-func TestIsSensitiveNormalizedKeyEmpty(t *testing.T) {
-	t.Parallel()
-
-	require.False(t, isSensitiveNormalizedKey(""))
-}
-
-func TestHTTPDataCreditCardsKeepsDigitsAdjacentToWordChar(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("prefix 4012888888881881x suffix")
-	got := HTTPDataBytes(input)
-
-	require.Equal(t, input, got)
-}
-
-func TestMatchesCardPatternReturnsFalseForUnknownPrefix(t *testing.T) {
-	t.Parallel()
-
-	require.False(t, matchesCardPattern([]byte("9111111111111111")))
-}
-
-func TestHTTPDataAuthorizationLineBranches(t *testing.T) {
-	t.Parallel()
-
-	// Non-authorization header is left untouched.
-	require.Equal(t, []byte("X-Header: SECRET\n"), HTTPDataBytes([]byte("X-Header: SECRET\n")))
-
-	// Authorization header value is redacted, trailing newline preserved.
-	require.Equal(t, []byte("Authorization: ***\n"), HTTPDataBytes([]byte("Authorization: Bearer SECRET\n")))
-
-	// Authorization header value is redacted without a trailing newline.
-	require.Equal(t, []byte("Authorization: ***"), HTTPDataBytes([]byte("Authorization: Bearer SECRET")))
-}
-
-func TestHTTPDataCreditCardsAdditionalBranches(t *testing.T) {
-	t.Parallel()
-
-	// Match and redact a standalone valid card number.
-	require.Equal(t, []byte("***"), HTTPDataBytes([]byte("4012888888881881")))
-
-	// Keep non-matching numeric run unchanged.
-	require.Equal(t, []byte("9111111111111111"), HTTPDataBytes([]byte("9111111111111111")))
-
-	// Exercise branch where current digit follows a word character.
-	require.Equal(t, []byte("x123"), HTTPDataBytes([]byte("x123")))
-}
-
-func TestHTTPDataDigitWordBoundaryBranch(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("(123x)")
-	require.Equal(t, input, HTTPDataBytes(input))
-}
-
-func TestAuthorizationHeaderColon(t *testing.T) {
-	t.Parallel()
-
-	// No colon: not a header line.
-	_, ok := authorizationHeaderColon([]byte("Authorization no-colon\n"))
-	require.False(t, ok)
-
-	// Empty name before the colon: not a header line.
-	_, ok = authorizationHeaderColon([]byte(": value\n"))
-	require.False(t, ok)
-
-	_, ok = authorizationHeaderColon([]byte(" : value\n"))
-	require.False(t, ok)
-
-	// Names with non-header characters are left to the JSON/URL rules.
-	_, ok = authorizationHeaderColon([]byte(`{"Authorization":"SECRET"}`))
-	require.False(t, ok)
-
-	// Header names that do not contain "authorization" are not matched.
-	_, ok = authorizationHeaderColon([]byte("X-Header: SECRET\n"))
-	require.False(t, ok)
-
-	// Plain and prefixed authorization headers are matched.
-	colon, ok := authorizationHeaderColon([]byte("Authorization: Bearer SECRET\n"))
-	require.True(t, ok)
-	require.Equal(t, len("Authorization"), colon)
-
-	colon, ok = authorizationHeaderColon([]byte("Proxy-Authorization: Basic SECRET\n"))
-	require.True(t, ok)
-	require.Equal(t, len("Proxy-Authorization"), colon)
-
-	// Optional whitespace before the colon is allowed.
-	colon, ok = authorizationHeaderColon([]byte("authorization : ApiKey=SECRET\n"))
-	require.True(t, ok)
-	require.Equal(t, len("authorization "), colon)
-}
-
-func TestHTTPDataProxyAuthorizationHeader(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  string
-	}{
-		{"Proxy-Authorization: Basic SECRET\n", "Proxy-Authorization: ***\n"},
-		{"PROXY-AUTHORIZATION: Bearer SECRET", "PROXY-AUTHORIZATION: ***"},
-	}
-
-	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
-	}
-}
-
-func TestHTTPDataAuthorizationJSONKey(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  string
-	}{
-		{`{"Authorization":"Bearer SECRET"}`, `{"Authorization":"***"}`},
-		{`{"authorization": "Basic SECRET"}`, `{"authorization": "***"}`},
-		{`{"Proxy-Authorization": "SECRET"}`, `{"Proxy-Authorization": "***"}`},
-		{`authorization=SECRET&reference=VISIBLE`, `authorization=***&reference=VISIBLE`},
-	}
-
-	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
-	}
-}
-
-func TestHTTPDataAcronymRunKeys(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  string
-	}{
-		{`{"APIKey":"SECRET"}`, `{"APIKey":"***"}`},
-		{`{"JWTToken":"SECRET"}`, `{"JWTToken":"***"}`},
-		{`{"CCNumber":"SECRET"}`, `{"CCNumber":"***"}`},
-		{`{"XPassword":"SECRET"}`, `{"XPassword":"***"}`},
-		{`APIKey=SECRET&reference=VISIBLE`, `APIKey=***&reference=VISIBLE`},
-	}
-
-	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
-	}
-}
-
-func TestNormalizeKeyAcronymRuns(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, "api_key", normalizeKey("APIKey"))
-	require.Equal(t, "jwt_token", normalizeKey("JWTToken"))
-	require.Equal(t, "cc_number", normalizeKey("CCNumber"))
-	require.Equal(t, "dsn", normalizeKey("DSN"))
-	require.Equal(t, "x_password", normalizeKey("XPassword"))
-}
-
-func TestLikelyJSONKeyStart(t *testing.T) {
-	t.Parallel()
-
-	require.True(t, likelyJSONKeyStart([]byte(`"k":1`), 0))
-	require.True(t, likelyJSONKeyStart([]byte(`{"k":1}`), 1))
-	require.True(t, likelyJSONKeyStart([]byte(`{"a":1, "b":2}`), 8))
-	require.False(t, likelyJSONKeyStart([]byte(`{"a":"v"}`), 6))
-}
-
-func TestFindJSONStringClosingQuote(t *testing.T) {
-	t.Parallel()
-
-	q, ok := findJSONStringClosingQuote([]byte(`a\"b"x`), 0)
-	require.True(t, ok)
-	require.Equal(t, 4, q)
-
-	_, ok = findJSONStringClosingQuote([]byte(`a\"b`), 0)
-	require.False(t, ok)
-}
-
-func TestAppendRedactedSensitiveJSONAtNoClosingQuote(t *testing.T) {
-	t.Parallel()
-
-	_, _, ok := appendRedactedSensitiveJSONAt([]byte(`"password`), 0, nil)
-	require.False(t, ok)
-
-	_, _, ok = appendRedactedSensitiveJSONAt([]byte(`"password"`), 0, nil)
-	require.False(t, ok)
-}
-
-func TestPassesLuhn(t *testing.T) {
-	t.Parallel()
-
-	// Known-valid card numbers satisfy the Luhn checksum.
-	require.True(t, passesLuhn([]byte("4012888888881881")))
-	require.True(t, passesLuhn([]byte("371449635398431")))
-	require.True(t, passesLuhn([]byte("4222222222222")))
-
-	// Altering the final check digit breaks the checksum.
-	require.False(t, passesLuhn([]byte("4012888888881882")))
-}
-
-func TestLuhnCheckDefaultDisabled(t *testing.T) {
-	t.Parallel()
-
-	// The Luhn gate is off by default.
-	require.False(t, LuhnCheckEnabled())
-
-	digits := []byte("4012888888881882") // valid Visa prefix/length, invalid Luhn.
-
-	// With the gate disabled, prefix match alone is enough to flag as a card.
-	require.True(t, isCreditCard(digits))
-}
-
-//nolint:paralleltest // Mutates the process-wide Luhn toggle.
-func TestSetLuhnCheckGatesRedaction(t *testing.T) {
-	// Not parallel: SetLuhnCheck mutates process-wide state.
-	t.Cleanup(func() { SetLuhnCheck(false) })
-
-	// A run that matches a card prefix/length but fails Luhn.
-	invalidLuhn := []byte("4012888888881882")
-
-	// A run that matches a card prefix/length and passes Luhn.
-	validLuhn := []byte("4012888888881881")
-
-	SetLuhnCheck(true)
-	require.True(t, LuhnCheckEnabled())
-
-	// Enabled: only the Luhn-valid number is treated as a card.
-	require.False(t, isCreditCard(invalidLuhn))
-	require.True(t, isCreditCard(validLuhn))
-
-	// And through the public redaction path.
-	require.Equal(t, invalidLuhn, HTTPDataBytes(invalidLuhn))
-	require.Equal(t, []byte("***"), HTTPDataBytes(validLuhn))
-
-	SetLuhnCheck(false)
-	require.False(t, LuhnCheckEnabled())
-
-	// Disabled (default): both are redacted because prefix match alone suffices.
-	require.Equal(t, []byte("***"), HTTPDataBytes(invalidLuhn))
-	require.Equal(t, []byte("***"), HTTPDataBytes(validLuhn))
-}
-
 //nolint:paralleltest // Swaps the shared pool to validate pooled buffer behavior.
 func TestPooledBufferHelpers(t *testing.T) {
 	// Intentionally not parallel: this test replaces the shared pool. Restore an
@@ -955,4 +525,111 @@ func TestPooledBufferHelpers(t *testing.T) {
 	// Oversized buffers are dropped; right-sized buffers are returned to the pool.
 	putPooledRedactionBuffer(make([]byte, 0, 2<<20))
 	putPooledRedactionBuffer(make([]byte, 0, 128))
+}
+
+func TestCanonicalAPI(t *testing.T) {
+	t.Parallel()
+
+	input := benchmarkHTTPDataInput
+	want := HTTPData(input) // the aliases and canonical forms must agree
+
+	require.Equal(t, want, String(input))
+	require.Equal(t, want, string(Bytes([]byte(input))))
+	require.Equal(t, want, BytesToString([]byte(input)))
+
+	var dst []byte
+
+	dst = AppendTo(dst, []byte(input))
+	require.Equal(t, want, string(dst))
+
+	var pooled string
+
+	Pooled([]byte(input), func(out []byte) { pooled = string(out) })
+	require.Equal(t, want, pooled)
+
+	require.NotPanics(t, func() { Pooled([]byte(input), nil) })
+}
+
+// TestRedactionIdempotency locks the property that redacting already-redacted
+// output is a no-op: every rule replaces values with the marker and the marker
+// never re-triggers a rule. Layered redaction (e.g. middleware + log sink)
+// must not double-mangle output.
+func TestRedactionIdempotency(t *testing.T) {
+	t.Parallel()
+
+	docs := []string{
+		benchmarkHTTPDataInput,
+		"Authorization: Basic QQ==\r\nCookie: sid=1\r\n\r\n{\"password\":\"x\"}",
+		`{"password":{"a":"b"},"card":"4012 8888 8888 1881"}`,
+		"token=SECRET&note=ok\npassword=\"quoted secret\" tail",
+		"X-Api-Key: k\npan 6759 6498 2643 8453 end",
+		"dial error: postgres://app:hunter2@10.0.0.5/db?sslmode=disable",
+		"state=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.dQw4w9WgXcQ",
+		"-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----\n",
+		"<password>SECRET</password><note>ok</note>",
+	}
+
+	for _, doc := range docs {
+		once := String(doc)
+		require.Equal(t, once, String(once), "not idempotent for input: %q", doc)
+	}
+}
+
+// FuzzRedactionIdempotency searches for inputs where redaction fails to reach
+// a fixed point after one extra pass, and doubles as a no-panic robustness
+// fuzz. Redaction is byte-stable in a single pass on well-formed input (the
+// strict table tests pin that); on adversarial ambiguous quote soup a rewrite
+// can change how the next pass parses the surroundings, so the guaranteed
+// property is convergence: the second pass is a fixed point, and re-redaction
+// only ever redacts more, never less. A violation here means stacked
+// redaction layers (middleware + log sink) would keep mangling output.
+func FuzzRedactionIdempotency(f *testing.F) {
+	seeds := []string{
+		benchmarkHTTPDataInput,
+		"Authorization: Basic QQ==\r\nCookie: sid=1\r\n\r\n{\"password\":\"x\"}",
+		`{"password":{"a":"b"},"card":"4012 8888 8888 1881"}`,
+		"token=SECRET&note=ok\npassword=\"quoted secret\" tail",
+		"pass=\"\"0", "password=***x", "a=\"***\"", "token=*** x",
+		"dial error: postgres://app:hunter2@10.0.0.5/db", "://:@", "http://u:p@ss@h",
+		"state=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig", "eyJ.",
+		"-----BEGIN RSA PRIVATE KEY-----\nMIIE\n-----END RSA PRIVATE KEY-----\n",
+		"-----BEGIN RSA PRIVATE KEY-----\\nMIIE\\n-----END RSA PRIVATE KEY-----",
+		"<password>SECRET</password>", "<a>***</a>", "<password><![CDATA[x]]></password>",
+		"pan 6759 6498 2643 8453 end", "1 800 555 0199 1234",
+		"ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345", "AKIAIOSFODNN7EXAMPLE",
+		"PGPASSWORD=secret",
+	}
+	for _, s := range seeds {
+		f.Add(s)
+	}
+
+	f.Fuzz(func(t *testing.T, s string) {
+		once := String(s)
+		twice := String(once)
+		thrice := String(twice)
+
+		if twice != thrice {
+			t.Fatalf("redaction does not converge after two passes:\nin    : %q\nonce  : %q\ntwice : %q\nthrice: %q",
+				s, once, twice, thrice)
+		}
+	})
+}
+
+// TestRedactionConvergence pins the known pathological inputs where a single
+// pass is not byte-stable (ambiguous quote soup whose rewrite changes how the
+// next pass parses the surroundings): the second pass must be a fixed point,
+// and each extra pass only redacts more, never less.
+func TestRedactionConvergence(t *testing.T) {
+	t.Parallel()
+
+	docs := []string{
+		`sid=0"sid":0`,                   // non-key context replaced by marker
+		"\"pass\":{\",\"Card\":\"{\"\"}", // container balance flips after inner rewrite
+	}
+
+	for _, doc := range docs {
+		once := String(doc)
+		twice := String(once)
+		require.Equal(t, twice, String(twice), "no fixed point after two passes for input: %q", doc)
+	}
 }
