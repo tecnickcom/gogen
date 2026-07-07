@@ -1,10 +1,27 @@
 package uhex
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+// sweep64 returns a broad set of uint64 test patterns: edge values plus a
+// pseudo-random sweep that exercises every byte position.
+func sweep64() []uint64 {
+	seed := []uint64{0, 1, 255, 0x0123456789abcdef, 0xfedcba9876543210, 0xffffffffffffffff}
+
+	vals := make([]uint64, 0, len(seed)+2*4096)
+	vals = append(vals, seed...)
+
+	for i := range uint64(4096) {
+		vals = append(vals, i*0x9e3779b97f4a7c15^(i<<29), 1<<(i%64))
+	}
+
+	return vals
+}
 
 func TestHex64(t *testing.T) {
 	t.Parallel()
@@ -147,4 +164,115 @@ func TestHex8BB(t *testing.T) {
 	dst := [2]byte{}
 	Hex8BB([1]byte{0xff}, &dst)
 	require.Equal(t, []byte("ff"), dst[:])
+}
+
+// TestHex64Oracle cross-checks the 64-bit integer encoders against fmt.Sprintf.
+func TestHex64Oracle(t *testing.T) {
+	t.Parallel()
+
+	for _, n := range sweep64() {
+		want := []byte(fmt.Sprintf("%016x", n))
+
+		require.Equal(t, want, Hex64(n))
+
+		var dst [16]byte
+
+		Hex64UB(n, &dst)
+		require.Equal(t, want, dst[:])
+	}
+}
+
+// TestHex32Oracle cross-checks the 32-bit integer encoders against fmt.Sprintf.
+func TestHex32Oracle(t *testing.T) {
+	t.Parallel()
+
+	for _, n := range sweep64() {
+		v := uint32(n)
+		want := []byte(fmt.Sprintf("%08x", v))
+
+		require.Equal(t, want, Hex32(v))
+
+		var dst [8]byte
+
+		Hex32UB(v, &dst)
+		require.Equal(t, want, dst[:])
+	}
+}
+
+// TestHex16Oracle exhaustively cross-checks the 16-bit integer encoders.
+func TestHex16Oracle(t *testing.T) {
+	t.Parallel()
+
+	for n := range 0x10000 {
+		v := uint16(n)
+		want := []byte(fmt.Sprintf("%04x", v))
+
+		require.Equal(t, want, Hex16(v))
+
+		var dst [4]byte
+
+		Hex16UB(v, &dst)
+		require.Equal(t, want, dst[:])
+	}
+}
+
+// TestHex8Oracle exhaustively cross-checks the 8-bit integer encoders.
+func TestHex8Oracle(t *testing.T) {
+	t.Parallel()
+
+	for n := range 0x100 {
+		v := uint8(n)
+		want := []byte(fmt.Sprintf("%02x", v))
+
+		require.Equal(t, want, Hex8(v))
+
+		var dst [2]byte
+
+		Hex8UB(v, &dst)
+		require.Equal(t, want, dst[:])
+	}
+}
+
+// TestHexBytesOracle sweeps every byte value across positions and cross-checks
+// the byte-array encoders against encoding/hex.
+func TestHexBytesOracle(t *testing.T) {
+	t.Parallel()
+
+	for i := range 256 {
+		b8 := [8]byte{byte(i), byte(i * 7), byte(i + 3), byte(255 - i), byte(i ^ 0x5a), byte(i << 1), byte(i >> 1), byte(i * 31)}
+		want8 := []byte(hex.EncodeToString(b8[:]))
+		require.Equal(t, want8, Hex64B(b8))
+
+		var d16 [16]byte
+
+		Hex64BB(b8, &d16)
+		require.Equal(t, want8, d16[:])
+
+		b4 := [4]byte{byte(i), byte(255 - i), byte(i ^ 0x33), byte(i * 5)}
+		want4 := []byte(hex.EncodeToString(b4[:]))
+		require.Equal(t, want4, Hex32B(b4))
+
+		var d8 [8]byte
+
+		Hex32BB(b4, &d8)
+		require.Equal(t, want4, d8[:])
+
+		b2 := [2]byte{byte(i), byte(255 - i)}
+		want2 := []byte(hex.EncodeToString(b2[:]))
+		require.Equal(t, want2, Hex16B(b2))
+
+		var d4 [4]byte
+
+		Hex16BB(b2, &d4)
+		require.Equal(t, want2, d4[:])
+
+		b1 := [1]byte{byte(i)}
+		want1 := []byte(hex.EncodeToString(b1[:]))
+		require.Equal(t, want1, Hex8B(b1))
+
+		var d2 [2]byte
+
+		Hex8BB(b1, &d2)
+		require.Equal(t, want1, d2[:])
+	}
 }

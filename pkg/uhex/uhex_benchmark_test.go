@@ -4,138 +4,181 @@ import (
 	"testing"
 )
 
+// Package-level sinks keep encoder output observable so the compiler cannot
+// dead-code-eliminate the work being measured. Inputs are mutated every
+// iteration to defeat loop-invariant hoisting and constant folding.
+//
+//nolint:gochecknoglobals // benchmark sinks that defeat dead-code elimination
+var (
+	sink2     [2]byte
+	sink4     [4]byte
+	sink8     [8]byte
+	sink16    [16]byte
+	sinkSlice []byte
+)
+
 func BenchmarkHex64(b *testing.B) {
-	u := uint64(0xffffffffffffffff)
+	var u uint64
 
 	for b.Loop() {
-		_ = Hex64(u)
+		u++
+		sink16 = [16]byte(Hex64(u))
 	}
 }
 
 func BenchmarkHex64UB(b *testing.B) {
-	u := uint64(0xffffffffffffffff)
-	dst := [16]byte{}
+	var u uint64
 
 	for b.Loop() {
-		Hex64UB(u, &dst)
+		u++
+		Hex64UB(u, &sink16)
 	}
 }
 
 func BenchmarkHex64B(b *testing.B) {
-	src := [8]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+	var src [8]byte
 
 	for b.Loop() {
-		_ = Hex64B(src)
+		src[0]++
+		sink16 = [16]byte(Hex64B(src))
 	}
 }
 
 func BenchmarkHex64BB(b *testing.B) {
-	src := [8]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
-	dst := [16]byte{}
+	var src [8]byte
 
 	for b.Loop() {
-		Hex64BB(src, &dst)
+		src[0]++
+		Hex64BB(src, &sink16)
 	}
 }
 
 func BenchmarkHex32(b *testing.B) {
-	u := uint32(0xffffffff)
+	var u uint32
 
 	for b.Loop() {
-		_ = Hex32(u)
+		u++
+		sink8 = [8]byte(Hex32(u))
 	}
 }
 
 func BenchmarkHex32UB(b *testing.B) {
-	u := uint32(0xffffffff)
-	dst := [8]byte{}
+	var u uint32
 
 	for b.Loop() {
-		Hex32UB(u, &dst)
+		u++
+		Hex32UB(u, &sink8)
 	}
 }
 
 func BenchmarkHex32B(b *testing.B) {
-	src := [4]byte{0xff, 0xff, 0xff, 0xff}
+	var src [4]byte
 
 	for b.Loop() {
-		_ = Hex32B(src)
+		src[0]++
+		sink8 = [8]byte(Hex32B(src))
 	}
 }
 
 func BenchmarkHex32BB(b *testing.B) {
-	src := [4]byte{0xff, 0xff, 0xff, 0xff}
-	dst := [8]byte{}
+	var src [4]byte
 
 	for b.Loop() {
-		Hex32BB(src, &dst)
+		src[0]++
+		Hex32BB(src, &sink8)
 	}
 }
 
 func BenchmarkHex16(b *testing.B) {
-	u := uint16(0xffff)
+	var u uint16
 
 	for b.Loop() {
-		_ = Hex16(u)
+		u++
+		sink4 = [4]byte(Hex16(u))
 	}
 }
 
 func BenchmarkHex16UB(b *testing.B) {
-	u := uint16(0xffff)
-	dst := [4]byte{}
+	var u uint16
 
 	for b.Loop() {
-		Hex16UB(u, &dst)
+		u++
+		Hex16UB(u, &sink4)
 	}
 }
 
 func BenchmarkHex16B(b *testing.B) {
-	src := [2]byte{0xff, 0xff}
+	var src [2]byte
 
 	for b.Loop() {
-		_ = Hex16B(src)
+		src[0]++
+		sink4 = [4]byte(Hex16B(src))
 	}
 }
 
 func BenchmarkHex16BB(b *testing.B) {
-	src := [2]byte{0xff, 0xff}
-	dst := [4]byte{}
+	var src [2]byte
 
 	for b.Loop() {
-		Hex16BB(src, &dst)
+		src[0]++
+		Hex16BB(src, &sink4)
 	}
 }
 
 func BenchmarkHex8(b *testing.B) {
-	u := uint8(0xff)
+	var u uint8
 
 	for b.Loop() {
-		_ = Hex8(u)
+		u++
+		sink2 = [2]byte(Hex8(u))
 	}
 }
 
 func BenchmarkHex8UB(b *testing.B) {
-	u := uint8(0xff)
-	dst := [2]byte{}
+	var u uint8
 
 	for b.Loop() {
-		Hex8UB(u, &dst)
+		u++
+		Hex8UB(u, &sink2)
 	}
 }
 
 func BenchmarkHex8B(b *testing.B) {
-	src := [1]byte{0xff}
+	var src [1]byte
 
 	for b.Loop() {
-		_ = Hex8B(src)
+		src[0]++
+		sink2 = [2]byte(Hex8B(src))
 	}
 }
 
 func BenchmarkHex8BB(b *testing.B) {
-	src := [1]byte{0xff}
-	dst := [2]byte{}
+	var src [1]byte
 
 	for b.Loop() {
-		Hex8BB(src, &dst)
+		src[0]++
+		Hex8BB(src, &sink2)
+	}
+}
+
+// BenchmarkHex64Escaping measures the allocation path of the slice-returning
+// API: the result escapes to a package-level sink, forcing the backing array
+// onto the heap (one allocation per call).
+func BenchmarkHex64Escaping(b *testing.B) {
+	var u uint64
+
+	for b.Loop() {
+		u++
+		sinkSlice = Hex64(u)
+	}
+}
+
+// BenchmarkHex64BEscaping is the byte-array counterpart of BenchmarkHex64Escaping.
+func BenchmarkHex64BEscaping(b *testing.B) {
+	var src [8]byte
+
+	for b.Loop() {
+		src[0]++
+		sinkSlice = Hex64B(src)
 	}
 }

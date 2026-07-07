@@ -140,7 +140,7 @@ This scaffolds a new web service from the provided configuration.
 - [timeutil](pkg/timeutil) - Time and date utilities. `time`, `date utilities`
 - [traceid](pkg/traceid) - Trace ID propagation and context management. `tracing`, `ids`
 - [typeutil](pkg/typeutil) - Type conversion and utility functions. `type conversion`, `utilities`
-- [uhex](pkg/uhex) - Utilities for uppercase hexadecimal encoding and decoding. `hex`, `encoding`, `utilities`
+- [uhex](pkg/uhex) - Fixed-width, lowercase hexadecimal encoders for unsigned integers and byte arrays. `hex`, `encoding`, `utilities`
 - [validator](pkg/validator) - Data validation utilities. `validation`, `utilities`
 - [valkey](pkg/valkey) - Wrapper client for interacting with valkey.io, an open-source in-memory data store. `data store`, `client`
 
