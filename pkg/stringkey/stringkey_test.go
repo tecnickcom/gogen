@@ -69,6 +69,62 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNewComposedEqualsDecomposed(t *testing.T) {
+	t.Parallel()
+
+	// Canonically equivalent forms must produce the same key: NFC recomposes the
+	// decomposed sequence into the precomposed character before hashing.
+	tests := []struct {
+		name       string
+		precom, de string
+	}{
+		{
+			name:   "A with ring above",
+			precom: "Å",  // Å  LATIN CAPITAL LETTER A WITH RING ABOVE
+			de:     "Å", // A + COMBINING RING ABOVE
+		},
+		{
+			name:   "e with acute",
+			precom: "café",  // café  (precomposed é)
+			de:     "café", // cafe + COMBINING ACUTE ACCENT
+		},
+		{
+			name:   "o with diaeresis",
+			precom: "ö",  // ö  LATIN SMALL LETTER O WITH DIAERESIS
+			de:     "ö", // o + COMBINING DIAERESIS
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, New(tt.precom).Key(), New(tt.de).Key())
+		})
+	}
+}
+
+func TestNewFieldBoundaries(t *testing.T) {
+	t.Parallel()
+
+	// The tab separator preserves field boundaries, so the number and grouping
+	// of fields is significant: these must all be distinct keys.
+	none := New().Key()
+	oneEmpty := New("").Key()
+	twoEmpty := New("", "").Key()
+	split := New("a", "b").Key()
+	joined := New("a b").Key()
+	tabbed := New("a\tb").Key()
+
+	require.NotEqual(t, none, oneEmpty, "no fields must differ from one empty field")
+	require.NotEqual(t, oneEmpty, twoEmpty, "one empty field must differ from two")
+	require.NotEqual(t, split, joined, "two fields must differ from one joined field")
+
+	// An embedded tab is Unicode whitespace: it collapses to a single space,
+	// so it can never be confused with the field separator.
+	require.Equal(t, joined, tabbed, "embedded tab must collapse like a space")
+}
+
 func TestNewUnicodeWhitespace(t *testing.T) {
 	t.Parallel()
 

@@ -9,3 +9,9 @@ func BenchmarkNew(b *testing.B) {
 		_ = New("", "a", "abcdef1234", "学院路30号", " ăâîșț  ĂÂÎȘȚ  ") //nolint:gosmopolitan
 	}
 }
+
+func BenchmarkNewASCII(b *testing.B) {
+	for b.Loop() {
+		_ = New("John", "Smith", "United Kingdom")
+	}
+}
