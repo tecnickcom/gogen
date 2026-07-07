@@ -31,6 +31,30 @@ func TestRnd_UID64_Hex(t *testing.T) {
 	require.Len(t, b, 16)
 }
 
+func TestRnd_UID64_Format(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+	u := r.UID64()
+
+	// A pre-filled buffer must be fully overwritten.
+	b := [16]byte{'x'}
+	u.Format(&b)
+
+	require.Equal(t, u.Hex(), string(b[:]))
+	require.Len(t, b, 16)
+}
+
+func TestRnd_UID64_Byte(t *testing.T) {
+	t.Parallel()
+
+	r := New(nil)
+	u := r.UID64()
+
+	require.Equal(t, u.Hex(), string(u.Byte()))
+	require.Len(t, u.Byte(), 16)
+}
+
 func TestRnd_UID64_String(t *testing.T) {
 	t.Parallel()
 

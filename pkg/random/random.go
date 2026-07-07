@@ -198,14 +198,24 @@ func (r *Rnd) RandString(n int) (string, error) {
 	// at or above it are rejected to avoid modulo bias.
 	limit := 256 - (256 % cmlen)
 
+	// Read entropy into the not-yet-finalized tail of b and map accepted bytes in
+	// place towards the front. The write cursor (filled) never runs ahead of the
+	// read cursor (j), so reusing b as the entropy scratch is safe: each byte is
+	// read into a local before its slot may be overwritten. This keeps the whole
+	// operation at one make plus the final string copy, regardless of how many
+	// bytes rejection sampling discards, instead of allocating a fresh buffer on
+	// every refill pass.
 	filled := 0
 	for filled < n {
-		rb, err := r.RandomBytes(n - filled)
+		start := filled
+
+		_, err := io.ReadFull(r.reader, b[start:])
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("unable to generate %d random bytes: %w", n-start, err)
 		}
 
-		for _, v := range rb {
+		for j := start; j < n; j++ {
+			v := b[j]
 			if int(v) >= limit {
 				continue
 			}

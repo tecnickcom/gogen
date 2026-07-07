@@ -22,9 +22,38 @@ func (r *Rnd) UID128() TUID128 {
 	}
 }
 
+// Format writes the UID128 as its 32-character hexadecimal form into dst.
+//
+// The output is the high 64 bits (time) followed by the low 64 bits (random),
+// each as 16 lowercase hexadecimal digits, preserving time-order.
+//
+// Format writes directly into the caller-provided array and allocates nothing,
+// so prefer it in performance-critical code. For a string use [TUID128.Hex]; for
+// a byte slice use [TUID128.Byte].
+func (u TUID128) Format(dst *[32]byte) {
+	uhex.Hex64UB(u.t, (*[16]byte)(dst[0:16]))
+	uhex.Hex64UB(u.r, (*[16]byte)(dst[16:32]))
+}
+
+// Byte returns the UID128 as its 32-character hexadecimal form in a byte slice.
+//
+// Each call allocates a new [32]byte array. Use [TUID128.Hex] for a string, or
+// [TUID128.Format] to write into a pre-allocated buffer without allocating.
+func (u TUID128) Byte() []byte {
+	var b [32]byte
+
+	u.Format(&b)
+
+	return b[:]
+}
+
 // Hex returns the UID128 as a 32-character hexadecimal string, preserving time-order.
+//
+// It encodes both halves into a single stack buffer with the table-driven uhex
+// helpers and converts once, so it costs a single allocation for the returned
+// string. Use [TUID128.Format] for an allocation-free path.
 func (u TUID128) Hex() string {
-	return string(uhex.Hex64(u.t)) + string(uhex.Hex64(u.r))
+	return string(u.Byte())
 }
 
 // String returns the UID128 as a variable-length base-36 string (concatenated high and low parts).
@@ -35,5 +64,14 @@ func (u TUID128) Hex() string {
 // Callers that need a unique, collision-free, round-trippable representation
 // should use [TUID128.Hex], which is fixed-width.
 func (u TUID128) String() string {
-	return strconv.FormatUint(u.t, 36) + strconv.FormatUint(u.r, 36)
+	// Append both base-36 halves into a single stack buffer and convert once,
+	// rather than formatting two strings and concatenating them. A uint64 is at
+	// most 13 digits in base 36, so 26 bytes always suffice for the two halves.
+	// The output is byte-identical to FormatUint(t)+FormatUint(r).
+	var b [26]byte
+
+	buf := strconv.AppendUint(b[:0], u.t, 36)
+	buf = strconv.AppendUint(buf, u.r, 36)
+
+	return string(buf)
 }

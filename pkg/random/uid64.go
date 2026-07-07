@@ -25,9 +25,35 @@ type TUID64 uint64
 // makes the value time-ordered only within a decade (see [TUID64.Hex]).
 func (r *Rnd) UID64() TUID64 {
 	t := time.Now().UTC()
-	offset := time.Date(t.Year()-t.Year()%10, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
+
+	// Offset from the start of the current decade (Jan 1, 00:00 UTC). Compute the
+	// year once rather than evaluating t.Year() twice.
+	year := t.Year()
+	offset := time.Date(year-year%10, 1, 1, 0, 0, 0, 0, time.UTC).Unix()
 
 	return TUID64((uint64(t.Unix()-offset) << 32) + uint64(r.RandUint32()))
+}
+
+// Format writes the UID64 as its 16-character hexadecimal form into dst.
+//
+// Format writes directly into the caller-provided array and allocates nothing,
+// so prefer it in performance-critical code. For a string use [TUID64.Hex]; for
+// a byte slice use [TUID64.Byte]. Values are time-ordered within a decade (see
+// [Rnd.UID64]).
+func (u TUID64) Format(dst *[16]byte) {
+	uhex.Hex64UB(uint64(u), dst)
+}
+
+// Byte returns the UID64 as its 16-character hexadecimal form in a byte slice.
+//
+// Each call allocates a new [16]byte array. Use [TUID64.Hex] for a string, or
+// [TUID64.Format] to write into a pre-allocated buffer without allocating.
+func (u TUID64) Byte() []byte {
+	var b [16]byte
+
+	u.Format(&b)
+
+	return b[:]
 }
 
 // Hex returns the UID64 as a 16-character hexadecimal string.
@@ -35,7 +61,7 @@ func (r *Rnd) UID64() TUID64 {
 // Values are time-ordered within a decade; ordering is discontinuous across
 // decade boundaries because the underlying second offset resets (see [Rnd.UID64]).
 func (u TUID64) Hex() string {
-	return string(uhex.Hex64(uint64(u)))
+	return string(u.Byte())
 }
 
 // String returns the UID64 as a variable-length base-36 string.

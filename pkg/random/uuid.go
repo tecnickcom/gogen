@@ -2,6 +2,7 @@ package random
 
 import (
 	"encoding/binary"
+	"io"
 	"time"
 
 	"github.com/tecnickcom/gogen/pkg/uhex"
@@ -32,6 +33,35 @@ const (
 //
 // The function returns the UUID in binary form. Use String() or Byte() to get
 // the standard human-readable format.
+//
+// Performance:
+//   - Each call makes a single small heap allocation for the random bytes. This
+//     is structural: randomness is read through the configurable [io.Reader], so
+//     the compiler cannot keep the buffer on the stack. The 16-byte UUID itself
+//     is stack-allocated and returned by value.
+//   - Per-call cost is dominated by two largely irreducible operations: reading
+//     the wall clock ([time.Now]) and reading random bytes from the reader
+//     (crypto/rand by default). It draws only the 8 random bytes it needs (the
+//     62-bit rand_b field plus the variant octet), rather than generating a full
+//     16 random bytes and overwriting the timestamp octets as a naive v7
+//     construction does, so it reads half the entropy; the bit-packing and
+//     version/variant masking are negligible by comparison.
+//   - The function holds no shared mutable state and takes no locks of its own,
+//     so a single [Rnd] is safe for concurrent use and callers are not
+//     serialized; concurrent throughput is bounded by the configured reader
+//     rather than by this function. Ordering of values generated within the same
+//     sub-millisecond instant is statistical, not strictly monotonic; that is
+//     the trade that keeps the path lock-free.
+//   - For the textual form, [UUID.Format] builds the canonical string with
+//     table-driven lookups instead of reflection-based formatting such as
+//     [fmt.Sprintf]: it writes into a caller-owned buffer without allocating,
+//     whereas [UUID.Byte] and [UUID.String] each allocate once for their result.
+//     Prefer Format in hot paths; see [UUID.Format] for the comparison with the
+//     standard-library encoders.
+//
+// These are qualitative characteristics, not guarantees; absolute costs depend
+// on hardware, the Go compiler, and the configured reader. Run the package
+// benchmarks (go test -bench=.) to measure on a target platform.
 func (r *Rnd) UUIDv7() UUID {
 	var ub UUID
 
@@ -66,12 +96,15 @@ func (r *Rnd) UUIDv7() UUID {
 	ub[6] = 0x70 | (0x0F & byte(ns>>8))
 	ub[7] = byte(ns)
 
-	// generate 8 random bytes; on reader failure fall back to the non-failing
-	// RandUint64 path (crypto, then math/rand/v2) so this never panics.
-	rb, err := r.RandomBytes(8)
+	// Read 8 random bytes straight into a stack-local buffer, bypassing the
+	// RandomBytes wrapper (a function call plus error-wrapping path) on this hot
+	// path. On reader failure fall back to the non-failing RandUint64 path
+	// (crypto, then math/rand/v2) so this never panics.
+	var rb [8]byte
+
+	_, err := io.ReadFull(r.reader, rb[:])
 	if err != nil {
-		rb = make([]byte, 8)
-		binary.LittleEndian.PutUint64(rb, r.RandUint64())
+		binary.LittleEndian.PutUint64(rb[:], r.RandUint64())
 	}
 
 	// var:
@@ -95,6 +128,18 @@ func (r *Rnd) UUIDv7() UUID {
 // Use this method when you need to write the UUID directly into a pre-allocated buffer
 // for performance-critical code. For general-purpose use, prefer String() which returns
 // a Go string, or Byte() which returns a slice.
+//
+// Performance:
+// Format builds the canonical text with the table-driven [uhex] encoders instead
+// of reflection-based formatting. Each byte is translated through a 256-entry
+// lookup table and written with a single 16-bit store, so the routine is fully
+// unrolled, branch-free, independent of the UUID value, and writes into the
+// caller's array without allocating. Against the usual standard-library ways of
+// producing the same string this is markedly cheaper: versus
+// [fmt.Sprintf]("%x-%x-%x-%x-%x", …) it is roughly an order of magnitude faster
+// and avoids the reflection-driven allocations, and versus [encoding/hex] plus
+// manual separator insertion it is faster and needs no intermediate buffer.
+// [UUID.String] and [UUID.Byte] layer a single result allocation on top of this.
 func (u UUID) Format(dst *[36]byte) {
 	uuid := dst[:]
 
