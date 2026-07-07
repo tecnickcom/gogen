@@ -219,11 +219,24 @@ test: ensuretarget
 	-tags=unit,benchmark \
 	-covermode=atomic \
 	-bench=. \
+	-benchtime=1x \
 	-race \
 	-failfast \
 	-coverprofile=$(TARGETDIR)/report/coverage.out \
 	-v $(GOPKGS) $(TESTEXTRACMD)
 	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
+
+## Run benchmarks (real measurements, without -race or coverage)
+.PHONY: bench
+bench: ensuretarget
+	@echo -e "\n\n>>> START: Benchmarks <<<\n\n"
+	$(GOTEST) \
+	-tags=unit,benchmark \
+	-run=^$$ \
+	-bench=. \
+	-benchmem \
+	-v $(GOPKGS)
+	@echo -e "\n\n>>> END: Benchmarks <<<\n\n"
 
 ## Get the go tools
 .PHONY: gotools
