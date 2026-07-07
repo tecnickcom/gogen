@@ -1,7 +1,7 @@
 /*
 Package strsplit solves the common text-wrapping problem of splitting strings
 into bounded-size chunks without breaking Unicode characters and while trying
-to keep human-readable boundaries (spaces, punctuation, and line breaks).
+to keep human-readable boundaries (spaces, punctuation, and newlines).
 
 # Problem
 
@@ -30,20 +30,37 @@ Separator preference order in [ChunkLine]:
  2. Unicode punctuation (kept with the preceding chunk).
  3. Hard UTF-8-safe cut when no separator exists.
 
-Both functions support an optional chunk limit `n`:
+# Sizing Semantics
 
-  - `n > 0`: return at most `n` chunks.
-  - `n < 0`: unlimited chunks.
-  - `n == 0`: return nil.
+size is a maximum byte length, not a rune count. Produced chunks never exceed
+size bytes, with one unavoidable exception: a single rune wider than size is
+emitted whole (splitting it would produce invalid UTF-8), so that one chunk may
+exceed size.
 
-# Key Features
+# Line And Whitespace Handling
 
-  - UTF-8 safety: never cuts in the middle of a multi-byte rune.
-  - Readability-aware splitting: prefers spaces and punctuation over arbitrary
-    byte boundaries.
-  - Newline-first semantics in [Chunk]: preserves natural paragraph structure.
-  - Bounded output control via `n`, useful for APIs with strict item limits.
-  - Deterministic trimming of leading/trailing whitespace in produced chunks.
+[Chunk] treats only the newline byte "\n" as a line boundary. A carriage return
+"\r" is not a boundary on its own; it is removed only when it is adjacent to a
+"\n" (or otherwise leading/trailing), because each line is whitespace-trimmed.
+Other Unicode line separators (U+2028, U+2029, U+0085, ...) are likewise not
+treated as boundaries and may remain inside a chunk. Empty and whitespace-only
+lines are dropped, so blank lines between paragraphs never yield empty chunks
+and are not preserved.
+
+# Chunk Limit
+
+Both functions support an optional chunk limit n:
+
+  - n > 0: return at most n chunks.
+  - n < 0: unlimited chunks.
+  - n == 0: return nil.
+
+# Return Values
+
+Both functions return nil only for invalid arguments (size < 1 or n == 0).
+Otherwise they return a non-nil slice that may be empty (for example when the
+input is empty or contains only whitespace). Produced chunks are always
+whitespace-trimmed and never empty.
 
 # Usage
 
@@ -61,98 +78,128 @@ import (
 	"unicode/utf8"
 )
 
-// Chunk splits text block into substrings of max size at newline/separator boundaries, trimming whitespace and returning at most n chunks.
-//
-//nolint:gocognit
+// Chunk splits a text block into whitespace-trimmed substrings of at most size
+// bytes, breaking on newline ("\n") boundaries first and then on separators
+// within each long line. Empty and whitespace-only lines are dropped. It returns
+// at most n chunks (n > 0), an unlimited number (n < 0), or nil (n == 0 or
+// size < 1). See [ChunkLine] for the per-line separator rules and the
+// wider-than-size rune caveat.
 func Chunk(s string, size, n int) []string {
 	if (size < 1) || (n == 0) {
 		return nil
 	}
 
-	ret := make([]string, 0)
+	ret := make([]string, 0, strings.Count(s, "\n")+1)
 
 	// look for newlines first
 	for line := range strings.SplitSeq(s, "\n") {
-		if (n > 0) && (len(ret) >= n) {
+		if limitReached(n, len(ret)) {
 			break
 		}
 
-		line = strings.TrimSpace(line)
-
-		if len(line) == 0 {
-			continue
-		}
-
-		if len(line) <= size {
-			ret = append(ret, line)
-			continue
-		}
-
-		ns := n
-		if ns > 0 {
-			ns = n - len(ret)
-		}
-
-		ret = append(ret, ChunkLine(line, size, ns)...)
+		ret = appendLine(ret, strings.TrimSpace(line), size, n)
 	}
 
 	return ret
 }
 
-// ChunkLine splits single line into substrings of max byte size at UTF-8 boundaries, preferring whitespace/punctuation separators; returns at most n chunks.
-//
-//nolint:gocognit,gocyclo,cyclop
+// ChunkLine splits a single line into whitespace-trimmed substrings of at most
+// size bytes, always cutting on a UTF-8 rune boundary and preferring the closest
+// Unicode whitespace (then punctuation, kept with the preceding chunk) before the
+// limit. A single rune wider than size is emitted whole, so that chunk may exceed
+// size. It returns at most n chunks (n > 0), an unlimited number (n < 0), or nil
+// (n == 0 or size < 1); produced chunks are never empty.
 func ChunkLine(s string, size, n int) []string {
 	if (size < 1) || (n == 0) {
 		return nil
 	}
 
-	ret := make([]string, 0)
+	ret := make([]string, 0, len(s)/size+1)
 
-	for len(s) > size {
-		if (n > 0) && (len(ret) >= n) {
-			break
-		}
-
-		end := size
-
-		// ensure we aren't in the middle of a multi-byte Unicode character
-		for (end > 0) && !utf8.RuneStart(s[end]) {
-			end--
-		}
-
-		// the leading rune is wider than size: hard-cut the whole rune to guarantee progress
-		if end == 0 {
-			_, end = utf8.DecodeRuneInString(s)
-		}
-
-		// try to split by unicode spaces
-		sepIdx := strings.LastIndexFunc(s[:end], unicode.IsSpace)
-		if sepIdx == -1 {
-			// try to split by punctuaction characters
-			sepIdx = strings.LastIndexFunc(s[:end], unicode.IsPunct)
-			if sepIdx >= 0 {
-				// keep the puctuation character with the line
-				_, offset := utf8.DecodeRuneInString(s[sepIdx:])
-				sepIdx += offset
-			}
-		}
-
-		if sepIdx >= 0 {
-			end = sepIdx
-		}
-
-		chunk := strings.TrimSpace(s[:end])
-		if len(chunk) > 0 {
-			ret = append(ret, chunk)
-		}
-
+	for (len(s) > size) && !limitReached(n, len(ret)) {
+		end := separatorEnd(s, runeSafeEnd(s, size))
+		ret = appendChunk(ret, s[:end])
 		s = strings.TrimSpace(s[end:])
 	}
 
-	if (len(s) > 0) && ((n < 0) || (len(ret) < n)) {
-		ret = append(ret, strings.TrimSpace(s))
+	if !limitReached(n, len(ret)) {
+		ret = appendChunk(ret, s)
 	}
 
 	return ret
+}
+
+// appendLine appends the already-trimmed line to ret: dropping it when empty,
+// keeping it whole when it fits within size, or delegating to [ChunkLine] when it
+// is longer than size (honoring the remaining share of the n limit).
+func appendLine(ret []string, line string, size, n int) []string {
+	if line == "" {
+		return ret
+	}
+
+	if len(line) <= size {
+		return append(ret, line)
+	}
+
+	ns := n
+	if ns > 0 {
+		ns = n - len(ret)
+	}
+
+	return append(ret, ChunkLine(line, size, ns)...)
+}
+
+// appendChunk appends the whitespace-trimmed s to ret, skipping it when the
+// trimmed result is empty so a chunk is never blank.
+func appendChunk(ret []string, s string) []string {
+	if chunk := strings.TrimSpace(s); chunk != "" {
+		return append(ret, chunk)
+	}
+
+	return ret
+}
+
+// limitReached reports whether the n-chunk limit (only enforced when n > 0) has
+// already been met by the count chunks produced so far.
+func limitReached(n, count int) bool {
+	return (n > 0) && (count >= n)
+}
+
+// runeSafeEnd returns a cut index no greater than size that never lands inside a
+// multi-byte rune. When the leading rune itself is wider than size it returns
+// that rune's full width, guaranteeing forward progress at the cost of a chunk
+// that exceeds size. It assumes len(s) > size so that s[size] is addressable.
+func runeSafeEnd(s string, size int) int {
+	end := size
+
+	// ensure we aren't in the middle of a multi-byte Unicode character
+	for (end > 0) && !utf8.RuneStart(s[end]) {
+		end--
+	}
+
+	// the leading rune is wider than size: hard-cut the whole rune to guarantee progress
+	if end == 0 {
+		_, end = utf8.DecodeRuneInString(s)
+	}
+
+	return end
+}
+
+// separatorEnd returns the preferred cut index within s[:end]: the byte index of
+// the last Unicode whitespace (cutting before it), else the index just past the
+// last Unicode punctuation (keeping it with the preceding chunk), else end when
+// neither separator is present.
+func separatorEnd(s string, end int) int {
+	// try to split by unicode spaces
+	if i := strings.LastIndexFunc(s[:end], unicode.IsSpace); i >= 0 {
+		return i
+	}
+
+	// try to split by punctuation characters, keeping the punctuation with the chunk
+	if i := strings.LastIndexFunc(s[:end], unicode.IsPunct); i >= 0 {
+		_, offset := utf8.DecodeRuneInString(s[i:])
+		return i + offset
+	}
+
+	return end
 }

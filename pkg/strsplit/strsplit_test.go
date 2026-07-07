@@ -86,6 +86,34 @@ func TestChunk(t *testing.T) {
 			n:    -1,
 			want: []string{"😀", "😀"},
 		},
+		{
+			name: "carriage return before newline",
+			s:    "a\r\nb",
+			size: 10,
+			n:    -1,
+			want: []string{"a", "b"},
+		},
+		{
+			name: "lone carriage return is not a boundary",
+			s:    "a\rb",
+			size: 10,
+			n:    -1,
+			want: []string{"a\rb"},
+		},
+		{
+			name: "blank lines are collapsed",
+			s:    "a\n\n\nb",
+			size: 10,
+			n:    -1,
+			want: []string{"a", "b"},
+		},
+		{
+			name: "whitespace only input",
+			s:    "   \n  \t ",
+			size: 5,
+			n:    -1,
+			want: []string{},
+		},
 	}
 
 	for _, tt := range cases {
@@ -247,6 +275,34 @@ func TestChunkLine(t *testing.T) {
 			size: 3,
 			n:    -1,
 			want: []string{"😀", "😀"},
+		},
+		{
+			name: "whitespace only shorter than size", // regression: used to emit an empty chunk
+			s:    "   ",
+			size: 5,
+			n:    -1,
+			want: []string{},
+		},
+		{
+			name: "whitespace only longer than size",
+			s:    "        ",
+			size: 2,
+			n:    -1,
+			want: []string{},
+		},
+		{
+			name: "leading whitespace with small size",
+			s:    "   x",
+			size: 2,
+			n:    -1,
+			want: []string{"x"},
+		},
+		{
+			name: "multibyte unicode space separator",
+			s:    "ab\u2003cd", // U+2003 EM SPACE is a 3-byte whitespace rune
+			size: 6,
+			n:    -1,
+			want: []string{"ab", "cd"},
 		},
 	}
 

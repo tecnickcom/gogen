@@ -1,0 +1,4 @@
+go test fuzz v1
+string("\x8e")
+int(5)
+int(-1)
