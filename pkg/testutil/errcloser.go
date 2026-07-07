@@ -7,21 +7,24 @@ import (
 )
 
 // ErrorCloser is an [io.ReadCloser] whose Close method always returns an error.
+// Its Read side yields io.EOF immediately (an empty body); only Close fails.
+// The embedded reader is an [io.Reader] (not a concrete [bytes.Reader]), so the
+// exported surface is exactly [io.ReadCloser].
 type ErrorCloser struct {
-	*bytes.Reader
+	io.Reader
 
-	errMsg string
+	err error
 }
 
-// NewErrorCloser creates an [io.ReadCloser] that returns errMsg from Close.
-func NewErrorCloser(errMsg string) io.ReadCloser {
+// NewErrorCloser creates an [ErrorCloser] that returns errMsg from Close.
+func NewErrorCloser(errMsg string) *ErrorCloser {
 	return &ErrorCloser{
 		Reader: bytes.NewReader([]byte{}),
-		errMsg: errMsg,
+		err:    errors.New(errMsg),
 	}
 }
 
-// Close always returns an error built from the configured message.
+// Close always returns the configured error.
 func (e *ErrorCloser) Close() error {
-	return errors.New(e.errMsg)
+	return e.err
 }
