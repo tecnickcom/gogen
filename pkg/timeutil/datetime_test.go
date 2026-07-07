@@ -26,7 +26,7 @@ func TestDateTime_MarshalJSON(t *testing.T) {
 		{
 			name: "TJira zero value",
 			dt:   new(DateTime[TJira]),
-			want: "0001-01-01T00:00:00.000+0000", // time.Jira zero value
+			want: "0001-01-01T00:00:00.000+0000", // TJira zero value
 		},
 		{
 			name: "TLayout",
@@ -316,7 +316,7 @@ func TestDateTime_UnmarshalJSON(t *testing.T) {
 		{
 			name: "TJira",
 			tobj: new(DateTime[TJira]),
-			data: []byte(`"2006-01-02T15:04:05.000-0700"`), // time.Jira
+			data: []byte(`"2006-01-02T15:04:05.000-0700"`), // TJira
 			want: time.Date(2006, 1, 2, 15, 4, 5, 0, time.FixedZone("", -7*60*60)),
 		},
 	}
@@ -357,4 +357,66 @@ func TestDateTime_UnmarshalJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDateTime_MarshalText(t *testing.T) {
+	t.Parallel()
+
+	reftime := time.Date(2006, 1, 2, 15, 4, 5, 0, time.FixedZone("MST", -7*60*60))
+
+	got, err := DateTime[TRFC3339](reftime).MarshalText()
+	require.NoError(t, err)
+	require.Equal(t, "2006-01-02T15:04:05-07:00", string(got))
+}
+
+func TestDateTime_UnmarshalText(t *testing.T) {
+	t.Parallel()
+
+	var dt DateTime[TRFC3339]
+
+	err := dt.UnmarshalText([]byte("2006-01-02T15:04:05-07:00"))
+	require.NoError(t, err)
+	require.Equal(t, time.Date(2006, 1, 2, 15, 4, 5, 0, time.FixedZone("", -7*60*60)), dt.Time())
+
+	err = dt.UnmarshalText([]byte("not-a-date"))
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrParseDateTime)
+}
+
+func TestDateTime_JSONMapKey(t *testing.T) {
+	t.Parallel()
+
+	m := map[DateTime[TDateOnly]]int{
+		DateTime[TDateOnly](time.Date(2023, 1, 2, 0, 0, 0, 0, time.UTC)): 7,
+	}
+
+	data, err := json.Marshal(m)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"2023-01-02":7}`, string(data))
+
+	var got map[DateTime[TDateOnly]]int
+
+	err = json.Unmarshal(data, &got)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+
+	for k, v := range got {
+		require.Equal(t, "2023-01-02", k.String())
+		require.Equal(t, 7, v)
+	}
+}
+
+func TestDateTime_UnmarshalJSON_Null(t *testing.T) {
+	t.Parallel()
+
+	reftime := time.Date(2023, 1, 2, 15, 4, 5, 0, time.UTC)
+	dt := DateTime[TRFC3339](reftime)
+
+	err := dt.UnmarshalJSON([]byte(`null`))
+	require.NoError(t, err)
+	require.Equal(t, reftime, dt.Time(), "null must be a no-op and leave the value unchanged")
+
+	err = json.Unmarshal([]byte(`null`), &dt)
+	require.NoError(t, err)
+	require.Equal(t, reftime, dt.Time(), "null must be a no-op and leave the value unchanged")
 }

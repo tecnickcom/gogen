@@ -25,19 +25,23 @@ Services that exchange time values over JSON face two common issues:
     [time.Time] and implements [json.Marshaler] / [json.Unmarshaler] using the
     format string returned by the type parameter T. Switching formats is a
     one-character type-argument change — no runtime configuration, no string
-    constants, caught by the compiler.
+    constants, caught by the compiler. It also implements
+    [encoding.TextMarshaler] / [encoding.TextUnmarshaler], so it can be used as a
+    JSON map key and with text-based encoders (YAML, TOML, [flag.TextVar]).
   - [DateTimeType]: the single-method interface (`Format() string`) that type
     parameters must satisfy, making it trivial to define custom formats.
   - Built-in format types: ready-to-use implementations of [DateTimeType] for
-    every format constant in the standard library — [TRFC3339], [TRFC3339Nano],
+    every datetime layout in the standard library — [TRFC3339], [TRFC3339Nano],
     [TRFC822], [TRFC822Z], [TRFC850], [TRFC1123], [TRFC1123Z], [TUnixDate],
     [TANSIC], [TRubyDate], [TKitchen], [TStamp], [TStampMilli], [TStampMicro],
-    [TStampNano], [TLayout], and [TDateOnly] / [TTimeOnly] — covering every
-    use case without additional dependencies.
+    [TStampNano], [TLayout], [TDateTime], and [TDateOnly] / [TTimeOnly] — plus
+    [TJira] for Jira's timestamp format, covering every use case without
+    additional dependencies.
   - [Duration]: an alias for [time.Duration] that marshals as a human-readable
     string (e.g. "1h30m0s") and unmarshals from both string and numeric JSON
     values, making duration fields self-documenting in configuration files and
-    API responses.
+    API responses. It also implements [encoding.TextMarshaler] /
+    [encoding.TextUnmarshaler] for use as a map key and with text-based encoders.
 
 # Usage
 
