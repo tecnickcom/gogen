@@ -39,6 +39,9 @@ For cases where only SQL values are needed:
   - Boundary-safe navigation: [Paging.PreviousPage] is always >= 1 and
     [Paging.NextPage] is always <= [Paging.TotalPages], making them safe to
     embed in API responses and hypermedia links without further validation.
+  - Explicit navigation flags: [Paging.HasPreviousPage] and [Paging.HasNextPage]
+    report whether an adjacent page actually exists, so callers can show or hide
+    navigation links without re-deriving boundary conditions.
   - SQL-ready offset: [Paging.Offset] is the zero-based row offset for use
     directly in a SQL OFFSET clause.
   - JSON-serialisable: all [Paging] fields carry json struct tags, so the
@@ -52,13 +55,30 @@ For cases where only SQL values are needed:
 For 17 items displayed 5 per page, navigating to page 3:
 
 	p := paging.New(3, 5, 17)
-	// p.CurrentPage  == 3
-	// p.PageSize     == 5
-	// p.TotalItems   == 17
-	// p.TotalPages   == 4
-	// p.PreviousPage == 2
-	// p.NextPage     == 4
-	// p.Offset       == 10  (used as SQL OFFSET)
+	// p.CurrentPage     == 3
+	// p.PageSize        == 5
+	// p.TotalItems      == 17
+	// p.TotalPages      == 4
+	// p.PreviousPage    == 2
+	// p.NextPage        == 4
+	// p.Offset          == 10  (used as SQL OFFSET)
+	// p.HasPreviousPage == true
+	// p.HasNextPage     == true
+
+# Edge cases
+
+  - Empty result set: with totalItems == 0, [New] returns TotalPages == 1,
+    CurrentPage == 1 and Offset == 0 (never zero pages and never a panic).
+    Callers detect an empty set via TotalItems == 0, not via the page fields.
+  - Offset overflow: if the offset multiplication overflows uint — only
+    reachable through [ComputeOffsetAndLimit] with a currentPage far beyond the
+    data, since [New] clamps currentPage to the last page — the offset is
+    clamped to [math.MaxUint] as a "beyond range" sentinel that selects no rows,
+    rather than wrapping to a wrong offset.
+  - JSON numeric precision: fields are plain integers, but JSON numbers are
+    float64 in some clients (e.g. JavaScript), which cannot represent values
+    above 2^53 exactly. Realistic pagination magnitudes stay well below that;
+    the math.MaxUint offset sentinel does not, so treat it as "no rows".
 
 # Benefits
 
@@ -73,6 +93,7 @@ import "math"
 // Paging contains all pagination metadata computed from current page, page size, and total item count; all fields are JSON-serializable for API responses.
 type Paging struct {
 	// CurrentPage is the current page number starting from 1.
+	// It is encoded as "page" to mirror the conventional ?page= query parameter.
 	CurrentPage uint `json:"page"`
 
 	// PageSize is the maximum number of items that can be contained in a page. It is also the LIMIT in SQL queries.
@@ -81,7 +102,7 @@ type Paging struct {
 	// TotalItems is the total number of items to be paginated.
 	TotalItems uint `json:"total_items"`
 
-	// TotalPages is the total number of pages required to contain all the items.
+	// TotalPages is the total number of pages required to contain all the items. It is always >= 1, even for an empty result set.
 	TotalPages uint `json:"total_pages"`
 
 	// PreviousPage is the previous page. It is equal to 1 if we are on the first page (CurrentPage == 1).
@@ -90,60 +111,45 @@ type Paging struct {
 	// NextPage is the next page. It is equal to TotalPages if we are on the last page (CurrentPage == TotalPages).
 	NextPage uint `json:"next_page"`
 
-	// Offset is the zero-based number of items before the current page.
+	// Offset is the zero-based number of items before the current page. It is the OFFSET in SQL queries.
 	Offset uint `json:"offset"`
+
+	// HasPreviousPage reports whether a page before CurrentPage exists (CurrentPage > 1).
+	HasPreviousPage bool `json:"has_previous_page"`
+
+	// HasNextPage reports whether a page after CurrentPage exists (CurrentPage < TotalPages).
+	HasNextPage bool `json:"has_next_page"`
 }
 
-// New computes all pagination metadata, clamping inputs to safe ranges: pageSize and currentPage default to 1 if less, and currentPage is clamped to totalPages.
+// New computes all pagination metadata, clamping inputs to safe ranges: pageSize and currentPage default to 1 if less,
+// and currentPage is clamped to totalPages. An empty result set (totalItems == 0) yields a single empty page.
 func New(currentPage, pageSize, totalItems uint) Paging {
-	pageSize = minPageSize(pageSize)
+	pageSize = max(pageSize, 1)
 	totalPages := computeTotalPages(totalItems, pageSize)
-	currentPage = maxCurrentPage(minCurrentPage(currentPage), totalPages)
+	currentPage = min(max(currentPage, 1), totalPages)
 
 	return Paging{
-		CurrentPage:  currentPage,
-		PageSize:     pageSize,
-		TotalItems:   totalItems,
-		TotalPages:   totalPages,
-		PreviousPage: computePreviousPage(currentPage),
-		NextPage:     computeNextPage(currentPage, totalPages),
-		Offset:       computeOffset(currentPage, pageSize),
+		CurrentPage:     currentPage,
+		PageSize:        pageSize,
+		TotalItems:      totalItems,
+		TotalPages:      totalPages,
+		PreviousPage:    computePreviousPage(currentPage),
+		NextPage:        computeNextPage(currentPage, totalPages),
+		Offset:          computeOffset(currentPage, pageSize),
+		HasPreviousPage: currentPage > 1,
+		HasNextPage:     currentPage < totalPages,
 	}
 }
 
-// ComputeOffsetAndLimit returns the zero-based SQL OFFSET and LIMIT (page size) for the given currentPage and pageSize, auto-clamping both to minimum values of 1.
+// ComputeOffsetAndLimit returns the zero-based SQL OFFSET and LIMIT (page size) for the given currentPage and pageSize,
+// auto-clamping both to minimum values of 1. Unlike [New], it has no totalItems to bound against, so it does not clamp
+// currentPage to a last page: a page far beyond the data yields a correspondingly large offset, clamped to [math.MaxUint]
+// on multiplication overflow so a wrapped offset can never select the wrong rows.
 func ComputeOffsetAndLimit(currentPage, pageSize uint) (uint, uint) {
-	currentPage = minCurrentPage(currentPage)
-	pageSize = minPageSize(pageSize)
+	currentPage = max(currentPage, 1)
+	pageSize = max(pageSize, 1)
 
 	return computeOffset(currentPage, pageSize), pageSize
-}
-
-// minCurrentPage ensures that the current page is at least 1.
-func minCurrentPage(currentPage uint) uint {
-	if currentPage < 1 {
-		return 1
-	}
-
-	return currentPage
-}
-
-// maxCurrentPage ensures that the current page does not exceed the total number of pages.
-func maxCurrentPage(currentPage, totalPages uint) uint {
-	if currentPage > totalPages {
-		return totalPages
-	}
-
-	return currentPage
-}
-
-// minPageSize ensures that the page size is at least 1.
-func minPageSize(pageSize uint) uint {
-	if pageSize < 1 {
-		return 1
-	}
-
-	return pageSize
 }
 
 // computeOffset computes the zero-based offset for the given current page and page size,

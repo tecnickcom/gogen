@@ -19,7 +19,7 @@ func ExampleNew() {
 	fmt.Println(p)
 
 	// Output:
-	// {3 5 17 4 2 4 10}
+	// {3 5 17 4 2 4 10 true true}
 }
 
 func ExampleComputeOffsetAndLimit() {
