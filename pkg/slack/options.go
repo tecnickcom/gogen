@@ -8,6 +8,10 @@ import (
 type Option func(c *Client)
 
 // WithTimeout sets webhook request timeout.
+//
+// It is applied only to the default HTTP client that New creates; it has no
+// effect when a custom client is supplied via WithHTTPClient (that client owns
+// its own timeout).
 func WithTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
 		c.timeout = timeout
@@ -39,5 +43,14 @@ func WithHTTPClient(hc HTTPClient) Option {
 func WithRetryAttempts(attempts uint) Option {
 	return func(c *Client) {
 		c.retryAttempts = attempts
+	}
+}
+
+// WithRetryDelay sets the base delay between a failed webhook send and its
+// retry (default: [httpretrier.DefaultDelay], 1 s). Must be positive ([New]
+// rejects non-positive values).
+func WithRetryDelay(value time.Duration) Option {
+	return func(c *Client) {
+		c.retryDelay = value
 	}
 }

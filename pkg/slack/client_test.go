@@ -88,6 +88,24 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNewInvalidRetryConfig(t *testing.T) {
+	t.Parallel()
+
+	// The retrier is built during New, so an invalid retry setting (0 attempts)
+	// is rejected at construction instead of failing on every Send.
+	c, err := New(
+		"http://service.domain.invalid:1234",
+		"default-username",
+		":default-iconEmoji:",
+		"https://default.iconURL.invalid",
+		"#default-channel",
+		WithRetryAttempts(0),
+	)
+
+	require.Nil(t, c, "New() returned client should be nil")
+	require.Error(t, err, "New() should fail with invalid retry attempts")
+}
+
 //nolint:gocognit
 func TestClient_HealthCheck(t *testing.T) {
 	t.Parallel()
@@ -123,22 +141,44 @@ func TestClient_HealthCheck(t *testing.T) {
 			wantErr:               true,
 		},
 		{
-			name:                  "fails because bad status for API service",
+			name:                  "fails because active incident affects API service",
 			pingHandlerStatusCode: http.StatusOK,
-			pingBody:              &status{Status: failStatus, Services: map[int]string{0: failService}},
-			wantErr:               true,
+			pingBody: &status{Status: "active", ActiveIncidents: []incident{
+				{Status: "active", Title: "API degraded", URL: "https://slack-status.com/x", Services: []string{failService}},
+			}},
+			wantErr: true,
 		},
 		{
-			name:                  "fails because bad status for multiple services",
+			name:                  "fails because active incident lists API among multiple services",
 			pingHandlerStatusCode: http.StatusOK,
-			pingBody:              &status{Status: failStatus, Services: map[int]string{0: "Calls", 1: failService, 2: "Search"}},
-			wantErr:               true,
+			pingBody: &status{Status: "active", ActiveIncidents: []incident{
+				{Status: "active", Services: []string{"Calls", failService, "Search"}},
+			}},
+			wantErr: true,
 		},
 		{
-			name:                  "success with bad status on another service",
+			name:                  "fails because incident with unset status affects API service",
 			pingHandlerStatusCode: http.StatusOK,
-			pingBody:              &status{Status: failStatus, Services: map[int]string{0: "Calls"}},
-			wantErr:               false,
+			pingBody: &status{Status: "active", ActiveIncidents: []incident{
+				{Services: []string{failService}},
+			}},
+			wantErr: true,
+		},
+		{
+			name:                  "success when active incident affects another service only",
+			pingHandlerStatusCode: http.StatusOK,
+			pingBody: &status{Status: "active", ActiveIncidents: []incident{
+				{Status: "active", Services: []string{"Calls"}},
+			}},
+			wantErr: false,
+		},
+		{
+			name:                  "success when API incident is already resolved",
+			pingHandlerStatusCode: http.StatusOK,
+			pingBody: &status{Status: "active", ActiveIncidents: []incident{
+				{Status: "resolved", Services: []string{failService}},
+			}},
+			wantErr: false,
 		},
 		{
 			name:                  "fails because bad response body",
@@ -300,6 +340,14 @@ func TestClient_Send(t *testing.T) {
 			wantErr:   true,
 		},
 		{
+			name: "fails because status not OK with empty body",
+			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+			text:    "text empty body",
+			wantErr: true,
+		},
+		{
 			name: "fails because of timeout",
 			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
 				time.Sleep(timeout + 50*time.Millisecond) // margin absorbs timer jitter under load
@@ -319,15 +367,6 @@ func TestClient_Send(t *testing.T) {
 			},
 			text:       "text address",
 			clientFunc: func(c *Client) *Client { c.address = "*&^%-ERROR-"; return c },
-			wantErr:    true,
-		},
-		{
-			name: "fails because WriteHTTPRetrier error",
-			webhookHandler: func(w http.ResponseWriter, _ *http.Request) {
-				hres.SendStatus(t.Context(), w, http.StatusOK)
-			},
-			text:       "text retrier",
-			clientFunc: func(c *Client) *Client { c.retryAttempts = 0; return c },
 			wantErr:    true,
 		},
 		{
@@ -377,4 +416,32 @@ func TestClient_Send(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNew_sentinelErrors verifies New wraps its failures in the exported
+// sentinels so callers can match them with errors.Is.
+func TestNew_sentinelErrors(t *testing.T) {
+	t.Parallel()
+
+	_, err := New("http://", "", "", "", "", WithRetryAttempts(1))
+	require.ErrorIs(t, err, ErrInvalidAddress)
+
+	_, err = New("http://service.domain.invalid:1234", "", "", "", "", WithRetryAttempts(0))
+	require.ErrorIs(t, err, ErrInvalidRetryConfig)
+}
+
+// TestNew_doesNotLeakWebhookURLOnParseError verifies that when the webhook
+// address fails to parse, the secret path is not echoed in the returned error.
+// The invalid percent-escape "%zz" triggers a url.Error whose Error() would
+// normally embed the full webhook URL.
+func TestNew_doesNotLeakWebhookURLOnParseError(t *testing.T) {
+	t.Parallel()
+
+	const secret = "secret-token-do-not-leak"
+
+	_, err := New("http://hooks.test.invalid/services/T/B/"+secret+"%zz", "", "", "", "", WithRetryAttempts(1))
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidAddress)
+	require.NotContains(t, err.Error(), secret, "parse error must not leak the webhook path")
 }

@@ -59,3 +59,12 @@ func TestWithRetryAttempts(t *testing.T) {
 	WithRetryAttempts(v)(c)
 	require.Equal(t, v, c.retryAttempts, "WithRetryAttempts() = %v, want %v", c.retryAttempts, v)
 }
+
+func TestWithRetryDelay(t *testing.T) {
+	t.Parallel()
+
+	want := 5 * time.Second
+	c := &Client{}
+	WithRetryDelay(want)(c)
+	require.Equal(t, want, c.retryDelay, "WithRetryDelay() = %v, want %v", c.retryDelay, want)
+}
