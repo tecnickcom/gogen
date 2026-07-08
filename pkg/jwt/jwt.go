@@ -17,18 +17,40 @@ This package wraps the core flow in a small API compatible with net/http:
   - [JWT.LoginHandler]: validates credentials and issues signed JWTs.
   - [JWT.RenewHandler]: renews a valid token only when it is close to expiry.
   - [JWT.IsAuthorized]: validates bearer tokens for protected handlers.
+  - [JWT.Middleware]: wraps a handler, injecting verified claims into the
+    request context for retrieval via [ClaimsFromContext].
+  - [JWT.Authenticate]: validates a bearer token and returns its claims, for
+    building custom middleware.
+  - [JWT.IssueToken]: mints a token outside the HTTP login flow, once the
+    caller has verified the user's identity by its own means.
+  - [JWT.VerifyToken]: validates a raw token string that arrived over any
+    transport (WebSocket messages, queue payloads, gRPC metadata).
 
-The verifier/issuer is backed by github.com/golang-jwt/jwt/v5 and password
-checks use bcrypt.
+Credential verification is fully delegated to a caller-provided
+[VerifyCredentialsFn], so the package is agnostic to the password-hashing
+scheme; use the OWASP-compliant github.com/tecnickcom/gogen/pkg/passwordhash
+(Argon2id) for storage.
+
+# Implementation
+
+Tokens are RFC 7515 compact JWS with RFC 7519 claims, signed with HMAC-SHA2
+(RFC 7518 §3.2: HS256, HS384 or HS512). The implementation is self-contained on
+the Go standard library. Restricting the surface to
+symmetric HMAC makes the classic JWT attacks (alg=none, asymmetric-to-HMAC
+confusion) structurally impossible: the accepted algorithm is pinned and the
+signature is verified before the claims payload is ever decoded. Unknown JOSE
+header parameters (typ, kid, crit, ...) are ignored. The `exp` and `nbf` time
+claims are validated (with optional leeway); `iat` is decoded but not validated,
+as only a key holder could forge it.
 
 # Authentication Flow
 
  1. The login endpoint decodes JSON credentials (`username`, `password`).
- 2. A user-provided [UserHashFn] retrieves the bcrypt hash for the user.
- 3. The password is verified with bcrypt.CompareHashAndPassword.
- 4. On success, a JWT is signed with configured claims and returned as text.
- 5. Downstream handlers validate `Authorization: Bearer <token>` via
-    [JWT.IsAuthorized] or [JWT.RenewHandler].
+ 2. A user-provided [VerifyCredentialsFn] checks them against the user store.
+ 3. On success, a JWT is signed with configured claims and returned as text.
+ 4. Downstream handlers validate `Authorization: Bearer <token>` via
+    [JWT.IsAuthorized], [JWT.Middleware], [JWT.Authenticate], or
+    [JWT.RenewHandler].
 
 # Claims and Defaults
 
@@ -36,27 +58,54 @@ By default the package issues short-lived HMAC-signed tokens with:
   - expiration: [DefaultExpirationTime] (5 minutes)
   - renew window: [DefaultRenewTime] (30 seconds before expiry)
   - header name: [DefaultAuthorizationHeader] (`Authorization`)
+  - request body cap: [DefaultMaxBodyBytes]
 
-Issued tokens include standard registered claims (`exp`, `iat`, `nbf`, `jti`)
-and support optional `iss`, `sub`, and `aud` via options.
+Issued tokens include standard registered claims (`exp`, `iat`, `nbf`, `jti`,
+`sub`) and an `auth_time` claim recording the original login. They support
+optional `iss` and `aud` via options. The `sub` (Subject) claim is set to the
+authenticated username. When `iss` and/or `aud` are configured, they are also
+enforced during verification: a token missing them, or carrying different
+values, is rejected.
 
 # Extension Points
 
 Functional options allow custom behavior without replacing core handlers:
   - response output customization ([WithSendResponseFn])
   - token/header settings ([WithExpirationTime], [WithRenewTime],
-    [WithAuthorizationHeader], [WithSigningMethod])
-  - claim metadata ([WithClaimIssuer], [WithClaimSubject], [WithClaimAudience])
+    [WithAuthorizationHeader], [WithSigningMethod], [WithMaxBodyBytes])
+  - session controls ([WithMaxSessionLifetime], [WithClockSkewLeeway])
+  - key rotation ([WithPreviousKeys])
+  - claim metadata ([WithClaimIssuer], [WithClaimAudience])
   - logger customization ([WithLogger])
 
 # Security Notes
 
-  - Keep signing keys secret and sufficiently random.
+  - Only HMAC signing methods (HS256/HS384/HS512) are supported: the same
+    symmetric key both signs and verifies. Keep it secret, and at least as long
+    as the signing method's hash output (enforced by [New]).
+  - To rotate the signing key without invalidating outstanding sessions, deploy
+    the new key while listing the old one in [WithPreviousKeys], then drop the
+    old key once the rotation window (expiration time plus renew window) has
+    elapsed.
   - Return uniform error messages for invalid credentials to avoid account
-    enumeration (the default login path already does this).
+    enumeration (the default login path already does this). A
+    [VerifyCredentialsFn] MUST also equalize its own timing between known and
+    unknown users so existence does not leak through response latency.
   - Use HTTPS so bearer tokens are never exposed in transit.
-  - Configure short expiration windows and renew thresholds appropriate for your
-    threat model.
+  - The handlers do not restrict the HTTP method; the caller is responsible for
+    routing login to POST and protected endpoints appropriately.
+  - Tokens are stateless: there is no server-side revocation before `exp`, and
+    renewing a token does not invalidate the previous one, which stays valid
+    until its own expiration. Configure short expiration windows appropriate
+    for your threat model, and bound how long a session may be kept alive by
+    renewals with [WithMaxSessionLifetime].
+  - The package does not rate-limit or lock out repeated failed logins;
+    brute-force protection (rate limiting, lockout, CAPTCHA) must be layered by
+    the caller.
+  - The default responder logs the full response body, including the issued
+    token, at debug level. Where debug logs are retained, disable them or pass a
+    redacting logger via [WithLogger] (see github.com/tecnickcom/gogen/pkg/redact,
+    which detects JWT compact serializations).
 
 # Benefits
 
@@ -68,18 +117,13 @@ package jwt
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
-	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/random"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -91,64 +135,98 @@ const (
 
 	// DefaultAuthorizationHeader is the default authorization header name.
 	DefaultAuthorizationHeader = httputil.HeaderAuthorization
+
+	// DefaultMaxBodyBytes is the default maximum accepted size, in bytes, of a
+	// login request body. It is generous for JSON credentials while capping the
+	// memory an unauthenticated caller can force the login handler to allocate.
+	DefaultMaxBodyBytes int64 = 1 << 13 // 8 KiB
 )
 
-// dummyPasswordHash is a fixed bcrypt hash (generated with bcrypt.MinCost, the
-// cost recommended for [UserHashFn]) compared against when the user is
-// unknown, so the login path takes the same time for unknown and known users
-// and does not leak account existence through response latency.
-var dummyPasswordHash = []byte("$2a$04$8irbELzC/P0jMQZnKg8Ooe7vXKCh6D689M02Tulopj9aDlk4rH4vq") //nolint:gochecknoglobals
+// Configuration and validation errors returned by [New].
+var (
+	// ErrEmptyKey is returned when the signing key is empty.
+	ErrEmptyKey = errors.New("jwt: empty signing key")
+
+	// ErrWeakKey is returned when a signing or verification key is shorter than
+	// the signing method's hash output size (RFC 7518 §3.2).
+	ErrWeakKey = errors.New("jwt: signing key is shorter than the signing method hash size")
+
+	// ErrNilVerifyFn is returned when no credential verification function is provided.
+	ErrNilVerifyFn = errors.New("jwt: credential verification function is required")
+
+	// ErrInvalidSigningMethod is returned when the signing method is not one of
+	// the supported constants.
+	ErrInvalidSigningMethod = errors.New("jwt: invalid signing method")
+
+	// ErrInvalidExpirationTime is returned when the expiration time is not positive.
+	ErrInvalidExpirationTime = errors.New("jwt: expiration time must be positive")
+
+	// ErrInvalidRenewTime is returned when the renew time is not positive.
+	ErrInvalidRenewTime = errors.New("jwt: renew time must be positive")
+
+	// ErrInvalidMaxBodyBytes is returned when the max body size is not positive.
+	ErrInvalidMaxBodyBytes = errors.New("jwt: max body bytes must be positive")
+
+	// ErrInvalidMaxSessionLifetime is returned when the max session lifetime is negative.
+	ErrInvalidMaxSessionLifetime = errors.New("jwt: max session lifetime must not be negative")
+
+	// ErrInvalidClockSkewLeeway is returned when the clock-skew leeway is negative.
+	ErrInvalidClockSkewLeeway = errors.New("jwt: clock skew leeway must not be negative")
+)
 
 // SendResponseFn is the type of function used to send back the HTTP responses.
 type SendResponseFn func(ctx context.Context, w http.ResponseWriter, statusCode int, data string)
 
-// UserHashFn is the type of function used to retrieve the password hash associated with each user.
-// The hash values should be generated via bcrypt.GenerateFromPassword(pwd, bcrypt.MinCost).
-type UserHashFn func(username string) ([]byte, error)
-
-// SigningMethod aliases jwt.SigningMethod to keep package-level APIs decoupled from direct imports.
-type SigningMethod jwt.SigningMethod
-
-// Credentials holds the user name and password from the request body.
-type Credentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-// Claims holds the JWT information to be encoded.
-type Claims struct {
-	jwt.RegisteredClaims
-
-	Username string `json:"username"`
-}
+// VerifyCredentialsFn verifies a username/password pair against the user store.
+//
+// It returns:
+//   - (true, nil)  when the credentials are valid;
+//   - (false, nil) when the username is unknown or the password is wrong;
+//   - (false, err) when verification could not be completed because of a
+//     backend failure (e.g. the user store is unreachable). The login handler
+//     reports this as 500, distinct from the 401 returned for invalid
+//     credentials, so real outages are not masked as authentication failures.
+//
+// Implementations MUST NOT leak account existence through response timing:
+// perform comparable work for unknown and known users (for example, verify the
+// password against a fixed decoy hash when the user does not exist). See
+// github.com/tecnickcom/gogen/pkg/passwordhash for a constant-time,
+// OWASP-compliant verifier.
+type VerifyCredentialsFn func(username, password string) (bool, error)
 
 // JWT provides HTTP handlers and helpers for token-based authentication.
 type JWT struct {
-	key                 []byte         // JWT signing key.
-	expirationTime      time.Duration  // JWT expiration time.
-	renewTime           time.Duration  // Time before the JWT expiration when the renewal is allowed.
-	sendResponseFn      SendResponseFn // Response function used to send back the HTTP responses.
-	userHashFn          UserHashFn     // Function used to retrieve the password hash associated with each user.
-	signingMethod       SigningMethod  // Signing Method function
+	key                 []byte              // JWT signing key.
+	previousKeys        [][]byte            // Previous signing keys still accepted for verification.
+	verifyKeys          [][]byte            // Precomputed verification keys: current key first, then previous ones.
+	encodedHeader       string              // Precomputed base64url JOSE header for the configured method.
+	expirationTime      time.Duration       // JWT expiration time.
+	renewTime           time.Duration       // Time before the JWT expiration when the renewal is allowed.
+	maxSessionLifetime  time.Duration       // Absolute cap on how long a session may be renewed (0 = unlimited).
+	clockSkewLeeway     time.Duration       // Allowed clock-skew leeway during verification (0 = none).
+	maxBodyBytes        int64               // Maximum accepted login request body size in bytes.
+	sendResponseFn      SendResponseFn      // Response function used to send back the HTTP responses.
+	verifyCredentialsFn VerifyCredentialsFn // Function used to verify user credentials.
+	signingMethod       SigningMethod       // HMAC signing method.
 	authorizationHeader string
-	issuer              string   // the `iss` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1
-	subject             string   // the `sub` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2
-	audience            []string // the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
-	logger              *slog.Logger
-	httpresp            *httputil.HTTPResp
-	rnd                 *random.Rnd
+	issuer              string             // the `iss` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1
+	audience            []string           // the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3
+	logger              *slog.Logger       // Structured logger.
+	httpresp            *httputil.HTTPResp // HTTP response helper.
+	rnd                 *random.Rnd        // Random source for the `jti` claim.
 }
 
 // defaultJWT returns a JWT instance initialized with package defaults.
 //
-// It wires default expiration, renew window, authorization header, signing
-// method, logger, and response helpers.
+// It wires default expiration, renew window, authorization header, body cap,
+// signing method, logger, and response helpers.
 func defaultJWT() *JWT {
 	cfg := &JWT{
 		expirationTime:      DefaultExpirationTime,
 		renewTime:           DefaultRenewTime,
+		maxBodyBytes:        DefaultMaxBodyBytes,
 		authorizationHeader: DefaultAuthorizationHeader,
-		signingMethod:       defaultSigningMethod(),
+		signingMethod:       SigningMethodHS256,
 		logger:              slog.Default(),
 		rnd:                 random.New(nil),
 	}
@@ -158,228 +236,87 @@ func defaultJWT() *JWT {
 	return cfg
 }
 
-// defaultSigningMethod returns the default signing algorithm.
-//
-// The package default is HMAC-SHA256.
-func defaultSigningMethod() SigningMethod {
-	return jwt.SigningMethodHS256
-}
-
 // New constructs a JWT authentication helper.
 //
-// It validates required dependencies (signing key and user hash resolver),
-// applies options, and prepares HTTP response utilities.
-func New(key []byte, userHashFn UserHashFn, opts ...Option) (*JWT, error) {
-	if len(key) == 0 {
-		return nil, errors.New("empty JWT key")
-	}
-
-	if userHashFn == nil {
-		return nil, errors.New("empty user hash function")
-	}
-
+// It applies options, restores defaults for any optional setting an option may
+// have cleared, validates the configuration (signing keys, credential verifier,
+// signing method, positive durations and body cap), precomputes the token
+// signing and verification material, and prepares HTTP response utilities.
+//
+// The signing key and any previous keys are copied, so later mutation of the
+// caller's buffers does not affect the instance.
+func New(key []byte, verifyFn VerifyCredentialsFn, opts ...Option) (*JWT, error) {
 	c := defaultJWT()
 	c.key = key
-	c.userHashFn = userHashFn
+	c.verifyCredentialsFn = verifyFn
 
 	for _, applyOpt := range opts {
 		applyOpt(c)
 	}
 
+	c.normalizeOptionals()
+
+	err := c.validate()
+	if err != nil {
+		return nil, err
+	}
+
+	c.initTokenConfig()
 	c.httpresp = httputil.NewHTTPResp(c.logger)
 
 	return c, nil
 }
 
-// LoginHandler authenticates credentials and returns a signed JWT.
-//
-// It expects a JSON body with username/password, validates credentials against
-// UserHashFn and bcrypt, and replies with a token on success.
-func (c *JWT) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	var creds Credentials
+// normalizeOptionals restores defaults for optional settings that an option may
+// have cleared to a nil/empty value, so handlers never panic on a nil logger or
+// responder and an empty header name does not silently disable authentication.
+func (c *JWT) normalizeOptionals() {
+	if c.logger == nil {
+		c.logger = slog.Default()
+	}
 
-	defer func() {
-		cerr := r.Body.Close()
-		if cerr != nil {
-			c.logger.With(slog.Any("error", cerr)).Error("error closing request body")
+	if c.sendResponseFn == nil {
+		c.sendResponseFn = c.defaultSendResponse
+	}
+
+	if c.authorizationHeader == "" {
+		c.authorizationHeader = DefaultAuthorizationHeader
+	}
+}
+
+// validate checks that the configuration is complete and safe.
+func (c *JWT) validate() error {
+	checks := []struct {
+		invalid bool
+		err     error
+	}{
+		{len(c.key) == 0, ErrEmptyKey},
+		{c.verifyCredentialsFn == nil, ErrNilVerifyFn},
+		{c.signingMethod.Alg() == "", ErrInvalidSigningMethod},
+		{c.expirationTime <= 0, ErrInvalidExpirationTime},
+		{c.renewTime <= 0, ErrInvalidRenewTime},
+		{c.maxBodyBytes <= 0, ErrInvalidMaxBodyBytes},
+		{c.maxSessionLifetime < 0, ErrInvalidMaxSessionLifetime},
+		{c.clockSkewLeeway < 0, ErrInvalidClockSkewLeeway},
+	}
+
+	for _, check := range checks {
+		if check.invalid {
+			return check.err
 		}
-	}()
-
-	err := json.NewDecoder(r.Body).Decode(&creds)
-	if err != nil {
-		c.sendResponseFn(r.Context(), w, http.StatusBadRequest, err.Error())
-		c.logger.With(slog.Any("error", err)).Error("invalid JWT body")
-
-		return
 	}
 
-	hash, err := c.userHashFn(creds.Username)
-	if err != nil {
-		// Compare against a fixed dummy hash so the unknown-user path takes the
-		// same time as the known-user path below, preventing timing-based
-		// account enumeration.
-		_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(creds.Password))
-
-		// invalid user
-		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, "invalid authentication credentials")
-		c.logger.With(
-			slog.String("username", creds.Username),
-			slog.Any("error", err),
-		).Error("invalid JWT username")
-
-		return
+	// Every HMAC key must be at least as long as the hash output (RFC 7518
+	// §3.2): the signing key and any previous verification keys alike.
+	minLen := c.signingMethod.hashSize()
+	if len(c.key) < minLen {
+		return ErrWeakKey
 	}
 
-	err = bcrypt.CompareHashAndPassword(hash, []byte(creds.Password))
-	if err != nil {
-		// invalid password
-		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, "invalid authentication credentials")
-		c.logger.With(
-			slog.String("username", creds.Username),
-			slog.Any("error", err),
-		).Error("invalid JWT password")
-
-		return
-	}
-
-	c.sendTokenResponse(w, r, c.newClaims(creds.Username))
-}
-
-// RenewHandler renews a valid token when it is close to expiration.
-//
-// Requests are rejected if the token is invalid or still outside the renew
-// window configured by renewTime.
-func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
-	claims, err := c.checkToken(r)
-	if err != nil {
-		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, err.Error())
-		c.logger.With(
-			slog.String("username", claims.Username),
-			slog.Any("error", err),
-		).Error("invalid JWT token")
-
-		return
-	}
-
-	if time.Until(claims.ExpiresAt.Time) > c.renewTime {
-		c.sendResponseFn(r.Context(), w, http.StatusBadRequest, "the JWT token can be renewed only when it is close to expiration")
-		c.logger.With(
-			slog.String("username", claims.Username),
-		).Info("the JWT token cannot be renewed yet")
-
-		return
-	}
-
-	// Issue a token with fresh registered claims (exp, iat, nbf, jti) instead
-	// of re-signing the parsed ones, so the renewed token actually extends the
-	// expiration time.
-	c.sendTokenResponse(w, r, c.newClaims(claims.Username))
-}
-
-// IsAuthorized validates the bearer token on the incoming request.
-//
-// On failure it writes an unauthorized response and returns false.
-func (c *JWT) IsAuthorized(w http.ResponseWriter, r *http.Request) bool {
-	claims, err := c.checkToken(r)
-	if err != nil {
-		c.sendResponseFn(r.Context(), w, http.StatusUnauthorized, err.Error())
-		c.logger.With(
-			slog.String("username", claims.Username),
-			slog.Any("error", err),
-		).Error("unauthorized JWT user")
-
-		return false
-	}
-
-	return true
-}
-
-// newClaims builds fresh token claims for username, with expiration, issue,
-// and not-before times relative to the current time and a new unique token ID.
-func (c *JWT) newClaims(username string) *Claims {
-	tnow := time.Now().UTC()
-
-	return &Claims{
-		Username: username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(tnow.Add(c.expirationTime)), // exp
-			IssuedAt:  jwt.NewNumericDate(tnow),                       // iat
-			NotBefore: jwt.NewNumericDate(tnow),                       // nbf
-			ID:        c.rnd.UUIDv7().String(),                        // jti
-			Issuer:    c.issuer,                                       // iss
-			Subject:   c.subject,                                      // sub
-			Audience:  c.audience,                                     // aud
-		},
-	}
-}
-
-// sendTokenResponse signs claims and writes the token response.
-//
-// If signing fails, it returns a 500 response with a generic error message.
-func (c *JWT) sendTokenResponse(w http.ResponseWriter, r *http.Request, claims *Claims) {
-	token := jwt.NewWithClaims(c.signingMethod, claims)
-
-	signedToken, err := token.SignedString(c.key)
-	if err != nil {
-		c.sendResponseFn(r.Context(), w, http.StatusInternalServerError, "unable to sign the JWT token")
-		c.logger.With(
-			slog.String("username", claims.Username),
-			slog.Any("error", err),
-		).Error("unable to sign the JWT token")
-
-		return
-	}
-
-	c.sendResponseFn(r.Context(), w, http.StatusOK, signedToken)
-}
-
-// checkToken extracts and validates the bearer token from the authorization header.
-//
-// It returns parsed claims and any validation/parsing error.
-func (c *JWT) checkToken(r *http.Request) (*Claims, error) {
-	claims := &Claims{}
-
-	headAuth := r.Header.Get(c.authorizationHeader)
-	if len(headAuth) == 0 {
-		return claims, errors.New("missing Authorization header")
-	}
-
-	signedToken, found := strings.CutPrefix(headAuth, httputil.HeaderAuthBearer)
-	if !found || signedToken == "" {
-		return claims, errors.New("missing JWT token")
-	}
-
-	_, err := jwt.ParseWithClaims(
-		signedToken,
-		claims,
-		func(t *jwt.Token) (any, error) {
-			// Restrict the accepted signing algorithm to the configured one to
-			// prevent algorithm-confusion attacks (e.g. alg=none or a different
-			// signing method than expected).
-			if t.Method.Alg() != c.signingMethod.Alg() {
-				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-			}
-
-			return c.key, nil
-		},
-		// Reject validly-signed tokens lacking the exp claim, which would
-		// otherwise never expire.
-		jwt.WithExpirationRequired(),
-	)
-	if err != nil {
-		return claims, err //nolint:wrapcheck
-	}
-
-	return claims, ensureExpiresAt(claims)
-}
-
-// ensureExpiresAt rejects claims lacking an expiration time. Defense in depth:
-// WithExpirationRequired guarantees exp is present on parsed tokens, but this
-// check protects the ExpiresAt dereference in RenewHandler if the parser
-// behavior ever changes.
-func ensureExpiresAt(claims *Claims) error {
-	if claims.ExpiresAt == nil {
-		return errors.New("missing JWT expiration time")
+	for _, key := range c.previousKeys {
+		if len(key) < minLen {
+			return ErrWeakKey
+		}
 	}
 
 	return nil

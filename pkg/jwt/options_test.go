@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +42,25 @@ func TestWithSendResponseFn(t *testing.T) {
 	v := func(_ context.Context, _ http.ResponseWriter, _ int, _ string) {}
 	WithSendResponseFn(v)(c)
 
-	require.NotNil(t, v, c.sendResponseFn)
+	require.NotNil(t, c.sendResponseFn)
+}
+
+func TestWithMaxSessionLifetime(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+	want := 42 * time.Minute
+	WithMaxSessionLifetime(want)(c)
+	require.Equal(t, want, c.maxSessionLifetime)
+}
+
+func TestWithClockSkewLeeway(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+	want := 7 * time.Second
+	WithClockSkewLeeway(want)(c)
+	require.Equal(t, want, c.clockSkewLeeway)
 }
 
 func TestWithAuthorizationHeader(t *testing.T) {
@@ -59,9 +76,19 @@ func TestWithSigningMethod(t *testing.T) {
 	t.Parallel()
 
 	c := &JWT{}
-	want := jwt.SigningMethodHS384
+	want := SigningMethodHS384
 	WithSigningMethod(want)(c)
 	require.Equal(t, want, c.signingMethod)
+}
+
+func TestWithPreviousKeys(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+	keyA := []byte("previous-key-A")
+	keyB := []byte("previous-key-B")
+	WithPreviousKeys(keyA, keyB)(c)
+	require.Equal(t, [][]byte{keyA, keyB}, c.previousKeys)
 }
 
 func TestWithClaimIssuer(t *testing.T) {
@@ -73,13 +100,13 @@ func TestWithClaimIssuer(t *testing.T) {
 	require.Equal(t, want, c.issuer)
 }
 
-func TestWithClaimSubject(t *testing.T) {
+func TestWithMaxBodyBytes(t *testing.T) {
 	t.Parallel()
 
 	c := &JWT{}
-	want := "Test_Subject_02"
-	WithClaimSubject(want)(c)
-	require.Equal(t, want, c.subject)
+	want := int64(4096)
+	WithMaxBodyBytes(want)(c)
+	require.Equal(t, want, c.maxBodyBytes)
 }
 
 func TestWithClaimAudience(t *testing.T) {

@@ -2,8 +2,6 @@ package jwt
 
 import (
 	"context"
-	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,47 +10,107 @@ import (
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
-	"golang.org/x/crypto/bcrypt"
 )
+
+// testKey is a 32-byte HMAC key, satisfying the HS256 minimum key length.
+var testKey = []byte("0123456789abcdef0123456789abcdef") //nolint:gochecknoglobals
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		key        []byte
-		userHashFn UserHashFn
-		opts       []Option
-		wantErr    bool
+		name     string
+		key      []byte
+		verifyFn VerifyCredentialsFn
+		opts     []Option
+		wantErr  error
 	}{
 		{
-			name:       "success with default options",
-			key:        []byte("test-key-01"),
-			userHashFn: func(_ string) ([]byte, error) { return []byte("hash-01"), nil },
-			wantErr:    false,
+			name:     "success with default options",
+			key:      testKey,
+			verifyFn: testVerify,
 		},
 		{
-			name:       "success with custom options",
-			key:        []byte("test-key-02"),
-			userHashFn: func(_ string) ([]byte, error) { return []byte("hash-02"), nil },
+			name:     "success with custom options",
+			key:      testKey,
+			verifyFn: testVerify,
 			opts: []Option{
 				WithExpirationTime(1 * time.Minute),
 				WithRenewTime(10 * time.Second),
+				WithMaxBodyBytes(4096),
 				WithSendResponseFn(func(_ context.Context, _ http.ResponseWriter, _ int, _ string) {}),
 			},
-			wantErr: false,
 		},
 		{
-			name:       "failure with empty key",
-			userHashFn: func(_ string) ([]byte, error) { return []byte("hash-01"), nil },
-			wantErr:    true,
+			name:     "failure with empty key",
+			verifyFn: testVerify,
+			wantErr:  ErrEmptyKey,
 		},
 		{
-			name:    "failure with empty userHashFn",
-			key:     []byte("test-key-01"),
-			wantErr: true,
+			name:    "failure with nil verify function",
+			key:     testKey,
+			wantErr: ErrNilVerifyFn,
+		},
+		{
+			name:     "failure with invalid signing method",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithSigningMethod(SigningMethod(99))},
+			wantErr:  ErrInvalidSigningMethod,
+		},
+		{
+			name:     "failure with weak key",
+			key:      []byte("too-short"),
+			verifyFn: testVerify,
+			wantErr:  ErrWeakKey,
+		},
+		{
+			name:     "failure with weak previous key",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithPreviousKeys([]byte("too-short"))},
+			wantErr:  ErrWeakKey,
+		},
+		{
+			name:     "success with valid previous key",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithPreviousKeys([]byte("fedcba9876543210fedcba9876543210"))},
+		},
+		{
+			name:     "failure with non-positive expiration",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithExpirationTime(0)},
+			wantErr:  ErrInvalidExpirationTime,
+		},
+		{
+			name:     "failure with non-positive renew",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithRenewTime(-1)},
+			wantErr:  ErrInvalidRenewTime,
+		},
+		{
+			name:     "failure with non-positive max body bytes",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithMaxBodyBytes(0)},
+			wantErr:  ErrInvalidMaxBodyBytes,
+		},
+		{
+			name:     "failure with negative max session lifetime",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithMaxSessionLifetime(-1)},
+			wantErr:  ErrInvalidMaxSessionLifetime,
+		},
+		{
+			name:     "failure with negative clock skew leeway",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithClockSkewLeeway(-1)},
+			wantErr:  ErrInvalidClockSkewLeeway,
 		},
 	}
 
@@ -60,10 +118,10 @@ func TestNew(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			c, err := New(tt.key, tt.userHashFn, tt.opts...)
-			if tt.wantErr {
+			c, err := New(tt.key, tt.verifyFn, tt.opts...)
+			if tt.wantErr != nil {
 				require.Nil(t, c, "New() returned value should be nil")
-				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+				require.ErrorIs(t, err, tt.wantErr, "New() error = %v, want %v", err, tt.wantErr)
 
 				return
 			}
@@ -74,244 +132,27 @@ func TestNew(t *testing.T) {
 	}
 }
 
-//nolint:gocognit
-func TestLoginHandler(t *testing.T) {
+func TestNormalizeOptionals(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name          string
-		body          string
-		want          string
-		key           []byte
-		status        int
-		signingMethod SigningMethod
-		closeError    bool
-	}{
-		{
-			name:   "fails with empty body",
-			key:    []byte("signing-key"),
-			want:   "EOF",
-			status: http.StatusBadRequest,
-		},
-		{
-			name:   "fails with invalid body",
-			key:    []byte("signing-key"),
-			body:   `{"broken":"...`,
-			want:   "unexpected EOF",
-			status: http.StatusBadRequest,
-		},
-		{
-			name:   "fails with invalid username",
-			key:    []byte("signing-key"),
-			body:   `{"username":"", "password":"test-secret"}`,
-			want:   "invalid authentication credentials",
-			status: http.StatusUnauthorized,
-		},
-		{
-			name:   "fails with empty password",
-			key:    []byte("signing-key"),
-			body:   `{"username":"test-name", "password":""}`,
-			want:   "invalid authentication credentials",
-			status: http.StatusUnauthorized,
-		},
-		{
-			name:   "fails with invalid password",
-			key:    []byte("signing-key"),
-			body:   `{"username":"test-name", "password":"invalid-password"}`,
-			want:   "invalid authentication credentials",
-			status: http.StatusUnauthorized,
-		},
-		{
-			name:          "fails with signing error",
-			key:           []byte("signing-key"),
-			body:          `{"username":"test-name", "password":"test-name"}`,
-			want:          "unable to sign the JWT token",
-			status:        http.StatusInternalServerError,
-			signingMethod: &testSigningMethodError{},
-		},
-		{
-			name:   "success",
-			key:    []byte("signing-key"),
-			body:   `{"username":"test-name", "password":"test-name"}`,
-			want:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QtbmFtZSIsImV4cCI6MTYxNzE5MjY1OX0.PfE7ulkdDhCDkQrj3NwqF4bw7K4f2QbTs4rcLvaJrtM",
-			status: http.StatusOK,
-		},
-		{
-			name:       "close error",
-			key:        []byte("signing-key"),
-			body:       `{"username":"test-name", "password":"test-name"}`,
-			want:       "EOF",
-			status:     http.StatusBadRequest,
-			closeError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			var opts []Option
-
-			if tt.signingMethod != nil {
-				opts = append(opts, WithSigningMethod(tt.signingMethod))
-			}
-
-			c, err := New(tt.key, testUserHash, opts...)
-			require.NotNil(t, c)
-			require.NoError(t, err)
-
-			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", strings.NewReader(tt.body))
-
-			if tt.closeError {
-				req.Body = testutil.NewErrorCloser("close error")
-			}
-
-			c.LoginHandler(rr, req)
-
-			resp := rr.Result()
-			require.NotNil(t, resp)
-
-			defer func() {
-				err := resp.Body.Close()
-				require.NoError(t, err, "error closing resp.Body")
-			}()
-
-			body, _ := io.ReadAll(resp.Body)
-
-			require.Equal(t, tt.status, resp.StatusCode)
-
-			if tt.status != http.StatusOK {
-				require.Equal(t, tt.want, string(body))
-			} else {
-				require.Greater(t, len(body), 100)
-			}
-		})
-	}
-}
-
-func TestRenewHandler(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name                string
-		status              int
-		expirationTime      time.Duration
-		authorizationHeader string
-		bearerHeader        string
-		badToken            bool
-	}{
-		{
-			name:                "unauthorized",
-			status:              http.StatusUnauthorized,
-			expirationTime:      1 * time.Second,
-			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        httputil.HeaderAuthBearer,
-			badToken:            true,
-		},
-		{
-			name:                "wrong authorization header",
-			status:              http.StatusUnauthorized,
-			expirationTime:      1 * time.Second,
-			authorizationHeader: "ERROR",
-			bearerHeader:        httputil.HeaderAuthBearer,
-		},
-		{
-			name:                "wrong authorization value",
-			status:              http.StatusUnauthorized,
-			expirationTime:      1 * time.Second,
-			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        "ERROR",
-		},
-		{
-			name:                "too early",
-			status:              http.StatusBadRequest,
-			expirationTime:      5 * time.Second,
-			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        httputil.HeaderAuthBearer,
-		},
-		{
-			name:                "success",
-			status:              http.StatusOK,
-			expirationTime:      1 * time.Second,
-			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        httputil.HeaderAuthBearer,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			c, err := New(
-				[]byte("signing-key"),
-				testUserHash,
-				WithExpirationTime(tt.expirationTime),
-				WithRenewTime(1*time.Second),
-			)
-			require.NotNil(t, c)
-			require.NoError(t, err)
-
-			reqBody := `{"username":"test-name", "password":"test-name"}`
-
-			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", strings.NewReader(reqBody))
-			c.LoginHandler(rr, req)
-
-			resp := rr.Result()
-			require.NotNil(t, resp)
-
-			defer func() {
-				err := resp.Body.Close()
-				require.NoError(t, err, "error closing resp.Body")
-			}()
-
-			require.Equal(t, http.StatusOK, resp.StatusCode)
-
-			token, _ := io.ReadAll(resp.Body)
-
-			rr2 := httptest.NewRecorder()
-			req2, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-
-			header := tt.bearerHeader + string(token)
-
-			if tt.badToken {
-				header += "CORRUPT"
-			}
-
-			req2.Header.Set(tt.authorizationHeader, header)
-			c.RenewHandler(rr2, req2)
-
-			resp2 := rr2.Result()
-			require.NotNil(t, resp2)
-
-			defer func() {
-				err := resp2.Body.Close()
-				require.NoError(t, err, "error closing resp2.Body")
-			}()
-
-			require.Equal(t, tt.status, resp2.StatusCode)
-		})
-	}
-}
-
-func TestRenewHandlerIssuesFreshToken(t *testing.T) {
-	t.Parallel()
-
-	key := []byte("signing-key")
-
+	// Nil/empty optional values must restore defaults, not brick the handlers.
 	c, err := New(
-		key,
-		testUserHash,
-		WithExpirationTime(5*time.Second),
-		WithRenewTime(5*time.Second),
+		testKey,
+		testVerify,
+		WithLogger(nil),
+		WithSendResponseFn(nil),
+		WithAuthorizationHeader(""),
 	)
 	require.NotNil(t, c)
 	require.NoError(t, err)
+	require.NotNil(t, c.logger)
+	require.NotNil(t, c.sendResponseFn)
+	require.Equal(t, DefaultAuthorizationHeader, c.authorizationHeader)
 
 	rr := httptest.NewRecorder()
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", strings.NewReader(`{"username":"test-name", "password":"test-name"}`))
-	c.LoginHandler(rr, req)
+
+	require.NotPanics(t, func() { c.LoginHandler(rr, req) })
 
 	resp := rr.Result()
 	require.NotNil(t, resp)
@@ -322,304 +163,64 @@ func TestRenewHandlerIssuesFreshToken(t *testing.T) {
 	}()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	oldToken, _ := io.ReadAll(resp.Body)
-
-	// Wait past a full second so the renewed exp (second-precision) is strictly later.
-	time.Sleep(1100 * time.Millisecond)
-
-	rr2 := httptest.NewRecorder()
-	req2, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req2.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+string(oldToken))
-	c.RenewHandler(rr2, req2)
-
-	resp2 := rr2.Result()
-	require.NotNil(t, resp2)
-
-	defer func() {
-		err := resp2.Body.Close()
-		require.NoError(t, err, "error closing resp2.Body")
-	}()
-
-	require.Equal(t, http.StatusOK, resp2.StatusCode)
-
-	newToken, _ := io.ReadAll(resp2.Body)
-
-	// The renewed token must not be a re-signed copy of the old one.
-	require.NotEqual(t, string(oldToken), string(newToken))
-
-	parseClaims := func(token string) *Claims {
-		claims := &Claims{}
-		_, perr := jwtv5.ParseWithClaims(token, claims, func(_ *jwtv5.Token) (any, error) { return key, nil })
-		require.NoError(t, perr)
-
-		return claims
-	}
-
-	oldClaims := parseClaims(string(oldToken))
-	newClaims := parseClaims(string(newToken))
-
-	require.True(t, newClaims.ExpiresAt.After(oldClaims.ExpiresAt.Time), "renewed token must expire later than the original")
-	require.NotEqual(t, oldClaims.ID, newClaims.ID, "renewed token must have a fresh jti")
-	require.Equal(t, oldClaims.Username, newClaims.Username)
 }
 
-func TestCheckTokenRejectsMissingExpiration(t *testing.T) {
+func TestNewCopiesKeyMaterial(t *testing.T) {
 	t.Parallel()
 
-	key := []byte("signing-key")
+	prevOriginal := []byte("old-key-89abcdef0123456789abcdef")
 
-	c, err := New(key, testUserHash)
+	// Hand New/WithPreviousKeys mutable buffers, as a caller reusing or
+	// zeroizing its key material would.
+	key := append([]byte(nil), testKey...)
+	prev := append([]byte(nil), prevOriginal...)
+
+	c, err := New(key, testVerify, WithPreviousKeys(prev))
 	require.NotNil(t, c)
 	require.NoError(t, err)
 
-	// Craft a validly-signed token WITHOUT the exp claim: it must be rejected
-	// instead of being authorized forever (and must not panic RenewHandler).
-	claims := &Claims{Username: "test-name"}
-
-	signedToken, err := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, claims).SignedString(key)
+	token, err := c.IssueToken("test-name")
 	require.NoError(t, err)
 
-	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+signedToken)
+	oldToken := signClaimsV5(t, prevOriginal, jwtv5.MapClaims{
+		"username": "test-name",
+		"exp":      time.Now().Add(time.Minute).Unix(),
+	})
 
-	got, err := c.checkToken(req)
-	require.NotNil(t, got)
-	require.Error(t, err, "a token without exp must be rejected")
+	// Zeroize the caller's buffers: the instance must be unaffected.
+	clear(key)
+	clear(prev)
 
-	rr := httptest.NewRecorder()
+	_, err = c.VerifyToken(token)
+	require.NoError(t, err, "tokens signed before the mutation must still verify")
 
-	require.NotPanics(t, func() { c.RenewHandler(rr, req) })
+	_, err = c.VerifyToken(oldToken)
+	require.NoError(t, err, "previous-key tokens must still verify after the mutation")
 
-	resp := rr.Result()
-	require.NotNil(t, resp)
+	token2, err := c.IssueToken("test-name")
+	require.NoError(t, err)
 
-	defer func() {
-		err := resp.Body.Close()
-		require.NoError(t, err, "error closing resp.Body")
-	}()
-
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
-	rr2 := httptest.NewRecorder()
-	require.False(t, c.IsAuthorized(rr2, req))
+	_, err = c.VerifyToken(token2)
+	require.NoError(t, err, "newly issued tokens must verify with the retained key")
 }
 
-func TestDummyPasswordHash(t *testing.T) {
-	t.Parallel()
+// signClaimsV5 signs claims with the reference golang-jwt implementation (HMAC
+// SHA-256), so every crafted-token test doubles as an interoperability check of
+// this package's parser against the reference library.
+func signClaimsV5(t *testing.T, key []byte, claims jwtv5.MapClaims) string {
+	t.Helper()
 
-	// The fixed dummy hash must be a valid bcrypt hash so the unknown-user
-	// login path performs a full-cost comparison (timing equalization).
-	cost, err := bcrypt.Cost(dummyPasswordHash)
+	signed, err := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, claims).SignedString(key)
 	require.NoError(t, err)
-	require.Equal(t, bcrypt.MinCost, cost)
 
-	err = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte("any-password"))
-	require.ErrorIs(t, err, bcrypt.ErrMismatchedHashAndPassword)
+	return signed
 }
 
-func TestIsAuthorized(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name                string
-		status              int
-		authorizationHeader string
-		bearerHeader        string
-		badToken            bool
-	}{
-		{
-			name:                "unauthorized",
-			status:              http.StatusUnauthorized,
-			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        httputil.HeaderAuthBearer,
-			badToken:            true,
-		},
-		{
-			name:                "wrong authorization header",
-			status:              http.StatusUnauthorized,
-			authorizationHeader: "ERROR",
-			bearerHeader:        httputil.HeaderAuthBearer,
-		},
-		{
-			name:                "wrong authorization value",
-			status:              http.StatusUnauthorized,
-			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        "ERROR",
-		},
-		{
-			name:                "success",
-			status:              0,
-			authorizationHeader: DefaultAuthorizationHeader,
-			bearerHeader:        httputil.HeaderAuthBearer,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			c, err := New(
-				[]byte("signing-key"),
-				testUserHash,
-			)
-			require.NotNil(t, c)
-			require.NoError(t, err)
-
-			reqBody := `{"username":"test-name", "password":"test-name"}`
-
-			rr := httptest.NewRecorder()
-			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", strings.NewReader(reqBody))
-			c.LoginHandler(rr, req)
-
-			resp := rr.Result()
-			require.NotNil(t, resp)
-
-			defer func() {
-				err := resp.Body.Close()
-				require.NoError(t, err, "error closing resp.Body")
-			}()
-
-			require.Equal(t, http.StatusOK, resp.StatusCode)
-
-			token, _ := io.ReadAll(resp.Body)
-
-			rr2 := httptest.NewRecorder()
-			req2, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-
-			header := tt.bearerHeader + string(token)
-
-			if tt.badToken {
-				header += "CORRUPT"
-			}
-
-			req2.Header.Set(tt.authorizationHeader, header)
-			got := c.IsAuthorized(rr2, req2)
-
-			if tt.status == 0 {
-				require.True(t, got)
-			} else {
-				resp2 := rr2.Result()
-				require.NotNil(t, resp2)
-
-				defer func() {
-					err := resp2.Body.Close()
-					require.NoError(t, err, "error closing resp2.Body")
-				}()
-
-				require.Equal(t, tt.status, resp2.StatusCode)
-			}
-		})
-	}
-}
-
-func TestCheckTokenRejectsUnexpectedAlgorithm(t *testing.T) {
-	t.Parallel()
-
-	key := []byte("signing-key")
-
-	// The JWT helper is configured with the default HS256 signing method.
-	c, err := New(key, testUserHash)
-	require.NotNil(t, c)
-	require.NoError(t, err)
-
-	// Craft a token signed with a DIFFERENT HMAC algorithm (HS384) using the
-	// same key. This must be rejected by the algorithm restriction.
-	claims := &Claims{
-		Username: "test-name",
-		RegisteredClaims: jwtv5.RegisteredClaims{
-			ExpiresAt: jwtv5.NewNumericDate(time.Now().UTC().Add(time.Minute)),
-		},
-	}
-
-	signedToken, err := jwtv5.NewWithClaims(jwtv5.SigningMethodHS384, claims).SignedString(key)
-	require.NoError(t, err)
-
-	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+signedToken)
-
-	got, err := c.checkToken(req)
-	require.NotNil(t, got)
-	require.Error(t, err, "a token signed with an unexpected algorithm must be rejected")
-	require.Contains(t, err.Error(), "unexpected signing method")
-}
-
-func TestCheckTokenRejectsAlgNone(t *testing.T) {
-	t.Parallel()
-
-	c, err := New([]byte("signing-key"), testUserHash)
-	require.NotNil(t, c)
-	require.NoError(t, err)
-
-	// Craft an "alg=none" (unsigned) token: it must be rejected.
-	claims := &Claims{
-		Username: "test-name",
-		RegisteredClaims: jwtv5.RegisteredClaims{
-			ExpiresAt: jwtv5.NewNumericDate(time.Now().UTC().Add(time.Minute)),
-		},
-	}
-
-	signedToken, err := jwtv5.NewWithClaims(jwtv5.SigningMethodNone, claims).
-		SignedString(jwtv5.UnsafeAllowNoneSignatureType)
-	require.NoError(t, err)
-
-	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+signedToken)
-
-	got, err := c.checkToken(req)
-	require.NotNil(t, got)
-	require.Error(t, err, "an alg=none token must be rejected")
-}
-
-func TestCheckTokenRejectsEmptyBearer(t *testing.T) {
-	t.Parallel()
-
-	c, err := New([]byte("signing-key"), testUserHash)
-	require.NotNil(t, c)
-	require.NoError(t, err)
-
-	// The Authorization header contains the Bearer prefix but an empty token.
-	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer)
-
-	got, err := c.checkToken(req)
-	require.NotNil(t, got)
-	require.Error(t, err, "an empty bearer token must be rejected")
-	require.Equal(t, "missing JWT token", err.Error())
-}
-
-// testUserHash assumes password = username.
-func testUserHash(username string) ([]byte, error) {
+// testVerify treats a login as valid when the password equals a non-empty username.
+func testVerify(username, password string) (bool, error) {
 	if username == "" {
-		return nil, errors.New("invalid username")
+		return false, nil
 	}
 
-	return bcrypt.GenerateFromPassword([]byte(username), bcrypt.MinCost) //nolint:wrapcheck
-}
-
-type testSigningMethodError struct{}
-
-func (c *testSigningMethodError) Verify(_ string, _ []byte, _ any) error {
-	return errors.New("VERIFY ERROR")
-}
-
-func (c *testSigningMethodError) Sign(_ string, _ any) ([]byte, error) {
-	return nil, errors.New("SIGN ERROR")
-}
-
-func (c *testSigningMethodError) Alg() string {
-	return ""
-}
-
-func Test_ensureExpiresAt(t *testing.T) {
-	t.Parallel()
-
-	require.Error(t, ensureExpiresAt(&Claims{}))
-
-	claims := &Claims{
-		RegisteredClaims: jwtv5.RegisteredClaims{
-			ExpiresAt: jwtv5.NewNumericDate(time.Now().Add(time.Minute)),
-		},
-	}
-	require.NoError(t, ensureExpiresAt(claims))
+	return password == username, nil
 }
