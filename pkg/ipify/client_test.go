@@ -81,6 +81,11 @@ func TestNew(t *testing.T) {
 			opts:    []Option{WithURL("http://")},
 			wantErr: true,
 		},
+		{
+			name:    "fails with non-http scheme",
+			opts:    []Option{WithURL("ftp://example.invalid")},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -91,6 +96,7 @@ func TestNew(t *testing.T) {
 			if tt.wantErr {
 				require.Nil(t, c, "New() returned client should be nil")
 				require.Error(t, err, "New() error = %v, wantErr %v", err, tt.wantErr)
+				require.ErrorIs(t, err, ErrInvalidOptions, "New() error should match ErrInvalidOptions")
 
 				return
 			}
@@ -140,6 +146,14 @@ func TestClient_GetPublicIP(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "fails because of empty body",
+			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				w.WriteHeader(http.StatusOK)
+			},
+			wantErr: true,
+		},
+		{
 			name: "succeed with valid response",
 			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -148,6 +162,17 @@ func TestClient_GetPublicIP(t *testing.T) {
 				assert.NoError(t, err, "unexpected error: %v", err)
 			},
 			wantIP:  "0.0.0.0",
+			wantErr: false,
+		},
+		{
+			name: "succeed trimming surrounding whitespace",
+			getIPHandler: func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte("  1.2.3.4\n"))
+				assert.NoError(t, err, "unexpected error: %v", err)
+			},
+			wantIP:  "1.2.3.4",
 			wantErr: false,
 		},
 	}
@@ -171,7 +196,7 @@ func TestClient_GetPublicIP(t *testing.T) {
 				require.Error(t, err, "Client.GetPublicIP() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
 				require.NoError(t, err, "Client.GetPublicIP() unexpected error = %v", err)
-				require.Equal(t, "0.0.0.0", ip)
+				require.Equal(t, tt.wantIP, ip)
 			}
 		})
 	}
@@ -229,4 +254,79 @@ func TestClient_GetPublicIP_URLError(t *testing.T) {
 
 	_, err = c.GetPublicIP(t.Context())
 	require.Error(t, err, "Client.GetPublicIP() error = %v", err)
+}
+
+// nilBodyHTTPClient is an [HTTPClient] that returns a nil-error response with a
+// nil Body, simulating a misbehaving injected transport.
+type nilBodyHTTPClient struct{}
+
+func (c *nilBodyHTTPClient) Do(_ *http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: http.StatusOK, Body: nil}, nil
+}
+
+// TestClient_GetPublicIP_NilBody verifies that a misbehaving injected client
+// returning a nil response body is handled with ErrInvalidResponse instead of
+// panicking on the deferred Close or the body read.
+func TestClient_GetPublicIP_NilBody(t *testing.T) {
+	t.Parallel()
+
+	const fallbackIP = "0.0.0.0"
+
+	c, err := New(
+		WithHTTPClient(&nilBodyHTTPClient{}),
+		WithErrorIP(fallbackIP),
+	)
+	require.NoError(t, err, "New() unexpected error = %v", err)
+
+	ip, err := c.GetPublicIP(t.Context())
+	require.ErrorIs(t, err, ErrInvalidResponse, "nil response body should match ErrInvalidResponse")
+	require.Equal(t, fallbackIP, ip, "on failure the configured errorIP must be returned")
+}
+
+func TestClient_HealthCheck(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		handler http.HandlerFunc
+		wantErr bool
+	}{
+		{
+			name: "succeeds when endpoint returns an IP",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte("192.0.2.1"))
+				assert.NoError(t, err, "unexpected error: %v", err)
+			},
+			wantErr: false,
+		},
+		{
+			name: "fails when endpoint is unhealthy",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusServiceUnavailable)
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mux := testutil.RouterWithHandler(http.MethodGet, "/", tt.handler)
+			ts := httptest.NewServer(mux)
+
+			defer ts.Close()
+
+			c, err := New(WithURL(ts.URL))
+			require.NoError(t, err, "New() unexpected error = %v", err)
+
+			err = c.HealthCheck(t.Context())
+			if tt.wantErr {
+				require.Error(t, err, "HealthCheck() expected error")
+			} else {
+				require.NoError(t, err, "HealthCheck() unexpected error = %v", err)
+			}
+		})
+	}
 }

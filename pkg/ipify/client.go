@@ -7,18 +7,22 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
 // Default configuration values.
 const (
-	defaultTimeout = 4 * time.Second         // default timeout in seconds
+	defaultTimeout = 4 * time.Second         // default request timeout
 	defaultAPIURL  = "https://api.ipify.org" // use "https://api64.ipify.org" for IPv6 support
 	defaultErrorIP = ""                      // string to return in case of error in place of the IP
-)
 
-// errMissingSchemeOrHost is returned when the configured API URL lacks a scheme or host.
-var errMissingSchemeOrHost = errors.New("missing scheme or host")
+	// maxBodyBytes caps how much of the response body is read. The endpoint is
+	// caller-configurable via WithURL, and a valid answer is tiny (the longest
+	// textual IPv6 form is 45 bytes), so this bounds memory use if a
+	// misconfigured or hostile endpoint returns a large body.
+	maxBodyBytes = 64
+)
 
 // HTTPClient is the minimal HTTP transport contract used by [Client].
 type HTTPClient interface {
@@ -47,7 +51,11 @@ func defaultClient() *Client {
 // New constructs an ipify client with validated configuration.
 //
 // It applies options, initializes a default HTTP client when needed, and
-// validates the configured API URL.
+// validates the configured API URL. A non-positive timeout is silently clamped
+// to the default rather than rejected, so a misconfigured timeout cannot make
+// every request fail with an already-expired context. An API URL that is
+// missing, unparseable, or that does not use an http/https scheme with a host
+// is rejected with an error matching [ErrInvalidOptions].
 func New(opts ...Option) (*Client, error) {
 	c := defaultClient()
 
@@ -67,11 +75,17 @@ func New(opts ...Option) (*Client, error) {
 
 	parsed, err := url.ParseRequestURI(c.apiURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid ipify service address %q: %w", c.apiURL, err)
+		return nil, fmt.Errorf("invalid ipify service address %q: %w: %w", c.apiURL, ErrInvalidOptions, err)
 	}
 
-	if parsed.Scheme == "" || parsed.Host == "" {
-		return nil, fmt.Errorf("invalid ipify service address %q: %w", c.apiURL, errMissingSchemeOrHost)
+	// http.Client only speaks http/https; any other scheme would fail at request
+	// time, so reject it up front with a clear construction-time error.
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, fmt.Errorf("invalid ipify service address %q (scheme must be http or https): %w", c.apiURL, ErrInvalidOptions)
+	}
+
+	if parsed.Host == "" {
+		return nil, fmt.Errorf("invalid ipify service address %q (missing host): %w", c.apiURL, ErrInvalidOptions)
 	}
 
 	return c, nil
@@ -97,6 +111,14 @@ func (c *Client) GetPublicIP(ctx context.Context) (ip string, err error) {
 		return c.errorIP, fmt.Errorf("failed performing ipify request: %w", derr)
 	}
 
+	// A conforming http.Client never returns a nil body on a nil error, but the
+	// transport is caller-supplied via WithHTTPClient; guard against a
+	// misbehaving implementation so the deferred Close and the body reads below
+	// cannot panic with a nil-pointer dereference.
+	if resp.Body == nil {
+		return c.errorIP, fmt.Errorf("nil response body: %w", ErrInvalidResponse)
+	}
+
 	defer func() {
 		err = errors.Join(err, resp.Body.Close())
 		if err != nil {
@@ -108,15 +130,32 @@ func (c *Client) GetPublicIP(ctx context.Context) (ip string, err error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		_, _ = io.Copy(io.Discard, resp.Body)
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxBodyBytes))
 
 		return c.errorIP, fmt.Errorf("unexpected ipify status code: %d", resp.StatusCode)
 	}
 
-	body, berr := io.ReadAll(resp.Body)
+	body, berr := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes))
 	if berr != nil {
 		return c.errorIP, fmt.Errorf("failed reading response body: %w", berr)
 	}
 
-	return string(body), nil
+	ip = strings.TrimSpace(string(body))
+	if ip == "" {
+		return c.errorIP, fmt.Errorf("empty ipify response: %w", ErrInvalidResponse)
+	}
+
+	return ip, nil
+}
+
+// HealthCheck verifies that the configured ipify endpoint is reachable and
+// returns a usable public IP.
+//
+// It performs a GetPublicIP call, discards the resolved address, and returns
+// only the error. It exists for parity with the other gogen HTTP clients that
+// expose a HealthCheck probe.
+func (c *Client) HealthCheck(ctx context.Context) error {
+	_, err := c.GetPublicIP(ctx)
+
+	return err
 }
