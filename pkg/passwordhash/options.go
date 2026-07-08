@@ -4,39 +4,47 @@ package passwordhash
 type Option func(*Params)
 
 // WithKeyLen sets the derived key length (Tag length) in bytes.
-// It must be an integer number of bytes from 4 to 2^(32)-1.
-// The default value is 32 bytes.
+// The value is clamped to [16, 1024]: 16 bytes (128 bits) is a safe floor, as
+// shorter keys are trivially brute-forceable offline, and 1024 bytes is the
+// largest length the verification path accepts — a longer key would mint a hash
+// that could never be verified. The default is 32 bytes. (Hashes stored with a
+// shorter key remain verifiable for backward compatibility.)
 func WithKeyLen(v uint32) Option {
 	return func(ph *Params) {
-		ph.KeyLen = max(minKeyLen, v)
+		ph.KeyLen = min(max(minHashKeyLen, v), maxVerifyKeyLen)
 	}
 }
 
 // WithSaltLen sets random salt length (Nonce S) in bytes.
-// It must be not greater than 2^(32)-1 bytes.
-// The value of 16 bytes is recommended for password hashing.
+// The value is clamped to [8, 1024]: 8 bytes (64 bits) is a conservative floor
+// for rainbow-table and pre-computation resistance, and 1024 bytes is the
+// largest length the verification path accepts. The recommended and default
+// value is 16 bytes. (Hashes stored with a shorter salt remain verifiable for
+// backward compatibility.)
 func WithSaltLen(v uint32) Option {
 	return func(ph *Params) {
-		ph.SaltLen = max(minSaltLen, v)
+		ph.SaltLen = min(max(minHashSaltLen, v), maxVerifySaltLen)
 	}
 }
 
 // WithTime sets the Argon2id time cost: the number of passes over memory.
-// Higher values increase resistance to brute-force attacks at the cost of
-// hashing latency. Must be >= 1 (minimum enforced automatically).
-// OWASP recommends tuning so that hashing takes 0.5–1 s on target hardware.
+// The value is clamped to [1, 1024]. Higher values increase resistance to
+// brute-force attacks at the cost of hashing latency; 1024 is the largest value
+// the verification path accepts, so it is the effective ceiling. OWASP
+// recommends tuning so that hashing takes 0.5–1 s on target hardware.
 func WithTime(v uint32) Option {
 	return func(ph *Params) {
-		ph.Time = max(minTime, v)
+		ph.Time = min(max(minTime, v), maxVerifyTime)
 	}
 }
 
 // WithMemory sets Argon2 memory cost in KiB.
-// It must be an integer number of kibibytes from 8*p to 2^(32)-1.
-// The actual number of blocks is m', which is m rounded down to the nearest multiple of 4*p.
+// The value is clamped to [8, 4194304] (up to 4 GiB); 4 GiB is the largest the
+// verification path accepts, so it is the effective ceiling. The actual number
+// of blocks is m', which is m rounded down to the nearest multiple of 4*p.
 func WithMemory(v uint32) Option {
 	return func(ph *Params) {
-		ph.Memory = max(minMemory, v)
+		ph.Memory = min(max(minMemory, v), maxVerifyMemory)
 	}
 }
 
@@ -65,6 +73,8 @@ func WithMinPasswordLength(v uint32) Option {
 // WithMaxPasswordLength sets the maximum accepted password length in bytes.
 // Passwords longer than this are rejected before hashing, preventing
 // denial-of-service attacks via extremely long input strings.
+// If the value is lower than the configured minimum length, [New] raises it to
+// that minimum so the accepted-length window is never empty.
 func WithMaxPasswordLength(v uint32) Option {
 	return func(ph *Params) {
 		ph.maxPLen = v

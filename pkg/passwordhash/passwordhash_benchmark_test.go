@@ -15,7 +15,13 @@ func BenchmarkPasswordHash(b *testing.B) {
 func BenchmarkPasswordVerify(b *testing.B) {
 	p := New()
 
-	hash := "eyJQIjp7IkEiOiJhcmdvbjJpZCIsIlYiOjE5LCJLIjozMiwiUyI6MTYsIlQiOjMsIk0iOjY1NTM2LCJQIjoxNn0sIlMiOiJ3UVltNGJma3RiSHEyb21Jd0Z1KzRRPT0iLCJLIjoiYVU4aE85MDBPZHE2YUt0V2lXejNSVzl5Z243MzRsaUphUHRNNnludmtZST0ifQo="
+	// Mint the hash with the current defaults so the benchmark always measures
+	// the configuration the package actually ships, rather than a frozen blob
+	// whose embedded parameters go stale when defaults change.
+	hash, err := p.PasswordHash("Test-Password-01234")
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	for b.Loop() {
 		_, _ = p.PasswordVerify("Test-Password-01234", hash)

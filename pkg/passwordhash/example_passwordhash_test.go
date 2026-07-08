@@ -86,3 +86,37 @@ func ExampleParams_EncryptPasswordVerify() {
 	// true
 	// false
 }
+
+func ExampleParams_PasswordNeedsRehash() {
+	// A hash produced with a weaker cost is detected as needing a rehash by a
+	// stronger configuration, so it can be transparently upgraded on next login.
+	weak := passwordhash.New(passwordhash.WithTime(1))
+
+	secret := "Example-Password-03"
+
+	hash, err := weak.PasswordHash(secret)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	strong := passwordhash.New(passwordhash.WithTime(4))
+
+	// The same configuration that produced the hash reports no rehash needed.
+	weakNeeds, err := weak.PasswordNeedsRehash(hash)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// The stronger configuration reports that the stored hash should be upgraded.
+	strongNeeds, err := strong.PasswordNeedsRehash(hash)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(weakNeeds)
+	fmt.Println(strongNeeds)
+
+	// Output:
+	// false
+	// true
+}
