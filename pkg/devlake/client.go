@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -19,6 +20,20 @@ import (
 const (
 	defaultTimeout     = 1 * time.Minute
 	defaultPingTimeout = 15 * time.Second
+
+	// defaultMaxRetryAfter caps how long a server-provided Retry-After header can
+	// stall a retry, so a rate-limited or misconfigured endpoint cannot force a
+	// very long wait on a caller that did not set a context deadline.
+	defaultMaxRetryAfter = 60 * time.Second
+
+	// maxBodyBytes caps how much of a response body is drained (for keep-alive
+	// connection reuse), bounding time if a misconfigured or hostile endpoint
+	// returns a very large body.
+	maxBodyBytes = 4 << 10 // 4 KiB
+
+	// maxErrBodyBytes caps the response-body snippet included in error messages,
+	// keeping errors (and logs) small.
+	maxErrBodyBytes = 512
 )
 
 // HTTPClient is the minimal HTTP transport contract used by [Client].
@@ -35,7 +50,7 @@ var newValidator = validator.New //nolint:gochecknoglobals
 // Client sends deployment and incident webhook events to DevLake.
 type Client struct {
 	httpClient             HTTPClient
-	baseURL                *url.URL
+	retrier                *httpretrier.HTTPRetrier
 	valid                  *validator.Validator
 	timeout                time.Duration
 	pingTimeout            time.Duration
@@ -58,15 +73,15 @@ type Client struct {
 func New(addr, apiKey string, opts ...Option) (*Client, error) {
 	baseURL, err := url.ParseRequestURI(addr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid devlake address %q: %w", addr, err)
+		return nil, fmt.Errorf("%w %q: %w", ErrInvalidAddress, addr, err)
 	}
 
 	if baseURL.Scheme == "" || baseURL.Host == "" {
-		return nil, fmt.Errorf("invalid devlake address %q: missing scheme or host", addr)
+		return nil, fmt.Errorf("%w %q: missing scheme or host", ErrInvalidAddress, addr)
 	}
 
 	if apiKey == "" {
-		return nil, errors.New("apiKey is empty")
+		return nil, ErrEmptyAPIKey
 	}
 
 	valid, err := newValidator(
@@ -84,7 +99,6 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 	apiBase := baseURL.JoinPath("api", "rest").String()
 
 	c := &Client{
-		baseURL:                baseURL,
 		valid:                  valid,
 		timeout:                defaultTimeout,
 		pingTimeout:            defaultPingTimeout,
@@ -112,6 +126,22 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 		c.httpClient = &http.Client{Timeout: c.timeout}
 	}
 
+	// The retrier holds only immutable configuration, so a single instance is
+	// shared by all requests; building it here surfaces invalid retry settings at
+	// construction time instead of on every send. Retry-After is honored (and
+	// capped) so a 429 backs off for at least the server-requested time.
+	c.retrier, err = httpretrier.New(
+		c.httpClient,
+		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
+		httpretrier.WithAttempts(c.retryAttempts),
+		httpretrier.WithDelay(c.retryDelay),
+		httpretrier.WithRespectRetryAfter(),
+		httpretrier.WithMaxRetryAfter(defaultMaxRetryAfter),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidRetryConfig, err)
+	}
+
 	return c, nil
 }
 
@@ -137,6 +167,8 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 	}
 
 	defer func() {
+		// Drain (capped) so the connection can be reused by keep-alive.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxBodyBytes))
 		err = errors.Join(err, resp.Body.Close())
 	}()
 
@@ -193,7 +225,12 @@ func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, r
 // It validates request and posts it to the deployment webhook endpoint scoped
 // by ConnectionID.
 func (c *Client) SendDeployment(ctx context.Context, request *DeploymentRequest) error {
+	if request == nil {
+		return ErrNilRequest
+	}
+
 	urlStr := fmt.Sprintf(c.deploymentRegURLFormat, request.ConnectionID)
+
 	return sendRequest[DeploymentRequest](ctx, c, urlStr, request)
 }
 
@@ -202,7 +239,12 @@ func (c *Client) SendDeployment(ctx context.Context, request *DeploymentRequest)
 // It validates request and posts it to the incident webhook endpoint scoped by
 // ConnectionID.
 func (c *Client) SendIncident(ctx context.Context, request *IncidentRequest) error {
+	if request == nil {
+		return ErrNilRequest
+	}
+
 	urlStr := fmt.Sprintf(c.incidentRegURLFormat, request.ConnectionID)
+
 	return sendRequest[IncidentRequest](ctx, c, urlStr, request)
 }
 
@@ -211,6 +253,10 @@ func (c *Client) SendIncident(ctx context.Context, request *IncidentRequest) err
 // It validates the close request and calls the dedicated close endpoint using
 // ConnectionID and IssueKey.
 func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequestClose) error {
+	if request == nil {
+		return ErrNilRequest
+	}
+
 	err := c.valid.ValidateStructCtx(ctx, request)
 	if err != nil {
 		return fmt.Errorf("invalid request: %w", err)
@@ -241,12 +287,7 @@ func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequest
 // It is shared by payload-carrying webhook calls and the bodyless close call so
 // the retry/response handling stays in one place.
 func (c *Client) doRequest(r *http.Request) (err error) {
-	hr, err := c.newWriteHTTPRetrier()
-	if err != nil {
-		return fmt.Errorf("create retrier: %w", err)
-	}
-
-	resp, err := hr.Do(r)
+	resp, err := c.retrier.Do(r)
 	if err != nil {
 		return fmt.Errorf("execute request: %w", err)
 	}
@@ -256,21 +297,18 @@ func (c *Client) doRequest(r *http.Request) (err error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
+		// Include a capped snippet of the response body: the DevLake webhook API
+		// reports the reason for a rejection there, which aids debugging.
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrBodyBytes))
+		if body = bytes.TrimSpace(body); len(body) > 0 {
+			return fmt.Errorf("devlake client error - Code: %v, Status: %v, Body: %s", resp.StatusCode, resp.Status, body)
+		}
+
 		return fmt.Errorf("devlake client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)
 	}
 
-	return nil
-}
+	// Drain (capped) so the connection can be reused by keep-alive.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxBodyBytes))
 
-// newWriteHTTPRetrier creates the retrier used by write webhook requests.
-//
-// It applies write-safe retry rules and the configured attempt count.
-func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
-	//nolint:wrapcheck
-	return httpretrier.New(
-		c.httpClient,
-		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
-		httpretrier.WithAttempts(c.retryAttempts),
-		httpretrier.WithDelay(c.retryDelay),
-	)
+	return nil
 }
