@@ -4,21 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"slices"
 
 	"github.com/segmentio/kafka-go"
 	"github.com/tecnickcom/gogen/pkg/encode"
-	"go.uber.org/multierr"
-)
-
-const (
-	// network is the network type used to connect to Kafka brokers.
-	network = "tcp"
 )
 
 // TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
 type TDecodeFunc func(ctx context.Context, msg []byte, data any) error
 
-type consumerClient interface {
+// KReader defines the kafka-go reader methods used by [Consumer].
+type KReader interface {
 	ReadMessage(ctx context.Context) (kafka.Message, error)
 	FetchMessage(ctx context.Context) (kafka.Message, error)
 	CommitMessages(ctx context.Context, msgs ...kafka.Message) error
@@ -28,13 +25,20 @@ type consumerClient interface {
 // Consumer reads messages from a Kafka topic with pluggable decoding.
 type Consumer struct {
 	cfg     *config
-	client  consumerClient
-	checkFn func(ctx context.Context, address string) error
+	client  KReader
+	checkFn checkBrokerFn
 	brokers []string
 }
 
 // NewConsumer constructs a Kafka consumer for a topic and consumer group with optional tuning.
 // Call HealthCheck() to verify broker/topic connectivity before beginning receives.
+//
+// groupID may be empty: without a consumer group the reader always starts
+// from the earliest available offset (WithFirstOffset has no effect), offsets
+// are never committed, and CommitMessages returns an error.
+//
+// Configuration problems are reported with errors matching ErrInvalidOptions
+// or ErrNilDecodeFunc; match them with errors.Is.
 func NewConsumer(brokers []string, topic, groupID string, opts ...Option) (*Consumer, error) {
 	cfg := defaultConfig()
 
@@ -42,77 +46,97 @@ func NewConsumer(brokers []string, topic, groupID string, opts ...Option) (*Cons
 		applyOpt(cfg)
 	}
 
-	if cfg.messageDecodeFunc == nil {
-		return nil, errors.New("missing message decoding function")
-	}
-
-	params := kafka.ReaderConfig{
-		Brokers:        brokers,
-		Topic:          topic,
-		GroupID:        groupID,
-		SessionTimeout: cfg.sessionTimeout,
-		StartOffset:    cfg.startOffset,
-	}
-
-	err := params.Validate()
+	err := cfg.validateConsumer(brokers, topic)
 	if err != nil {
-		return nil, fmt.Errorf("invalid parameters: %w", err)
+		return nil, err
 	}
 
-	client := kafka.NewReader(params)
+	client := cfg.reader
 
-	checkFn := func(ctx context.Context, address string) error {
-		_, err := client.Config().Dialer.LookupPartitions(ctx, network, address, topic)
-		return err //nolint:wrapcheck
+	if client == nil {
+		// validateConsumer has already rejected everything kafka-go's
+		// NewReader would panic on, so no separate ReaderConfig.Validate is
+		// needed here.
+		client = kafka.NewReader(kafka.ReaderConfig{
+			Brokers:        brokers,
+			Topic:          topic,
+			GroupID:        groupID,
+			SessionTimeout: cfg.sessionTimeout,
+			StartOffset:    cfg.startOffset,
+		})
+	}
+
+	checkFn := cfg.checkFn
+	if checkFn == nil {
+		checkFn = defaultCheckBroker(topic)
 	}
 
 	return &Consumer{
 		cfg:     cfg,
 		client:  client,
 		checkFn: checkFn,
-		brokers: brokers,
+		brokers: slices.Clone(brokers),
 	}, nil
 }
 
 // Close releases Consumer's resources and closes the broker connection.
+// It is safe to call multiple times; receive methods called after Close
+// return an error matching ErrConsumerClosed.
 func (c *Consumer) Close() error {
 	err := c.client.Close()
 	if err != nil {
-		return fmt.Errorf("failed to close the Kafka consumer: %w", err)
+		return fmt.Errorf("cannot close the Kafka consumer: %w", err)
 	}
 
 	return nil
 }
 
-// Receive reads one message from the Kafka broker, blocking until a message arrives or context cancels.
+// Receive reads one message from the Kafka broker, blocking until a message arrives or ctx ends.
 //
 // Delivery semantics: at-most-once. When a consumer group is configured, the
 // message offset is committed as soon as the message is read, before the
 // caller processes it; if the process crashes (or decoding fails in
 // ReceiveData) after Receive returns, the message is permanently skipped.
 // For at-least-once semantics use FetchMessage and commit explicitly with
-// CommitMessages after successful processing.
+// CommitMessages after successful processing. Without a consumer group no
+// offset is ever committed.
+//
+// After Close the returned error matches ErrConsumerClosed; when ctx is
+// canceled or its deadline expires the returned error matches ctx.Err().
+// Match both with errors.Is.
 func (c *Consumer) Receive(ctx context.Context) ([]byte, error) {
 	msg, err := c.client.ReadMessage(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read a message from Kafka: %w", err)
+		if errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("cannot read a message from Kafka: %w", ErrConsumerClosed)
+		}
+
+		return nil, fmt.Errorf("cannot read a message from Kafka: %w", err)
 	}
 
 	return msg.Value, nil
 }
 
 // FetchMessage reads one message from the Kafka broker without committing its
-// offset, blocking until a message arrives or context cancels.
+// offset, blocking until a message arrives or ctx ends.
 //
 // Delivery semantics: at-least-once. When a consumer group is configured, the
 // caller must explicitly acknowledge the message by passing it to
 // CommitMessages after successful processing; uncommitted messages are
 // redelivered after a rebalance or restart. When no consumer group is
 // configured, FetchMessage behaves like Receive.
+//
+// After Close the returned error matches ErrConsumerClosed; when ctx is
+// canceled or its deadline expires the returned error matches ctx.Err().
+// Match both with errors.Is.
 func (c *Consumer) FetchMessage(ctx context.Context) (kafka.Message, error) {
 	msg, err := c.client.FetchMessage(ctx)
 	if err != nil {
-		return kafka.Message{}, fmt.Errorf("failed to fetch a message from Kafka: %w", err)
+		if errors.Is(err, io.EOF) {
+			return kafka.Message{}, fmt.Errorf("cannot fetch a message from Kafka: %w", ErrConsumerClosed)
+		}
+
+		return kafka.Message{}, fmt.Errorf("cannot fetch a message from Kafka: %w", err)
 	}
 
 	return msg, nil
@@ -121,30 +145,28 @@ func (c *Consumer) FetchMessage(ctx context.Context) (kafka.Message, error) {
 // CommitMessages acknowledges (commits the offsets of) the messages returned
 // by FetchMessage. It must be called only after the messages have been
 // successfully processed, to obtain at-least-once delivery semantics.
-// It only applies when a consumer group is configured.
+// When no consumer group is configured, offset commits are unavailable and
+// CommitMessages returns an error.
 func (c *Consumer) CommitMessages(ctx context.Context, msgs ...kafka.Message) error {
 	err := c.client.CommitMessages(ctx, msgs...)
 	if err != nil {
-		return fmt.Errorf("failed to commit Kafka messages: %w", err)
+		return fmt.Errorf("cannot commit Kafka messages: %w", err)
 	}
 
 	return nil
 }
 
-// HealthCheck verifies broker reachability by attempting partition lookup on all configured brokers.
+// HealthCheck verifies broker reachability by probing each configured broker
+// until one succeeds. When every broker fails, the individual probe errors
+// are joined into the returned error.
+//
+// The default probe performs a partition lookup over plaintext TCP with the
+// default kafka-go dialer, so it does not exercise TLS or SASL and always
+// performs real network I/O even when a reader is injected via
+// WithKafkaReader. Override it with WithBrokerCheckFunc to customize the
+// dialer or to make HealthCheck deterministic in tests.
 func (c *Consumer) HealthCheck(ctx context.Context) error {
-	var errors error
-
-	for _, address := range c.brokers {
-		err := c.checkFn(ctx, address)
-		if err == nil {
-			return nil
-		}
-
-		errors = multierr.Append(errors, err)
-	}
-
-	return fmt.Errorf("unable to connect to Kafka: %w", errors)
+	return healthCheck(ctx, c.brokers, c.checkFn)
 }
 
 // DefaultMessageDecodeFunc is the default ReceiveData() deserializer, using encode.ByteDecode.
@@ -160,11 +182,18 @@ func DefaultMessageDecodeFunc(_ context.Context, msg []byte, data any) error {
 // happens, so a message failing to decode is permanently skipped. For
 // at-least-once semantics use FetchMessage + CommitMessages and decode the
 // payload manually.
+//
+// After Close the returned error matches ErrConsumerClosed — see Receive.
 func (c *Consumer) ReceiveData(ctx context.Context, data any) error {
 	message, err := c.Receive(ctx)
 	if err != nil {
 		return err
 	}
 
-	return c.cfg.messageDecodeFunc(ctx, message, data)
+	err = c.cfg.messageDecodeFunc(ctx, message, data)
+	if err != nil {
+		return fmt.Errorf("cannot decode message data: %w", err)
+	}
+
+	return nil
 }

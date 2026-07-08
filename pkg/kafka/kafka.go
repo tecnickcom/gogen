@@ -38,6 +38,11 @@ On the consumer side, when a consumer group is configured:
     offset is committed only when the caller explicitly acknowledges the
     message after successful processing.
 
+When no consumer group is configured (empty groupID), offsets are never
+committed: [Consumer.Receive] and [Consumer.FetchMessage] behave identically,
+reading always starts from the earliest available offset, and
+[Consumer.CommitMessages] returns an error.
+
 # Message Encoding and Decoding
 
 Typed payload methods use configurable codec hooks:
@@ -49,21 +54,34 @@ Both defaults use github.com/tecnickcom/gogen/pkg/encode. Replace them via
 [WithMessageEncodeFunc] and [WithMessageDecodeFunc] to add custom wire formats,
 encryption, compression, or schema validation.
 
+# Errors
+
+Configuration problems are reported at construction time with errors matching
+the exported sentinels [ErrInvalidOptions], [ErrNilEncodeFunc], and
+[ErrNilDecodeFunc]. After [Consumer.Close], the receive methods return errors
+matching [ErrConsumerClosed]. Match the sentinels with errors.Is.
+
 # Features
 
   - Pure-Go implementation (no CGO required).
   - Consumer group support with configurable session timeout via
     [WithSessionTimeout].
-  - Configurable starting point for unread offsets via [WithFirstOffset]
-    (default is latest offset).
+  - Configurable consumer-group start offset via [WithFirstOffset]: a group
+    without a committed offset starts from the latest offset by default.
+    Without a consumer group the option has no effect and reading always
+    starts from the earliest available offset.
   - Blocking receive semantics through [Consumer.Receive], suitable for worker
     loops driven by context cancellation.
   - Explicit offset acknowledgment via [Consumer.FetchMessage] and
     [Consumer.CommitMessages] for at-least-once processing.
   - Configurable broker acknowledgment via [WithRequiredAcks] and producer
     batching via [WithBatchSize] / [WithBatchTimeout].
-  - Health probe support through [Consumer.HealthCheck] to verify broker/topic
-    reachability from the process.
+  - Health probe support through [Consumer.HealthCheck] and
+    [Producer.HealthCheck] to verify broker/topic reachability from the
+    process.
+  - Mockable clients: [WithKafkaReader] and [WithKafkaWriter] inject custom
+    [KReader] / [KWriter] implementations, enabling fast, dependency-free
+    unit tests.
   - Explicit resource lifecycle with [Producer.Close] and [Consumer.Close].
 
 # Implementation Choice

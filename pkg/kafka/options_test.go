@@ -93,3 +93,40 @@ func Test_WithMessageDecodeFunc(t *testing.T) {
 	WithMessageDecodeFunc(f)(conf)
 	require.NoError(t, conf.messageDecodeFunc(t.Context(), nil, ""))
 }
+
+func Test_WithKafkaReader(t *testing.T) {
+	t.Parallel()
+
+	r := &consumerMock{}
+
+	cfg := &config{}
+	WithKafkaReader(r)(cfg)
+	require.Same(t, r, cfg.reader)
+}
+
+func Test_WithKafkaWriter(t *testing.T) {
+	t.Parallel()
+
+	w := &produceMock{}
+
+	cfg := &config{}
+	WithKafkaWriter(w)(cfg)
+	require.Same(t, w, cfg.writer)
+}
+
+func Test_WithBrokerCheckFunc(t *testing.T) {
+	t.Parallel()
+
+	called := false
+	fn := func(_ context.Context, _ string) error {
+		called = true
+
+		return nil
+	}
+
+	cfg := &config{}
+	WithBrokerCheckFunc(fn)(cfg)
+	require.NotNil(t, cfg.checkFn)
+	require.NoError(t, cfg.checkFn(t.Context(), "addr"))
+	require.True(t, called)
+}
