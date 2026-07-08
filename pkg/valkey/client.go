@@ -43,10 +43,10 @@ var (
 	ErrSubscriptionClosed = errors.New("valkey: subscription closed")
 )
 
-// TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
+// TEncodeFunc is the type of function used to replace the default message encoding function used by SendData() and SetData().
 type TEncodeFunc func(ctx context.Context, data any) (string, error)
 
-// TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().
+// TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData() and GetData().
 type TDecodeFunc func(ctx context.Context, msg string, data any) error
 
 // SrvOptions aliases valkey-go client options used when constructing a client.

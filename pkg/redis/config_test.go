@@ -20,7 +20,7 @@ func Test_loadConfig(t *testing.T) {
 		srvOpts,
 		WithMessageEncodeFunc(DefaultMessageEncodeFunc),
 		WithMessageDecodeFunc(DefaultMessageDecodeFunc),
-		WithSubscrChannels("test_channel_1", "test_channel_2"),
+		WithChannels("test_channel_1", "test_channel_2"),
 	)
 
 	require.NoError(t, err)
@@ -37,6 +37,7 @@ func Test_loadConfig(t *testing.T) {
 	)
 
 	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidOptions)
 	require.Nil(t, got)
 
 	got, err = loadConfig(
@@ -44,6 +45,7 @@ func Test_loadConfig(t *testing.T) {
 	)
 
 	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidOptions)
 	require.Nil(t, got)
 
 	got, err = loadConfig(
@@ -52,6 +54,7 @@ func Test_loadConfig(t *testing.T) {
 	)
 
 	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNilEncodeFunc)
 	require.Nil(t, got)
 
 	got, err = loadConfig(
@@ -60,7 +63,32 @@ func Test_loadConfig(t *testing.T) {
 	)
 
 	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNilDecodeFunc)
 	require.Nil(t, got)
+
+	got, err = loadConfig(
+		srvOpts,
+		WithChannels(""),
+	)
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidChannelName)
+	require.Nil(t, got)
+}
+
+// Test_loadConfig_injectedClient verifies that the server options are not
+// validated when a client is injected, since no connection is dialed.
+func Test_loadConfig_injectedClient(t *testing.T) {
+	t.Parallel()
+
+	got, err := loadConfig(
+		nil,
+		WithRedisClient(redisClientMock{}),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.NotNil(t, got.rclient)
 }
 
 func Test_loadConfig_addrValidation(t *testing.T) {
@@ -68,6 +96,7 @@ func Test_loadConfig_addrValidation(t *testing.T) {
 
 	tests := []struct {
 		name    string
+		network string
 		addr    string
 		wantErr bool
 	}{
@@ -92,6 +121,29 @@ func Test_loadConfig_addrValidation(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "valid unix socket path",
+			addr:    "/var/run/redis.sock",
+			wantErr: false,
+		},
+		{
+			name:    "valid unix network",
+			network: "unix",
+			addr:    "redis.sock",
+			wantErr: false,
+		},
+		{
+			name:    "invalid unix network with empty address",
+			network: "unix",
+			addr:    "",
+			wantErr: true,
+		},
+		{
+			name:    "invalid tcp network with unix socket path",
+			network: "tcp",
+			addr:    "/var/run/redis.sock",
+			wantErr: true,
+		},
+		{
 			name:    "invalid missing port",
 			addr:    "localhost",
 			wantErr: true,
@@ -112,9 +164,10 @@ func Test_loadConfig_addrValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := loadConfig(&SrvOptions{Addr: tt.addr})
+			got, err := loadConfig(&SrvOptions{Network: tt.network, Addr: tt.addr})
 			if tt.wantErr {
 				require.Error(t, err)
+				require.ErrorIs(t, err, ErrInvalidOptions)
 				require.Nil(t, got)
 
 				return

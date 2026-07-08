@@ -36,17 +36,17 @@ func Test_WithMessageDecodeFunc(t *testing.T) {
 	require.NoError(t, conf.messageDecodeFunc(t.Context(), "", ""))
 }
 
-func Test_WithSubscriptionChannels(t *testing.T) {
+func Test_WithChannels(t *testing.T) {
 	t.Parallel()
 
 	chns := []string{"alpha", "beta", "gamma"}
 
 	conf := &cfg{}
-	WithSubscrChannels(chns...)(conf)
-	require.Len(t, conf.subChannels, 3)
+	WithChannels(chns...)(conf)
+	require.Len(t, conf.channels, 3)
 }
 
-func Test_WithSubscrChannelOptions(t *testing.T) {
+func Test_WithChannelOptions(t *testing.T) {
 	t.Parallel()
 
 	opts := []ChannelOption{
@@ -54,6 +54,14 @@ func Test_WithSubscrChannelOptions(t *testing.T) {
 	}
 
 	conf := &cfg{}
-	WithSubscrChannelOptions(opts...)(conf)
-	require.Len(t, conf.subChannelOpts, 1)
+	WithChannelOptions(opts...)(conf)
+	require.Len(t, conf.channelOpts, 1)
+}
+
+func Test_WithRedisClient(t *testing.T) {
+	t.Parallel()
+
+	conf := &cfg{}
+	WithRedisClient(redisClientMock{})(conf)
+	require.NotNil(t, conf.rclient)
 }
