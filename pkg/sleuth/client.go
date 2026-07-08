@@ -21,6 +21,20 @@ import (
 const (
 	defaultTimeout     = 1 * time.Minute
 	defaultPingTimeout = 15 * time.Second
+
+	// defaultMaxRetryAfter caps how long a server-provided Retry-After header can
+	// stall a retry, so a rate-limited or misconfigured endpoint cannot force a
+	// very long wait on a caller that did not set a context deadline.
+	defaultMaxRetryAfter = 60 * time.Second
+
+	// maxBodyBytes caps how much of a response body is drained (for keep-alive
+	// connection reuse), bounding time if a misconfigured or hostile endpoint
+	// returns a very large body.
+	maxBodyBytes = 4 << 10 // 4 KiB
+
+	// maxErrBodyBytes caps the response-body snippet included in error messages,
+	// keeping errors (and logs) small.
+	maxErrBodyBytes = 512
 )
 
 // newValidator is a package-level indirection over [validator.New] so tests can
@@ -36,7 +50,7 @@ type HTTPClient interface {
 // Client sends deployment/change/impact events to the Sleuth API.
 type Client struct {
 	httpClient                  HTTPClient
-	baseURL                     *url.URL
+	retrier                     *httpretrier.HTTPRetrier
 	valid                       *validator.Validator
 	timeout                     time.Duration
 	pingTimeout                 time.Duration
@@ -50,7 +64,10 @@ type Client struct {
 	// API key is part of the request URL path. Because secrets in URLs are
 	// prone to leaking (e.g. via *url.Error in wrapped transport errors), any
 	// error surfaced from a request built with this format must be passed
-	// through redactAPIKey before being returned or logged.
+	// through redactAPIKey before being returned or logged. The key is inserted
+	// verbatim (not percent-escaped) so redactAPIKey can string-match it; keys
+	// are therefore assumed URL-path-safe. A key with a reserved character would
+	// only make request building fail (still redacted) — it cannot leak.
 	customIncidentURLFormat string
 	customMetricURLFormat   string
 }
@@ -59,19 +76,19 @@ type Client struct {
 func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 	baseURL, err := url.ParseRequestURI(addr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid sleuth address %q: %w", addr, err)
+		return nil, fmt.Errorf("%w %q: %w", ErrInvalidAddress, addr, err)
 	}
 
 	if baseURL.Scheme == "" || baseURL.Host == "" {
-		return nil, fmt.Errorf("invalid sleuth address %q: missing scheme or host", addr)
+		return nil, fmt.Errorf("%w %q: missing scheme or host", ErrInvalidAddress, addr)
 	}
 
 	if org == "" {
-		return nil, errors.New("org is empty")
+		return nil, ErrEmptyOrg
 	}
 
 	if apiKey == "" {
-		return nil, errors.New("apiKey is empty")
+		return nil, ErrEmptyAPIKey
 	}
 
 	valid, err := newValidator(
@@ -89,7 +106,6 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 	orgBase := baseURL.JoinPath("deployments", url.PathEscape(org)).String()
 
 	c := &Client{
-		baseURL:                     baseURL,
 		pingTimeout:                 defaultPingTimeout,
 		timeout:                     defaultTimeout,
 		retryAttempts:               httpretrier.DefaultAttempts,
@@ -109,6 +125,22 @@ func New(addr, org, apiKey string, opts ...Option) (*Client, error) {
 
 	if c.httpClient == nil {
 		c.httpClient = &http.Client{Timeout: c.timeout}
+	}
+
+	// The retrier holds only immutable configuration, so a single instance is
+	// shared by all requests; building it here surfaces invalid retry settings at
+	// construction time instead of on every send. Retry-After is honored (and
+	// capped) so a 429 backs off for at least the server-requested time.
+	c.retrier, err = httpretrier.New(
+		c.httpClient,
+		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
+		httpretrier.WithAttempts(c.retryAttempts),
+		httpretrier.WithDelay(c.retryDelay),
+		httpretrier.WithRespectRetryAfter(),
+		httpretrier.WithMaxRetryAfter(defaultMaxRetryAfter),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidRetryConfig, err)
 	}
 
 	return c, nil
@@ -153,8 +185,9 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 		return fmt.Errorf("unexpected healthcheck status code: %d", resp.StatusCode)
 	}
 
-	// Drain the body to allow connection reuse and to surface read errors.
-	_, rerr := io.ReadAll(resp.Body)
+	// Drain the body (capped) to allow connection reuse and to surface read
+	// errors, without allocating an unbounded buffer for a large body.
+	_, rerr := io.Copy(io.Discard, io.LimitReader(resp.Body, maxBodyBytes))
 	if rerr != nil {
 		return fmt.Errorf("failed reading response body: %w", rerr)
 	}
@@ -197,12 +230,7 @@ func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, r
 		return c.redactAPIKey(rerr)
 	}
 
-	hr, herr := c.newWriteHTTPRetrier()
-	if herr != nil {
-		return fmt.Errorf("create retrier: %w", herr)
-	}
-
-	resp, derr := hr.Do(r)
+	resp, derr := c.retrier.Do(r)
 	if derr != nil {
 		// Some Sleuth endpoints embed the API key in the request URL path (see
 		// the comment on customIncidentURLFormat). Go's HTTP client wraps
@@ -217,21 +245,42 @@ func sendRequest[T requestData](ctx context.Context, c *Client, urlStr string, r
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("sleuth client error - Code: %v, Status: %v", resp.StatusCode, resp.Status)
+		// Include a capped snippet of the response body: Sleuth reports the reason
+		// for a rejection there, which aids debugging. The body is passed through
+		// redactAPIKey defensively in case it ever echoes the key.
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrBodyBytes))
+		if body = bytes.TrimSpace(body); len(body) > 0 {
+			return c.redactAPIKey(fmt.Errorf("sleuth client error - Code: %v, Status: %v, Body: %s", resp.StatusCode, resp.Status, body))
+		}
+
+		return c.redactAPIKey(fmt.Errorf("sleuth client error - Code: %v, Status: %v", resp.StatusCode, resp.Status))
 	}
+
+	// Drain (capped) so the connection can be reused by keep-alive.
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxBodyBytes))
 
 	return nil
 }
 
 // SendDeployRegistration registers a deployment event with Sleuth.
 func (c *Client) SendDeployRegistration(ctx context.Context, request *DeployRegistrationRequest) error {
+	if request == nil {
+		return ErrNilRequest
+	}
+
 	urlStr := fmt.Sprintf(c.deployRegistrationURLFormat, url.PathEscape(request.Deployment))
+
 	return sendRequest[DeployRegistrationRequest](ctx, c, urlStr, request)
 }
 
 // SendManualChange registers a manual change not tracked by source-control-based integrations.
 func (c *Client) SendManualChange(ctx context.Context, request *ManualChangeRequest) error {
+	if request == nil {
+		return ErrNilRequest
+	}
+
 	urlStr := fmt.Sprintf(c.manualChangeURLFormat, url.PathEscape(request.Project))
+
 	return sendRequest[ManualChangeRequest](ctx, c, urlStr, request)
 }
 
@@ -239,6 +288,10 @@ func (c *Client) SendManualChange(ctx context.Context, request *ManualChangeRequ
 // The dynamic path segments are percent-escaped so values containing "/", "?",
 // or "#" cannot rewrite the request path or shift the API-key segment.
 func (c *Client) SendCustomIncidentImpactRegistration(ctx context.Context, request *CustomIncidentImpactRegistrationRequest) error {
+	if request == nil {
+		return ErrNilRequest
+	}
+
 	urlStr := fmt.Sprintf(
 		c.customIncidentURLFormat,
 		url.PathEscape(request.Project),
@@ -254,7 +307,12 @@ func (c *Client) SendCustomIncidentImpactRegistration(ctx context.Context, reque
 
 // SendCustomMetricImpactRegistration submits custom metric impact values for Sleuth anomaly detection and deployment health.
 func (c *Client) SendCustomMetricImpactRegistration(ctx context.Context, request *CustomMetricImpactRegistrationRequest) error {
+	if request == nil {
+		return ErrNilRequest
+	}
+
 	urlStr := fmt.Sprintf(c.customMetricURLFormat, request.ImpactID)
+
 	return sendRequest[CustomMetricImpactRegistrationRequest](ctx, c, urlStr, request)
 }
 
@@ -292,14 +350,3 @@ func (e *redactedError) Error() string { return e.msg }
 
 // Unwrap exposes the original error for errors.Is / errors.As.
 func (e *redactedError) Unwrap() error { return e.err }
-
-// newWriteHTTPRetrier creates a write-oriented HTTP retrier using configured attempt count.
-func (c *Client) newWriteHTTPRetrier() (*httpretrier.HTTPRetrier, error) {
-	//nolint:wrapcheck
-	return httpretrier.New(
-		c.httpClient,
-		httpretrier.WithRetryIfFn(httpretrier.RetryIfForWriteRequests),
-		httpretrier.WithAttempts(c.retryAttempts),
-		httpretrier.WithDelay(c.retryDelay),
-	)
-}

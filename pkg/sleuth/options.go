@@ -8,6 +8,10 @@ import (
 type Option func(c *Client)
 
 // WithTimeout overrides default request timeout.
+//
+// It is applied only to the default HTTP client that New creates; it has no
+// effect when a custom client is supplied via WithHTTPClient (that client owns
+// its own timeout).
 func WithTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
 		c.timeout = timeout

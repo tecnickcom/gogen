@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/validator"
 	"github.com/undefinedlabs/go-mpatch"
@@ -99,6 +98,22 @@ func TestNew(t *testing.T) {
 			require.Equal(t, tt.wantTimeout, c.pingTimeout, "New() unexpected pingTimeout = %d got %d", tt.wantTimeout, c.pingTimeout)
 		})
 	}
+}
+
+func TestNew_invalidRetryConfig(t *testing.T) {
+	t.Parallel()
+
+	// The retrier is built during New, so an invalid retry setting (0 attempts)
+	// is rejected at construction instead of failing on every request.
+	c, err := New(
+		"http://service.domain.invalid:1234",
+		"testorg",
+		"0123456789abcdef",
+		WithRetryAttempts(0),
+	)
+
+	require.Nil(t, c, "New() returned client should be nil")
+	require.Error(t, err, "New() should fail with invalid retry attempts")
 }
 
 func TestNew_invalidAddress(t *testing.T) {
@@ -270,23 +285,6 @@ func TestClient_HealthCheck(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestClient_newWriteHTTPRetrier(t *testing.T) {
-	t.Parallel()
-
-	c, err := New(
-		"https://test.invalid",
-		"testorg",
-		"0123456789abcdef",
-		WithRetryAttempts(1),
-	)
-	require.NoError(t, err)
-
-	hr, err := c.newWriteHTTPRetrier()
-
-	require.NoError(t, err)
-	require.NotNil(t, hr)
 }
 
 const testAPIKey = "0123456789abcdef"
@@ -505,12 +503,7 @@ func newRequestWithContextPatch(_ context.Context, _, _ string, _ io.Reader) (*h
 	return nil, errors.New("ERROR: newRequestWithContextPatch")
 }
 
-//go:noinline
-func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpretrier.HTTPRetrier, error) {
-	return nil, errors.New("ERROR: newHTTPRetrierPatch")
-}
-
-//nolint:gocognit,paralleltest,gocyclo,cyclop
+//nolint:gocognit,paralleltest
 func Test_sendRequest(t *testing.T) {
 	hres := httputil.NewHTTPResp(slog.Default())
 
@@ -533,20 +526,6 @@ func Test_sendRequest(t *testing.T) {
 			name: "failed to execute request - NewRequest error",
 			setupPatches: func() (*mpatch.Patch, error) {
 				patch, err := mpatch.PatchMethod(http.NewRequestWithContext, newRequestWithContextPatch)
-				if err != nil {
-					return nil, err //nolint:wrapcheck
-				}
-
-				_ = patch.Patch()
-
-				return patch, nil
-			},
-			wantErr: true,
-		},
-		{
-			name: "failed to execute request - HTTPRetrier error",
-			setupPatches: func() (*mpatch.Patch, error) {
-				patch, err := mpatch.PatchMethod(httpretrier.New, newHTTPRetrierPatch)
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
@@ -1034,4 +1013,36 @@ func TestClient_SendCustomMetricImpactRegistration(t *testing.T) {
 			require.Equal(t, tt.wantErr, err != nil, "error: %v", err)
 		})
 	}
+}
+
+// TestClient_Send_nilRequest verifies each send method rejects a nil request
+// with ErrNilRequest instead of panicking on a nil-pointer dereference.
+func TestClient_Send_nilRequest(t *testing.T) {
+	t.Parallel()
+
+	c, err := New("https://app.sleuth.invalid", "testorg", "0123456789abcdef", WithRetryAttempts(1))
+	require.NoError(t, err)
+
+	require.ErrorIs(t, c.SendDeployRegistration(t.Context(), nil), ErrNilRequest)
+	require.ErrorIs(t, c.SendManualChange(t.Context(), nil), ErrNilRequest)
+	require.ErrorIs(t, c.SendCustomIncidentImpactRegistration(t.Context(), nil), ErrNilRequest)
+	require.ErrorIs(t, c.SendCustomMetricImpactRegistration(t.Context(), nil), ErrNilRequest)
+}
+
+// TestNew_sentinelErrors verifies New wraps its failures in the exported
+// sentinels so callers can match them with errors.Is.
+func TestNew_sentinelErrors(t *testing.T) {
+	t.Parallel()
+
+	_, err := New("http://", "testorg", "0123456789abcdef", WithRetryAttempts(1))
+	require.ErrorIs(t, err, ErrInvalidAddress)
+
+	_, err = New("http://service.domain.invalid:1234", "", "0123456789abcdef", WithRetryAttempts(1))
+	require.ErrorIs(t, err, ErrEmptyOrg)
+
+	_, err = New("http://service.domain.invalid:1234", "testorg", "", WithRetryAttempts(1))
+	require.ErrorIs(t, err, ErrEmptyAPIKey)
+
+	_, err = New("http://service.domain.invalid:1234", "testorg", "0123456789abcdef", WithRetryAttempts(0))
+	require.ErrorIs(t, err, ErrInvalidRetryConfig)
 }
