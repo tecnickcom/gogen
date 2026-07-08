@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.uber.org/multierr"
+	"github.com/tecnickcom/gogen/pkg/errutil"
 )
 
 // TestErrorTemplates_CoversCustomTags guards that every custom validation tag
@@ -53,7 +53,7 @@ func TestErrorTemplates_NoGenericFallback(t *testing.T) {
 	})
 	require.Error(t, err)
 
-	errs := multierr.Errors(err)
+	errs := errutil.Errors(err)
 	require.Len(t, errs, 5, "all five tags must fail: %v", errs)
 
 	for _, e := range errs {

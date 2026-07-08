@@ -15,6 +15,8 @@ Top features:
   - JoinFnError executes an error-producing function and joins its result into an
     existing error value using errors.Join. This is useful for defer/cleanup logic
     where secondary failures must not overwrite the primary error.
+  - Errors enumerates the individual errors aggregated within an errors.Join
+    value, returning a single-element slice for a plain error and nil for nil.
   - Nil-safe behavior: Trace(nil) returns nil, and JoinFnError naturally supports
     nil and non-nil combinations through errors.Join semantics.
 

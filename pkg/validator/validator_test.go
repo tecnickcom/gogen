@@ -6,7 +6,7 @@ import (
 
 	vt "github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/multierr"
+	"github.com/tecnickcom/gogen/pkg/errutil"
 )
 
 func TestError_Error(t *testing.T) {
@@ -190,7 +190,7 @@ func TestValidator_ValidateStruct(t *testing.T) {
 			err = v.ValidateStruct(tt.obj)
 			require.Equal(t, tt.wantErr, err != nil, "ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
 
-			errs := multierr.Errors(err)
+			errs := errutil.Errors(err)
 			require.Len(t, errs, tt.wantErrCount, "errors: %+v", errs)
 		})
 	}
@@ -244,7 +244,7 @@ func TestValidator_ValidateStruct_falseifPrefix(t *testing.T) {
 	err = v.ValidateStruct(prefixStruct{Field: "anything"})
 	require.Error(t, err, "falseifoo error must not be skipped")
 
-	errs := multierr.Errors(err)
+	errs := errutil.Errors(err)
 	require.Len(t, errs, 1, "errors: %+v", errs)
 	require.Contains(t, errs[0].Error(), "falseifoo", "error must reference falseifoo: %q", errs[0].Error())
 }

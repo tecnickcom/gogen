@@ -25,7 +25,7 @@ package eliminates.
     custom type functions, and error message templates on that instance.
  3. [Validator.ValidateStruct] (or its context-aware twin
     [Validator.ValidateStructCtx]) runs the upstream validator and transforms
-    any [vt.ValidationErrors] into a [go.uber.org/multierr] aggregate of
+    any [vt.ValidationErrors] into an [errors.Join] aggregate of
     typed [Error] values, each carrying the failed tag, parameter, namespace,
     field name, kind, and the translated human-readable message.
 
@@ -75,7 +75,7 @@ produces an independent, meaningful error.
 	}
 
 	err = v.ValidateStruct(Address{Phone: "12345", ZIP: "bad", State: "XX"})
-	// err is a multierr containing one *Error per failed field,
+	// err is an errors.Join aggregate containing one *Error per failed field,
 	// each with a message like:
 	//   "phone must be a valid E.164 formatted phone number without the leading '+' symbol"
 */
@@ -90,7 +90,6 @@ import (
 	"text/template"
 
 	vt "github.com/go-playground/validator/v10"
-	"go.uber.org/multierr"
 )
 
 // Validator contains the validator object fields.
@@ -116,15 +115,15 @@ func New(opts ...Option) (*Validator, error) {
 	return v, nil
 }
 
-// ValidateStruct validates struct fields against registered rules, returning a multierror of structured Errors if any fail.
+// ValidateStruct validates struct fields against registered rules, returning an errors.Join aggregate of structured Errors if any fail.
 func (v *Validator) ValidateStruct(obj any) error {
 	return v.ValidateStructCtx(context.Background(), obj)
 }
 
 // ValidateStructCtx validates struct fields, threading ctx through to any
-// context-aware custom validators, and returns a multierror of structured
-// Errors if any fail. The built-in custom validators do not inspect ctx, so
-// cancellation only affects user-supplied context-aware rules.
+// context-aware custom validators, and returns an errors.Join aggregate of
+// structured Errors if any fail. The built-in custom validators do not inspect
+// ctx, so cancellation only affects user-supplied context-aware rules.
 func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 	vErr := v.v.StructCtx(ctx, obj)
 
@@ -136,17 +135,18 @@ func (v *Validator) ValidateStructCtx(ctx context.Context, obj any) error {
 		return vErr
 	}
 
-	var err error
+	var errs []error
 
 	for _, fe := range valErr {
 		// separate tags grouped by OR
 		for tag := range strings.SplitSeq(fe.Tag(), "|") {
-			err = multierr.Append(err, v.tagError(fe, tag))
+			errs = append(errs, v.tagError(fe, tag))
 		}
 	}
 
-	//nolint:wrapcheck
-	return err
+	// errors.Join drops nil entries (e.g. the "falseif" helper tag) and returns
+	// nil when every entry is nil.
+	return errors.Join(errs...)
 }
 
 // tagError builds the structured Error for a single validation tag.

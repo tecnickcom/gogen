@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.uber.org/multierr"
+	"github.com/tecnickcom/gogen/pkg/errutil"
 )
 
 type testCustomTagStruct struct {
@@ -192,7 +192,7 @@ func TestCustomTags(t *testing.T) {
 
 			require.Equal(t, tt.wantErr, err != nil, "error = %v, wantErr %v", err, tt.wantErr)
 
-			errs := multierr.Errors(err)
+			errs := errutil.Errors(err)
 
 			require.Len(t, errs, tt.wantErrCount, "errors: %+v", errs)
 		})
@@ -344,5 +344,5 @@ func TestCustomTags_nonStringField(t *testing.T) {
 
 	err = v.ValidateStruct(intFieldStruct{E164: 123456789012345, Zip: 12345})
 	require.Error(t, err, "non-string fields must fail the string-based custom validators")
-	require.Len(t, multierr.Errors(err), 2, "both custom validators must reject the int fields")
+	require.Len(t, errutil.Errors(err), 2, "both custom validators must reject the int fields")
 }
