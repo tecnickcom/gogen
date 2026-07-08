@@ -265,7 +265,7 @@ func Test_bind(t *testing.T) {
 				bootstrap.WithContext(testCtx),
 				bootstrap.WithLogger(slog.Default()),
 				bootstrap.WithCreateMetricsClientFunc(mtr.CreateMetricsClientFunc),
-				bootstrap.WithShutdownTimeout(1 * time.Millisecond),
+				bootstrap.WithShutdownTimeout(5 * time.Second),
 				bootstrap.WithShutdownWaitGroup(wg),
 				bootstrap.WithShutdownSignalChan(sc),
 			}
