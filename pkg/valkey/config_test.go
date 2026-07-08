@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/valkey-io/valkey-go/mock"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_loadConfig(t *testing.T) {
@@ -17,7 +19,6 @@ func Test_loadConfig(t *testing.T) {
 	}
 
 	got, err := loadConfig(
-		t.Context(),
 		srvOpts,
 		WithMessageEncodeFunc(DefaultMessageEncodeFunc),
 		WithMessageDecodeFunc(DefaultMessageDecodeFunc),
@@ -34,30 +35,48 @@ func Test_loadConfig(t *testing.T) {
 	require.NotNil(t, got.messageDecodeFunc)
 
 	got, err = loadConfig(
-		t.Context(),
 		SrvOptions{},
 	)
 
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidOptions)
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		t.Context(),
 		srvOpts,
 		WithMessageEncodeFunc(nil),
 	)
 
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNilEncodeFunc)
 	require.Nil(t, got)
 
 	got, err = loadConfig(
-		t.Context(),
 		srvOpts,
 		WithMessageDecodeFunc(nil),
 	)
 
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNilDecodeFunc)
 	require.Nil(t, got)
+
+	got, err = loadConfig(
+		srvOpts,
+		WithChannels("valid_channel", ""),
+	)
+
+	require.ErrorIs(t, err, ErrInvalidChannelName)
+	require.Nil(t, got)
+
+	// An injected client makes the server address irrelevant, so an otherwise
+	// invalid InitAddress must not be rejected.
+	ctrl := gomock.NewController(t)
+	t.Cleanup(func() { ctrl.Finish() })
+
+	got, err = loadConfig(
+		SrvOptions{},
+		WithValkeyClient(mock.NewClient(ctrl)),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
 }
 
 func Test_validInitAddress(t *testing.T) {

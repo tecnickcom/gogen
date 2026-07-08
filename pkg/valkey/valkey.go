@@ -20,12 +20,15 @@ mockable interface for testing.
 [New] creates a [Client] given a [SrvOptions] (aliased from
 valkey-go's ClientOption) and a variadic list of [Option] values:
 
- 1. The server address is validated before any network connection is attempted.
+ 1. The server address is validated before any network connection is attempted
+    (skipped when a client is injected via [WithValkeyClient], since no
+    connection is dialed).
  2. A valkey-go client is constructed (or injected via [WithValkeyClient] for
     tests). When at least one channel is declared with [WithChannels], a
-    pre-built, pinned Pub/Sub subscription command is stored and a background
-    subscription is started to feed [Client.Receive] and [Client.ReceiveData]
-    one message per call.
+    pre-built, pinned Pub/Sub subscription command starts a background
+    subscription that feeds [Client.Receive] and [Client.ReceiveData]
+    one message per call. The subscription runs until [Client.Close] is
+    called: canceling the [New] context does not stop it.
  3. Encode and decode functions — defaulting to [DefaultMessageEncodeFunc] and
     [DefaultMessageDecodeFunc] — are stored on the client and used
     transparently by the typed data methods.
@@ -46,10 +49,14 @@ valkey-go's ClientOption) and a variadic list of [Option] values:
     changing call sites.
   - Health check: [Client.HealthCheck] sends a PING and returns a wrapped error
     on failure, making it trivial to integrate with liveness probes.
+  - Sentinel errors: a missing key surfaces as [ErrKeyNotFound], and
+    configuration or subscription states as the other exported Err values,
+    all matchable with errors.Is.
   - Mockable client: [WithValkeyClient] injects a custom [VKClient], enabling
     fast, dependency-free unit tests.
   - Graceful close: [Client.Close] drains all pending calls before releasing
-    the underlying connection.
+    the underlying connection. Close is required to stop the background
+    subscription when channels are configured.
 
 # Usage
 
