@@ -100,7 +100,6 @@ This scaffolds a new web service from the provided configuration.
 - [jirasrv](pkg/jirasrv) - Client for Jira server APIs. `api client`, `integration`
 - [jwt](pkg/jwt) - JSON Web Token creation and validation. `jwt`, `authentication`, `security`
 - [kafka](pkg/kafka) - Kafka producer and consumer utilities. `kafka`, `messaging`
-- [kafkacgo](pkg/kafkacgo) - Kafka integration using CGO bindings. `kafka`, `messaging`, `cgo`
 - [logsrv](pkg/logsrv) - Default slog logger with zerolog handler. `logging`, `slog`, `zerolog`
 - [logutil](pkg/logutil) - General log utilities for log/slog integration. `logging`, `utilities`
 - [maputil](pkg/maputil) - Helpers for Go map manipulation. `map utilities`, `collections`
