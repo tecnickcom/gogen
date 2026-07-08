@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
@@ -23,11 +21,6 @@ import (
 
 //go:noinline
 func newRequestWithContextPatch(_ context.Context, _, _ string, _ io.Reader) (*http.Request, error) {
-	return nil, errors.New("error")
-}
-
-//go:noinline
-func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpretrier.HTTPRetrier, error) {
 	return nil, errors.New("error")
 }
 
@@ -64,8 +57,6 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 		}
 	}
 
-	hres := httputil.NewHTTPResp(slog.Default())
-
 	tests := []struct {
 		name              string
 		password          string
@@ -90,20 +81,6 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "failed to execute request - HTTPRetrier error",
-			setupPatches: func() (*mpatch.Patch, error) {
-				patch, err := mpatch.PatchMethod(httpretrier.New, newHTTPRetrierPatch)
-				if err != nil {
-					return nil, err //nolint:wrapcheck
-				}
-
-				_ = patch.Patch()
-
-				return patch, nil
-			},
-			wantErr: true,
-		},
-		{
 			name: "failed to execute request - transport error",
 			setupMocks: func(m *MockHTTPClient) {
 				m.EXPECT().Do(gomock.Any()).Return(nil, errors.New("transport error")).Times(1)
@@ -115,8 +92,8 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
 				t.Helper()
 
-				return func(w http.ResponseWriter, r *http.Request) {
-					hres.SendStatus(r.Context(), w, http.StatusInternalServerError)
+				return func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusInternalServerError)
 				}
 			},
 			wantErr: true,
@@ -126,8 +103,8 @@ func TestClient_IsPwnedPassword(t *testing.T) {
 			createMockHandler: func(t *testing.T) http.HandlerFunc {
 				t.Helper()
 
-				return func(w http.ResponseWriter, r *http.Request) {
-					hres.SendStatus(r.Context(), w, http.StatusSwitchingProtocols)
+				return func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusSwitchingProtocols)
 				}
 			},
 			wantErr: true,
