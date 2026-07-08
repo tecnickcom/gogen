@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/httpretrier"
 	"github.com/tecnickcom/gogen/pkg/httputil"
 	"github.com/tecnickcom/gogen/pkg/validator"
 	"github.com/undefinedlabs/go-mpatch"
@@ -145,7 +144,7 @@ func TestClient_setRequestHeaders(t *testing.T) {
 	require.Equal(t, "Bearer 0123456789abcdef", req.Header.Get("Authorization"))
 }
 
-func TestClient_newHTTPRetrier(t *testing.T) {
+func TestClient_retrierForMethod(t *testing.T) {
 	t.Parallel()
 
 	c, err := New(
@@ -154,10 +153,28 @@ func TestClient_newHTTPRetrier(t *testing.T) {
 		WithRetryAttempts(1),
 	)
 	require.NoError(t, err)
+	require.NotNil(t, c.readRetrier)
+	require.NotNil(t, c.writeRetrier)
 
-	r, err := c.newHTTPRetrier(http.MethodPost)
-	require.NoError(t, err)
-	require.NotNil(t, r)
+	// GET selects the read-oriented retrier; any other method selects the
+	// write-oriented one.
+	require.Same(t, c.readRetrier, c.retrierForMethod(http.MethodGet))
+	require.Same(t, c.writeRetrier, c.retrierForMethod(http.MethodPost))
+}
+
+func TestNew_invalidRetryConfig(t *testing.T) {
+	t.Parallel()
+
+	// The retriers are built during New, so an invalid retry setting (0 attempts)
+	// is rejected at construction instead of failing on every request.
+	c, err := New(
+		"https://test.invalid",
+		"0123456789abcdef",
+		WithRetryAttempts(0),
+	)
+
+	require.Nil(t, c, "New() returned client should be nil")
+	require.Error(t, err, "New() should fail with invalid retry attempts")
 }
 
 func Test_httpRequest(t *testing.T) {
@@ -320,11 +337,6 @@ func newRequestWithContextPatch(_ context.Context, _, _ string, _ io.Reader) (*h
 	return nil, errors.New("ERROR: newRequestWithContextPatch")
 }
 
-//go:noinline
-func newHTTPRetrierPatch(httpretrier.HTTPClient, ...httpretrier.Option) (*httpretrier.HTTPRetrier, error) {
-	return nil, errors.New("ERROR: newHTTPRetrierPatch")
-}
-
 //nolint:gocognit,paralleltest,gocyclo,cyclop
 func TestSendRequest(t *testing.T) {
 	hres := httputil.NewHTTPResp(slog.Default())
@@ -354,20 +366,6 @@ func TestSendRequest(t *testing.T) {
 			name: "failed to execute request - NewRequest error",
 			setupPatches: func() (*mpatch.Patch, error) {
 				patch, err := mpatch.PatchMethod(http.NewRequestWithContext, newRequestWithContextPatch)
-				if err != nil {
-					return nil, err //nolint:wrapcheck
-				}
-
-				_ = patch.Patch()
-
-				return patch, nil
-			},
-			wantErr: true,
-		},
-		{
-			name: "failed to execute request - HTTPRetrier error",
-			setupPatches: func() (*mpatch.Patch, error) {
-				patch, err := mpatch.PatchMethod(httpretrier.New, newHTTPRetrierPatch)
 				if err != nil {
 					return nil, err //nolint:wrapcheck
 				}
@@ -593,4 +591,19 @@ func Test_isValidatable(t *testing.T) {
 	require.True(t, isValidatable(&payload{}))
 	require.False(t, isValidatable((*payload)(nil)))
 	require.False(t, isValidatable(map[string]string{}))
+}
+
+// TestNew_sentinelErrors verifies New wraps its failures in the exported
+// sentinels so callers can match them with errors.Is.
+func TestNew_sentinelErrors(t *testing.T) {
+	t.Parallel()
+
+	_, err := New("http://", "0123456789abcdef", WithRetryAttempts(1))
+	require.ErrorIs(t, err, ErrInvalidAddress)
+
+	_, err = New("http://service.domain.invalid:1234", "", WithRetryAttempts(1))
+	require.ErrorIs(t, err, ErrEmptyToken)
+
+	_, err = New("http://service.domain.invalid:1234", "0123456789abcdef", WithRetryAttempts(0))
+	require.ErrorIs(t, err, ErrInvalidRetryConfig)
 }
