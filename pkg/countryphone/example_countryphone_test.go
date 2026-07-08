@@ -8,8 +8,8 @@ import (
 	"github.com/tecnickcom/gogen/pkg/countryphone"
 )
 
-func ExampleData_NumberType() {
-	// load defaut data
+func ExampleData_NumberInfo() {
+	// load default data
 	data := countryphone.New(nil)
 
 	info, err := data.NumberInfo("1357123456")
@@ -35,4 +35,34 @@ func ExampleData_NumberType() {
 	//     }
 	//   ]
 	// }
+}
+
+func ExampleData_NumberType() {
+	// load default data
+	data := countryphone.New(nil)
+
+	label, err := data.NumberType(2)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(label)
+
+	// Output:
+	// mobile
+}
+
+func ExampleData_AreaType() {
+	// load default data
+	data := countryphone.New(nil)
+
+	label, err := data.AreaType(1)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(label)
+
+	// Output:
+	// state
 }

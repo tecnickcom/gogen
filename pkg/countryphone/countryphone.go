@@ -45,10 +45,55 @@ When no prefix matches, NumberInfo returns an error.
 package countryphone
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/tecnickcom/gogen/pkg/numtrie"
+	"github.com/tecnickcom/gogen/pkg/phonekeypad"
 )
+
+// Sentinel errors returned by the package. They can be matched with errors.Is
+// so callers can distinguish a missing prefix from an invalid type code.
+var (
+	// ErrNoMatch is returned by NumberInfo when no stored prefix matches the
+	// input number. It signals a missing lookup target (e.g. maps to HTTP 404).
+	ErrNoMatch = errors.New("countryphone: no match for prefix")
+
+	// ErrInvalidNumberType is returned by NumberType when the code is outside
+	// the range of known number types. It signals bad caller input.
+	ErrInvalidNumberType = errors.New("countryphone: invalid number type")
+
+	// ErrInvalidAreaType is returned by AreaType when the code is outside the
+	// range of known area types. It signals bad caller input.
+	ErrInvalidAreaType = errors.New("countryphone: invalid area type")
+)
+
+// enumNumberType maps NumInfo/InPrefixGroup number-type codes to their labels.
+//
+//nolint:gochecknoglobals // immutable, read-only lookup table for type labels
+var enumNumberType = [...]string{
+	"",
+	"landline",
+	"mobile",
+	"pager",
+	"satellite",
+	"special service",
+	"virtual",
+	"other",
+}
+
+// enumAreaType maps GeoInfo/InPrefixGroup area-type codes to their labels.
+//
+//nolint:gochecknoglobals // immutable, read-only lookup table for type labels
+var enumAreaType = [...]string{
+	"",
+	"state",
+	"province or territory",
+	"nation or territory",
+	"non-geographic",
+	"other",
+}
 
 // InPrefixGroup stores the type and geographical information of a group of phone
 // number prefixes.
@@ -125,17 +170,17 @@ type NumInfo struct {
 	Type int `json:"type"`
 
 	// Geo is the geographical information.
-	Geo []*GeoInfo `json:"geo"`
+	Geo []GeoInfo `json:"geo"`
 }
 
-// PrefixData maps normalized dialing prefixes to number metadata.
-type PrefixData = map[string]*NumInfo
-
 // Data stores numbering metadata and prefix indexes used for longest-prefix lookups.
+//
+// A constructed *Data is effectively read-only: once New returns it is safe for
+// concurrent use by multiple goroutines through NumberInfo, NumberType, and
+// AreaType. New itself mutates internal state and must not run concurrently with
+// operations on the same Data.
 type Data struct {
-	enumNumberType [8]string
-	enumAreaType   [6]string
-	trie           *numtrie.Node[NumInfo]
+	trie *numtrie.Node[NumInfo]
 }
 
 // New builds a prefix resolver backed by a longest-prefix trie.
@@ -145,8 +190,6 @@ type Data struct {
 // deterministic for mixed-length international prefixes.
 func New(data InData) *Data {
 	d := &Data{}
-
-	d.loadEnums()
 
 	if data == nil {
 		data = defaultData()
@@ -169,32 +212,22 @@ func (d *Data) NumberInfo(num string) (*NumInfo, error) {
 	data, status := d.trie.Get(num)
 
 	if status < 0 || data == nil {
-		return nil, fmt.Errorf("no match for prefix %s", num)
+		return nil, fmt.Errorf("%w %q", ErrNoMatch, num)
 	}
 
 	// Return an independent copy so callers cannot mutate the cached trie state.
 	return cloneNumInfo(data), nil
 }
 
-// cloneNumInfo returns a deep copy of a NumInfo, including its GeoInfo entries.
+// cloneNumInfo returns an independent copy of a NumInfo.
 //
-// This isolates the cached trie state from callers and prevents aliasing
-// between distinct prefixes that may share underlying data.
+// GeoInfo has no reference-type fields, so cloning the slice fully isolates the
+// cached trie state from callers: a nil Geo stays nil (slices.Clone(nil) == nil).
 func cloneNumInfo(src *NumInfo) *NumInfo {
-	dst := &NumInfo{
+	return &NumInfo{
 		Type: src.Type,
+		Geo:  slices.Clone(src.Geo),
 	}
-
-	if src.Geo != nil {
-		dst.Geo = make([]*GeoInfo, len(src.Geo))
-
-		for i, g := range src.Geo {
-			gc := *g
-			dst.Geo[i] = &gc
-		}
-	}
-
-	return dst
 }
 
 // NumberType returns the label for a numeric prefix-type code.
@@ -202,45 +235,22 @@ func cloneNumInfo(src *NumInfo) *NumInfo {
 // It converts compact integer values into readable type names for APIs,
 // logging, and analytics outputs.
 func (d *Data) NumberType(t int) (string, error) {
-	if t < 0 || t >= len(d.enumNumberType) {
-		return "", fmt.Errorf("invalid number type %d", t)
+	if t < 0 || t >= len(enumNumberType) {
+		return "", fmt.Errorf("%w %d", ErrInvalidNumberType, t)
 	}
 
-	return d.enumNumberType[t], nil
+	return enumNumberType[t], nil
 }
 
 // AreaType returns the label for a numeric area-type code.
 //
 // It translates stored integer codes into stable human-readable category names.
 func (d *Data) AreaType(t int) (string, error) {
-	if t < 0 || t >= len(d.enumAreaType) {
-		return "", fmt.Errorf("invalid area type %d", t)
+	if t < 0 || t >= len(enumAreaType) {
+		return "", fmt.Errorf("%w %d", ErrInvalidAreaType, t)
 	}
 
-	return d.enumAreaType[t], nil
-}
-
-// loadEnums initializes canonical labels for number and area type codes.
-func (d *Data) loadEnums() {
-	d.enumNumberType = [...]string{
-		"",
-		"landline",
-		"mobile",
-		"pager",
-		"satellite",
-		"special service",
-		"virtual",
-		"other",
-	}
-
-	d.enumAreaType = [...]string{
-		"",
-		"state",
-		"province or territory",
-		"nation or territory",
-		"non-geographic",
-		"other",
-	}
+	return enumAreaType[t], nil
 }
 
 // insertPrefix inserts or merges prefix metadata into the trie.
@@ -249,7 +259,15 @@ func (d *Data) loadEnums() {
 // are merged so multiple countries/areas can be represented for shared
 // numbering spaces. Values stored at ancestor prefixes are never merged in, so
 // more specific prefixes keep only their own geographic data.
+//
+// Prefixes without any dialable digit are skipped: they would normalize to the
+// empty trie key and install a value on the trie root, turning it into a
+// universal fallback that defeats the documented no-match error of NumberInfo.
 func (d *Data) insertPrefix(prefix string, info *NumInfo) {
+	if !hasDialableDigit(prefix) {
+		return
+	}
+
 	v := d.trie.GetExact(prefix)
 
 	if (v != nil) && (v != info) && (len(v.Geo) > 0) {
@@ -262,22 +280,35 @@ func (d *Data) insertPrefix(prefix string, info *NumInfo) {
 	d.trie.Add(prefix, info)
 }
 
+// hasDialableDigit reports whether prefix contains at least one character that
+// numtrie maps to a keypad digit. Prefixes made only of separators (or empty)
+// normalize to the empty trie key and must never be inserted.
+func hasDialableDigit(prefix string) bool {
+	for _, r := range prefix {
+		if _, ok := phonekeypad.KeypadDigit(r); ok {
+			return true
+		}
+	}
+
+	return false
+}
+
 // mergeGeo concatenates two GeoInfo slices while skipping duplicate entries.
 //
 // Deduplication is value-based so repeated or aliased prefixes do not produce
 // duplicated GeoInfo, while genuinely distinct areas (e.g. countries sharing a
 // calling code) are preserved.
-func mergeGeo(existing, added []*GeoInfo) []*GeoInfo {
-	merged := make([]*GeoInfo, 0, len(existing)+len(added))
+func mergeGeo(existing, added []GeoInfo) []GeoInfo {
+	merged := make([]GeoInfo, 0, len(existing)+len(added))
 	seen := make(map[GeoInfo]struct{}, len(existing)+len(added))
 
-	appendUnique := func(geo []*GeoInfo) {
+	appendUnique := func(geo []GeoInfo) {
 		for _, g := range geo {
-			if _, ok := seen[*g]; ok {
+			if _, ok := seen[g]; ok {
 				continue
 			}
 
-			seen[*g] = struct{}{}
+			seen[g] = struct{}{}
 
 			merged = append(merged, g)
 		}
@@ -298,15 +329,15 @@ func mergeGeo(existing, added []*GeoInfo) []*GeoInfo {
 func (d *Data) insertGroups(a2 string, cdata *InCountryData) {
 	for _, g := range cdata.Groups {
 		if len(g.Prefixes) == 0 {
-			if cdata.CC != "" {
-				d.insertPrefix(cdata.CC, newGroupInfo(a2, g))
-			}
+			// A group without explicit prefixes falls back to the country
+			// calling code; insertPrefix skips it when the CC is empty.
+			d.insertPrefix(cdata.CC, newGroupInfo(a2, g))
 
 			continue
 		}
 
-		// Build an independent NumInfo/GeoInfo per prefix so that distinct
-		// prefixes never alias the same pointer in the trie.
+		// Build an independent NumInfo per prefix so that distinct prefixes
+		// never share the same trie value.
 		for _, p := range g.Prefixes {
 			d.insertPrefix(p, newGroupInfo(a2, g))
 		}
@@ -315,12 +346,12 @@ func (d *Data) insertGroups(a2 string, cdata *InCountryData) {
 
 // newGroupInfo builds a fresh NumInfo (with its own GeoInfo) for a group.
 //
-// Each call allocates independent state so distinct prefixes never share the
-// same pointer in the trie.
+// Each call allocates an independent NumInfo so distinct prefixes never share
+// the same trie value.
 func newGroupInfo(a2 string, g InPrefixGroup) *NumInfo {
 	return &NumInfo{
 		Type: g.PrefixType,
-		Geo: []*GeoInfo{
+		Geo: []GeoInfo{
 			{
 				Alpha2: a2,
 				Area:   g.Name,
@@ -332,23 +363,26 @@ func newGroupInfo(a2 string, g InPrefixGroup) *NumInfo {
 
 // loadData constructs trie nodes from the input numbering dataset.
 //
-// It inserts one root country-calling-code entry per country and then appends
-// optional group-level prefixes for more specific matches. Entries with an
-// empty country calling code (e.g. the default "__" non-geographic entry) only
-// contribute their group prefixes: inserting an empty prefix would install a
-// value on the trie root, turning it into a universal fallback that defeats
-// the documented no-match error of NumberInfo.
+// It inserts a root country-calling-code entry per country and then appends
+// optional group-level prefixes for more specific matches. Countries that share
+// a calling code accumulate their root geo entries on the same node via
+// insertPrefix's merge. Nil entries and entries with an empty country calling
+// code (e.g. the default "__" non-geographic entry) contribute only their group
+// prefixes; insertPrefix skips any prefix that would install a universal
+// fallback on the trie root.
 func (d *Data) loadData(data InData) {
 	d.trie = numtrie.New[NumInfo]()
 
-	doneRootCC := make(map[string]bool, (26*26)+1) // all possible CCs + 1 for non-geographic
-
 	for a2, cdata := range data {
-		if _, ok := doneRootCC[a2]; !ok && cdata.CC != "" {
-			// insert the root node for the country code only once
+		if cdata == nil {
+			continue
+		}
+
+		if cdata.CC != "" {
+			// Insert the root node for the country calling code.
 			d.insertPrefix(cdata.CC, &NumInfo{
 				Type: 0,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: a2,
 						Area:   "",
@@ -356,8 +390,6 @@ func (d *Data) loadData(data InData) {
 					},
 				},
 			})
-
-			doneRootCC[a2] = true
 		}
 
 		if len(cdata.Groups) > 0 {

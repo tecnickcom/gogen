@@ -62,7 +62,7 @@ func TestData_NumberInfo(t *testing.T) {
 			prefix: "87012345678",
 			want: &NumInfo{
 				Type: 5,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "__",
 						Area:   "Inmarsat",
@@ -77,7 +77,7 @@ func TestData_NumberInfo(t *testing.T) {
 			prefix: "37912345678",
 			want: &NumInfo{
 				Type: 0,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "VA",
 						Area:   "",
@@ -92,7 +92,7 @@ func TestData_NumberInfo(t *testing.T) {
 			prefix: "39066981234",
 			want: &NumInfo{
 				Type: 1,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "VA",
 						Area:   "Vatican City",
@@ -107,7 +107,7 @@ func TestData_NumberInfo(t *testing.T) {
 			prefix: "1357123456",
 			want: &NumInfo{
 				Type: 1,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "US",
 						Area:   "California",
@@ -220,7 +220,7 @@ func TestData_NumberInfo_custom(t *testing.T) {
 			prefix: "100000",
 			want: &NumInfo{
 				Type: 0,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "US",
 						Area:   "",
@@ -240,7 +240,7 @@ func TestData_NumberInfo_custom(t *testing.T) {
 			prefix: "1907000",
 			want: &NumInfo{
 				Type: 1,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "US",
 						Area:   "Alaska",
@@ -255,7 +255,7 @@ func TestData_NumberInfo_custom(t *testing.T) {
 			prefix: "1623000",
 			want: &NumInfo{
 				Type: 1,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "US",
 						Area:   "Arizona",
@@ -270,7 +270,7 @@ func TestData_NumberInfo_custom(t *testing.T) {
 			prefix: "1431000",
 			want: &NumInfo{
 				Type: 1,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "CA",
 						Area:   "Manitoba",
@@ -285,7 +285,7 @@ func TestData_NumberInfo_custom(t *testing.T) {
 			prefix: "81234567890",
 			want: &NumInfo{
 				Type: 0,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "JP",
 						Area:   "",
@@ -300,7 +300,7 @@ func TestData_NumberInfo_custom(t *testing.T) {
 			prefix: "7123",
 			want: &NumInfo{
 				Type: 7,
-				Geo: []*GeoInfo{
+				Geo: []GeoInfo{
 					{
 						Alpha2: "__",
 						Area:   "",
@@ -407,7 +407,7 @@ func TestData_NumberInfo_returnsIndependentCopy(t *testing.T) {
 	got1.Geo[0].Alpha2 = "XX"
 	got1.Geo[0].Area = "MUTATED"
 	got1.Geo[0].Type = 99
-	got1.Geo = append(got1.Geo, &GeoInfo{Alpha2: "ZZ"})
+	got1.Geo = append(got1.Geo, GeoInfo{Alpha2: "ZZ"})
 
 	// A subsequent lookup of the SAME prefix must be unaffected.
 	got1again, err := data.NumberInfo("1480000")
@@ -603,4 +603,147 @@ func TestData_AreaType(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestNew_nilEntry(t *testing.T) {
+	t.Parallel()
+
+	// A nil *InCountryData value must be skipped gracefully instead of panicking.
+	data := New(InData{
+		"XX": nil,
+		"US": {CC: "1"},
+	})
+
+	require.NotNil(t, data)
+
+	got, err := data.NumberInfo("1555000")
+	require.NoError(t, err)
+	require.Len(t, got.Geo, 1)
+	require.Equal(t, "US", got.Geo[0].Alpha2)
+}
+
+func TestData_NumberInfo_emptyPrefixGuard(t *testing.T) {
+	t.Parallel()
+
+	// A group prefix that normalizes to the empty key must not install a
+	// universal root fallback that defeats the no-match error.
+	for _, badPrefix := range []string{"", "+-"} {
+		data := New(InData{
+			"XX": {
+				CC: "",
+				Groups: []InPrefixGroup{
+					{Name: "ROOTFALLBACK", Type: 5, PrefixType: 7, Prefixes: []string{badPrefix}},
+					{Name: "deep", Type: 1, PrefixType: 1, Prefixes: []string{"12"}},
+				},
+			},
+		})
+
+		require.NotNil(t, data)
+
+		// "13" shares its first digit with stored "12" but matches nothing.
+		got, err := data.NumberInfo("13")
+		require.ErrorIs(t, err, ErrNoMatch)
+		require.Nil(t, got)
+
+		// The legitimate specific prefix still resolves.
+		got, err = data.NumberInfo("12000")
+		require.NoError(t, err)
+		require.Equal(t, "deep", got.Geo[0].Area)
+	}
+}
+
+func TestData_NumberInfo_separatorTolerant(t *testing.T) {
+	t.Parallel()
+
+	data := New(nil)
+
+	// Formatted input with separators must resolve exactly like the bare digits.
+	got, err := data.NumberInfo("+1 (357) 123-456")
+	require.NoError(t, err)
+	require.Equal(t, "California", got.Geo[0].Area)
+}
+
+func TestData_NumberInfo_sharedCallingCode(t *testing.T) {
+	t.Parallel()
+
+	data := New(nil)
+
+	// +44 is shared by GB, GG, IM and JE: a generic +44 number resolves to all.
+	got, err := data.NumberInfo("447000000000")
+	require.NoError(t, err)
+
+	alpha2s := make([]string, 0, len(got.Geo))
+	for _, g := range got.Geo {
+		alpha2s = append(alpha2s, g.Alpha2)
+	}
+
+	require.ElementsMatch(t, []string{"GB", "GG", "IM", "JE"}, alpha2s)
+}
+
+func TestData_NumberInfo_noBogusTerritoryCodes(t *testing.T) {
+	t.Parallel()
+
+	data := New(nil)
+
+	// The non-ISO "CT"/"QN" codes were dropped: +90 resolves to TR only and
+	// +374 to AM only, without spurious extra geo entries.
+	tr, err := data.NumberInfo("90555000")
+	require.NoError(t, err)
+	require.Len(t, tr.Geo, 1)
+	require.Equal(t, "TR", tr.Geo[0].Alpha2)
+
+	am, err := data.NumberInfo("374555000")
+	require.NoError(t, err)
+	require.Len(t, am.Geo, 1)
+	require.Equal(t, "AM", am.Geo[0].Alpha2)
+}
+
+func TestData_NumberInfo_errorIs(t *testing.T) {
+	t.Parallel()
+
+	data := New(nil)
+
+	_, err := data.NumberInfo("")
+	require.ErrorIs(t, err, ErrNoMatch)
+
+	_, err = data.NumberInfo("999999999")
+	require.ErrorIs(t, err, ErrNoMatch)
+}
+
+func TestData_NumberType_errorIs(t *testing.T) {
+	t.Parallel()
+
+	data := New(nil)
+
+	_, err := data.NumberType(-1)
+	require.ErrorIs(t, err, ErrInvalidNumberType)
+
+	_, err = data.NumberType(99)
+	require.ErrorIs(t, err, ErrInvalidNumberType)
+
+	// The number-type sentinel must not collide with the area-type one.
+	require.NotErrorIs(t, err, ErrInvalidAreaType)
+}
+
+func TestData_AreaType_errorIs(t *testing.T) {
+	t.Parallel()
+
+	data := New(nil)
+
+	_, err := data.AreaType(-1)
+	require.ErrorIs(t, err, ErrInvalidAreaType)
+
+	_, err = data.AreaType(99)
+	require.ErrorIs(t, err, ErrInvalidAreaType)
+
+	require.NotErrorIs(t, err, ErrInvalidNumberType)
+}
+
+// Guard against accidental sharing: the three sentinels must be distinct.
+func TestSentinelErrorsAreDistinct(t *testing.T) {
+	t.Parallel()
+
+	require.NotErrorIs(t, ErrNoMatch, ErrInvalidNumberType)
+	require.NotErrorIs(t, ErrNoMatch, ErrInvalidAreaType)
+	require.NotErrorIs(t, ErrInvalidNumberType, ErrInvalidAreaType)
 }
