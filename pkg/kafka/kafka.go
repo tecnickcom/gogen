@@ -86,9 +86,9 @@ matching [ErrConsumerClosed]. Match the sentinels with errors.Is.
 
 # Implementation Choice
 
-This package is the non-CGO Kafka client for gogen.
-If you need librdkafka/Confluent-specific behavior, see:
-  - github.com/tecnickcom/gogen/pkg/kafkacgo
+This package is a pure-Go Kafka client: it requires no CGO and no system
+librdkafka installation, which keeps builds, cross-compilation, and minimal
+container images (scratch/distroless) simple.
 
 # Benefits
 
