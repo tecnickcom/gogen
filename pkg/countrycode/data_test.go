@@ -215,6 +215,48 @@ func Test_New_custom_data_french_only_name(t *testing.T) {
 	require.Equal(t, "Zambie (la)", country.NameFrench)
 }
 
+func Test_New_custom_data_no_alpha3_keeps_details(t *testing.T) {
+	t.Parallel()
+
+	// A record with a name, region hierarchy, and TLD but no alpha-3 code must
+	// keep those fields on read-back instead of being reduced to status+alpha-2.
+	cdata := []*CountryData{
+		{
+			Status:                 "Officially assigned",
+			Alpha2Code:             "ZZ",
+			NameEnglish:            "Zedland",
+			NameFrench:             "Zedlande (la)",
+			Region:                 "Africa",
+			SubRegion:              "Sub-Saharan Africa",
+			IntermediateRegion:     "Eastern Africa",
+			RegionCode:             "002",
+			SubRegionCode:          "202",
+			IntermediateRegionCode: "014",
+			TLD:                    "zz",
+		},
+	}
+
+	data, err := New(cdata)
+
+	require.NoError(t, err)
+	require.NotNil(t, data)
+
+	country, err := data.CountryByAlpha2Code("ZZ")
+
+	require.NoError(t, err)
+	require.Empty(t, country.Alpha3Code)
+	require.Empty(t, country.NumericCode)
+	require.Equal(t, "Zedland", country.NameEnglish)
+	require.Equal(t, "Zedlande (la)", country.NameFrench)
+	require.Equal(t, "Africa", country.Region)
+	require.Equal(t, "002", country.RegionCode)
+	require.Equal(t, "Sub-Saharan Africa", country.SubRegion)
+	require.Equal(t, "202", country.SubRegionCode)
+	require.Equal(t, "Eastern Africa", country.IntermediateRegion)
+	require.Equal(t, "014", country.IntermediateRegionCode)
+	require.Equal(t, "zz", country.TLD)
+}
+
 func Test_New_custom_data_error(t *testing.T) {
 	t.Parallel()
 

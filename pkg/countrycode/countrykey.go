@@ -63,7 +63,7 @@ const (
 
 const (
 	bitMaskValStatus    = mask03Bit
-	bitMaskValApha2     = mask10Bit
+	bitMaskValAlpha2    = mask10Bit
 	bitMaskValAlpha3    = mask15Bit
 	bitMaskValNumeric   = mask10Bit
 	bitMaskValRegion    = mask05Bit
@@ -85,9 +85,19 @@ const (
 )
 
 var (
-	errInvalidKey       = errors.New("invalid key")
-	errInvalidLength    = errors.New("invalid code length")
-	errInvalidCharacter = errors.New("invalid code, it must contain only A-Z characters")
+	// ErrInvalidCode is returned when a country, region, status, or TLD code is
+	// malformed: it has the wrong length or contains characters outside the
+	// expected range. It signals bad caller input (e.g. maps to HTTP 400).
+	ErrInvalidCode = errors.New("countrycode: invalid code")
+
+	// ErrNotFound is returned when a well-formed code or name matches no record
+	// in the dataset. It signals a missing lookup target (e.g. maps to HTTP 404).
+	ErrNotFound = errors.New("countrycode: not found")
+
+	// errInvalidLength and errInvalidCharacter carry a more specific message
+	// while remaining matchable as ErrInvalidCode via errors.Is.
+	errInvalidLength    = fmt.Errorf("%w: invalid length", ErrInvalidCode)
+	errInvalidCharacter = fmt.Errorf("%w: must contain only A-Z characters", ErrInvalidCode)
 )
 
 // countryKeyElem represent CountryKey,
@@ -125,7 +135,7 @@ func decodeCountryKey(key uint64) *countryKeyElem {
 // "Reversible Numeric Composite Key (RNCK), N Asuni - arXiv preprint arXiv:2306.04353, 2023".
 func (e *countryKeyElem) encodeCountryKey() uint64 {
 	return ((uint64(e.status&bitMaskValStatus) << bitPosStatus) |
-		(uint64(e.alpha2&bitMaskValApha2) << bitPosAlpha2) |
+		(uint64(e.alpha2&bitMaskValAlpha2) << bitPosAlpha2) |
 		(uint64(e.alpha3&bitMaskValAlpha3) << bitPosAlpha3) |
 		(uint64(e.numeric&bitMaskValNumeric) << bitPosNumeric) |
 		(uint64(e.region&bitMaskValRegion) << bitPosRegion) |
@@ -164,12 +174,12 @@ func encodeAlpha2(s string) (uint16, error) {
 
 	c1, err := charOffsetUpper(s[0])
 	if err != nil {
-		return c1, err
+		return 0, err
 	}
 
 	c0, err := charOffsetUpper(s[1])
 	if err != nil {
-		return c0, err
+		return 0, err
 	}
 
 	return ((c1 << bitPosChar1) | (c0 << bitPosChar0)), nil
@@ -191,17 +201,17 @@ func encodeAlpha3(s string) (uint16, error) {
 
 	c2, err := charOffsetUpper(s[0])
 	if err != nil {
-		return c2, err
+		return 0, err
 	}
 
 	c1, err := charOffsetUpper(s[1])
 	if err != nil {
-		return c1, err
+		return 0, err
 	}
 
 	c0, err := charOffsetUpper(s[2])
 	if err != nil {
-		return c0, err
+		return 0, err
 	}
 
 	return ((c2 << bitPosChar2) | (c1 << bitPosChar1) | (c0 << bitPosChar0)), nil
@@ -224,12 +234,12 @@ func encodeTLD(s string) (uint16, error) {
 
 	c1, err := charOffsetLower(s[0])
 	if err != nil {
-		return c1, err
+		return 0, err
 	}
 
 	c0, err := charOffsetLower(s[1])
 	if err != nil {
-		return c0, err
+		return 0, err
 	}
 
 	return ((c1 << bitPosChar1) | (c0 << bitPosChar0)), nil
@@ -251,7 +261,7 @@ func encodeNumeric(s string) (uint16, error) {
 
 	v, err := strconv.ParseUint(s, 10, 16)
 	if err != nil {
-		return 0, fmt.Errorf("invalid numeric code: %w", err)
+		return 0, fmt.Errorf("%w: invalid numeric code: %w", ErrInvalidCode, err)
 	}
 
 	return uint16(v), nil

@@ -18,7 +18,7 @@ the CIA World Factbook, United Nations M49, and Wikipedia. New also accepts a
 custom []CountryData dataset when applications need private overrides, curated
 subsets, or pinned metadata snapshots.
 
-Top features
+# Top features
 
   - Direct lookup by Alpha-2, Alpha-3, Numeric code, and TLD.
   - Region/status enumerations through EnumRegion, EnumSubRegion,
@@ -27,7 +27,7 @@ Top features
     and TLD for filtering and reporting workflows.
   - Compact internal encoding optimized for quick lookups and low memory usage.
 
-Why this matters
+# Why this matters
 
   - Standardizes country metadata handling across services and teams.
   - Reduces repeated parsing and mapping logic in validation/enrichment paths.
@@ -87,11 +87,9 @@ func (d *Data) countryByAlpha2ID(a2 uint16) (*CountryData, error) {
 		Alpha2Code: decodeAlpha2(el.alpha2),
 	}
 
-	if el.alpha3 > 0 {
-		err = d.populateCountryDetails(cd, el)
-		if err != nil {
-			return nil, err
-		}
+	err = d.populateCountryDetails(cd, el)
+	if err != nil {
+		return nil, err
 	}
 
 	return cd, nil
@@ -100,19 +98,26 @@ func (d *Data) countryByAlpha2ID(a2 uint16) (*CountryData, error) {
 // populateCountryDetails fills the names, region hierarchy, codes, and TLD
 // fields of cd from the decoded country key el.
 //
-// It is only invoked for fully-assigned countries (those carrying an alpha-3
-// code) and returns an error when any decoded region ID is out of range.
+// Each optional field is populated only when present in the key, so records
+// that carry partial metadata (for example a reserved code with no alpha-3, or
+// a custom record with a region but no numeric code) keep whatever data they
+// do have instead of being silently reduced to status and alpha-2. It returns
+// an error only when a decoded region ID is out of range.
 func (d *Data) populateCountryDetails(cd *CountryData, el *countryKeyElem) error {
-	cd.Alpha3Code = decodeAlpha3(el.alpha3)
-	cd.NumericCode = fmt.Sprintf("%03d", el.numeric)
-
-	name, err := d.countryNamesByAlpha2ID(el.alpha2)
-	if err != nil {
-		return err
+	if el.alpha3 > 0 {
+		cd.Alpha3Code = decodeAlpha3(el.alpha3)
 	}
 
-	cd.NameEnglish = name.EN
-	cd.NameFrench = name.FR
+	if el.numeric > 0 {
+		cd.NumericCode = fmt.Sprintf("%03d", el.numeric)
+	}
+
+	// Names are optional: reserved codes have no entry, so a miss is not an error.
+	name, err := d.countryNamesByAlpha2ID(el.alpha2)
+	if err == nil {
+		cd.NameEnglish = name.EN
+		cd.NameFrench = name.FR
+	}
 
 	region, err := d.regionByID(int(el.region))
 	if err != nil {
@@ -138,7 +143,9 @@ func (d *Data) populateCountryDetails(cd *CountryData, el *countryKeyElem) error
 	cd.IntermediateRegionCode = intregion.code
 	cd.IntermediateRegion = intregion.name
 
-	cd.TLD = decodeTLD(el.tld)
+	if el.tld > 0 {
+		cd.TLD = decodeTLD(el.tld)
+	}
 
 	return nil
 }
@@ -419,6 +426,11 @@ func (d *Data) CountriesByTLD(tld string) ([]*CountryData, error) {
 // It is used when loading custom datasets so external records can be converted
 // into the same binary representation as embedded defaults. The return values
 // are the encoded alpha-2 ID and the packed country key.
+//
+// Only Status and Alpha2Code are required and validated; every other field is
+// best-effort. Absent or malformed optional fields encode to zero (an unset
+// value) rather than failing the whole record. Region codes are resolved by
+// code to match how the region catalogs are keyed in loadData.
 func (d *Data) countryKey(data *CountryData) (uint16, uint64, error) {
 	status, err := d.statusIDByName(data.Status)
 	if err != nil {
@@ -432,9 +444,9 @@ func (d *Data) countryKey(data *CountryData) (uint16, uint64, error) {
 
 	alpha3, _ := encodeAlpha3(data.Alpha3Code)
 	numeric, _ := encodeNumeric(data.NumericCode)
-	region, _ := d.regionIDByName(data.Region)
-	subregion, _ := d.subRegionIDByName(data.SubRegion)
-	intregion, _ := d.intermediateRegionIDByName(data.IntermediateRegion)
+	region, _ := d.regionIDByCode(data.RegionCode)
+	subregion, _ := d.subRegionIDByCode(data.SubRegionCode)
+	intregion, _ := d.intermediateRegionIDByCode(data.IntermediateRegionCode)
 	tld, _ := encodeTLD(data.TLD)
 
 	ck := &countryKeyElem{

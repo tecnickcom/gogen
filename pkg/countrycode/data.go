@@ -2,7 +2,6 @@ package countrycode
 
 import (
 	"slices"
-	"sort"
 	"strings"
 )
 
@@ -48,8 +47,12 @@ type Data struct {
 // is encoded and indexed. Reusing the returned Data instance avoids repeated
 // index construction and keeps country lookups fast in hot paths.
 //
+// The returned Data is read-only after construction and therefore safe for
+// concurrent use by multiple goroutines.
+//
 // When cdata contains multiple records sharing the same alpha-2 code, the last
-// record silently overwrites the earlier ones in the lookup tables.
+// record silently overwrites the earlier ones in the lookup tables. The same
+// last-wins resolution applies to duplicate alpha-3, numeric, and TLD codes.
 //
 // Default data sources (updated at: 2024-07-17):
 //   - https://www.iso.org/iso-3166-country-codes.html
@@ -69,16 +72,46 @@ func New(cdata []*CountryData) (*Data, error) {
 
 	if len(cdata) == 0 {
 		d.defaultData()
+		d.genRegionIndexes()
 	} else {
+		// loadData builds the region catalogs and their indexes itself, since
+		// they are required to encode the country keys.
 		err := d.loadData(cdata)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	d.genIndexes()
+	d.genCountryIndexes()
 
 	return d, nil
+}
+
+// collectCatalog builds a sorted enum catalog from code/name pairs.
+//
+// The catalog is seeded with the empty ("", "") entry at index 0, entries are
+// keyed by code, and duplicate codes keep the first name seen. The result is
+// sorted by code so catalog indexes are stable across builds.
+func collectCatalog(pairs []enumData) []*enumData {
+	byCode := map[string]*enumData{"": {}}
+	keys := []string{""}
+
+	for i := range pairs {
+		if _, ok := byCode[pairs[i].code]; !ok {
+			entry := pairs[i]
+			byCode[entry.code] = &entry
+			keys = append(keys, entry.code)
+		}
+	}
+
+	slices.Sort(keys)
+
+	catalog := make([]*enumData, 0, len(keys))
+	for _, k := range keys {
+		catalog = append(catalog, byCode[k])
+	}
+
+	return catalog
 }
 
 // loadData ingests custom country records and constructs base enum/key tables.
@@ -86,54 +119,22 @@ func New(cdata []*CountryData) (*Data, error) {
 // It works in two passes: the first pass captures the region, sub-region, and
 // intermediate-region catalogs and builds their code/name reverse indexes; the
 // second pass converts each record into compact internal keys, so the region
-// name lookups performed while encoding country keys resolve correctly.
-//
-//nolint:gocognit
+// code lookups performed while encoding country keys resolve correctly.
 func (d *Data) loadData(cdata []*CountryData) error {
-	dRegionByID := map[string]*enumData{"": {code: "", name: ""}}
-	regionKeys := []string{""}
-
-	dSubRegionByID := map[string]*enumData{"": {code: "", name: ""}}
-	subRegionKeys := []string{""}
-
-	dIntermediateRegionByID := map[string]*enumData{"": {code: "", name: ""}}
-	intRegionKeys := []string{""}
-
 	// First pass: capture the region, sub-region, and intermediate-region catalogs.
+	regions := make([]enumData, 0, len(cdata))
+	subRegions := make([]enumData, 0, len(cdata))
+	intRegions := make([]enumData, 0, len(cdata))
+
 	for _, country := range cdata {
-		if _, ok := dRegionByID[country.RegionCode]; !ok {
-			dRegionByID[country.RegionCode] = &enumData{code: country.RegionCode, name: country.Region}
-			regionKeys = append(regionKeys, country.RegionCode)
-		}
-
-		if _, ok := dSubRegionByID[country.SubRegionCode]; !ok {
-			dSubRegionByID[country.SubRegionCode] = &enumData{code: country.SubRegionCode, name: country.SubRegion}
-			subRegionKeys = append(subRegionKeys, country.SubRegionCode)
-		}
-
-		if _, ok := dIntermediateRegionByID[country.IntermediateRegionCode]; !ok {
-			dIntermediateRegionByID[country.IntermediateRegionCode] = &enumData{code: country.IntermediateRegionCode, name: country.IntermediateRegion}
-			intRegionKeys = append(intRegionKeys, country.IntermediateRegionCode)
-		}
+		regions = append(regions, enumData{code: country.RegionCode, name: country.Region})
+		subRegions = append(subRegions, enumData{code: country.SubRegionCode, name: country.SubRegion})
+		intRegions = append(intRegions, enumData{code: country.IntermediateRegionCode, name: country.IntermediateRegion})
 	}
 
-	sort.Strings(regionKeys)
-
-	for _, k := range regionKeys {
-		d.dRegionByID = append(d.dRegionByID, dRegionByID[k])
-	}
-
-	sort.Strings(subRegionKeys)
-
-	for _, k := range subRegionKeys {
-		d.dSubRegionByID = append(d.dSubRegionByID, dSubRegionByID[k])
-	}
-
-	sort.Strings(intRegionKeys)
-
-	for _, k := range intRegionKeys {
-		d.dIntermediateRegionByID = append(d.dIntermediateRegionByID, dIntermediateRegionByID[k])
-	}
+	d.dRegionByID = collectCatalog(regions)
+	d.dSubRegionByID = collectCatalog(subRegions)
+	d.dIntermediateRegionByID = collectCatalog(intRegions)
 
 	// Build the region reverse indexes required by countryKey below.
 	d.genRegionIndexes()
@@ -180,15 +181,6 @@ func (d *Data) statusMap() {
 	for k, v := range d.dStatusByID {
 		d.dStatusIDByName[strings.ToUpper(v.name)] = uint8(k)
 	}
-}
-
-// genIndexes builds all reverse indexes used by query methods.
-//
-// This one-time preprocessing enables constant-time or near constant-time
-// retrieval for code/name lookups and grouped country queries.
-func (d *Data) genIndexes() {
-	d.genRegionIndexes()
-	d.genCountryIndexes()
 }
 
 // genRegionIndexes builds the region, sub-region, and intermediate-region
@@ -273,7 +265,7 @@ func (d *Data) genCountryIndexes() {
 // statusByID returns status metadata for an internal status ID.
 func (d *Data) statusByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dStatusByID) {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return d.dStatusByID[id], nil
@@ -285,7 +277,7 @@ func (d *Data) statusByID(id int) (*enumData, error) {
 func (d *Data) statusIDByName(name string) (uint8, error) {
 	v, ok := d.dStatusIDByName[strings.ToUpper(name)]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -294,7 +286,7 @@ func (d *Data) statusIDByName(name string) (uint8, error) {
 // regionByID returns region metadata for an internal region ID.
 func (d *Data) regionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dRegionByID) {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return d.dRegionByID[id], nil
@@ -304,7 +296,7 @@ func (d *Data) regionByID(id int) (*enumData, error) {
 func (d *Data) regionIDByCode(code string) (uint8, error) {
 	v, ok := d.dRegionIDByCode[code]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -316,7 +308,7 @@ func (d *Data) regionIDByCode(code string) (uint8, error) {
 func (d *Data) regionIDByName(name string) (uint8, error) {
 	v, ok := d.dRegionIDByName[strings.ToUpper(name)]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -325,7 +317,7 @@ func (d *Data) regionIDByName(name string) (uint8, error) {
 // subRegionByID returns sub-region metadata for an internal sub-region ID.
 func (d *Data) subRegionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dSubRegionByID) {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return d.dSubRegionByID[id], nil
@@ -335,7 +327,7 @@ func (d *Data) subRegionByID(id int) (*enumData, error) {
 func (d *Data) subRegionIDByCode(code string) (uint8, error) {
 	v, ok := d.dSubRegionIDByCode[code]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -347,7 +339,7 @@ func (d *Data) subRegionIDByCode(code string) (uint8, error) {
 func (d *Data) subRegionIDByName(name string) (uint8, error) {
 	v, ok := d.dSubRegionIDByName[strings.ToUpper(name)]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -356,7 +348,7 @@ func (d *Data) subRegionIDByName(name string) (uint8, error) {
 // intermediateRegionByID returns intermediate-region metadata for an internal ID.
 func (d *Data) intermediateRegionByID(id int) (*enumData, error) {
 	if id < 0 || id >= len(d.dIntermediateRegionByID) {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return d.dIntermediateRegionByID[id], nil
@@ -366,7 +358,7 @@ func (d *Data) intermediateRegionByID(id int) (*enumData, error) {
 func (d *Data) intermediateRegionIDByCode(code string) (uint8, error) {
 	v, ok := d.dIntermediateRegionIDByCode[code]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -378,7 +370,7 @@ func (d *Data) intermediateRegionIDByCode(code string) (uint8, error) {
 func (d *Data) intermediateRegionIDByName(name string) (uint8, error) {
 	v, ok := d.dIntermediateRegionIDByName[strings.ToUpper(name)]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -388,7 +380,7 @@ func (d *Data) intermediateRegionIDByName(name string) (uint8, error) {
 func (d *Data) countryNamesByAlpha2ID(id uint16) (*Names, error) {
 	v, ok := d.dCountryNamesByAlpha2ID[id]
 	if !ok {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return v, nil
@@ -398,7 +390,7 @@ func (d *Data) countryNamesByAlpha2ID(id uint16) (*Names, error) {
 func (d *Data) countryKeyByAlpha2ID(id uint16) (uint64, error) {
 	v, ok := d.dCountryKeyByAlpha2ID[id]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -408,7 +400,7 @@ func (d *Data) countryKeyByAlpha2ID(id uint16) (uint64, error) {
 func (d *Data) alpha2IDByAlpha3ID(id uint16) (uint16, error) {
 	v, ok := d.dAlpha2IDByAlpha3ID[id]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -418,7 +410,7 @@ func (d *Data) alpha2IDByAlpha3ID(id uint16) (uint16, error) {
 func (d *Data) alpha2IDByNumericID(id uint16) (uint16, error) {
 	v, ok := d.dAlpha2IDByNumericID[id]
 	if !ok {
-		return 0, errInvalidKey
+		return 0, ErrNotFound
 	}
 
 	return v, nil
@@ -428,7 +420,7 @@ func (d *Data) alpha2IDByNumericID(id uint16) (uint16, error) {
 func (d *Data) alpha2IDsByRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByRegionID[id]
 	if !ok {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return v, nil
@@ -438,7 +430,7 @@ func (d *Data) alpha2IDsByRegionID(id uint8) ([]uint16, error) {
 func (d *Data) alpha2IDsBySubRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsBySubRegionID[id]
 	if !ok {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return v, nil
@@ -448,7 +440,7 @@ func (d *Data) alpha2IDsBySubRegionID(id uint8) ([]uint16, error) {
 func (d *Data) alpha2IDsByIntermediateRegionID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByIntermediateRegionID[id]
 	if !ok {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return v, nil
@@ -458,7 +450,7 @@ func (d *Data) alpha2IDsByIntermediateRegionID(id uint8) ([]uint16, error) {
 func (d *Data) alpha2IDsByStatusID(id uint8) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByStatusID[id]
 	if !ok {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return v, nil
@@ -468,7 +460,7 @@ func (d *Data) alpha2IDsByStatusID(id uint8) ([]uint16, error) {
 func (d *Data) alpha2IDsByTLD(id uint16) ([]uint16, error) {
 	v, ok := d.dAlpha2IDsByTLD[id]
 	if !ok {
-		return nil, errInvalidKey
+		return nil, ErrNotFound
 	}
 
 	return v, nil

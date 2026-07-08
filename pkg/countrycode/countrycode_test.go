@@ -7,6 +7,75 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_error_sentinels(t *testing.T) {
+	t.Parallel()
+
+	data, err := New(nil)
+
+	require.NoError(t, err)
+	require.NotNil(t, data)
+
+	tests := []struct {
+		name    string
+		run     func() error
+		wantErr error
+	}{
+		{
+			name:    "alpha2 wrong length is ErrInvalidCode",
+			run:     func() error { _, e := data.CountryByAlpha2Code(""); return e },
+			wantErr: ErrInvalidCode,
+		},
+		{
+			name:    "alpha2 bad character is ErrInvalidCode",
+			run:     func() error { _, e := data.CountryByAlpha2Code("1A"); return e },
+			wantErr: ErrInvalidCode,
+		},
+		{
+			// The default dataset carries all AA-ZZ combinations, so an alpha-2
+			// miss is only reachable through a custom dataset.
+			name: "alpha2 well-formed but unknown is ErrNotFound",
+			run: func() error {
+				custom, _ := New([]*CountryData{{Status: "Officially assigned", Alpha2Code: "ZW"}})
+				_, e := custom.CountryByAlpha2Code("AA")
+
+				return e
+			},
+			wantErr: ErrNotFound,
+		},
+		{
+			name:    "alpha3 well-formed but unknown is ErrNotFound",
+			run:     func() error { _, e := data.CountryByAlpha3Code("ZZZ"); return e },
+			wantErr: ErrNotFound,
+		},
+		{
+			name:    "numeric non-digit is ErrInvalidCode",
+			run:     func() error { _, e := data.CountryByNumericCode("12a"); return e },
+			wantErr: ErrInvalidCode,
+		},
+		{
+			name:    "numeric well-formed but unknown is ErrNotFound",
+			run:     func() error { _, e := data.CountryByNumericCode("999"); return e },
+			wantErr: ErrNotFound,
+		},
+		{
+			name:    "region code unknown is ErrNotFound",
+			run:     func() error { _, e := data.CountriesByRegionCode("999"); return e },
+			wantErr: ErrNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := tt.run()
+
+			require.Error(t, err)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
 func Test_countryByAlpha2ID(t *testing.T) {
 	t.Parallel()
 
@@ -78,10 +147,6 @@ func Test_countryByAlpha2ID_errors(t *testing.T) {
 		{
 			name: "invalid status",
 			key:  0x7D5F572D98181357, // 0 | 111 | 11010 10111 | 11010 10111 00101 | 1011001100 | 00001 | 10000 | 00100 | 11010 10111
-		},
-		{
-			name: "invalid alpha2",
-			key:  0x1FFF572D98181357, // 0 | 001 | 11111 11111 | 11010 10111 00101 | 1011001100 | 00001 | 10000 | 00100 | 11010 10111
 		},
 		{
 			name: "invalid region",
