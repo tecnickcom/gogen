@@ -20,8 +20,13 @@ safe defaults.
 
 [New] creates a [Client] bound to a queue URL and optional message-group ID.
 
-  - For FIFO queues (URL ends with `.fifo`), a valid message-group ID is
-    required; for standard queues it must be omitted.
+  - queueURL must be a valid absolute URL. For FIFO queues (URL ends with
+    `.fifo`), a valid message-group ID is required; for standard queues it must
+    be empty, and a non-empty value is rejected with [ErrUnexpectedMessageGroupID].
+    Argument validation runs before any AWS configuration is loaded.
+  - The AWS region is derived from the queue URL when it is not set explicitly,
+    so callers rarely need to repeat it; an explicit region supplied via
+    [WithAWSOptions] still takes precedence.
   - For FIFO queues, [Client.Send] and [Client.SendData] do not set a
     MessageDeduplicationId, so the queue must have ContentBasedDeduplication
     enabled; otherwise supply an explicit per-message deduplication ID via
@@ -32,6 +37,9 @@ safe defaults.
   - Payloads can be sent/received as raw strings ([Client.Send],
     [Client.Receive]) or typed data ([Client.SendData], [Client.ReceiveData])
     through pluggable encode/decode hooks.
+  - Configuration and argument problems are reported as exported sentinel
+    errors (see [ErrInvalidQueueURL] and the others in this package) that
+    callers can match with errors.Is.
 
 Receive flow behavior:
 
@@ -54,6 +62,9 @@ Receive flow behavior:
   - Endpoint and AWS config customization via [WithAWSOptions],
     [WithSrvOptionFuncs], [WithEndpointMutable], and [WithEndpointImmutable]
     for local testing and advanced deployments.
+  - Full client injection via [WithSQSClient] for tests and advanced
+    integrations; when set, the AWS configuration is not loaded and the AWS and
+    service options above are ignored.
   - Health probe support through [Client.HealthCheck], which verifies queue
     accessibility in the configured region.
 

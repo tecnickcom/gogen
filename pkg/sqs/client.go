@@ -2,8 +2,8 @@ package sqs
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -19,9 +19,10 @@ const (
 	regexPatternMessageGroupID = `^[[:graph:]]{1,128}$`
 )
 
-// regexMessageGroupID is the precompiled FIFO message-group-ID validator (compiled once at package load).
-// The same character set and length limits apply to FIFO message-deduplication IDs.
-var regexMessageGroupID = regexp.MustCompile(regexPatternMessageGroupID)
+// regexFifoID is the precompiled validator for FIFO message-group IDs and
+// message-deduplication IDs (compiled once at package load); both share the same
+// character set and length limits.
+var regexFifoID = regexp.MustCompile(regexPatternMessageGroupID)
 
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().
 type TEncodeFunc func(ctx context.Context, data any) (string, error)
@@ -73,25 +74,49 @@ type Client struct {
 }
 
 // New builds a client for queueURL and validates FIFO message-group constraints.
-// msgGroupID is required only when queueURL targets a FIFO queue.
+//
+// queueURL must be a valid absolute URL. msgGroupID is required (and must be a
+// valid FIFO group ID) when queueURL targets a FIFO queue, and must be empty for
+// a standard queue. Cheap argument validation runs before any AWS configuration
+// is loaded, so misconfiguration fails fast.
+//
+// It returns [ErrInvalidQueueURL] when queueURL is empty or malformed,
+// [ErrMissingMessageGroupID] when a FIFO queue is given without a valid group
+// ID, and [ErrUnexpectedMessageGroupID] when a group ID is set for a standard
+// queue. Invalid options surface [ErrNilEncodeFunc], [ErrNilDecodeFunc],
+// [ErrInvalidWaitTime], or [ErrInvalidVisibilityTimeout].
+//
+// The returned Client is safe for concurrent use.
 func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Client, error) {
-	cfg, err := loadConfig(ctx, opts...)
+	err := validateQueueURL(queueURL)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create a new sqs client: %w", err)
+		return nil, err
 	}
 
 	var awsMsgGroupID *string
 
 	if strings.HasSuffix(queueURL, fifoSuffix) {
-		if !regexMessageGroupID.MatchString(msgGroupID) {
-			return nil, errors.New("a valid msgGroupID is required for FIFO queue")
+		if !regexFifoID.MatchString(msgGroupID) {
+			return nil, ErrMissingMessageGroupID
 		}
 
 		awsMsgGroupID = aws.String(msgGroupID)
+	} else if msgGroupID != "" {
+		return nil, ErrUnexpectedMessageGroupID
+	}
+
+	cfg, err := loadConfig(ctx, queueURL, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create a new sqs client: %w", err)
+	}
+
+	client := cfg.sqsClient
+	if client == nil {
+		client = sqs.NewFromConfig(cfg.awsConfig, cfg.srvOptFns...)
 	}
 
 	return &Client{
-		sqs:               sqs.NewFromConfig(cfg.awsConfig, cfg.srvOptFns...),
+		sqs:               client,
 		queueURL:          aws.String(queueURL),
 		messageGroupID:    awsMsgGroupID,
 		waitTimeSeconds:   cfg.waitTimeSeconds,
@@ -103,6 +128,20 @@ func New(ctx context.Context, queueURL, msgGroupID string, opts ...Option) (*Cli
 			AttributeNames: []types.QueueAttributeName{types.QueueAttributeNameLastModifiedTimestamp},
 		},
 	}, nil
+}
+
+// validateQueueURL ensures queueURL is a well-formed absolute URL with a scheme and host.
+func validateQueueURL(queueURL string) error {
+	u, err := url.ParseRequestURI(queueURL)
+	if err != nil {
+		return fmt.Errorf("%w %q: %w", ErrInvalidQueueURL, queueURL, err)
+	}
+
+	if u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("%w %q: missing scheme or host", ErrInvalidQueueURL, queueURL)
+	}
+
+	return nil
 }
 
 // Message holds a received payload and the receipt handle used for deletion.
@@ -132,13 +171,16 @@ func (c *Client) Send(ctx context.Context, message string) error {
 // deduplication ID within the 5-minute deduplication interval are accepted but
 // not delivered again. The dedupID can contain up to 128 alphanumeric and
 // punctuation characters.
+//
+// It returns [ErrDedupIDNotAllowed] when the queue is not a FIFO queue and
+// [ErrInvalidDedupID] when dedupID is empty or malformed.
 func (c *Client) SendWithDeduplicationID(ctx context.Context, message, dedupID string) error {
 	if c.messageGroupID == nil {
-		return errors.New("a message deduplication ID can only be used with FIFO queues")
+		return ErrDedupIDNotAllowed
 	}
 
-	if !regexMessageGroupID.MatchString(dedupID) {
-		return errors.New("invalid message deduplication ID")
+	if !regexFifoID.MatchString(dedupID) {
+		return ErrInvalidDedupID
 	}
 
 	return c.send(ctx, message, aws.String(dedupID))
@@ -159,7 +201,9 @@ func (c *Client) Receive(ctx context.Context) (*Message, error) {
 		return nil, fmt.Errorf("cannot retrieve message from the queue: %w", err)
 	}
 
-	if len(resp.Messages) < 1 {
+	// The AWS SDK never returns a nil output on success, but an injected SQS
+	// client can: guard against it so resp.Messages is never dereferenced on nil.
+	if resp == nil || len(resp.Messages) < 1 {
 		return nil, nil //nolint:nilnil
 	}
 
@@ -217,7 +261,7 @@ func DefaultMessageDecodeFunc(_ context.Context, msg string, data any) error {
 func (c *Client) SendData(ctx context.Context, data any) error {
 	message, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot encode message: %w", err)
 	}
 
 	return c.Send(ctx, message)
@@ -229,7 +273,7 @@ func (c *Client) SendData(ctx context.Context, data any) error {
 func (c *Client) SendDataWithDeduplicationID(ctx context.Context, data any, dedupID string) error {
 	message, err := c.messageEncodeFunc(ctx, data)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot encode message: %w", err)
 	}
 
 	return c.SendWithDeduplicationID(ctx, message, dedupID)
@@ -248,22 +292,32 @@ func (c *Client) ReceiveData(ctx context.Context, data any) (string, error) {
 	}
 
 	err = c.messageDecodeFunc(ctx, message.Body, data)
+	if err != nil {
+		return message.ReceiptHandle, fmt.Errorf("cannot decode message: %w", err)
+	}
 
-	return message.ReceiptHandle, err
+	return message.ReceiptHandle, nil
 }
 
 // HealthCheck verifies queue reachability by fetching a known queue attribute.
+//
+// It returns [ErrQueueNotResponding] when the queue call succeeds but does not
+// return the expected attribute; the underlying AWS error is wrapped otherwise.
 func (c *Client) HealthCheck(ctx context.Context) error {
 	q, err := c.sqs.GetQueueAttributes(ctx, c.hcGetQueueAttributesInput)
 	if err != nil {
 		return fmt.Errorf("unable to connect to AWS SQS: %w", err)
 	}
 
-	if _, ok := q.Attributes[string(types.QueueAttributeNameLastModifiedTimestamp)]; ok {
-		return nil
+	// The AWS SDK never returns a nil output on success, but an injected SQS
+	// client can: guard against it before indexing q.Attributes.
+	if q != nil {
+		if _, ok := q.Attributes[string(types.QueueAttributeNameLastModifiedTimestamp)]; ok {
+			return nil
+		}
 	}
 
-	return fmt.Errorf("the AWS SQS queue is not responding: %s", aws.ToString(c.queueURL))
+	return fmt.Errorf("%w: %s", ErrQueueNotResponding, aws.ToString(c.queueURL))
 }
 
 // send publishes a raw string message to the queue with an optional message deduplication ID.

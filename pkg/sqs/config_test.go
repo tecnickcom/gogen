@@ -19,6 +19,7 @@ func Test_loadConfig(t *testing.T) {
 
 	got, err := loadConfig(
 		t.Context(),
+		"https://test_queue.invalid/queue0.fifo",
 		WithAWSOptions(o),
 		WithEndpointMutable("https://test.endpoint.invalid"),
 		WithWaitTimeSeconds(wt),
@@ -33,8 +34,33 @@ func Test_loadConfig(t *testing.T) {
 	require.NotNil(t, got.messageEncodeFunc)
 	require.NotNil(t, got.messageDecodeFunc)
 
+	// region is derived from the queue URL when no explicit region is set
 	got, err = loadConfig(
 		t.Context(),
+		"https://sqs.ap-south-1.amazonaws.com/123456789012/my-queue",
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, "ap-south-1", got.awsConfig.Region)
+
+	// an explicit region overrides the one derived from the queue URL
+	oOverride := awsopt.Options{}
+	oOverride.WithRegion(region)
+
+	got, err = loadConfig(
+		t.Context(),
+		"https://sqs.ap-south-1.amazonaws.com/123456789012/my-queue",
+		WithAWSOptions(oOverride),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, region, got.awsConfig.Region)
+
+	got, err = loadConfig(
+		t.Context(),
+		"https://test_queue.invalid/queue0.fifo",
 		WithMessageEncodeFunc(nil),
 	)
 
@@ -43,6 +69,7 @@ func Test_loadConfig(t *testing.T) {
 
 	got, err = loadConfig(
 		t.Context(),
+		"https://test_queue.invalid/queue0.fifo",
 		WithMessageDecodeFunc(nil),
 	)
 
@@ -51,6 +78,7 @@ func Test_loadConfig(t *testing.T) {
 
 	got, err = loadConfig(
 		t.Context(),
+		"https://test_queue.invalid/queue0.fifo",
 		WithWaitTimeSeconds(-1),
 	)
 
@@ -59,6 +87,7 @@ func Test_loadConfig(t *testing.T) {
 
 	got, err = loadConfig(
 		t.Context(),
+		"https://test_queue.invalid/queue0.fifo",
 		WithWaitTimeSeconds(21),
 	)
 
@@ -67,6 +96,7 @@ func Test_loadConfig(t *testing.T) {
 
 	got, err = loadConfig(
 		t.Context(),
+		"https://test_queue.invalid/queue0.fifo",
 		WithVisibilityTimeout(-1),
 	)
 
@@ -75,6 +105,7 @@ func Test_loadConfig(t *testing.T) {
 
 	got, err = loadConfig(
 		t.Context(),
+		"https://test_queue.invalid/queue0.fifo",
 		WithVisibilityTimeout(43201),
 	)
 
@@ -84,8 +115,20 @@ func Test_loadConfig(t *testing.T) {
 	// force aws config.LoadDefaultConfig to fail
 	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
-	got, err = loadConfig(t.Context())
+	got, err = loadConfig(t.Context(), "https://test_queue.invalid/queue0.fifo")
 
 	require.Error(t, err)
 	require.Nil(t, got)
+
+	// an injected client skips AWS config loading, so it succeeds even with the
+	// failing environment above still set
+	got, err = loadConfig(
+		t.Context(),
+		"https://test_queue.invalid/queue0.fifo",
+		WithSQSClient(sqsmock{}),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.NotNil(t, got.sqsClient)
 }

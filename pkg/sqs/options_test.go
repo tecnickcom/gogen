@@ -141,3 +141,13 @@ func Test_WithMessageDecodeFunc(t *testing.T) {
 	WithMessageDecodeFunc(f)(conf)
 	require.NoError(t, conf.messageDecodeFunc(t.Context(), "", ""))
 }
+
+func Test_WithSQSClient(t *testing.T) {
+	t.Parallel()
+
+	conf := &cfg{}
+	require.Nil(t, conf.sqsClient)
+
+	WithSQSClient(sqsmock{})(conf)
+	require.NotNil(t, conf.sqsClient)
+}

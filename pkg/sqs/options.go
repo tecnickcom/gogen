@@ -30,6 +30,20 @@ func WithSrvOptionFuncs(opt ...SrvOptionFunc) Option {
 	}
 }
 
+// WithSQSClient injects a custom SQS implementation.
+//
+// This is primarily useful for tests and advanced integrations where the caller
+// needs full control over request behavior without creating a real sqs.Client
+// from aws.Config. When set, the injected client is used as-is: the AWS
+// configuration is not loaded and the AWS/service options ([WithAWSOptions],
+// [WithSrvOptionFuncs], [WithEndpointMutable], [WithEndpointImmutable]) are
+// ignored.
+func WithSQSClient(client SQS) Option {
+	return func(c *cfg) {
+		c.sqsClient = client
+	}
+}
+
 // WithEndpointMutable sets BaseEndpoint while preserving SDK endpoint mutability.
 func WithEndpointMutable(url string) Option {
 	return WithSrvOptionFuncs(

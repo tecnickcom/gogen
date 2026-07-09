@@ -21,6 +21,7 @@ func TestNew(t *testing.T) {
 	o := awsopt.Options{}
 	o.WithRegion("eu-west-1")
 
+	// FIFO queue without a message group ID
 	got, err := New(
 		t.Context(),
 		"https://test_queue.invalid/queue0.fifo",
@@ -31,9 +32,10 @@ func TestNew(t *testing.T) {
 		WithVisibilityTimeout(vt),
 	)
 
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrMissingMessageGroupID)
 	require.Nil(t, got)
 
+	// FIFO queue with an invalid (whitespace) message group ID
 	got, err = New(
 		t.Context(),
 		"https://test_queue.invalid/queue1.fifo",
@@ -44,9 +46,25 @@ func TestNew(t *testing.T) {
 		WithVisibilityTimeout(vt),
 	)
 
-	require.Error(t, err)
+	require.ErrorIs(t, err, ErrMissingMessageGroupID)
 	require.Nil(t, got)
 
+	// empty queue URL
+	got, err = New(t.Context(), "", "")
+	require.ErrorIs(t, err, ErrInvalidQueueURL)
+	require.Nil(t, got)
+
+	// queue URL missing scheme and host
+	got, err = New(t.Context(), "/account/queue", "")
+	require.ErrorIs(t, err, ErrInvalidQueueURL)
+	require.Nil(t, got)
+
+	// standard queue with an unexpected message group ID
+	got, err = New(t.Context(), "https://test_queue.invalid/queue3.standard", "SOMETHING_UNEXPECTED")
+	require.ErrorIs(t, err, ErrUnexpectedMessageGroupID)
+	require.Nil(t, got)
+
+	// FIFO queue with a valid message group ID (real AWS config load path)
 	msgGrpID := `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!"#$%&'()*+,\-./:;<=>?@[\\\]^_` + "`" + `{|}~`
 	got, err = New(
 		t.Context(),
@@ -65,10 +83,11 @@ func TestNew(t *testing.T) {
 	require.Equal(t, wt, got.waitTimeSeconds)
 	require.Equal(t, vt, got.visibilityTimeout)
 
+	// standard queue with no message group ID (real AWS config load path)
 	got, err = New(
 		t.Context(),
 		"https://test_queue.invalid/queue3.standard",
-		"SOMETHING_TO_IGNORE",
+		"",
 		WithAWSOptions(o),
 		WithEndpointImmutable("https://test.endpoint.invalid"),
 		WithWaitTimeSeconds(wt),
@@ -84,10 +103,10 @@ func TestNew(t *testing.T) {
 	require.Equal(t, wt, got.waitTimeSeconds)
 	require.Equal(t, vt, got.visibilityTimeout)
 
-	// make AWS lib to return an error
+	// make AWS lib return an error during config loading
 	t.Setenv("AWS_ENABLE_ENDPOINT_DISCOVERY", "ERROR")
 
-	got, err = New(t.Context(), "", "")
+	got, err = New(t.Context(), "https://test_queue.invalid/queue8.fifo", "VALID_GROUP_ID")
 	require.Error(t, err)
 	require.Nil(t, got)
 }
@@ -144,11 +163,9 @@ func TestSend(t *testing.T) {
 			t.Parallel()
 
 			ctx := t.Context()
-			cli, err := New(ctx, "https://test_queue.invalid/queue1.fifo", "TEST_MSG_GROUP_ID_1")
+			cli, err := New(ctx, "https://test_queue.invalid/queue1.fifo", "TEST_MSG_GROUP_ID_1", WithSQSClient(tt.mock))
 			require.NoError(t, err)
 			require.NotNil(t, cli)
-
-			cli.sqs = tt.mock
 
 			err = cli.Send(ctx, "test")
 			if tt.wantErr {
@@ -223,11 +240,9 @@ func TestSendWithDeduplicationID(t *testing.T) {
 			t.Parallel()
 
 			ctx := t.Context()
-			cli, err := New(ctx, tt.queueURL, tt.grpID)
+			cli, err := New(ctx, tt.queueURL, tt.grpID, WithSQSClient(tt.mock))
 			require.NoError(t, err)
 			require.NotNil(t, cli)
-
-			cli.sqs = tt.mock
 
 			err = cli.SendWithDeduplicationID(ctx, "test", tt.dedupID)
 			if tt.wantErr {
@@ -244,17 +259,17 @@ func TestSendDataWithDeduplicationID(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	cli, err := New(ctx, "https://test_queue.invalid/queue7.fifo", "TEST_MSG_GROUP_ID_7")
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
-	cli.sqs = sqsmock{sendFn: func(_ context.Context, params *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+	mock := sqsmock{sendFn: func(_ context.Context, params *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
 		if aws.ToString(params.MessageDeduplicationId) != "TEST_DEDUP_ID_7" {
 			return nil, errors.New("missing or wrong MessageDeduplicationId")
 		}
 
 		return &sqs.SendMessageOutput{}, nil
 	}}
+
+	cli, err := New(ctx, "https://test_queue.invalid/queue7.fifo", "TEST_MSG_GROUP_ID_7", WithSQSClient(mock))
+	require.NoError(t, err)
+	require.NotNil(t, cli)
 
 	type TestData struct {
 		Alpha string
@@ -304,6 +319,14 @@ func TestReceive(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "nil response",
+			mock: sqsmock{receiveFn: func(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+				return nil, nil //nolint:nilnil
+			}},
+			want:    nil,
+			wantErr: false,
+		},
+		{
 			name: "error",
 			mock: sqsmock{receiveFn: func(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 				return nil, errors.New("some err")
@@ -318,11 +341,9 @@ func TestReceive(t *testing.T) {
 			t.Parallel()
 
 			ctx := t.Context()
-			cli, err := New(ctx, "https://test_queue.invalid/queue2.fifo", "TEST_MSG_GROUP_ID_2")
+			cli, err := New(ctx, "https://test_queue.invalid/queue2.fifo", "TEST_MSG_GROUP_ID_2", WithSQSClient(tt.mock))
 			require.NoError(t, err)
 			require.NotNil(t, cli)
-
-			cli.sqs = tt.mock
 
 			got, err := cli.Receive(ctx)
 			if tt.wantErr {
@@ -376,11 +397,9 @@ func TestDelete(t *testing.T) {
 			t.Parallel()
 
 			ctx := t.Context()
-			cli, err := New(ctx, "https://test_queue.invalid/queue3.fifo", "TEST_MSG_GROUP_ID_3")
+			cli, err := New(ctx, "https://test_queue.invalid/queue3.fifo", "TEST_MSG_GROUP_ID_3", WithSQSClient(tt.mock))
 			require.NoError(t, err)
 			require.NotNil(t, cli)
-
-			cli.sqs = tt.mock
 
 			err = cli.Delete(ctx, tt.receiptHandle)
 			if tt.wantErr {
@@ -397,13 +416,13 @@ func TestSendData(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	cli, err := New(ctx, "https://test_queue.invalid/queue4.fifo", "TEST_MSG_GROUP_ID_4")
-	require.NoError(t, err)
-	require.NotNil(t, cli)
-
-	cli.sqs = sqsmock{sendFn: func(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+	mock := sqsmock{sendFn: func(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
 		return &sqs.SendMessageOutput{}, nil
 	}}
+
+	cli, err := New(ctx, "https://test_queue.invalid/queue4.fifo", "TEST_MSG_GROUP_ID_4", WithSQSClient(mock))
+	require.NoError(t, err)
+	require.NotNil(t, cli)
 
 	type TestData struct {
 		Alpha string
@@ -486,11 +505,9 @@ func TestReceiveData(t *testing.T) {
 			t.Parallel()
 
 			ctx := t.Context()
-			cli, err := New(ctx, "https://test_queue.invalid/queue5.fifo", "TEST_MSG_GROUP_ID_5")
+			cli, err := New(ctx, "https://test_queue.invalid/queue5.fifo", "TEST_MSG_GROUP_ID_5", WithSQSClient(tt.mock))
 			require.NoError(t, err)
 			require.NotNil(t, cli)
-
-			cli.sqs = tt.mock
 
 			var data TestData
 
@@ -537,6 +554,13 @@ func TestHealthCheck(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "nil response",
+			mock: sqsmock{getQueueAttributesFn: func(_ context.Context, _ *sqs.GetQueueAttributesInput, _ ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
+				return nil, nil //nolint:nilnil
+			}},
+			wantErr: true,
+		},
+		{
 			name: "error",
 			mock: sqsmock{getQueueAttributesFn: func(_ context.Context, _ *sqs.GetQueueAttributesInput, _ ...func(*sqs.Options)) (*sqs.GetQueueAttributesOutput, error) {
 				return &sqs.GetQueueAttributesOutput{}, errors.New("error")
@@ -550,11 +574,9 @@ func TestHealthCheck(t *testing.T) {
 			t.Parallel()
 
 			ctx := t.Context()
-			cli, err := New(ctx, queueURL, "TEST_MSG_GROUP_ID_6")
+			cli, err := New(ctx, queueURL, "TEST_MSG_GROUP_ID_6", WithSQSClient(tt.mock))
 			require.NoError(t, err)
 			require.NotNil(t, cli)
-
-			cli.sqs = tt.mock
 
 			err = cli.HealthCheck(ctx)
 			if tt.wantErr {
