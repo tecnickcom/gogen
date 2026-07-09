@@ -60,7 +60,7 @@ func TestRule_Evaluate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := tt.rule.Evaluate(tt.value)
+			got, err := tt.rule.evaluate(tt.value)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -91,7 +91,7 @@ func TestRule_Evaluate_Concurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			got, err := rule.Evaluate("hello world")
+			got, err := rule.evaluate("hello world")
 			assert.NoError(t, err)
 			assert.True(t, got)
 		}()

@@ -21,53 +21,37 @@ type reflectPath []int
 // fieldGetter retrieves field values from objects based on their field paths.
 type fieldGetter struct {
 	fieldTag string
+	maxDepth uint
 	cache    fieldCache
 }
 
-// GetFieldValue resolves the dot-separated field path within obj, with caching and nil handling.
-// Empty path returns the root object; missing fields return error, not nil.
-func (r *fieldGetter) GetFieldValue(obj any, path string) (any, error) {
-	// empty path means the root object
-	if path == "" {
-		return obj, nil
+// resolvePath returns the field-index path for the dot-separated selector within
+// type t, resolving and caching it on first use. It is called once per type per
+// Apply for concrete element slices, and per element only when the slice element
+// type is an interface (so the concrete type varies per element).
+//
+// A non-empty path targeting a missing field returns an errFieldNotFound-wrapped
+// error, which callers treat as a non-match rather than a hard failure.
+func (r *fieldGetter) resolvePath(t reflect.Type, path string) (reflectPath, error) {
+	// Reject over-deep selectors before resolving or caching them. This bounds both the
+	// O(depth) resolution cost and, for recursive element types (whose valid paths are
+	// unbounded), the size of the path cache.
+	if depth := uint(strings.Count(path, FieldNameSeparator) + 1); depth > r.maxDepth {
+		return nil, fmt.Errorf("%w: field path too deep: got %d max is %d", ErrInvalidFilter, depth, r.maxDepth)
 	}
 
-	if obj == nil {
-		return nil, errors.New("cannot get a field of a nil object")
+	if rPath, ok := r.cache.Get(t, path); ok {
+		return rPath, nil
 	}
 
-	tElement := reflect.TypeOf(obj)
-
-	rPath, ok := r.cache.Get(tElement, path)
-	if !ok {
-		var err error
-
-		pathParts := strings.Split(path, FieldNameSeparator)
-
-		rPath, err = r.getFieldPath(tElement, pathParts)
-		if err != nil {
-			return nil, err
-		}
-
-		r.cache.Set(tElement, path, rPath)
+	rPath, err := r.getFieldPath(t, strings.Split(path, FieldNameSeparator))
+	if err != nil {
+		return nil, err
 	}
 
-	value := reflect.ValueOf(obj)
-	for _, fieldIndex := range rPath {
-		value = reflect.Indirect(value)
-		if !value.IsValid() {
-			// nil pointer along the path: treat the field as missing (non-match).
-			return nil, fmt.Errorf("field %s of %s is unreachable through a nil pointer: %w", path, tElement, errFieldNotFound)
-		}
+	r.cache.Set(t, path, rPath)
 
-		value = value.Field(fieldIndex)
-	}
-
-	if !value.CanInterface() {
-		return nil, fmt.Errorf("%s cannot be interfaced", value.Type())
-	}
-
-	return value.Interface(), nil
+	return rPath, nil
 }
 
 // getFieldPath constructs the reflectPath for the given type and field names.
@@ -80,7 +64,7 @@ func (r *fieldGetter) getFieldPath(t reflect.Type, fieldNames []string) (reflect
 		}
 
 		if t.Kind() != reflect.Struct {
-			return nil, fmt.Errorf("fields of elements of type %s are not supported", t)
+			return nil, fmt.Errorf("%w: fields of elements of type %s are not supported", ErrInvalidFilter, t)
 		}
 
 		field, err := r.getStructField(t, fieldNames[0])

@@ -26,23 +26,20 @@ func newOrder(r any) (order, error) {
 // compare resolves the value against the reference and reports the comparison sign.
 // It compares numbers exactly (preserving large-integer precision) and falls back to
 // collection length for arrays, maps, slices and strings. ok is false when no ordering applies.
-func (o order) compare(v any) (int, bool) {
-	if isNil(v) {
+// The value is read from v without allocating.
+func (o order) compare(v reflect.Value) (int, bool) {
+	if isNilValue(v) {
 		return 0, false
 	}
 
-	if num, ok := toNumeric(v); ok {
+	if num, ok := toNumericValue(v); ok {
 		return num.compare(o.ref)
 	}
 
-	v = convertValue(v)
-
-	val := reflect.ValueOf(v)
-
 	//nolint:exhaustive
-	switch val.Kind() {
+	switch v.Kind() {
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		length := numeric{kind: numericInt, i: int64(val.Len())}
+		length := numeric{kind: numericInt, i: int64(v.Len())}
 
 		return length.compare(o.ref)
 	}

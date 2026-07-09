@@ -67,3 +67,52 @@ func WithMaxResults(resmax uint) Option {
 		return nil
 	}
 }
+
+// WithMaxValueLength sets the maximum byte length allowed for a rule's string value,
+// such as a regexp pattern or a string comparison operand. Rules whose string value
+// exceeds the limit are rejected at compile time, bounding regexp compilation and
+// matching cost for untrusted filters. Defaults to DefaultMaxValueLength.
+// Returns error if maxlen < 1.
+func WithMaxValueLength(maxlen uint) Option {
+	return func(p *Processor) error {
+		if maxlen < 1 {
+			return errors.New("max value length must be at least 1")
+		}
+
+		p.maxValueLen = maxlen
+
+		return nil
+	}
+}
+
+// WithMaxFilterBytes sets the maximum byte length of the raw filter payload accepted
+// by Processor.ParseURLQuery() before it is JSON-decoded, bounding parse-time cost for
+// untrusted input. Defaults to DefaultMaxFilterBytes. Returns error if maxbytes < 1.
+func WithMaxFilterBytes(maxbytes uint) Option {
+	return func(p *Processor) error {
+		if maxbytes < 1 {
+			return errors.New("max filter bytes must be at least 1")
+		}
+
+		p.maxFilterBytes = maxbytes
+
+		return nil
+	}
+}
+
+// WithMaxFieldDepth sets the maximum number of dot-separated segments allowed in a
+// rule's field selector (for example "a.b.c" has depth 3). Deeper selectors are
+// rejected, bounding field-resolution cost and, for recursive element types, the
+// growth of the reflection-path cache. Defaults to DefaultMaxFieldDepth.
+// Returns error if maxdepth < 1.
+func WithMaxFieldDepth(maxdepth uint) Option {
+	return func(p *Processor) error {
+		if maxdepth < 1 {
+			return errors.New("max field depth must be at least 1")
+		}
+
+		p.fields.maxDepth = maxdepth
+
+		return nil
+	}
+}

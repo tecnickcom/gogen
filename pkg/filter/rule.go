@@ -2,6 +2,7 @@ package filter
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -52,7 +53,7 @@ type Rule struct {
 	Field string `json:"field"`
 
 	// Type controls the evaluation to apply.
-	// An invalid value will cause Evaluate() to return an error.
+	// An invalid value causes an error when the rule is applied via [Processor.Apply].
 	// See the Type* constants of this package for valid values.
 	Type string `json:"type"`
 
@@ -61,23 +62,25 @@ type Rule struct {
 	Value any `json:"value"`
 }
 
-// Evaluate determines if the value matches the rule by compiling the type-specific evaluator.
+// evaluate determines if the value matches the rule by compiling the type-specific evaluator.
 // Returns error for invalid Type, misconfiguration (e.g. invalid regexp), or type mismatch (e.g. regexp on int).
 //
-// Evaluate is safe for concurrent use: it stores no per-call state on the Rule, so the same
-// Rule (or a [][]Rule built once) can be evaluated from multiple goroutines simultaneously.
-// For repeated evaluations prefer [Processor.Apply], which compiles each evaluator only once.
-func (r *Rule) Evaluate(value any) (bool, error) {
+// It evaluates the supplied value directly (it does not resolve [Rule.Field]) and applies no
+// input-size limits; those are enforced by [Processor.Apply], the supported entry point for
+// untrusted input. It is safe for concurrent use, storing no per-call state on the Rule.
+func (r *Rule) evaluate(value any) (bool, error) {
 	eval, err := r.getEvaluator()
 	if err != nil {
 		return false, err
 	}
 
-	return eval.Evaluate(value), nil
+	// reflect.ValueOf unwraps value to its concrete type (an invalid Value for a
+	// nil value), matching how Processor.Apply hands field values to evaluators.
+	return eval.Evaluate(reflect.ValueOf(value)), nil
 }
 
 // getEvaluator initializes and returns the evaluator for the rule.
-func (r *Rule) getEvaluator() (Evaluator, error) {
+func (r *Rule) getEvaluator() (evaluator, error) {
 	t := strings.ToLower(r.Type)
 
 	if after, ok := strings.CutPrefix(t, TypePrefixNot); ok {
@@ -93,7 +96,7 @@ func (r *Rule) getEvaluator() (Evaluator, error) {
 }
 
 //nolint:gocyclo,cyclop
-func (r *Rule) getBaseTypeEvaluator(t string) (Evaluator, error) {
+func (r *Rule) getBaseTypeEvaluator(t string) (evaluator, error) {
 	switch t {
 	case TypeRegexp:
 		return newRegexp(r.Value)
@@ -116,6 +119,6 @@ func (r *Rule) getBaseTypeEvaluator(t string) (Evaluator, error) {
 	case TypeGTE:
 		return newGTE(r.Value)
 	default:
-		return nil, fmt.Errorf("type %s is not supported", r.Type)
+		return nil, fmt.Errorf("%w: type %s is not supported", ErrInvalidFilter, r.Type)
 	}
 }

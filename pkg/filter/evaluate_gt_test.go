@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -132,7 +133,7 @@ func TestGT_Evaluate(t *testing.T) {
 			require.Equal(t, tt.wantErr, err != nil)
 
 			if !tt.wantErr {
-				res := eval.Evaluate(tt.value)
+				res := eval.Evaluate(reflect.ValueOf(tt.value))
 
 				require.NoError(t, err)
 				require.Equal(t, tt.want, res)

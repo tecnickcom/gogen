@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -178,13 +179,26 @@ func TestEqualFold_Evaluate(t *testing.T) {
 			value: map[string]any{"a": 2.0},
 			want:  false,
 		},
+		{
+			name:  "false - map ref vs nil value",
+			ref:   map[string]any{"a": 1.0},
+			value: nil,
+			want:  false,
+		},
+		{
+			// A named string type must normalize to string before the deep-equal fallback.
+			name:  "false - map ref vs string alias value",
+			ref:   map[string]any{"a": 1.0},
+			value: stringAlias("x"),
+			want:  false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			res := newEqualFold(tt.ref).Evaluate(tt.value)
+			res := newEqualFold(tt.ref).Evaluate(reflect.ValueOf(tt.value))
 			require.Equal(t, tt.want, res)
 		})
 	}

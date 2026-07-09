@@ -2,6 +2,7 @@ package filter
 
 import (
 	"math"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -216,13 +217,40 @@ func TestEqual_Evaluate(t *testing.T) {
 			value: "x",
 			want:  false,
 		},
+		{
+			// Comparable non-string/non-numeric references (e.g. bool) fall back to the
+			// interface "==" comparison.
+			name:  "true - bool / bool",
+			ref:   true,
+			value: true,
+			want:  true,
+		},
+		{
+			name:  "false - bool / bool",
+			ref:   true,
+			value: false,
+			want:  false,
+		},
+		{
+			name:  "false - map ref vs nil value",
+			ref:   map[string]any{"a": 1.0},
+			value: nil,
+			want:  false,
+		},
+		{
+			// A typed-nil value must not equal a non-nil reference of a different type.
+			name:  "false - map ref vs typed-nil slice value",
+			ref:   map[string]any{"a": 1.0},
+			value: []any(nil),
+			want:  false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			res := newEqual(tt.ref).Evaluate(tt.value)
+			res := newEqual(tt.ref).Evaluate(reflect.ValueOf(tt.value))
 			require.Equal(t, tt.want, res)
 		})
 	}

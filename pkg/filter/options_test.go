@@ -159,3 +159,111 @@ func TestWithMaxResults(t *testing.T) {
 		})
 	}
 }
+
+func TestWithMaxValueLength(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		max     uint
+		wantErr bool
+	}{
+		{
+			name:    "success",
+			max:     16,
+			wantErr: false,
+		},
+		{
+			name:    "error - 0",
+			max:     0,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opt := WithMaxValueLength(tt.max)
+			err := opt(&Processor{})
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestWithMaxFilterBytes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		max     uint
+		wantErr bool
+	}{
+		{
+			name:    "success",
+			max:     32,
+			wantErr: false,
+		},
+		{
+			name:    "error - 0",
+			max:     0,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opt := WithMaxFilterBytes(tt.max)
+			err := opt(&Processor{})
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestWithMaxFieldDepth(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		max     uint
+		wantErr bool
+	}{
+		{
+			name:    "success",
+			max:     4,
+			wantErr: false,
+		},
+		{
+			name:    "error - 0",
+			max:     0,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opt := WithMaxFieldDepth(tt.max)
+			err := opt(&Processor{})
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

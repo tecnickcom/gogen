@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,7 +12,7 @@ func TestNot_Evaluate(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		internal Evaluator
+		internal evaluator
 		ref      any
 		value    any
 		want     bool
@@ -36,7 +37,7 @@ func TestNot_Evaluate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			res := newNot(tt.internal).Evaluate(tt.value)
+			res := newNot(tt.internal).Evaluate(reflect.ValueOf(tt.value))
 
 			require.Equal(t, tt.want, res)
 		})

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// equalFold is an Evaluator that checks for equality under Unicode case-folding.
+// equalFold is an evaluator that checks for equality under Unicode case-folding.
 type equalFold struct {
 	ref    any
 	refNum numeric
@@ -14,7 +14,7 @@ type equalFold struct {
 
 // newEqualFold constructs a case-insensitive equality evaluator using Unicode case-folding.
 // Numeric references are kept in an exact form to preserve large-integer precision.
-func newEqualFold(r any) Evaluator {
+func newEqualFold(r any) evaluator {
 	num, ok := toNumeric(r)
 
 	return &equalFold{ref: convertValue(r), refNum: num, refOK: ok}
@@ -22,23 +22,27 @@ func newEqualFold(r any) Evaluator {
 
 // Evaluate returns true for strings equal under Unicode case-folding (e.g., "AB" matches "ab"), with numeric normalization fallback.
 // Two numeric operands are compared exactly to preserve large-integer precision.
-func (e *equalFold) Evaluate(v any) bool {
+// String and numeric operands are read from v without allocating; the deep-equal
+// fallback for uncomparable dynamic types (maps, slices) boxes only when reached.
+func (e *equalFold) Evaluate(v reflect.Value) bool {
 	if e.refOK {
-		if num, ok := toNumeric(v); ok {
-			return e.refNum.equals(num)
+		num, ok := toNumericValue(v)
+
+		return ok && e.refNum.equals(num)
+	}
+
+	switch ref := e.ref.(type) {
+	case string:
+		s, ok := stringValue(v)
+
+		return ok && strings.EqualFold(s, ref)
+	case nil:
+		return isNilValue(v)
+	default:
+		if !v.IsValid() {
+			return false
 		}
 
-		return false
+		return equalValues(convertValue(v.Interface()), ref)
 	}
-
-	v = convertValue(v)
-
-	val := reflect.ValueOf(v)
-	ref := reflect.ValueOf(e.ref)
-
-	if (val.Kind() == reflect.String) && (ref.Kind() == reflect.String) {
-		return strings.EqualFold(val.String(), ref.String())
-	}
-
-	return equalValues(v, e.ref)
 }

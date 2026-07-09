@@ -63,7 +63,7 @@ func TestParseJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			r, err := ParseJSON(tt.json)
+			r, err := parseJSON(tt.json)
 
 			if tt.wantErr {
 				require.Error(t, err, "ParseRules() error = %v, wantErr %v", err, tt.wantErr)
@@ -948,7 +948,9 @@ func TestFilter_Apply(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "error - with nil item",
+			// A nil interface element has no fields: the selector is a non-match, so the
+			// element is filtered out rather than aborting the whole Apply.
+			name: "success - nil item with field selector",
 			elements: &[]any{
 				nil,
 			},
@@ -957,7 +959,8 @@ func TestFilter_Apply(t *testing.T) {
 				Type:  TypeEqual,
 				Value: "value 1",
 			}}},
-			wantErr: true,
+			want:             &[]any{},
+			wantTotalMatches: 0,
 		},
 		{
 			name: "error - nested path inside a basic type",
@@ -965,6 +968,31 @@ func TestFilter_Apply(t *testing.T) {
 				simpleStruct{
 					StringField: "value 1",
 				},
+			},
+			rules: [][]Rule{{{
+				Field: "StringField.InvalidField",
+				Type:  TypeEqual,
+				Value: "value 1",
+			}}},
+			wantErr: true,
+		},
+		{
+			name: "success - missing field on concrete slice",
+			elements: &[]simpleStruct{
+				{StringField: "value 1"},
+			},
+			rules: [][]Rule{{{
+				Field: "NoSuchField",
+				Type:  TypeEqual,
+				Value: "value 1",
+			}}},
+			want:             &[]simpleStruct{},
+			wantTotalMatches: 0,
+		},
+		{
+			name: "error - concrete nested path inside a basic type",
+			elements: &[]simpleStruct{
+				{StringField: "value 1"},
 			},
 			rules: [][]Rule{{{
 				Field: "StringField.InvalidField",
@@ -1417,7 +1445,7 @@ func TestFilter_Apply_UncomparableJSONValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			rules, err := ParseJSON(tt.json)
+			rules, err := parseJSON(tt.json)
 			require.NoError(t, err)
 
 			p, err := New()
@@ -1434,6 +1462,260 @@ func TestFilter_Apply_UncomparableJSONValue(t *testing.T) {
 			require.Equal(t, uint(1), n)
 			require.Equal(t, uint(1), total)
 			require.Equal(t, []map[string]any{{"a": 1.0}}, data)
+		})
+	}
+}
+
+// TestFilter_Apply_InterfaceLeafField verifies that a rule targeting an
+// interface-typed struct field is evaluated against the concrete value the field
+// holds (with a nil interface treated as a non-match).
+func TestFilter_Apply_InterfaceLeafField(t *testing.T) {
+	t.Parallel()
+
+	type box struct {
+		Payload any
+	}
+
+	rules := [][]Rule{{{Field: "Payload", Type: TypeEqual, Value: "hit"}}}
+
+	p, err := New()
+	require.NoError(t, err)
+
+	data := []box{
+		{Payload: "hit"},
+		{Payload: "miss"},
+		{Payload: nil},
+	}
+
+	n, total, err := p.Apply(rules, &data)
+	require.NoError(t, err)
+	require.Equal(t, uint(1), n)
+	require.Equal(t, uint(1), total)
+	require.Equal(t, []box{{Payload: "hit"}}, data)
+}
+
+// TestFilter_Apply_MaxValueLength rejects rules whose string value (e.g. a regexp
+// pattern) exceeds the configured limit, before the evaluator is built.
+func TestFilter_Apply_MaxValueLength(t *testing.T) {
+	t.Parallel()
+
+	p, err := New(WithMaxValueLength(8))
+	require.NoError(t, err)
+
+	data := []string{"123456789"}
+
+	// 9-byte value exceeds the 8-byte limit: rejected before regexp.Compile.
+	_, _, err = p.Apply([][]Rule{{{Field: "", Type: TypeRegexp, Value: "123456789"}}}, &data)
+	require.Error(t, err)
+
+	// A value within the limit is accepted and evaluated normally.
+	n, total, err := p.Apply([][]Rule{{{Field: "", Type: TypeRegexp, Value: "123"}}}, &data)
+	require.NoError(t, err)
+	require.Equal(t, uint(1), n)
+	require.Equal(t, uint(1), total)
+}
+
+// TestParseURLQuery_MaxFilterBytes rejects an oversized raw filter payload before it
+// is JSON-decoded.
+func TestParseURLQuery_MaxFilterBytes(t *testing.T) {
+	t.Parallel()
+
+	p, err := New(WithMaxFilterBytes(16))
+	require.NoError(t, err)
+
+	q := url.Values{}
+	q.Set("filter", `[[{"field":"","type":"==","value":"aaaaaaaaaaaaaaaaaaaa"}]]`)
+
+	_, err = p.ParseURLQuery(q)
+	require.Error(t, err)
+}
+
+// TestProcessorParseJSON exercises the Processor.ParseJSON limits and success path.
+func TestProcessorParseJSON(t *testing.T) {
+	t.Parallel()
+
+	p, err := New(WithMaxRules(1), WithMaxFilterBytes(4096))
+	require.NoError(t, err)
+
+	// Success.
+	rules, err := p.ParseJSON(`[[{"field":"Age","type":"==","value":42}]]`)
+	require.NoError(t, err)
+	require.Len(t, rules, 1)
+
+	// Payload too large.
+	small, err := New(WithMaxFilterBytes(8))
+	require.NoError(t, err)
+	_, err = small.ParseJSON(`[[{"field":"","type":"==","value":1}]]`)
+	require.ErrorIs(t, err, ErrInvalidFilter)
+
+	// Too many rules (small payload, so the byte limit is not what trips).
+	_, err = p.ParseJSON(`[[{"field":"","type":"==","value":1},{"field":"","type":"==","value":2}]]`)
+	require.ErrorIs(t, err, ErrInvalidFilter)
+}
+
+// TestErrInvalidFilter documents and verifies which errors are attributable to the
+// client filter (wrapped with ErrInvalidFilter, so a handler can return a generic
+// response) versus caller misuse of the Apply arguments (not wrapped).
+func TestErrInvalidFilter(t *testing.T) {
+	t.Parallel()
+
+	pSmallVal, err := New(WithMaxValueLength(8))
+	require.NoError(t, err)
+
+	pFewRules, err := New(WithMaxRules(1))
+	require.NoError(t, err)
+
+	type unexportedLeaf struct{ hidden int }
+
+	tests := []struct {
+		name        string
+		run         func() error
+		wantInvalid bool
+	}{
+		{
+			name:        "invalid json",
+			run:         func() error { _, e := pFewRules.ParseJSON("not json"); return e },
+			wantInvalid: true,
+		},
+		{
+			name: "too many rules",
+			run: func() error {
+				d := []int{1}
+				_, _, e := pFewRules.Apply([][]Rule{{{Type: TypeEqual, Value: 1}, {Type: TypeEqual, Value: 2}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "rule value too large",
+			run: func() error {
+				d := []string{"x"}
+				_, _, e := pSmallVal.Apply([][]Rule{{{Field: "", Type: TypeRegexp, Value: "123456789"}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "unsupported rule type",
+			run: func() error {
+				d := []string{"x"}
+				_, _, e := pFewRules.Apply([][]Rule{{{Field: "", Type: "nope", Value: "x"}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "invalid regexp",
+			run: func() error {
+				d := []string{"x"}
+				_, _, e := pFewRules.Apply([][]Rule{{{Field: "", Type: TypeRegexp, Value: "("}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "non-string for regexp",
+			run: func() error {
+				d := []string{"x"}
+				_, _, e := pFewRules.Apply([][]Rule{{{Field: "", Type: TypeRegexp, Value: 1}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "non-numeric for order",
+			run: func() error {
+				d := []int{1}
+				_, _, e := pFewRules.Apply([][]Rule{{{Field: "", Type: TypeLT, Value: "x"}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "field of a basic type",
+			run: func() error {
+				d := []any{"x"}
+				_, _, e := pFewRules.Apply([][]Rule{{{Field: "X", Type: TypeEqual, Value: 1}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "unexported field",
+			run: func() error {
+				d := []unexportedLeaf{{hidden: 1}}
+				_, _, e := pFewRules.Apply([][]Rule{{{Field: "hidden", Type: TypeEqual, Value: 1}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "field path too deep",
+			run: func() error {
+				type node struct {
+					Value string
+					Next  *node
+				}
+
+				pShallow, e := New(WithMaxFieldDepth(2))
+				if e != nil {
+					return e
+				}
+
+				d := []node{{Value: "x"}}
+				_, _, e = pShallow.Apply([][]Rule{{{Field: "Next.Next.Value", Type: TypeEqual, Value: "x"}}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "too many rule groups",
+			run: func() error {
+				d := []int{1}
+				_, _, e := pFewRules.Apply([][]Rule{{}, {}}, &d)
+
+				return e
+			},
+			wantInvalid: true,
+		},
+		{
+			name: "caller misuse - not a slice pointer",
+			run: func() error {
+				d := []int{1}
+				_, _, e := pFewRules.Apply([][]Rule{{{Field: "", Type: TypeEqual, Value: 1}}}, d)
+
+				return e
+			},
+			wantInvalid: false,
+		},
+		{
+			name: "caller misuse - length below 1",
+			run: func() error {
+				d := []int{1}
+				_, _, e := pFewRules.ApplySubset([][]Rule{{{Field: "", Type: TypeEqual, Value: 1}}}, &d, 0, 0)
+
+				return e
+			},
+			wantInvalid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := tt.run()
+			require.Error(t, err)
+			require.Equal(t, tt.wantInvalid, errors.Is(err, ErrInvalidFilter))
 		})
 	}
 }
@@ -1572,7 +1854,7 @@ func benchmarkFilterApply(b *testing.B, n int, json string, opts ...Option) {
 		}
 	}
 
-	rules, err := ParseJSON(json)
+	rules, err := parseJSON(json)
 	require.NoError(b, err)
 
 	b.ResetTimer()
