@@ -50,8 +50,8 @@ single-flight cache. The lookup flow is:
   - Thread-safe: all cache operations are safe for concurrent use with no
     external synchronization required.
   - Flexible secret retrieval: [Cache.GetSecretData] returns the raw SDK output;
-    [Cache.GetSecretString] and [Cache.GetSecretBinary] transparently handle
-    both storage formats (string and binary), respectively.
+    [Cache.GetSecretString] and [Cache.GetSecretBinary] each transparently
+    handle both storage formats (SecretString and SecretBinary).
   - Manual cache control: [Cache.Remove] evicts a single entry (useful after a
     secret rotation event), [Cache.Reset] clears the entire cache, and
     [Cache.PurgeExpired] promptly removes expired secret material from memory.

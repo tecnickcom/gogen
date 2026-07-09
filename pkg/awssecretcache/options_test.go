@@ -3,11 +3,9 @@ package awssecretcache
 import (
 	"context"
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/config"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/awsopt"
@@ -22,17 +20,16 @@ func Test_WithAWSOptions(t *testing.T) {
 	opt.WithRegion(region)
 
 	c := &cfg{}
-	gotFn := WithAWSOptions(opt)
+	WithAWSOptions(opt)(c)
 
-	gotFn(c)
+	require.Len(t, c.awsOpts, 1)
 
-	want := &cfg{awsOpts: awsopt.Options{config.WithRegion(region)}}
-
-	require.Len(t, c.awsOpts, len(want.awsOpts))
-
-	for i, opt := range want.awsOpts {
-		reflect.DeepEqual(opt, c.awsOpts[i])
-	}
+	// Assert the option's observable effect rather than its function identity
+	// (LoadOptionsFunc values are not meaningfully comparable): the AWS config
+	// loaded from these options must carry the configured region.
+	got, err := loadConfig(t.Context(), WithAWSOptions(opt))
+	require.NoError(t, err)
+	require.Equal(t, region, got.awsConfig.Region)
 }
 
 func Test_WithSecretsManagerClient(t *testing.T) {

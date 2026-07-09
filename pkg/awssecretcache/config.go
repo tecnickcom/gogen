@@ -36,13 +36,25 @@ type cfg struct {
 // loadConfig applies options and materializes the AWS SDK configuration.
 //
 // It centralizes option processing so New can build the cache from one
-// validated cfg value. The function guarantees that awsConfig is loaded once
-// with all collected awsopt options before any Secrets Manager client is used.
+// validated cfg value. When no client is injected, it guarantees that
+// awsConfig is loaded once with all collected awsopt options before any Secrets
+// Manager client is used. When a client is injected via
+// [WithSecretsManagerClient], the AWS configuration is neither loaded nor used:
+// the injected client fully replaces the SDK client, so loading it would only
+// add latency and a spurious failure mode (e.g. EC2 IMDS probing in an
+// isolated/unit-test environment).
 func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 	c := &cfg{}
 
 	for _, apply := range opts {
 		apply(c)
+	}
+
+	if c.smclient != nil {
+		// The injected client replaces the SDK client, so awsConfig and
+		// srvOptFns are never consumed: skip the (potentially slow or failing)
+		// SDK config load entirely.
+		return c, nil
 	}
 
 	awsConfig, err := c.awsOpts.LoadDefaultConfig(ctx)

@@ -3,9 +3,12 @@ package awssecretcache
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/gogen/pkg/awsopt"
@@ -53,6 +56,22 @@ func TestNew(t *testing.T) {
 	got, err = New(t.Context(), 1, 1*time.Second)
 	require.Error(t, err)
 	require.Nil(t, got)
+
+	// An injected client bypasses AWS config loading entirely, so New must
+	// succeed even though the environment above would otherwise fail the load.
+	got, err = New(
+		t.Context(),
+		1,
+		1*time.Second,
+		WithSecretsManagerClient(&mockSecretsManagerClient{
+			getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+				return &awssm.GetSecretValueOutput{}, nil
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.NotNil(t, got.cache)
 }
 
 func Test_GetSecretData(t *testing.T) {
@@ -146,14 +165,34 @@ func Test_GetSecretBinary(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "success with nil SecretBinary",
+			name: "empty SecretString is a real value, not ErrEmptySecret",
+			mock: &mockSecretsManagerClient{
+				getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+					return &awssm.GetSecretValueOutput{SecretString: aws.String("")}, nil
+				},
+			},
+			want:    []byte{},
+			wantErr: false,
+		},
+		{
+			name: "empty SecretBinary is a real value, not ErrEmptySecret",
+			mock: &mockSecretsManagerClient{
+				getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+					return &awssm.GetSecretValueOutput{SecretBinary: []byte{}}, nil
+				},
+			},
+			want:    []byte{},
+			wantErr: false,
+		},
+		{
+			name: "empty secret (neither SecretString nor SecretBinary)",
 			mock: &mockSecretsManagerClient{
 				getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
 					return &awssm.GetSecretValueOutput{}, nil
 				},
 			},
 			want:    nil,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "error",
@@ -223,14 +262,34 @@ func Test_GetSecretString(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "success with nil SecretBinary",
+			name: "empty SecretString is a real value, not ErrEmptySecret",
+			mock: &mockSecretsManagerClient{
+				getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+					return &awssm.GetSecretValueOutput{SecretString: aws.String("")}, nil
+				},
+			},
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name: "empty SecretBinary is a real value, not ErrEmptySecret",
+			mock: &mockSecretsManagerClient{
+				getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+					return &awssm.GetSecretValueOutput{SecretBinary: []byte{}}, nil
+				},
+			},
+			want:    "",
+			wantErr: false,
+		},
+		{
+			name: "empty secret (neither SecretString nor SecretBinary)",
 			mock: &mockSecretsManagerClient{
 				getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
 					return &awssm.GetSecretValueOutput{}, nil
 				},
 			},
 			want:    "",
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "error",
@@ -473,4 +532,151 @@ func Test_stale_if_error(t *testing.T) {
 
 	_, err = c.GetSecretString(t.Context(), "test_key_stale")
 	require.Error(t, err, "after PurgeExpired the stale secret must be gone")
+}
+
+// Test_EmptySecret verifies that a response carrying no secret material is
+// surfaced as ErrEmptySecret rather than panicking or silently returning an
+// empty value. A nil upstream output (which an injected client can produce)
+// fails all three getters; an output present but with neither SecretString nor
+// SecretBinary set fails only the value getters, while GetSecretData still
+// returns the raw output so metadata stays accessible.
+func Test_EmptySecret(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil output", func(t *testing.T) {
+		t.Parallel()
+
+		c, err := New(
+			t.Context(),
+			1,
+			1*time.Second,
+			WithSecretsManagerClient(&mockSecretsManagerClient{
+				getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+					return nil, nil //nolint:nilnil
+				},
+			}),
+		)
+		require.NoError(t, err)
+
+		_, err = c.GetSecretData(t.Context(), "k")
+		require.ErrorIs(t, err, ErrEmptySecret)
+
+		_, err = c.GetSecretBinary(t.Context(), "k")
+		require.ErrorIs(t, err, ErrEmptySecret)
+
+		_, err = c.GetSecretString(t.Context(), "k")
+		require.ErrorIs(t, err, ErrEmptySecret)
+	})
+
+	t.Run("output without value", func(t *testing.T) {
+		t.Parallel()
+
+		c, err := New(
+			t.Context(),
+			1,
+			1*time.Second,
+			WithSecretsManagerClient(&mockSecretsManagerClient{
+				getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+					return &awssm.GetSecretValueOutput{}, nil
+				},
+			}),
+		)
+		require.NoError(t, err)
+
+		// GetSecretData returns the raw (empty) output so metadata stays usable.
+		got, err := c.GetSecretData(t.Context(), "k")
+		require.NoError(t, err)
+		require.NotNil(t, got)
+
+		_, err = c.GetSecretBinary(t.Context(), "k")
+		require.ErrorIs(t, err, ErrEmptySecret)
+
+		_, err = c.GetSecretString(t.Context(), "k")
+		require.ErrorIs(t, err, ErrEmptySecret)
+	})
+}
+
+// Test_EmptySecretID verifies that an empty secret id is rejected up front with
+// ErrEmptySecretID, without reaching the upstream client or creating a cache
+// entry.
+func Test_EmptySecretID(t *testing.T) {
+	t.Parallel()
+
+	var calls int
+
+	c, err := New(
+		t.Context(),
+		1,
+		1*time.Second,
+		WithSecretsManagerClient(&mockSecretsManagerClient{
+			getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+				calls++
+
+				return &awssm.GetSecretValueOutput{SecretString: aws.String("value")}, nil
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	_, err = c.GetSecretData(t.Context(), "")
+	require.ErrorIs(t, err, ErrEmptySecretID)
+
+	_, err = c.GetSecretBinary(t.Context(), "")
+	require.ErrorIs(t, err, ErrEmptySecretID)
+
+	_, err = c.GetSecretString(t.Context(), "")
+	require.ErrorIs(t, err, ErrEmptySecretID)
+
+	require.Zero(t, calls, "an empty secret id must not reach the upstream client")
+	require.Zero(t, c.Len(), "an empty secret id must not create a cache entry")
+}
+
+// Test_single_flight verifies the headline guarantee at this layer: many
+// goroutines racing a cold key collapse into a single upstream GetSecretValue
+// call and all observe the same value.
+func Test_single_flight(t *testing.T) {
+	t.Parallel()
+
+	secval := "single_flight_secret"
+
+	var calls atomic.Int32
+
+	smclient := &mockSecretsManagerClient{
+		getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+			calls.Add(1)
+
+			return &awssm.GetSecretValueOutput{SecretString: &secval}, nil
+		},
+	}
+
+	c, err := New(t.Context(), 4, 1*time.Minute, WithSecretsManagerClient(smclient))
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	const n = 32
+
+	var wg sync.WaitGroup
+
+	results := make([]string, n)
+	errs := make([]error, n)
+
+	wg.Add(n)
+
+	for i := range n {
+		go func(i int) {
+			defer wg.Done()
+
+			results[i], errs[i] = c.GetSecretString(t.Context(), "same_key")
+		}(i)
+	}
+
+	wg.Wait()
+
+	require.Equal(t, int32(1), calls.Load(), "concurrent cold callers must collapse to a single upstream lookup")
+
+	for i := range n {
+		require.NoError(t, errs[i])
+		require.Equal(t, secval, results[i])
+	}
 }

@@ -27,6 +27,10 @@ type Cache struct {
 //   - TTL-driven refresh via ttl to keep rotated secrets up to date;
 //   - option-based AWS and client customization for real or mocked backends.
 //
+// Edge cases: a size <= 0 is clamped to a capacity of 1, and a ttl <= 0
+// disables value caching (every call performs a fresh upstream lookup) while
+// still coalescing concurrent lookups for the same key via single-flight.
+//
 // The returned Cache is safe for concurrent use.
 func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cache, error) {
 	cfg, err := loadConfig(ctx, opts...)
@@ -83,10 +87,37 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 // The returned output is shared by reference with every other caller of the
 // same key: treat it as read-only. Use [Cache.GetSecretBinary] or
 // [Cache.GetSecretString] for values that are safe to modify.
+//
+// An empty key yields [ErrEmptySecretID] before any upstream call is made.
+//
+// Caching note: a value-less or nil response is cached like any successful
+// value for the TTL, so [ErrEmptySecret] persists until expiry or an explicit
+// [Cache.Remove]/[Cache.Reset]; genuine upstream errors are never cached and are
+// retried on the next call.
+//
+// Error matching: a nil upstream response yields [ErrEmptySecret]. Underlying
+// errors propagate through the %w wrapping, so callers can still match AWS SDK
+// typed errors with errors.As (e.g. new(*types.ResourceNotFoundException) for a
+// missing secret) and context/abort errors with errors.Is (against
+// [github.com/tecnickcom/gogen/pkg/sfcache.ErrLookupAborted], [context.Canceled],
+// or [context.DeadlineExceeded]).
 func (c *Cache) GetSecretData(ctx context.Context, key string) (*awssm.GetSecretValueOutput, error) {
+	if key == "" {
+		// An empty secret id is always rejected by AWS: fail fast without a
+		// wasted upstream call or a cache entry under the empty key.
+		return nil, ErrEmptySecretID
+	}
+
 	val, err := c.cache.Lookup(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("unable to retrieve secret id %s: %w", key, err)
+	}
+
+	if val == nil {
+		// The AWS SDK never returns a nil output on success, but an injected
+		// SecretsManagerClient can: guard against it so the getters never
+		// dereference a nil output.
+		return nil, fmt.Errorf("%w: %s", ErrEmptySecret, key)
 	}
 
 	return val, nil
@@ -97,7 +128,9 @@ func (c *Cache) GetSecretData(ctx context.Context, key string) (*awssm.GetSecret
 // If the secret is stored as SecretString, the value is converted to []byte;
 // otherwise a copy of SecretBinary is returned. The returned slice is never
 // shared with the cache, so callers may safely zero it after use without
-// corrupting the value served to other callers.
+// corrupting the value served to other callers. When the response holds no
+// value at all (neither SecretString nor SecretBinary), it returns
+// [ErrEmptySecret].
 func (c *Cache) GetSecretBinary(ctx context.Context, key string) ([]byte, error) {
 	val, err := c.GetSecretData(ctx, key)
 	if err != nil {
@@ -108,6 +141,10 @@ func (c *Cache) GetSecretBinary(ctx context.Context, key string) ([]byte, error)
 		return []byte(aws.ToString(val.SecretString)), nil
 	}
 
+	if val.SecretBinary == nil {
+		return nil, fmt.Errorf("%w: %s", ErrEmptySecret, key)
+	}
+
 	// Return a copy: the cached output is shared by reference across callers.
 	return slices.Clone(val.SecretBinary), nil
 }
@@ -116,7 +153,9 @@ func (c *Cache) GetSecretBinary(ctx context.Context, key string) ([]byte, error)
 //
 // If the secret is stored as SecretBinary, the bytes are converted to string;
 // otherwise SecretString is returned directly. This simplifies application code
-// that expects textual secrets such as DSNs, API keys, or tokens.
+// that expects textual secrets such as DSNs, API keys, or tokens. When the
+// response holds no value at all (neither SecretString nor SecretBinary), it
+// returns [ErrEmptySecret].
 func (c *Cache) GetSecretString(ctx context.Context, key string) (string, error) {
 	val, err := c.GetSecretData(ctx, key)
 	if err != nil {
@@ -125,6 +164,10 @@ func (c *Cache) GetSecretString(ctx context.Context, key string) (string, error)
 
 	if val.SecretString != nil {
 		return aws.ToString(val.SecretString), nil
+	}
+
+	if val.SecretBinary == nil {
+		return "", fmt.Errorf("%w: %s", ErrEmptySecret, key)
 	}
 
 	return string(val.SecretBinary), nil

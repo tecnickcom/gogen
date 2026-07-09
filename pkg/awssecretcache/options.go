@@ -44,6 +44,10 @@ func WithSrvOptionFuncs(opt ...SrvOptionFunc) Option {
 // This is primarily useful for tests and advanced integrations where the
 // caller needs full control over request behavior without creating a real
 // secretsmanager.Client from aws.Config.
+//
+// When set, the injected client is used as-is: the AWS configuration is not
+// loaded and the AWS/service options ([WithAWSOptions], [WithSrvOptionFuncs],
+// [WithEndpointMutable], [WithEndpointImmutable]) are ignored.
 func WithSecretsManagerClient(smclient SecretsManagerClient) Option {
 	return func(c *cfg) {
 		c.smclient = smclient
