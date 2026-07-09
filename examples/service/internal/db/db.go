@@ -10,7 +10,7 @@ import (
 type SQLConn interface {
 	DB() *sql.DB
 	HealthCheck(ctx context.Context) error
-	Shutdown(_ context.Context) error
+	Shutdown(ctx context.Context) error
 }
 
 // Databases holds the database connections.

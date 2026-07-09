@@ -58,7 +58,7 @@ func TestInstrumentDBNotInitialized(t *testing.T) {
 	m := New()
 
 	err := m.InstrumentDB("db_test", nil)
-	require.Error(t, err, "expected error when the metrics client is not initialized")
+	require.ErrorIs(t, err, errMetricsClientNotInitialized, "expected error when the metrics client is not initialized")
 }
 
 func TestSqlOpenNotInitialized(t *testing.T) {
@@ -67,7 +67,7 @@ func TestSqlOpenNotInitialized(t *testing.T) {
 	m := New()
 
 	db, err := m.SqlOpen("sqlmock", "test_dsn")
-	require.Error(t, err, "expected error when the metrics client is not initialized")
+	require.ErrorIs(t, err, errMetricsClientNotInitialized, "expected error when the metrics client is not initialized")
 	require.Nil(t, db)
 }
 

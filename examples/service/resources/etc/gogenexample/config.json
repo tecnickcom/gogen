@@ -11,7 +11,7 @@
       "conn_max_idle_count": 5,
       "conn_max_idle_time": 60,
       "conn_max_lifetime": 3600,
-      "conn_max_open": 10,
+      "conn_max_open": 50,
       "dsn": "",
       "timeout_ping": 1
     },
@@ -19,7 +19,7 @@
       "conn_max_idle_count": 5,
       "conn_max_idle_time": 60,
       "conn_max_lifetime": 3600,
-      "conn_max_open": 10,
+      "conn_max_open": 50,
       "dsn": "",
       "timeout_ping": 1
     }

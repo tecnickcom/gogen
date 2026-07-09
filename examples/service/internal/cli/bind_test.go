@@ -79,6 +79,19 @@ func Test_bind(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "succeed with service enabled and database disabled",
+			fcfg: func(cfg appConfig) appConfig {
+				cfg.Enabled = true
+				cfg.DB.Enabled = false
+				cfg.Servers.Monitoring.Address = ":30051"
+				cfg.Servers.Private.Address = ":30052"
+				cfg.Servers.Public.Address = ":30053"
+
+				return cfg
+			},
+			wantErr: false,
+		},
+		{
 			name: "fails with monitoring service port already bound",
 			fcfg: func(cfg appConfig) appConfig {
 				cfg.Enabled = false
