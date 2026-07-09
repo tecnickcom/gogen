@@ -27,7 +27,10 @@ This package centralizes that integration into a small reusable client.
   - [Client.Put] to upload from an [io.Reader].
   - [Client.Get] to fetch an object and access its body stream.
   - [Client.ListKeys] to list object keys, optionally filtered by prefix.
+  - [Client.ListObjects] to list objects with per-object metadata (size,
+    last-modified, ETag), optionally filtered by prefix.
   - [Client.Delete] to remove an object by key.
+  - [Client.HealthCheck] to verify bucket reachability and access permissions.
 
 # Configuration & Extensibility
 
@@ -36,6 +39,8 @@ and exposes option hooks for advanced scenarios:
 
   - [WithAWSOptions] to pass generic AWS config options,
   - [WithSrvOptionFuncs] to customize S3 service options,
+  - [WithS3Client] to inject a custom S3 implementation (tests and advanced
+    integrations; skips AWS configuration loading),
   - [WithEndpointMutable] and [WithEndpointImmutable] for endpoint overrides
     (useful for local S3-compatible environments and tests).
 
@@ -69,6 +74,10 @@ and exposes option hooks for advanced scenarios:
 	_ = keys
 
 	if err := c.Delete(ctx, "reports/old.json"); err != nil {
+	    return err
+	}
+
+	if err := c.HealthCheck(ctx); err != nil {
 	    return err
 	}
 */

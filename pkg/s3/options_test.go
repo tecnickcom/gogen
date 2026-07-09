@@ -32,6 +32,16 @@ func Test_WithAWSOptions(t *testing.T) {
 	}
 }
 
+func Test_WithS3Client(t *testing.T) {
+	t.Parallel()
+
+	conf := &cfg{}
+	require.Nil(t, conf.s3Client)
+
+	WithS3Client(s3mock{})(conf)
+	require.NotNil(t, conf.s3Client)
+}
+
 func Test_WithEndpointMutable(t *testing.T) {
 	t.Parallel()
 

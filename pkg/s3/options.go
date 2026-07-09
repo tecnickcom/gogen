@@ -30,6 +30,20 @@ func WithSrvOptionFuncs(opt ...SrvOptionFunc) Option {
 	}
 }
 
+// WithS3Client injects a custom S3 implementation.
+//
+// This is primarily useful for tests and advanced integrations where the caller
+// needs full control over request behavior without creating a real s3.Client
+// from aws.Config. When set, the injected client is used as-is: the AWS
+// configuration is not loaded and the AWS/service options ([WithAWSOptions],
+// [WithSrvOptionFuncs], [WithEndpointMutable], [WithEndpointImmutable]) are
+// ignored.
+func WithS3Client(client S3) Option {
+	return func(c *cfg) {
+		c.s3Client = client
+	}
+}
+
 // WithEndpointMutable sets BaseEndpoint while allowing SDK endpoint behavior to remain mutable.
 func WithEndpointMutable(url string) Option {
 	return WithSrvOptionFuncs(
