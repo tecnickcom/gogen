@@ -145,3 +145,43 @@ func TestWithMaxPasswordLength(t *testing.T) {
 	WithMaxPasswordLength(v)(c)
 	require.Equal(t, v, c.maxPLen)
 }
+
+func TestWithFormat(t *testing.T) {
+	t.Parallel()
+
+	c := defaultParams()
+
+	require.Equal(t, FormatJSON, c.format)
+	require.Equal(t, formatBit(FormatJSON), c.acceptedFormats)
+
+	WithFormat(FormatPHC)(c)
+	require.Equal(t, FormatPHC, c.format)
+	require.Equal(t, formatBit(FormatPHC), c.acceptedFormats)
+}
+
+func TestWithFormat_acceptBoth(t *testing.T) {
+	t.Parallel()
+
+	c := defaultParams()
+
+	WithFormat(FormatPHC, FormatJSON)(c)
+	require.Equal(t, FormatPHC, c.format)
+	require.Equal(t, formatBit(FormatPHC)|formatBit(FormatJSON), c.acceptedFormats)
+}
+
+func TestWithFormat_normalize(t *testing.T) {
+	t.Parallel()
+
+	c := defaultParams()
+
+	// An unknown emit format falls back to JSON.
+	WithFormat(Format(9))(c)
+	require.Equal(t, FormatJSON, c.format)
+	require.Equal(t, formatBit(FormatJSON), c.acceptedFormats)
+
+	// Unknown accept values are ignored, not aliased to a supported format:
+	// widening acceptance silently would delay format convergence.
+	WithFormat(FormatPHC, Format(9))(c)
+	require.Equal(t, FormatPHC, c.format)
+	require.Equal(t, formatBit(FormatPHC), c.acceptedFormats)
+}

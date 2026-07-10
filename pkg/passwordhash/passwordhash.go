@@ -63,6 +63,29 @@ Example JSON (before base64 encoding):
 
 The final stored value is the base64 encoding of the above JSON (~200 bytes).
 
+Alternatively, [WithFormat]([FormatPHC]) selects the PHC string format shared by
+Argon2 implementations across languages:
+
+	$argon2id$v=19$m=65536,t=3,p=4$<base64 salt>$<base64 key>
+
+The JSON format is fully self-contained but is a gogen-specific schema; the PHC
+format is what external tooling (PHP's password_hash, Python's argon2-cffi and
+passlib, the Argon2 reference CLI) reads and writes directly. [Params.PasswordVerify],
+[Params.PasswordNeedsRehash], and their encrypted counterparts auto-detect which
+format a stored value uses — a leading '$' marks PHC — so switching formats never
+invalidates an existing hash. [Params.PasswordNeedsRehash] also steers format
+migration: a hash stored in a format outside the configured accepted set (see
+[WithFormat]) is reported as needing a rehash, so an existing store converges to
+the configured format through the ordinary rehash-on-login flow — or stays
+deliberately mixed when both formats are listed as accepted.
+
+The accepted PHC envelope is deliberately strict: argon2id only (a PHC string
+minted by an argon2i or argon2d implementation fails with [ErrAlgoMismatch]),
+version 19 only, cost parameters in the standard m,t,p order with the optional
+keyid and data attributes rejected, threads up to 255, canonical unpadded
+base64 for salt and key (embedded newlines and non-canonical trailing bits are
+rejected), and the same deserialization bounds that protect the JSON format.
+
 # Features
 
   - Argon2id algorithm: resists both side-channel (Argon2i) and GPU-based
@@ -96,13 +119,19 @@ The final stored value is the base64 encoding of the above JSON (~200 bytes).
     guidance for its hardware profile.
   - Portable format: JSON + base64 storage can be decoded by any language with
     standard libraries, enabling cross-platform password verification.
+  - PHC interoperability: [WithFormat] can emit the standard PHC string format
+    ($argon2id$v=19$m=...,t=...,p=...$salt$key), and verification auto-detects and
+    accepts argon2id PHC hashes produced by other implementations (PHP's
+    password_hash, Python's argon2-cffi and passlib, the Argon2 reference CLI),
+    easing migration to and from other ecosystems without bulk re-hashing.
 
 # Verification Flow
 
  1. Reject the stored string before any decoding if it exceeds the maximum
     accepted size (16 KiB), bounding the cost of untrusted input.
- 2. Decode the stored base64 string to retrieve the JSON object.
- 3. Unmarshal the JSON to recover algorithm, version, parameters, and salt.
+ 2. Detect the serialization (a leading '$' marks PHC, otherwise base64 JSON) and
+    decode the stored string to recover algorithm, version, parameters, and salt.
+ 3. For PHC, reconstruct the salt and key lengths from the decoded byte lengths.
  4. Validate that the embedded parameters are within accepted bounds and
     internally consistent (the salt and key byte lengths match their declared
     sizes), rejecting forged or corrupted blobs before any computation.
@@ -142,7 +171,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/encode"
 	"github.com/tecnickcom/gogen/pkg/encrypt"
 	"github.com/tecnickcom/gogen/pkg/random"
 	"golang.org/x/crypto/argon2"
@@ -317,6 +345,16 @@ type Params struct {
 	// It must have a length not greater than 2^(32)-1 bytes.
 	maxPLen uint32
 
+	// format selects the serialization emitted by PasswordHash. It defaults to
+	// FormatJSON (the zero value) and never travels with the hash; see WithFormat.
+	format Format
+
+	// acceptedFormats is the bitmask of formats (see formatBit) that
+	// PasswordNeedsRehash treats as current; a stored hash in any other format is
+	// reported as needing a rehash so the store converges to the configured
+	// format. It always includes format itself; see WithFormat.
+	acceptedFormats uint8
+
 	// rnd is the random generator.
 	rnd *random.Rnd
 }
@@ -337,16 +375,18 @@ type Hashed struct {
 // defaultParams returns the default parameter values.
 func defaultParams() *Params {
 	return &Params{
-		Algo:    DefaultAlgo,
-		Version: argon2.Version,
-		KeyLen:  DefaultKeyLen,
-		SaltLen: DefaultSaltLen,
-		Time:    DefaultTime,
-		Memory:  DefaultMemory,
-		Threads: defaultThreads,
-		minPLen: DefaultMinPasswordLength,
-		maxPLen: DefaultMaxPasswordLength,
-		rnd:     random.New(nil),
+		Algo:            DefaultAlgo,
+		Version:         argon2.Version,
+		KeyLen:          DefaultKeyLen,
+		SaltLen:         DefaultSaltLen,
+		Time:            DefaultTime,
+		Memory:          DefaultMemory,
+		Threads:         defaultThreads,
+		minPLen:         DefaultMinPasswordLength,
+		maxPLen:         DefaultMaxPasswordLength,
+		format:          FormatJSON,
+		acceptedFormats: formatBit(FormatJSON),
+		rnd:             random.New(nil),
 	}
 }
 
@@ -391,12 +431,17 @@ func New(opts ...Option) *Params {
 }
 
 // PasswordHash hashes password using Argon2id and returns a portable,
-// self-describing base64-encoded JSON string suitable for long-term storage.
+// self-describing string suitable for long-term storage.
 //
 // A cryptographically random salt of length [Params.SaltLen] is generated for
 // each call, so two hashes of the same password will always differ.
 // The returned string embeds the algorithm, version, all tuning parameters,
 // the salt, and the derived key — everything needed for future verification.
+//
+// The serialization is base64-encoded JSON by default, or the interoperable PHC
+// string format when [WithFormat](FormatPHC) is set. Both are accepted by
+// [Params.PasswordVerify], which auto-detects the format, so the choice only
+// affects what other systems read.
 //
 // Returns an error if the configuration is invalid ([ErrInvalidParams], for
 // example a zero-value Params built without [New]), if password is shorter
@@ -409,11 +454,13 @@ func (ph *Params) PasswordHash(password string) (string, error) {
 		return "", err
 	}
 
-	return encode.Serialize(data) //nolint:wrapcheck
+	return ph.serialize(data)
 }
 
-// PasswordVerify checks whether password matches a hash produced by
-// [Params.PasswordHash].
+// PasswordVerify checks whether password matches a stored hash produced by
+// [Params.PasswordHash] in either serialization format, or an argon2id PHC
+// string minted by another implementation (see the package overview for the
+// accepted envelope).
 //
 // The stored hash is decoded, its algorithm and version are validated, the
 // candidate password is re-hashed with the stored parameters and salt, and
@@ -444,11 +491,9 @@ func (ph *Params) PasswordVerify(password, hash string) (bool, error) {
 		return false, err
 	}
 
-	data := &Hashed{}
-
-	err = encode.Deserialize(hash, data)
+	data, err := decodeHash(hash)
 	if err != nil {
-		return false, fmt.Errorf("%w: unable to decode the hash string: %w", ErrInvalidHashData, err)
+		return false, err
 	}
 
 	return ph.passwordVerifyData(password, data)
@@ -523,33 +568,42 @@ func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool
 	return ok, err
 }
 
-// PasswordNeedsRehash reports whether a hash produced by [Params.PasswordHash]
-// was created with parameters that differ from this [Params] configuration, and
-// so should be re-hashed. Because the storage format is self-describing,
+// PasswordNeedsRehash reports whether a stored hash — produced by
+// [Params.PasswordHash] in either serialization format, or imported as an
+// argon2id PHC string from another implementation — was created with parameters
+// that differ from this [Params] configuration, and so should be re-hashed.
+// Because the storage format is self-describing,
 // parameters can be upgraded (or an algorithm/version changed) without
 // invalidating stored hashes; PasswordNeedsRehash lets callers detect and
 // transparently upgrade a stored hash on the next successful login.
 //
 // It returns true if the stored algorithm, version, key length, salt length,
-// time, memory, or threads differ from the current configuration. It returns an
+// time, memory, or threads differ from the current configuration, or if the
+// stored value's serialization is not among the accepted formats (see
+// [WithFormat]) — so a store gradually converges to the configured format
+// through the same rehash-on-login flow that upgrades parameters. It returns an
 // error only if the hash string is oversized or malformed, or embeds
-// out-of-range parameters; a well-formed hash that simply matches the current
-// parameters returns (false, nil). PasswordNeedsRehash does not verify the
-// password — call it after a successful [Params.PasswordVerify].
+// out-of-range parameters; a well-formed hash that matches the current
+// parameters and an accepted format returns (false, nil). PasswordNeedsRehash
+// does not verify the password — call it after a successful
+// [Params.PasswordVerify].
 func (ph *Params) PasswordNeedsRehash(hash string) (bool, error) {
 	err := validateHashLen(hash)
 	if err != nil {
 		return false, err
 	}
 
-	data := &Hashed{}
-
-	err = encode.Deserialize(hash, data)
+	data, err := decodeHash(hash)
 	if err != nil {
-		return false, fmt.Errorf("%w: unable to decode the hash string: %w", ErrInvalidHashData, err)
+		return false, err
 	}
 
-	return ph.needsRehashData(data)
+	need, err := ph.needsRehashData(data)
+	if err != nil {
+		return false, err
+	}
+
+	return need || !ph.acceptsFormat(detectFormat(hash)), nil
 }
 
 // EncryptPasswordNeedsRehash is the pepper-encrypted counterpart to

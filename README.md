@@ -110,7 +110,7 @@ This scaffolds a new web service from the provided configuration.
 - [mysqllock](pkg/mysqllock) - Distributed locking using MySQL. `mysql`, `locking`, `distributed`
 - [numtrie](pkg/numtrie) - Trie data structure for numeric keys with partial matching. `data structure`, `trie`
 - [paging](pkg/paging) - Helpers for data pagination. `pagination`, `utilities`
-- [passwordhash](pkg/passwordhash) - Password hashing and verification. `password hashing`, `security`
+- [passwordhash](pkg/passwordhash) - Password hashing and verification. `password hashing`, `security`, `argon2id`, `PHC`
 - [passwordpwned](pkg/passwordpwned) - Password breach checking via HaveIBeenPwned. `password breach`, `security`
 - [periodic](pkg/periodic) - Periodic task scheduling. `scheduling`, `tasks`
 - [phonekeypad](pkg/phonekeypad) - Phone keypad mapping utilities. `phone`, `mapping`, `utilities`

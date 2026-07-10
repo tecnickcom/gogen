@@ -80,3 +80,45 @@ func WithMaxPasswordLength(v uint32) Option {
 		ph.maxPLen = v
 	}
 }
+
+// WithFormat selects the serialization emitted by [Params.PasswordHash] and the
+// set of formats [Params.PasswordNeedsRehash] treats as current.
+//
+// f is the format newly minted hashes use: [FormatJSON] (the default
+// self-describing base64 JSON) or [FormatPHC] (the cross-language PHC string
+// format). Any other value is normalized to [FormatJSON].
+//
+// accept optionally lists additional formats that PasswordNeedsRehash reports
+// as current; unknown values are ignored rather than aliased to a format the
+// caller did not request. By default only f is accepted, so an existing store
+// converges to f through the ordinary rehash-on-login flow: a stored hash in
+// any other format is reported as needing a rehash even when its Argon2
+// parameters match the configuration. Listing the other format keeps a
+// deliberately mixed store with no forced convergence:
+//
+//	WithFormat(FormatPHC)             // emit PHC, converge existing hashes to PHC
+//	WithFormat(FormatPHC, FormatJSON) // emit PHC, keep existing JSON hashes as-is
+//
+// Verification is unaffected: [Params.PasswordVerify] auto-detects and accepts
+// every supported format regardless of this option, so no configuration can
+// lock out an existing credential.
+//
+// It has no effect on the pepper-encrypted methods ([Params.EncryptPasswordHash]
+// and friends): their output is an opaque AES-GCM ciphertext, so the inner
+// serialization is never read by another system and there is nothing to make
+// interoperable.
+func WithFormat(f Format, accept ...Format) Option {
+	return func(ph *Params) {
+		ph.format = normalizeFormat(f)
+		ph.acceptedFormats = formatBit(ph.format)
+
+		for _, a := range accept {
+			// Only supported values join the accepted set: aliasing an unknown value
+			// to a real format would silently widen acceptance beyond what the
+			// caller asked for, delaying convergence instead of failing safe.
+			if a == FormatJSON || a == FormatPHC {
+				ph.acceptedFormats |= formatBit(a)
+			}
+		}
+	}
+}

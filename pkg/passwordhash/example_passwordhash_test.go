@@ -3,6 +3,7 @@ package passwordhash_test
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/tecnickcom/gogen/pkg/passwordhash"
 )
@@ -85,6 +86,56 @@ func ExampleParams_EncryptPasswordVerify() {
 	// Output:
 	// true
 	// false
+}
+
+func ExampleWithFormat() {
+	// WithFormat(FormatPHC) emits the cross-language PHC string format instead of
+	// the default base64 JSON. The same Params verifies it back: the format is
+	// auto-detected from the stored value.
+	p := passwordhash.New(
+		passwordhash.WithFormat(passwordhash.FormatPHC),
+		passwordhash.WithMemory(16_384),
+		passwordhash.WithThreads(1),
+	)
+
+	secret := "Example-Password-04"
+
+	hash, err := p.PasswordHash(secret)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(strings.HasPrefix(hash, "$argon2id$v=19$"))
+
+	ok, err := p.PasswordVerify(secret, hash)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(ok)
+
+	// Output:
+	// true
+	// true
+}
+
+func ExampleParams_PasswordVerify_phc() {
+	// A hash produced by another Argon2 implementation in the standard PHC string
+	// format is verified transparently, with no configuration change: verification
+	// detects the format from the stored value's leading '$'.
+	p := passwordhash.New()
+
+	phc := "$argon2id$v=19$m=65536,t=1,p=16$5wnnitUhezr1gnGhyMEU7A$BcbRTU4SCrd14bVS4sqPFbwonv+yiogOnxbV1pQLdV0"
+
+	ok, err := p.PasswordVerify("test", phc)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(ok)
+
+	// Output:
+	// true
 }
 
 func ExampleParams_PasswordNeedsRehash() {

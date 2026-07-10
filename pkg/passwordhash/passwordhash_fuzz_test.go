@@ -61,8 +61,10 @@ func fuzzCostAboveBudget(hash string) bool {
 		return false
 	}
 
-	probe := &Hashed{}
-	if encode.Deserialize(hash, probe) != nil || probe.Params == nil {
+	// Probe with the same format-detecting decoder the entry points use, so a
+	// costly PHC blob is skipped just like a costly JSON one.
+	probe, err := decodeHash(hash)
+	if err != nil || probe.Params == nil {
 		return false
 	}
 
@@ -104,6 +106,10 @@ func FuzzPasswordVerify(f *testing.F) {
 	f.Add("Test-Password-01234", badParamsBlob)
 	f.Add("Test-Password-01234", testRefHash[:len(testRefHash)/2])
 	f.Add("Test-Password-01234", encHash)
+	// PHC-format seeds: a valid reference and a truncated one, so the fuzzer
+	// explores the auto-detected '$'-prefixed decode path as well.
+	f.Add("test", testRefHashPHC)
+	f.Add("Test-Password-01234", testRefHashPHC[:len(testRefHashPHC)/2])
 
 	f.Fuzz(func(t *testing.T, password, hash string) {
 		if fuzzCostAboveBudget(hash) {

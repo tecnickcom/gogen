@@ -38,3 +38,19 @@ func Benchmark_EncryptPasswordHash(b *testing.B) {
 		_, _ = p.EncryptPasswordHash(key, secret)
 	}
 }
+
+func BenchmarkPasswordVerify_PHC(b *testing.B) {
+	p := New(WithFormat(FormatPHC))
+
+	// Argon2 dominates the cost, so this should track BenchmarkPasswordVerify
+	// closely; it pins the PHC parse path against accidental regressions
+	// (for example an O(n^2) slip in segment handling).
+	hash, err := p.PasswordHash("Test-Password-01234")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for b.Loop() {
+		_, _ = p.PasswordVerify("Test-Password-01234", hash)
+	}
+}

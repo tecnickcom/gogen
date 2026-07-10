@@ -585,6 +585,34 @@ func TestMintVerifyEnvelope(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, ok)
+
+	// The envelope invariant holds for the PHC emit path as well: a maximal PHC
+	// hash stays under the pre-decode size guard, round-trips through the
+	// canonical encode/decode (including salt and key length reconstruction),
+	// and needs no rehash under the configuration that minted it.
+	phcP := New(
+		WithFormat(FormatPHC),
+		WithKeyLen(maxVerifyKeyLen),
+		WithSaltLen(maxVerifySaltLen),
+		WithTime(maxVerifyTime),
+		WithMemory(minMemory),
+		WithThreads(1),
+	)
+
+	phcHash, err := phcP.PasswordHash(secret)
+
+	require.NoError(t, err)
+	require.LessOrEqual(t, len(phcHash), maxHashLen)
+
+	ok, err = phcP.PasswordVerify(secret, phcHash)
+
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	need, err := phcP.PasswordNeedsRehash(phcHash)
+
+	require.NoError(t, err)
+	require.False(t, need)
 }
 
 func TestNew_maxPasswordLengthCrossCheck(t *testing.T) {
