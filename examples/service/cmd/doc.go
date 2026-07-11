@@ -33,8 +33,12 @@ application routes that can be attached to different exposure boundaries
 Configuration is loaded through `nurago/pkg/config` and supports:
 
 - Local configuration files
-- Remote configuration providers (Consul, Etcd, env var payload)
+- Remote configuration via a base64 environment variable payload (the "envvar" provider)
 - Environment variable overrides with the `NURAGOEXAMPLE` prefix
+
+Other remote configuration backends (for example Consul or Etcd) can be
+enabled by registering a loader with the config.WithRemoteLoader option;
+see doc/CONFIG.md for details.
 
 Default ports and timeouts are defined in the CLI config package, and the
 config schema supports enabling or disabling:

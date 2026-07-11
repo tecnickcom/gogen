@@ -54,34 +54,6 @@ func (mr *MockViperMockRecorder) AddConfigPath(in any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddConfigPath", reflect.TypeOf((*MockViper)(nil).AddConfigPath), in)
 }
 
-// AddRemoteProvider mocks base method.
-func (m *MockViper) AddRemoteProvider(provider, endpoint, path string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddRemoteProvider", provider, endpoint, path)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddRemoteProvider indicates an expected call of AddRemoteProvider.
-func (mr *MockViperMockRecorder) AddRemoteProvider(provider, endpoint, path any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRemoteProvider", reflect.TypeOf((*MockViper)(nil).AddRemoteProvider), provider, endpoint, path)
-}
-
-// AddSecureRemoteProvider mocks base method.
-func (m *MockViper) AddSecureRemoteProvider(provider, endpoint, path, secretkeyring string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddSecureRemoteProvider", provider, endpoint, path, secretkeyring)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddSecureRemoteProvider indicates an expected call of AddSecureRemoteProvider.
-func (mr *MockViperMockRecorder) AddSecureRemoteProvider(provider, endpoint, path, secretkeyring any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddSecureRemoteProvider", reflect.TypeOf((*MockViper)(nil).AddSecureRemoteProvider), provider, endpoint, path, secretkeyring)
-}
-
 // AllKeys mocks base method.
 func (m *MockViper) AllKeys() []string {
 	m.ctrl.T.Helper()
@@ -180,20 +152,6 @@ func (m *MockViper) ReadInConfig() error {
 func (mr *MockViperMockRecorder) ReadInConfig() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadInConfig", reflect.TypeOf((*MockViper)(nil).ReadInConfig))
-}
-
-// ReadRemoteConfig mocks base method.
-func (m *MockViper) ReadRemoteConfig() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadRemoteConfig")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ReadRemoteConfig indicates an expected call of ReadRemoteConfig.
-func (mr *MockViperMockRecorder) ReadRemoteConfig() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadRemoteConfig", reflect.TypeOf((*MockViper)(nil).ReadRemoteConfig))
 }
 
 // SetConfigName mocks base method.

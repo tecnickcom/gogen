@@ -58,6 +58,12 @@ func (tc *testConfig) Validate() error {
 	return tc.validateErr
 }
 
+// nopRemoteLoader is a no-op remote loader used to exercise code paths that
+// only check for the presence of a registered loader.
+func nopRemoteLoader(_ *RemoteSourceConfig) (io.Reader, error) {
+	return strings.NewReader(`{}`), nil
+}
+
 func Test_configureConfigSearchPath(t *testing.T) {
 	t.Parallel()
 
@@ -140,7 +146,8 @@ func Test_loadLocalConfig(t *testing.T) {
 		configContent  []byte
 		envDataContent []byte
 		setupViper     func(ctrl *gomock.Controller) Viper
-		want           *remoteSourceConfig
+		remoteLoader   RemoteLoaderFunc
+		want           *RemoteSourceConfig
 		wantErr        bool
 	}{
 		{
@@ -176,7 +183,7 @@ func Test_loadLocalConfig(t *testing.T) {
 
 				return mock
 			},
-			want:    &remoteSourceConfig{},
+			want:    &RemoteSourceConfig{},
 			wantErr: false,
 		},
 		{
@@ -189,7 +196,7 @@ func Test_loadLocalConfig(t *testing.T) {
 
 				return mock
 			},
-			want:    &remoteSourceConfig{},
+			want:    &RemoteSourceConfig{},
 			wantErr: false,
 		},
 		{
@@ -198,7 +205,7 @@ func Test_loadLocalConfig(t *testing.T) {
 			setupViper: func(_ *gomock.Controller) Viper {
 				return viper.New()
 			},
-			want: &remoteSourceConfig{
+			want: &RemoteSourceConfig{
 				Provider:      defaultRemoteConfigProvider,
 				Endpoint:      defaultRemoteConfigEndpoint,
 				Path:          defaultRemoteConfigPath,
@@ -211,19 +218,15 @@ func Test_loadLocalConfig(t *testing.T) {
 			name: "succeed from populated file",
 			configContent: []byte(`
 {
-  "remoteConfigProvider": "consul",
-  "remoteConfigEndpoint": "remote:1234",
-  "remoteConfigPath": "/config/path"
+  "remoteConfigProvider": "envvar",
+  "remoteConfigData": "eyJrZXkiOiJvbmUifQ=="
 }`),
 			setupViper: func(_ *gomock.Controller) Viper {
 				return viper.New()
 			},
-			want: &remoteSourceConfig{
-				Provider:      "consul",
-				Endpoint:      "remote:1234",
-				Path:          "/config/path",
-				SecretKeyring: "",
-				Data:          "",
+			want: &RemoteSourceConfig{
+				Provider: "envvar",
+				Data:     "eyJrZXkiOiJvbmUifQ==",
 			},
 			wantErr: false,
 		},
@@ -239,6 +242,27 @@ func Test_loadLocalConfig(t *testing.T) {
 				return viper.New()
 			},
 			wantErr: true,
+		},
+		{
+			name: "succeed with custom provider when a remote loader is registered",
+			configContent: []byte(`
+{
+  "remoteConfigProvider": "consul",
+  "remoteConfigEndpoint": "remote:1234",
+  "remoteConfigPath": "/config/path"
+}`),
+			setupViper: func(_ *gomock.Controller) Viper {
+				return viper.New()
+			},
+			remoteLoader: nopRemoteLoader,
+			want: &RemoteSourceConfig{
+				Provider:      "consul",
+				Endpoint:      "remote:1234",
+				Path:          "/config/path",
+				SecretKeyring: "",
+				Data:          "",
+			},
+			wantErr: false,
 		},
 	}
 
@@ -267,7 +291,7 @@ func Test_loadLocalConfig(t *testing.T) {
 
 			var testCfg testConfig
 
-			got, err := loadLocalConfig(v, "test_name", configDir, "test", &testCfg)
+			got, err := loadLocalConfig(v, "test_name", configDir, "test", &testCfg, &options{remoteLoader: tt.remoteLoader})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadLocalConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -294,31 +318,31 @@ func Test_validationError(t *testing.T) {
 }
 
 // Test_validateRemoteSourceConfig verifies the imperative provider check: the
-// empty value and every supported provider pass, and an unsupported provider
-// name fails fast with ErrInvalidRemoteConfig.
+// empty value and the built-in envvar provider always pass, while any other
+// provider name is accepted only when a remote loader is registered and fails
+// fast with ErrInvalidRemoteConfig otherwise.
 func Test_validateRemoteSourceConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		cfg     remoteSourceConfig
-		wantErr bool
+		name            string
+		cfg             RemoteSourceConfig
+		hasRemoteLoader bool
+		wantErr         bool
 	}{
-		{name: "empty provider passes", cfg: remoteSourceConfig{}},
-		{name: "consul passes", cfg: remoteSourceConfig{Provider: "consul"}},
-		{name: "envvar passes", cfg: remoteSourceConfig{Provider: providerEnvVar}},
-		{name: "etcd passes", cfg: remoteSourceConfig{Provider: "etcd"}},
-		{name: "etcd3 passes", cfg: remoteSourceConfig{Provider: "etcd3"}},
-		{name: "firestore passes", cfg: remoteSourceConfig{Provider: "firestore"}},
-		{name: "nats passes", cfg: remoteSourceConfig{Provider: "nats"}},
-		{name: "unsupported provider fails", cfg: remoteSourceConfig{Provider: "notaprovider"}, wantErr: true},
+		{name: "empty provider passes", cfg: RemoteSourceConfig{}},
+		{name: "empty provider passes with loader", cfg: RemoteSourceConfig{}, hasRemoteLoader: true},
+		{name: "envvar passes", cfg: RemoteSourceConfig{Provider: providerEnvVar}},
+		{name: "custom provider passes with loader", cfg: RemoteSourceConfig{Provider: "consul"}, hasRemoteLoader: true},
+		{name: "custom provider fails without loader", cfg: RemoteSourceConfig{Provider: "consul"}, wantErr: true},
+		{name: "unsupported provider fails", cfg: RemoteSourceConfig{Provider: "notaprovider"}, wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validateRemoteSourceConfig(&tt.cfg)
+			err := validateRemoteSourceConfig(&tt.cfg, tt.hasRemoteLoader)
 			if tt.wantErr {
 				require.ErrorIs(t, err, ErrInvalidRemoteConfig)
 			} else {
@@ -334,7 +358,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		setupConfigSource func() *remoteSourceConfig
+		setupConfigSource func() *RemoteSourceConfig
 		setupLocalViper   func(ctrl *gomock.Controller) Viper
 		setupRemoteViper  func(ctrl *gomock.Controller) Viper
 		want              *testConfig
@@ -342,8 +366,8 @@ func Test_loadRemoteConfig(t *testing.T) {
 	}{
 		{
 			name: "completes configuration flow",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{}
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{}
 			},
 			setupLocalViper: func(ctrl *gomock.Controller) Viper {
 				mock := NewMockViper(ctrl)
@@ -368,8 +392,8 @@ func Test_loadRemoteConfig(t *testing.T) {
 		},
 		{
 			name: "fails with unmarshal error",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{}
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{}
 			},
 			setupLocalViper: func(ctrl *gomock.Controller) Viper {
 				mock := NewMockViper(ctrl)
@@ -395,8 +419,8 @@ func Test_loadRemoteConfig(t *testing.T) {
 		},
 		{
 			name: "fails with load envvar error",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{
 					Provider: "envvar",
 				}
 			},
@@ -422,10 +446,13 @@ func Test_loadRemoteConfig(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "fails with load remote error",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
-					Provider: "remote",
+			// A custom provider name reaches the defensive default branch when
+			// loadRemoteConfig is called directly without a registered remote
+			// loader (Load rejects it earlier).
+			name: "fails with unsupported provider",
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{
+					Provider: "consul",
 				}
 			},
 			setupLocalViper: func(ctrl *gomock.Controller) Viper {
@@ -451,8 +478,8 @@ func Test_loadRemoteConfig(t *testing.T) {
 		},
 		{
 			name: "loads a valid configuration",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{}
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{}
 			},
 			setupLocalViper: func(ctrl *gomock.Controller) Viper {
 				mock := NewMockViper(ctrl)
@@ -490,7 +517,7 @@ func Test_loadRemoteConfig(t *testing.T) {
 
 			var testCfg testConfig
 
-			err := loadRemoteConfig(lv, rv, rsCfg, "test", &testCfg)
+			err := loadRemoteConfig(lv, rv, rsCfg, "test", &testCfg, &options{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadRemoteConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -509,14 +536,14 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		setupConfigSource func() *remoteSourceConfig
+		setupConfigSource func() *RemoteSourceConfig
 		setupMocks        func(mv *MockViper)
 		wantErr           bool
 	}{
 		{
 			name: "fails with missing data in configuration",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{
 					Provider: "envvar",
 				}
 			},
@@ -524,8 +551,8 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 		},
 		{
 			name: "fail with badly encoded envvar data",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{
 					Provider: "envvar",
 					Data:     "AAA@",
 				}
@@ -534,8 +561,8 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 		},
 		{
 			name: "fail with envvar data read config error",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{
 					Provider: "envvar",
 					Data:     "AA==",
 				}
@@ -547,8 +574,8 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 		},
 		{
 			name: "succeed with envvar data",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{
 					Provider: "envvar",
 					Data:     "AA==",
 				}
@@ -560,8 +587,8 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 		},
 		{
 			name: "succeed with envvar JSON data payload",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
+			setupConfigSource: func() *RemoteSourceConfig {
+				return &RemoteSourceConfig{
 					Provider: "envvar",
 					Data:     "eyJrZXkiOiJvbmUifQ==", // {"key":"one"} in base64
 				}
@@ -607,8 +634,8 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 func Test_loadFromEnvVarSource_with_override(t *testing.T) {
 	t.Setenv("TESTNURAGO_OVKEY", "two_from_env")
 
-	setupConfigSource := func() *remoteSourceConfig {
-		return &remoteSourceConfig{
+	setupConfigSource := func() *RemoteSourceConfig {
+		return &RemoteSourceConfig{
 			Provider: "envvar",
 			Data:     "eyJvdmtleSI6Im9uZSJ9", // {"ovkey":"one"} in base64
 		}
@@ -627,133 +654,6 @@ func Test_loadFromEnvVarSource_with_override(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, os.Getenv("TESTNURAGO_OVKEY"), v.Get("ovkey"))
-}
-
-func Test_loadFromRemoteSource(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name              string
-		setupConfigSource func() *remoteSourceConfig
-		setupMocks        func(mv *MockViper)
-		wantErr           bool
-	}{
-		{
-			name: "fails with missing endpoint in configuration",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
-					Provider:      "remote",
-					Endpoint:      "",
-					Path:          "/config",
-					SecretKeyring: "",
-				}
-			},
-			wantErr: true,
-		},
-		{
-			name: "fails with missing path in configuration",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
-					Provider:      "remote",
-					Endpoint:      "remote:1234",
-					Path:          "",
-					SecretKeyring: "",
-				}
-			},
-			wantErr: true,
-		},
-		{
-			name: "fails adding remote provider",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
-					Provider:      "remote",
-					Endpoint:      "remote:1234",
-					Path:          "/config",
-					SecretKeyring: "",
-				}
-			},
-			setupMocks: func(mv *MockViper) {
-				mv.EXPECT().AddRemoteProvider("remote", "remote:1234", "/config").
-					Return(errors.New("provider error"))
-			},
-			wantErr: true,
-		},
-		{
-			name: "fails adding secure remote provider",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
-					Provider:      "remote",
-					Endpoint:      "remote:1234",
-					Path:          "/config",
-					SecretKeyring: "keyring",
-				}
-			},
-			setupMocks: func(mv *MockViper) {
-				mv.EXPECT().AddSecureRemoteProvider("remote", "remote:1234", "/config", "keyring").
-					Return(errors.New("provider error"))
-			},
-			wantErr: true,
-		},
-		{
-			name: "fails reading remote provider config",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
-					Provider: "remote",
-					Endpoint: "remote:1234",
-					Path:     "/config",
-				}
-			},
-			setupMocks: func(mv *MockViper) {
-				mv.EXPECT().AddRemoteProvider("remote", "remote:1234", "/config")
-				mv.EXPECT().ReadRemoteConfig().Return(errors.New("read remote error"))
-			},
-			wantErr: true,
-		},
-		{
-			name: "fails with invalid source config",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
-					Provider: "remote",
-					Endpoint: "",
-				}
-			},
-			wantErr: true,
-		},
-		{
-			name: "succeed reading remote provider config",
-			setupConfigSource: func() *remoteSourceConfig {
-				return &remoteSourceConfig{
-					Provider: "remote",
-					Endpoint: "remote:1234",
-					Path:     "/config",
-				}
-			},
-			setupMocks: func(mv *MockViper) {
-				mv.EXPECT().AddRemoteProvider("remote", "remote:1234", "/config")
-				mv.EXPECT().ReadRemoteConfig()
-			},
-			wantErr: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-
-			defer ctrl.Finish()
-
-			v := NewMockViper(ctrl)
-			if tt.setupMocks != nil {
-				tt.setupMocks(v)
-			}
-
-			err := loadFromRemoteSource(v, tt.setupConfigSource(), "test")
-			if (err != nil) != tt.wantErr {
-				t.Errorf("loadFromRemoteSource() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
 }
 
 //nolint:gocognit,maintidx
@@ -1194,7 +1094,7 @@ func Test_loadConfig(t *testing.T) {
 				t.Setenv(envKey, base64.StdEncoding.EncodeToString(tt.envDataContent))
 			}
 
-			err = loadConfig(localViper, remoteViper, "cmd", tmpConfigDir, "test", tt.targetConfig)
+			err = loadConfig(localViper, remoteViper, "cmd", tmpConfigDir, "test", tt.targetConfig, &options{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 			}

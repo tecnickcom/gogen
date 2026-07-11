@@ -10,7 +10,8 @@ It centralizes:
   - default values
   - local file discovery
   - environment overrides
-  - optional remote configuration providers
+  - optional file-less configuration via environment data (the "envvar" provider)
+  - optional pluggable remote sources via WithRemoteLoader
   - final schema validation
 
 An application integrates by implementing Configuration:
@@ -27,9 +28,9 @@ The effective configuration is built in this order (later steps override earlier
 ones):
  1. Built-in defaults from this package (log and shutdown settings), plus
     application defaults from SetDefaults.
- 2. Local config file (default: config.json) searched in:
+ 2. Local config file (default: config.json) searched in the explicit
+    configDir (if provided) first, and then in:
     ./, $HOME/.<cmdName>/, /etc/<cmdName>/
-    and optionally an explicit configDir (if provided).
  3. Environment variables for remote source selection:
     <PREFIX>_REMOTECONFIGPROVIDER,
     <PREFIX>_REMOTECONFIGENDPOINT,
@@ -38,8 +39,8 @@ ones):
     <PREFIX>_REMOTECONFIGDATA.
  4. Remote configuration loading, when configured:
     - provider "envvar": decodes base64 JSON from REMOTECONFIGDATA
-    - other providers: uses Viper remote backends (for example consul, etcd,
-    etcd3, firestore, nats), optionally with a secret keyring
+    - any other provider: delegated to the application-supplied RemoteLoaderFunc
+    registered with the WithRemoteLoader option
  5. Environment variables are also applied on the final Viper instance, so they
     can override file/remote values (useful for secrets and runtime overrides).
     Only keys registered with a default (via SetDefaults) or present in the
@@ -53,7 +54,11 @@ ones):
 
 Top features for developers:
   - Predictable precedence model: easy to reason about which value wins.
-  - Remote provider support: move configuration out of local files when needed.
+  - File-less deployments: the "envvar" provider loads the whole configuration
+    from a single environment variable.
+  - Pluggable remote sources: WithRemoteLoader plugs in any remote storage
+    backend (e.g. consul, etcd, vault, S3) without adding its client
+    dependencies to this package.
   - Sensible shared defaults: common log and shutdown settings are ready to use.
   - Validation hook: fail fast on invalid runtime configuration.
   - Testability: Viper is abstracted behind an interface for easy mocking.
@@ -64,8 +69,9 @@ Using this package reduces startup/config code in each service, improves
 configuration consistency across environments, and keeps configuration behavior
 explicit and auditable.
 
-For a complete implementation example, see:
-examples/service/internal/cli/config.go
+For a complete implementation example, see the Configuration implementation in
+examples/service/internal/cli/config.go and the Load call in
+examples/service/internal/cli/cli.go
 */
 package config
 
@@ -79,7 +85,6 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	_ "github.com/spf13/viper/remote" //nolint:revive,nolintlint
 )
 
 // General constants.
@@ -177,8 +182,6 @@ type Configuration interface {
 //nolint:interfacebloat
 type Viper interface {
 	AddConfigPath(in string)
-	AddRemoteProvider(provider, endpoint, path string) error
-	AddSecureRemoteProvider(provider, endpoint, path, secretkeyring string) error
 	AllKeys() []string
 	AutomaticEnv()
 	BindEnv(input ...string) error
@@ -186,7 +189,6 @@ type Viper interface {
 	Get(key string) any
 	ReadConfig(in io.Reader) error
 	ReadInConfig() error
-	ReadRemoteConfig() error
 	SetConfigName(in string)
 	SetConfigType(in string)
 	SetDefault(key string, value any)
@@ -219,26 +221,25 @@ type LogConfig struct {
 	Address string `mapstructure:"address" validate:"omitempty,hostname_port"`
 }
 
-// remoteSourceConfig contains the remote source options used to locate and load
-// the optional remote configuration.
-//
-// These are internal loader settings and are validated in Go (not via struct
-// tags): the provider name is checked by validateRemoteSourceConfig, and the
-// remaining fields are enforced at their point of use (endpoint/path emptiness in
-// loadFromRemoteSource, data presence and base64 encoding in loadFromEnvVarSource).
-type remoteSourceConfig struct {
-	// Provider is the optional external configuration source: consul, envvar, etcd, etcd3, firestore, nats.
+// RemoteSourceConfig contains the remote source options used to locate and load
+// the optional remote configuration. It is passed to the RemoteLoaderFunc
+// registered via WithRemoteLoader, which interprets and validates the fields
+// it uses.
+type RemoteSourceConfig struct {
+	// Provider is the optional external configuration source: the built-in
+	// "envvar" or any name handled by a loader registered via WithRemoteLoader.
 	// When envvar is set the data should be set in the Data field.
 	Provider string `mapstructure:"remoteConfigProvider"`
 
-	// Endpoint is the remote configuration URL (ip:port).
+	// Endpoint is the remote configuration URL (ip:port), passed verbatim to the remote loader.
 	Endpoint string `mapstructure:"remoteConfigEndpoint"`
 
-	// Path is the remote configuration path where to search for the configuration file ("/cli/program").
+	// Path is the remote configuration path where to search for the configuration data (e.g. "/cli/program").
 	// This is a path on the remote provider, not on the local filesystem.
 	Path string `mapstructure:"remoteConfigPath"`
 
-	// SecretKeyring is the path to the openpgp secret keyring used to decrypt the remote configuration data (e.g.: "/etc/program/configkey.gpg")
+	// SecretKeyring is the path to an optional secret keyring the remote loader
+	// can use to decrypt the remote configuration data (e.g.: "/etc/program/configkey.gpg").
 	SecretKeyring string `mapstructure:"remoteConfigSecretKeyring"`
 
 	// Data is the base64 encoded JSON configuration data to be used with the "envvar" provider.
@@ -251,16 +252,22 @@ type remoteSourceConfig struct {
 // so applications avoid duplicating Viper wiring and precedence logic.
 //
 // The function applies the documented merge order, unmarshals into cfg, and
-// executes cfg.Validate before returning.
-func Load(cmdName, configDir, envPrefix string, cfg Configuration) error {
+// executes cfg.Validate before returning. Optional behaviors (e.g. a custom
+// remote source loader) can be enabled via opts.
+func Load(cmdName, configDir, envPrefix string, cfg Configuration, opts ...Option) error {
 	if cfg == nil {
 		return ErrNilConfiguration
+	}
+
+	o := &options{}
+	for _, opt := range opts {
+		opt(o)
 	}
 
 	localViper := viper.New()
 	remoteViper := viper.New()
 
-	return loadConfig(localViper, remoteViper, cmdName, configDir, envPrefix, cfg)
+	return loadConfig(localViper, remoteViper, cmdName, configDir, envPrefix, cfg, o)
 }
 
 // loadConfig performs the full configuration pipeline for cfg.
@@ -268,13 +275,13 @@ func Load(cmdName, configDir, envPrefix string, cfg Configuration) error {
 // It loads local values, overlays optional remote values, then validates the
 // final typed configuration. Splitting this logic keeps Load simple while
 // allowing deterministic unit testing with mocked Viper instances.
-func loadConfig(localViper, remoteViper Viper, cmdName, configDir, envPrefix string, cfg Configuration) error {
-	remoteSourceCfg, err := loadLocalConfig(localViper, cmdName, configDir, envPrefix, cfg)
+func loadConfig(localViper, remoteViper Viper, cmdName, configDir, envPrefix string, cfg Configuration, o *options) error {
+	remoteSourceCfg, err := loadLocalConfig(localViper, cmdName, configDir, envPrefix, cfg, o)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrLocalConfig, err)
 	}
 
-	err = loadRemoteConfig(localViper, remoteViper, remoteSourceCfg, envPrefix, cfg)
+	err = loadRemoteConfig(localViper, remoteViper, remoteSourceCfg, envPrefix, cfg, o)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrRemoteConfig, err)
 	}
@@ -291,9 +298,9 @@ func loadConfig(localViper, remoteViper Viper, cmdName, configDir, envPrefix str
 //
 // It configures default values, search paths, environment bindings for remote
 // source selection, and reads the local config file into v. It then unmarshals
-// only remote-source settings into remoteSourceConfig so remote loading can be
+// only remote-source settings into RemoteSourceConfig so remote loading can be
 // resolved in a separate step.
-func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configuration) (*remoteSourceConfig, error) {
+func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configuration, o *options) (*RemoteSourceConfig, error) {
 	// set default remote configuration values
 	v.SetDefault(keyRemoteConfigProvider, defaultRemoteConfigProvider)
 	v.SetDefault(keyRemoteConfigEndpoint, defaultRemoteConfigEndpoint)
@@ -347,7 +354,7 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 		}
 	}
 
-	var rsCfg remoteSourceConfig
+	var rsCfg RemoteSourceConfig
 
 	err = v.Unmarshal(&rsCfg)
 	if err != nil {
@@ -355,9 +362,9 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 	}
 
 	// Fail fast on invalid remote-source selection (e.g. an unsupported provider
-	// name or a malformed endpoint) so problems surface here with a clear message
-	// instead of later as an opaque remote-backend error.
-	err = validateRemoteSourceConfig(&rsCfg)
+	// name) so problems surface here with a clear message instead of later as an
+	// opaque remote-backend error.
+	err = validateRemoteSourceConfig(&rsCfg, o.remoteLoader != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +380,7 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 //
 // This staged merge model gives developers predictable precedence and clear
 // separation between local and remote concerns.
-func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix string, cfg Configuration) error {
+func loadRemoteConfig(lv Viper, rv Viper, rs *RemoteSourceConfig, envPrefix string, cfg Configuration, o *options) error {
 	// Seed the remote viper with every resolved local key as a default. This
 	// intentionally demotes local file/default values to the "default" layer so
 	// that remote-provider data and environment variables (applied below) take
@@ -391,13 +398,18 @@ func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix stri
 
 	var err error
 
-	switch rs.Provider {
-	case "":
+	switch {
+	case rs.Provider == "":
 		// ignore remote source
-	case providerEnvVar:
+	case rs.Provider == providerEnvVar:
 		err = loadFromEnvVarSource(rv, rs, envPrefix)
+	case o.remoteLoader != nil:
+		err = loadFromRemoteLoader(rv, rs, o.remoteLoader)
 	default:
-		err = loadFromRemoteSource(rv, rs, envPrefix)
+		// Unreachable via Load (validateRemoteSourceConfig rejects custom
+		// providers when no remote loader is registered); kept as defense in
+		// depth for direct callers.
+		err = unsupportedProviderError(rs.Provider)
 	}
 
 	if err != nil {
@@ -416,7 +428,7 @@ func loadRemoteConfig(lv Viper, rv Viper, rs *remoteSourceConfig, envPrefix stri
 //
 // It supports the providerEnvVar mode, enabling fully file-less deployments
 // where configuration is injected through environment variables.
-func loadFromEnvVarSource(v Viper, rc *remoteSourceConfig, envPrefix string) error {
+func loadFromEnvVarSource(v Viper, rc *RemoteSourceConfig, envPrefix string) error {
 	if rc.Data == "" {
 		return validationError(rc.Provider, envPrefix, keyRemoteConfigData)
 	}
@@ -429,34 +441,25 @@ func loadFromEnvVarSource(v Viper, rc *remoteSourceConfig, envPrefix string) err
 	return v.ReadConfig(bytes.NewReader(data)) //nolint:wrapcheck
 }
 
-// loadFromRemoteSource reads configuration from a remote provider backend.
-//
-// Depending on whether SecretKeyring is set, it registers either a secure or
-// non-secure remote provider with Viper and then fetches remote config data.
-// This enables centralized configuration management systems without changing
-// application-level config decoding code.
-func loadFromRemoteSource(v Viper, rc *remoteSourceConfig, envPrefix string) error {
-	if rc.Endpoint == "" {
-		return validationError(rc.Provider, envPrefix, keyRemoteConfigEndpoint)
-	}
-
-	if rc.Path == "" {
-		return validationError(rc.Provider, envPrefix, keyRemoteConfigPath)
-	}
-
-	var err error
-
-	if rc.SecretKeyring == "" {
-		err = v.AddRemoteProvider(rc.Provider, rc.Endpoint, rc.Path)
-	} else {
-		err = v.AddSecureRemoteProvider(rc.Provider, rc.Endpoint, rc.Path, rc.SecretKeyring)
-	}
-
+// loadFromRemoteLoader reads configuration from the application-supplied
+// remote source loader (see WithRemoteLoader) and merges the returned data
+// following the documented precedence rules.
+func loadFromRemoteLoader(v Viper, rs *RemoteSourceConfig, loader RemoteLoaderFunc) error {
+	data, err := loader(rs)
 	if err != nil {
-		return fmt.Errorf("failed adding remote config provider: %w", err)
+		return fmt.Errorf("the remote loader failed for provider %q: %w", rs.Provider, err)
 	}
 
-	return v.ReadRemoteConfig() //nolint:wrapcheck
+	if data == nil {
+		// A nil reader (with a nil error) means there is no remote data to merge.
+		return nil
+	}
+
+	if c, ok := data.(io.Closer); ok {
+		defer func() { _ = c.Close() }()
+	}
+
+	return v.ReadConfig(data) //nolint:wrapcheck
 }
 
 // configureSearchPath registers local config lookup directories in search order.
@@ -502,18 +505,28 @@ func normalizeEnvPrefix(envPrefix string) string {
 // validateRemoteSourceConfig fails fast on an unsupported remote-source provider.
 //
 // Only the provider name is checked here because it selects the load path and a
-// typo would otherwise silently route to the wrong branch. The remaining fields
-// are validated at their point of use with actionable messages: endpoint and
-// path emptiness in loadFromRemoteSource, data presence and base64 encoding in
-// loadFromEnvVarSource. The set below is viper's SupportedRemoteProviders plus
-// the package-specific "envvar" provider; keep it in sync with the error message.
-func validateRemoteSourceConfig(rs *remoteSourceConfig) error {
+// typo would otherwise silently route to the wrong branch. Data presence and
+// base64 encoding are validated in loadFromEnvVarSource with an actionable
+// message, while custom providers are interpreted and validated by the remote
+// loader registered via WithRemoteLoader. Without a registered loader only the
+// package-specific "envvar" provider (or the empty value) is supported.
+func validateRemoteSourceConfig(rs *RemoteSourceConfig, hasRemoteLoader bool) error {
 	switch rs.Provider {
-	case "", "consul", providerEnvVar, "etcd", "etcd3", "firestore", "nats":
+	case "", providerEnvVar:
 		return nil
 	default:
-		return fmt.Errorf("%w: unsupported remoteConfigProvider %q (must be one of: consul, envvar, etcd, etcd3, firestore, nats)", ErrInvalidRemoteConfig, rs.Provider)
+		if hasRemoteLoader {
+			return nil
+		}
+
+		return unsupportedProviderError(rs.Provider)
 	}
+}
+
+// unsupportedProviderError formats the rejection error for a remote-source
+// provider name that is not handled by this package.
+func unsupportedProviderError(provider string) error {
+	return fmt.Errorf("%w: unsupported remoteConfigProvider %q (must be %q or empty; other providers require a remote loader registered via WithRemoteLoader)", ErrInvalidRemoteConfig, provider, providerEnvVar)
 }
 
 // validationError formats a consistent missing-variable error for providers.

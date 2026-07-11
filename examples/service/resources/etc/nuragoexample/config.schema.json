@@ -284,25 +284,29 @@
       "title": "Logger",
       "type": "object"
     },
+    "remoteConfigData": {
+      "default": "",
+      "description": "Base64 encoded JSON configuration data to be used with the 'envvar' provider",
+      "title": "Remote Configuration Data",
+      "type": "string"
+    },
     "remoteConfigEndpoint": {
       "default": "",
-      "description": "Remote configuration URL (ip:port)",
+      "description": "Remote configuration URL (ip:port), passed to the custom remote loader",
       "title": "Remote Configuration Endpoint",
       "type": "string"
     },
     "remoteConfigPath": {
       "default": "",
-      "description": "Remote configuration path in which to search for the configuration file (e.g. '/config/nuragoexample')",
+      "description": "Remote configuration path in which to search for the configuration data (e.g. '/config/nuragoexample'), passed to the custom remote loader",
       "title": "Remote Configuration Path",
       "type": "string"
     },
     "remoteConfigProvider": {
       "default": "",
-      "description": "Remote configuration source type (if any)",
+      "description": "Remote configuration source type: 'envvar' or empty (other values require a custom remote loader registered via the config.WithRemoteLoader option)",
       "enum": [
         "",
-        "consul",
-        "etcd",
         "envvar"
       ],
       "title": "Remote Configuration Provider",
@@ -310,7 +314,7 @@
     },
     "remoteConfigSecretKeyring": {
       "default": "",
-      "description": "Path to the openpgp secret keyring used to decrypt the remote configuration data (e.g. '/etc/nuragoexample/configkey.gpg'); if empty a non secure connection will be used instead",
+      "description": "Path to an optional secret keyring used by the custom remote loader to decrypt the remote configuration data (e.g. '/etc/nuragoexample/configkey.gpg')",
       "title": "Remote Configuration Secret Keyring",
       "type": "string"
     },

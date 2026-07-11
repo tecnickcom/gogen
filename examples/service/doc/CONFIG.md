@@ -1,6 +1,6 @@
 # Configuration Guide
 
-The nuragoexample service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/etcd-io/etcd) or a single environment variable.
+The nuragoexample service can load the configuration either from a local configuration file or from a single environment variable.
 
 The local configuration file is always loaded before the remote configuration, the latter always overwrites any local setting.
 
@@ -16,16 +16,17 @@ The default configuration file is installed in the **/etc/nuragoexample/** folde
 
 ## Remote Configuration
 
-This program supports secure remote configuration via Consul, Etcd or single environment variable.
-The remote configuration server can be defined either in the local configuration file using the following parameters, or with environment variables:
+This program supports a remote configuration source via a single environment variable (the "envvar" provider), enabling fully file-less deployments.
+Arbitrary remote storage backends (e.g. Consul, Etcd, Vault, S3) can also be supported by registering a custom loader with the `config.WithRemoteLoader` option (see below).
+The remote configuration source can be defined either in the local configuration file using the following parameters, or with environment variables:
 
 The configuration fields are:
 
-* **remoteConfigProvider**      : Remote configuration source ("consul", "etcd", "envvar")
-* **remoteConfigEndpoint**      : Remote configuration URL (ip:port)
-* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/nuragoexample")
-* **remoteConfigSecretKeyring** : Path to the [OpenPGP](https://www.openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/nuragoexample/configkey.gpg"); if empty a non-secure connection will be used instead
-* **remoteConfigData**          : Base64 encoded JSON configuration data to be used with the "envvar" provider (can only be set via the NURAGOEXAMPLE_REMOTECONFIGDATA environment variable, not in the configuration file)
+* **remoteConfigProvider**      : Remote configuration source ("envvar" or empty; any other value requires a custom loader registered via config.WithRemoteLoader)
+* **remoteConfigEndpoint**      : Remote configuration URL (ip:port), passed to the custom remote loader
+* **remoteConfigPath**          : Remote configuration path in which to search for the configuration data (e.g. "/config/nuragoexample"), passed to the custom remote loader
+* **remoteConfigSecretKeyring** : Path to an optional secret keyring used by the custom remote loader to decrypt the remote configuration data (e.g. "/etc/nuragoexample/configkey.gpg")
+* **remoteConfigData**          : Base64 encoded JSON configuration data to be used with the "envvar" provider (typically set via the NURAGOEXAMPLE_REMOTECONFIGDATA environment variable, which takes precedence over any value in the configuration file)
 
 The equivalent environment variables are:
 
@@ -35,14 +36,33 @@ The equivalent environment variables are:
 * NURAGOEXAMPLE_REMOTECONFIGSECRETKEYRING
 * NURAGOEXAMPLE_REMOTECONFIGDATA
 
+### Custom Remote Loader
+
+Providers other than "envvar" are delegated to an application-supplied function registered with the `config.WithRemoteLoader` option, so the backend client dependencies live in the application module and not in the nurago library.
+
+The legacy Viper remote backends (consul, etcd, etcd3, firestore, nats) can be restored by plugging the ready-made `config.ViperRemoteLoader` function into the `config.WithRemoteLoader` option; the application must also register the backends manually with a blank import of the viper remote package (this is where the backend client dependencies come from):
+
+```go
+import (
+	"github.com/tecnickcom/nurago/pkg/config"
+
+	_ "github.com/spf13/viper/remote" // registers the legacy remote backends
+)
+
+err := config.Load(cmdName, configDir, envPrefix, cfg, config.WithRemoteLoader(config.ViperRemoteLoader))
+```
+
+If the blank import is missing, loading from a remote provider fails with `config.ErrViperRemoteNotRegistered`.
+
 ## Configuration Format
 
 The configuration format is a single JSON structure with the following fields:
 
-* **remoteConfigProvider**      : Remote configuration source ("consul", "etcd", "envvar")
-* **remoteConfigEndpoint**      : Remote configuration URL (ip:port)
-* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/nuragoexample")
-* **remoteConfigSecretKeyring** : Path to the OpenPGP secret keyring used to decrypt the remote configuration data (e.g. "/etc/nuragoexample/configkey.gpg"); if empty a non-secure connection will be used instead
+* **remoteConfigProvider**      : Remote configuration source ("envvar" or empty; any other value requires a custom loader registered via config.WithRemoteLoader)
+* **remoteConfigEndpoint**      : Remote configuration URL (ip:port), passed to the custom remote loader
+* **remoteConfigPath**          : Remote configuration path in which to search for the configuration data (e.g. "/config/nuragoexample"), passed to the custom remote loader
+* **remoteConfigSecretKeyring** : Path to an optional secret keyring used by the custom remote loader to decrypt the remote configuration data
+* **remoteConfigData**          : Base64 encoded JSON configuration data to be used with the "envvar" provider
 
 * **enabled**: Enable or disable the service
 
