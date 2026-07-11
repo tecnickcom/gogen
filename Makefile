@@ -69,6 +69,15 @@ GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
 GOLANGCILINTVERSION=v2.12.2
 GOVULNCHECK=$(GO) tool govulncheck
+BENCHSTAT=$(GO) tool benchstat
+
+# Benchmark flags for deterministic allocation stats (fixed iteration count, repeated for statistical significance)
+BENCHFLAGS=-tags=unit,benchmark -run=^$$ -bench=. -benchmem -benchtime=100x -count=6
+
+# Git reference to compare benchmark allocations against
+ifeq ($(BENCHBASE),)
+	BENCHBASE=main
+endif
 
 # Directory containing the source code
 SRCDIR=./pkg
@@ -234,23 +243,48 @@ test: ensuretarget
 	-v $(GOPKGS) $(TESTEXTRACMD)
 	@echo -e "\n\n>>> END: Unit Tests <<<\n\n"
 
-## Run benchmarks (real measurements, without -race or coverage)
+## Run benchmarks (without -race or coverage) and store the results for comparison (target/report/bench.txt)
 .PHONY: bench
 bench: ensuretarget
 	@echo -e "\n\n>>> START: Benchmarks <<<\n\n"
-	$(GOTEST) \
-	-tags=unit,benchmark \
-	-run=^$$ \
-	-bench=. \
-	-benchmem \
-	-v $(GOPKGS)
+	$(GOTEST) $(BENCHFLAGS) $(GOPKGS) | tee $(TARGETDIR)/report/bench.txt
 	@echo -e "\n\n>>> END: Benchmarks <<<\n\n"
+
+## Run base benchmarks (without -race or coverage) and store the results for comparison (target/report/bench_base.txt)
+.PHONY: benchbase
+benchbase:
+	@echo -e "\n\n>>> START: Base Benchmarks <<<\n\n"
+	@rm -rf $(TARGETDIR)/benchbase
+	@git worktree prune
+	git worktree add --detach $(TARGETDIR)/benchbase $(BENCHBASE)
+	cd $(TARGETDIR)/benchbase && $(GOTEST) $(BENCHFLAGS) ./pkg/... | tee $(TARGETDIR)/report/bench_base.txt
+	git worktree remove --force $(TARGETDIR)/benchbase
+	@echo -e "\n\n>>> END: Base Benchmarks <<<\n\n"
+
+## Compare benchmark allocation counts against a base git ref and fail on regressions (set BENCHBASE=ref, default main)
+.PHONY: benchcmp
+benchcmp: bench benchbase
+	$(MAKE) benchgate BASELINE=$(TARGETDIR)/report/bench_base.txt
+
+## Compare benchmark allocation counts against a baseline file and fail on regressions (set BASELINE=path/to/baseline.txt)
+.PHONY: benchgate
+benchgate:
+	@echo -e "\n\n>>> START: Benchmark allocation gate <<<\n\n"
+	@test -f "$(BASELINE)" || { echo "ERROR: baseline file not found: $(BASELINE)"; exit 1; }
+	@test -f "$(TARGETDIR)/report/bench.txt" || { echo "ERROR: benchmark results not found, run 'make bench' first"; exit 1; }
+	$(BENCHSTAT) $(BASELINE) $(TARGETDIR)/report/bench.txt 2> >(grep -vE "^[A-Z][0-9]+: " >&2)
+	$(BENCHSTAT) -filter ".unit:allocs/op" -format csv $(BASELINE) $(TARGETDIR)/report/bench.txt 2> >(grep -vE "^[A-Z][0-9]+: " >&2) \
+	| awk -F, '\
+	$$1!="" && $$1!="geomean" && $$7 ~ /^p=/ && $$6!="~" && ($$4+0) > ($$2+0) \
+	{print "ALLOC REGRESSION: "$$1" allocs/op: "$$2" -> "$$4" ("$$6")"; fail=1} END {exit fail}'
+	@echo -e "\n\n>>> END: Benchmark allocation gate <<<\n\n"
 
 ## Get the go tools
 .PHONY: gotools
 gotools:
 	$(GO) get -tool go.uber.org/mock/mockgen@latest
 	$(GO) get -tool golang.org/x/vuln/cmd/govulncheck@latest
+	$(GO) get -tool golang.org/x/perf/cmd/benchstat@latest
 	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
 
 ## Update everything

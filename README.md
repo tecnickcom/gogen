@@ -235,12 +235,17 @@ $ make
 #   make example        : Build and test the service example
 #   make format         : Format the source code
 #   make generate       : Generate Go code automatically
+#   make govulncheck    : Check dependencies for known vulnerabilities
 #   make linter         : Check code against multiple linters
 #   make mod            : Download dependencies
 #   make project        : Generate a new project from the example using the data set via CONFIG=project.cfg
 #   make qa             : Run all tests and static analysis tools
 #   make tag            : Tag the Git repository
 #   make test           : Run unit tests
+#   make bench          : Run benchmarks (without -race or coverage) and store the results for comparison (target/report/bench.txt)
+#   make benchbase      : Run base benchmarks (without -race or coverage) and store the results for comparison (target/report/bench_base.txt)
+#   make benchcmp       : Compare benchmark allocation counts against a base git ref and fail on regressions (set BENCHBASE=ref, default main)
+#   make benchgate      : Compare benchmark allocation counts against a baseline file and fail on regressions (set BASELINE=path/to/baseline.txt)
 #   make gotools        : Get the go tools
 #   make updateall      : Update everything
 #   make updatego       : Update Go version
