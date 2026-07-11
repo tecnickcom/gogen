@@ -1,3 +1,4 @@
+// Deprecated: Use github.com/tecnickcom/nurago instead.
 module github.com/tecnickcom/gogen
 
 go 1.26

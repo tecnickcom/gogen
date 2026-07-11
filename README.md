@@ -1,5 +1,18 @@
 # gogen
 
+> [!IMPORTANT]
+> **This project has been renamed to [nurago](https://github.com/tecnickcom/nurago)** — same library, same packages, new name.
+>
+> The `github.com/tecnickcom/gogen` module path is **deprecated** and will receive no further updates; all existing versions remain permanently available via the Go module proxy. Please switch to the new module path:
+>
+> ```bash
+> go get github.com/tecnickcom/nurago@latest
+> find . -name '*.go' -exec sed -i 's|github.com/tecnickcom/gogen|github.com/tecnickcom/nurago|g' {} +
+> go mod tidy
+> ```
+>
+> *Why "nurago"?* From *nuraghe* + Go: the Bronze Age Sardinian stone towers, built without mortar, ~7,000 of which still stand after 3,500 years — modular, stone-solid foundations with no lock-in, which is exactly what this library aims to be.
+
 [![GitHub Release](https://img.shields.io/github/v/release/tecnickcom/gogen)](https://github.com/tecnickcom/gogen/releases)
 [![Go Reference](https://pkg.go.dev/badge/github.com/tecnickcom/gogen.svg)](https://pkg.go.dev/github.com/tecnickcom/gogen)
 [![Coverage Status](https://coveralls.io/repos/github/tecnickcom/gogen/badge.svg?branch=main)](https://coveralls.io/github/tecnickcom/gogen?branch=main)
