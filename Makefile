@@ -68,6 +68,7 @@ GOTEST=$(GO) test
 GODOC=GOPATH=$(GOPATH) $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
 GOLANGCILINTVERSION=v2.12.2
+GOVULNCHECK=$(GO) tool govulncheck
 
 # Directory containing the source code
 SRCDIR=./pkg
@@ -167,6 +168,13 @@ generate:
 	@find $(SRCDIR) -type f -name "*mock_test.go" -exec rm {} \;
 	$(GO) generate $(GOPKGS)
 
+## Check dependencies for known vulnerabilities
+.PHONY: govulncheck
+govulncheck:
+	@echo -e "\n\n>>> START: Vulnerability check <<<\n\n"
+	$(GOVULNCHECK) $(SRCDIR)/...
+	@echo -e "\n\n>>> END: Vulnerability check <<<\n\n"
+
 ## Check code against multiple linters
 .PHONY: linter
 linter:
@@ -202,7 +210,7 @@ project:
 
 ## Run all tests and static analysis tools
 .PHONY: qa
-qa: linter test coverage
+qa: linter govulncheck test coverage
 
 ## Tag the Git repository
 .PHONY: tag
@@ -242,6 +250,7 @@ bench: ensuretarget
 .PHONY: gotools
 gotools:
 	$(GO) get -tool go.uber.org/mock/mockgen@latest
+	$(GO) get -tool golang.org/x/vuln/cmd/govulncheck@latest
 	$(GO) install github.com/jstemmer/go-junit-report/v2@latest
 
 ## Update everything

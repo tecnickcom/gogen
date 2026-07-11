@@ -24,7 +24,7 @@ jobs:
           check-latest: true
           cache: true
       - name: linter
-        run: make mod deps linter GOPATH=$(go env GOPATH)
+        run: make mod deps linter govulncheck GOPATH=$(go env GOPATH)
 
   test:
     runs-on: ubuntu-latest
