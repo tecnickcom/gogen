@@ -665,6 +665,59 @@ func TestReceiveClose(t *testing.T) {
 		require.Empty(t, message)
 	})
 
+	t.Run("close drops a message blocked on delivery", func(t *testing.T) {
+		t.Parallel()
+
+		ctrl := gomock.NewController(t)
+		t.Cleanup(func() { ctrl.Finish() })
+
+		vkc := mock.NewClient(ctrl)
+		ctx := t.Context()
+
+		started := make(chan struct{})
+		delivered := make(chan struct{})
+
+		// Publish a message that no Receive call ever consumes: the delivery
+		// callback stays blocked on the internal channel until Close cancels
+		// the subscription context, which must unblock it and drop the message.
+		vkc.EXPECT().Receive(
+			gomock.Any(),
+			mock.Match("SUBSCRIBE", "ch1"),
+			gomock.Any(),
+		).DoAndReturn(func(rctx context.Context, _ any, fn func(message VKMessage)) error {
+			close(started)
+			fn(VKMessage{Channel: "ch1", Message: "msg1"})
+			close(delivered)
+
+			return rctx.Err()
+		})
+
+		vkc.EXPECT().Close()
+
+		cli, err := New(
+			ctx,
+			getTestSrvOptions(),
+			WithValkeyClient(vkc),
+			WithChannels("ch1"),
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, cli)
+
+		// Wait for the background subscription goroutine to be running, then
+		// tear it down while the undelivered message is still pending.
+		<-started
+		cli.Close()
+
+		// Close must unblock the delivery callback without a consumer.
+		<-delivered
+
+		channel, message, err := cli.Receive(ctx)
+		require.ErrorIs(t, err, ErrSubscriptionClosed)
+		require.Empty(t, channel)
+		require.Empty(t, message)
+	})
+
 	t.Run("close during a concurrent receive", func(t *testing.T) {
 		t.Parallel()
 

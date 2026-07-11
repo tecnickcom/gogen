@@ -332,6 +332,45 @@ func Test_Serve_error(t *testing.T) {
 	}
 }
 
+func Test_Serve_error_channelFull(t *testing.T) {
+	t.Parallel()
+
+	h := &HTTPServer{
+		cfg: defaultConfig(),
+		ctx: t.Context(),
+		httpServer: &http.Server{
+			Addr:              ":54321",
+			ReadHeaderTimeout: 1 * time.Millisecond,
+			ReadTimeout:       1 * time.Millisecond,
+			WriteTimeout:      1 * time.Millisecond,
+		},
+		listener:     mockListenerErr{},
+		shutdownDone: make(chan struct{}),
+		monitorDone:  make(chan struct{}),
+		serveErr:     make(chan error, 1),
+	}
+
+	// Pre-fill the buffer so the non-blocking publish drops the new failure
+	// instead of blocking or overwriting the first one.
+	firstErr := errors.New("first failure")
+	h.serveErr <- firstErr
+
+	h.serve()
+
+	select {
+	case err := <-h.ServeError():
+		require.ErrorIs(t, err, firstErr, "the first published failure must be preserved")
+	default:
+		t.Fatal("expected the first serve failure to remain published")
+	}
+
+	select {
+	case err := <-h.ServeError():
+		t.Fatalf("the second serve failure must be dropped, got: %v", err)
+	default:
+	}
+}
+
 func TestNew_setsIdleTimeout(t *testing.T) {
 	t.Parallel()
 
