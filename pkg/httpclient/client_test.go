@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/redact"
-	"github.com/tecnickcom/gogen/pkg/traceid"
+	"github.com/tecnickcom/nurago/pkg/redact"
+	"github.com/tecnickcom/nurago/pkg/traceid"
 )
 
 // roundTripperFunc adapts a function to http.RoundTripper for tests.

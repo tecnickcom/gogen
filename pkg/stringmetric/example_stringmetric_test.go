@@ -3,7 +3,7 @@ package stringmetric_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/stringmetric"
+	"github.com/tecnickcom/nurago/pkg/stringmetric"
 )
 
 func ExampleDLDistance() {

@@ -1,9 +1,9 @@
 /*
-Package main runs the gogenexample service.
+Package main runs the nuragoexample service.
 
 # Overview
 
-gogenexample is a production-oriented reference service built with gogen.
+nuragoexample is a production-oriented reference service built with nurago.
 It demonstrates how to bootstrap a Go service with consistent configuration,
 structured logging, metrics, health checks, and graceful shutdown.
 
@@ -20,7 +20,7 @@ By default, the process starts three HTTP servers:
 - Public API server on :8073
 
 The monitoring server exposes default operational endpoints (for example
-index, ping, status, metrics, and profiling routes provided by gogen's
+index, ping, status, metrics, and profiling routes provided by nurago's
 HTTP server package). The private and public APIs both expose a ping route
 and the example /uid route.
 
@@ -30,11 +30,11 @@ application routes that can be attached to different exposure boundaries
 
 # Configuration Model
 
-Configuration is loaded through `gogen/pkg/config` and supports:
+Configuration is loaded through `nurago/pkg/config` and supports:
 
 - Local configuration files
 - Remote configuration providers (Consul, Etcd, env var payload)
-- Environment variable overrides with the `GOGENEXAMPLE` prefix
+- Environment variable overrides with the `NURAGOEXAMPLE` prefix
 
 Default ports and timeouts are defined in the CLI config package, and the
 config schema supports enabling or disabling:

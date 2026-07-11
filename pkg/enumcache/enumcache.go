@@ -17,7 +17,7 @@ Top features:
   - concurrent-safe name-to-ID and ID-to-name lookup guarded by an internal read/write mutex
   - bulk population helpers for loading enum definitions from code or external sources
   - deterministic sorted retrieval with SortNames and SortIDs for logs, output, and tests
-  - binary-map encoding and decoding via github.com/tecnickcom/gogen/pkg/enumbitmap
+  - binary-map encoding and decoding via github.com/tecnickcom/nurago/pkg/enumbitmap
     for flag-style enum values
   - explicit error returns when IDs or names are missing, improving caller control
 
@@ -35,7 +35,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/tecnickcom/gogen/pkg/enumbitmap"
+	"github.com/tecnickcom/nurago/pkg/enumbitmap"
 )
 
 var (

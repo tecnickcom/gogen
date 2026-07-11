@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/sliceutil"
+	"github.com/tecnickcom/nurago/pkg/sliceutil"
 )
 
 func TestGuarded_zeroValue(t *testing.T) {

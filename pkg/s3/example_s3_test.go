@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/tecnickcom/gogen/pkg/s3"
+	"github.com/tecnickcom/nurago/pkg/s3"
 )
 
 // exampleS3Client is a minimal in-memory stand-in for the AWS S3 client,

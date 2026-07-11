@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tecnickcom/gogen/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/random"
 )
 
 //nolint:testableexamples

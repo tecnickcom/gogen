@@ -11,9 +11,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/httpretrier"
-	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/validator"
+	"github.com/tecnickcom/nurago/pkg/httpretrier"
+	"github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/validator"
 )
 
 // Default configuration values.

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logutil"
-	"github.com/tecnickcom/gogen/pkg/redact"
-	"github.com/tecnickcom/gogen/pkg/traceid"
+	libhttputil "github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/redact"
+	"github.com/tecnickcom/nurago/pkg/traceid"
 )
 
 // HTTPClient is the transport used by [Client] for outgoing proxied requests.

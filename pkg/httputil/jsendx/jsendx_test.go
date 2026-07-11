@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/httpserver"
-	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/testutil"
+	"github.com/tecnickcom/nurago/pkg/httpserver"
+	"github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/testutil"
 	"go.uber.org/mock/gomock"
 )
 

@@ -35,7 +35,7 @@ Why this matters
   - Trie-based lookup is efficient for both single-request APIs and bulk
     processing pipelines.
   - The data model composes naturally with country metadata from
-    github.com/tecnickcom/gogen/pkg/countrycode.
+    github.com/tecnickcom/nurago/pkg/countrycode.
 
 # Typical usage
 
@@ -49,8 +49,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/tecnickcom/gogen/pkg/numtrie"
-	"github.com/tecnickcom/gogen/pkg/phonekeypad"
+	"github.com/tecnickcom/nurago/pkg/numtrie"
+	"github.com/tecnickcom/nurago/pkg/phonekeypad"
 )
 
 // Sentinel errors returned by the package. They can be matched with errors.Is
@@ -206,7 +206,7 @@ func New(data InData) *Data {
 // numbers or partial prefixes and still obtain the most specific available
 // mapping.
 //
-// NOTE: see the "github.com/tecnickcom/gogen/pkg/countrycode" package to get the
+// NOTE: see the "github.com/tecnickcom/nurago/pkg/countrycode" package to get the
 // country information from the Alpha2 code.
 func (d *Data) NumberInfo(num string) (*NumInfo, error) {
 	data, status := d.trie.Get(num)

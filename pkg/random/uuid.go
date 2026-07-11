@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/uhex"
+	"github.com/tecnickcom/nurago/pkg/uhex"
 )
 
 // UUID is a 128-bit (16-byte) Universally Unique Identifier (UUID)

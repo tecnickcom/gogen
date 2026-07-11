@@ -1,5 +1,5 @@
 -- Create the database
-CREATE DATABASE IF NOT EXISTS gogenexample;
+CREATE DATABASE IF NOT EXISTS nuragoexample;
 
 -- Use the database
-USE gogenexample;
+USE nuragoexample;

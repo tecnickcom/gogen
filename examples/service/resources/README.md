@@ -39,7 +39,7 @@ This folder centralizes those concerns so developers and CI/CD pipelines use the
 | db | Provision database objects and versioned schema/data for integration environments. | db.dockerfile, mysql/*, postgres/* |
 | debian | Define Debian package metadata and lifecycle hooks. | control, rules, postinst, postrm |
 | docker | Build environments for development/testing and minimal runtime images. | Dockerfile.dev, Dockerfile.run |
-| etc | Ship runtime configuration, validation schema, and service manager definitions. | gogenexample/config.json, config.schema.json, systemd unit |
+| etc | Ship runtime configuration, validation schema, and service manager definitions. | nuragoexample/config.json, config.schema.json, systemd unit |
 | grafana | Provide a ready-to-import monitoring dashboard. | dashboard.json |
 | rpm | Define RPM package structure and installed assets. | rpm.spec |
 | test | Keep deterministic configs and integration fixtures for local/CI test runs. | test/etc/*, test/int/*, test/local/* |
@@ -144,22 +144,22 @@ This folder centralizes those concerns so developers and CI/CD pipelines use the
 
 ### etc
 
-#### etc/gogenexample/config.json
+#### etc/nuragoexample/config.json
 
 - Problem solved: default runtime configuration template (clients, DB pools, log, servers, shutdown).
 - Why it matters: provides a ready starting point for environment-specific overrides.
 
-#### etc/gogenexample/config.schema.json
+#### etc/nuragoexample/config.schema.json
 
 - Problem solved: JSON Schema validation and documentation for config fields.
 - Why it matters: catches invalid configuration early and improves editor/tooling integration.
 
-#### etc/init.d/gogenexample
+#### etc/init.d/nuragoexample
 
 - Problem solved: SysV init service script for legacy init systems.
 - Why it matters: keeps the service deployable on older Linux distributions.
 
-#### etc/systemd/system/gogenexample.service
+#### etc/systemd/system/nuragoexample.service
 
 - Problem solved: systemd unit file for service lifecycle and restart policy.
 - Why it matters: modern service management with hardened runtime options.
@@ -185,7 +185,7 @@ This folder centralizes those concerns so developers and CI/CD pipelines use the
 
 ### test
 
-#### test/etc/gogenexample/config.json
+#### test/etc/nuragoexample/config.json
 
 - Problem solved: generic test config fixture with test-safe endpoints/timeouts.
 - Why it matters: baseline configuration for non-production test executions.
@@ -200,17 +200,17 @@ This folder centralizes those concerns so developers and CI/CD pipelines use the
 - Problem solved: orchestrates integration test readiness checks, mock setup, and test execution.
 - Why it matters: reduces race conditions and makes integration runs deterministic.
 
-#### test/int/gogenexample/config.json
+#### test/int/nuragoexample/config.json
 
 - Problem solved: integration config targeting containerized MySQL + mocked external APIs.
 - Why it matters: reliable end-to-end tests in CI-like environments.
 
-#### test/int/gogenexample/config.json.mysql
+#### test/int/nuragoexample/config.json.mysql
 
 - Problem solved: MySQL-focused integration config variant with explicit short timeouts.
 - Why it matters: validates MySQL DSN and behavior under integration constraints.
 
-#### test/int/gogenexample/config.json.postgres
+#### test/int/nuragoexample/config.json.postgres
 
 - Problem solved: PostgreSQL-focused integration config variant.
 - Why it matters: validates parity of behavior across DB engines.
@@ -220,17 +220,17 @@ This folder centralizes those concerns so developers and CI/CD pipelines use the
 - Problem solved: defines mock response for the ipify dependency during API tests.
 - Why it matters: removes external network dependency from integration runs.
 
-#### test/local/gogenexample/config.json
+#### test/local/nuragoexample/config.json
 
 - Problem solved: local developer config defaults for running service + tests.
 - Why it matters: quick local startup with known-good settings.
 
-#### test/local/gogenexample/config.json.mysql
+#### test/local/nuragoexample/config.json.mysql
 
 - Problem solved: local MySQL-specific config variant.
 - Why it matters: easy local switching between database backends.
 
-#### test/local/gogenexample/config.json.postgres
+#### test/local/nuragoexample/config.json.postgres
 
 - Problem solved: local PostgreSQL-specific config variant.
 - Why it matters: allows parity checks without editing core config files.

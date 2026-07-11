@@ -3,7 +3,7 @@ package decint_test
 import (
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/decint"
+	"github.com/tecnickcom/nurago/pkg/decint"
 )
 
 func BenchmarkFloatToInt(b *testing.B) {

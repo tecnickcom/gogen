@@ -68,7 +68,7 @@ Argon2 implementations across languages:
 
 	$argon2id$v=19$m=65536,t=3,p=4$<base64 salt>$<base64 key>
 
-The JSON format is fully self-contained but is a gogen-specific schema; the PHC
+The JSON format is fully self-contained but is a nurago-specific schema; the PHC
 format is what external tooling (PHP's password_hash, Python's argon2-cffi and
 passlib, the Argon2 reference CLI) reads and writes directly. [Params.PasswordVerify],
 [Params.PasswordNeedsRehash], and their encrypted counterparts auto-detect which
@@ -171,8 +171,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/encrypt"
-	"github.com/tecnickcom/gogen/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/encrypt"
+	"github.com/tecnickcom/nurago/pkg/random"
 	"golang.org/x/crypto/argon2"
 )
 

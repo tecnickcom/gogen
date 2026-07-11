@@ -3,7 +3,7 @@ package typeutil_test
 import (
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/typeutil"
+	"github.com/tecnickcom/nurago/pkg/typeutil"
 )
 
 func BenchmarkIsNil(b *testing.B) {

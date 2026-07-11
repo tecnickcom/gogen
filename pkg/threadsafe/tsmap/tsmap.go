@@ -12,7 +12,7 @@ filter, map, reduce, and invert are especially noisy when each operation also
 needs synchronization.
 
 tsmap provides lock-aware generic helpers that execute map operations under the
-appropriate lock contract from github.com/tecnickcom/gogen/pkg/threadsafe.
+appropriate lock contract from github.com/tecnickcom/nurago/pkg/threadsafe.
 
 # How It Works
 
@@ -35,7 +35,7 @@ providing a concise, reusable API.
     query/transform helpers use read locks.
   - Functional map utilities with safety built in:
     [Filter], [Map], [Reduce], and [Invert] delegate to
-    github.com/tecnickcom/gogen/pkg/maputil while preserving thread safety via
+    github.com/tecnickcom/nurago/pkg/maputil while preserving thread safety via
     the provided lock.
   - Presence-checked reads via [GetOK], and atomic compound operations via
     [Do] (write) and [RDo] (read) for sequences a single helper cannot express.
@@ -63,7 +63,7 @@ providing a concise, reusable API.
 # Determinism
 
 Go map iteration order is randomized, so the transform helpers inherit the
-semantics of github.com/tecnickcom/gogen/pkg/maputil: [Reduce] is deterministic
+semantics of github.com/tecnickcom/nurago/pkg/maputil: [Reduce] is deterministic
 only when its reducing function is order-independent (for example commutative
 and associative), and [Map] and [Invert] follow last-write-wins when several
 input entries map to the same output key.
@@ -109,15 +109,15 @@ the unit of sharing; keep the free functions when one lock must guard several
 containers at once. Transforms to a different type (Map/Reduce/Invert) are
 expressed through [Guarded.RDo].
 
-See also: github.com/tecnickcom/gogen/pkg/threadsafe
+See also: github.com/tecnickcom/nurago/pkg/threadsafe
 */
 package tsmap
 
 import (
 	"maps"
 
-	"github.com/tecnickcom/gogen/pkg/maputil"
-	"github.com/tecnickcom/gogen/pkg/threadsafe"
+	"github.com/tecnickcom/nurago/pkg/maputil"
+	"github.com/tecnickcom/nurago/pkg/threadsafe"
 )
 
 // Set stores value v at key k using an exclusive lock. Like a built-in map

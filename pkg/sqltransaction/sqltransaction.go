@@ -52,7 +52,7 @@ Rollback behavior is guarded to avoid noisy false failures:
 
 For a similar helper using github.com/jmoiron/sqlx instead of database/sql,
 see:
-github.com/tecnickcom/gogen/pkg/sqlxtransaction
+github.com/tecnickcom/nurago/pkg/sqlxtransaction
 */
 package sqltransaction
 

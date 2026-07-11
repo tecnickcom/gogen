@@ -56,7 +56,7 @@ Rollback behavior is deferred and guarded:
 
 For a similar helper based on the standard database/sql package (instead of
 github.com/jmoiron/sqlx), see:
-github.com/tecnickcom/gogen/pkg/sqltransaction
+github.com/tecnickcom/nurago/pkg/sqltransaction
 */
 package sqlxtransaction
 

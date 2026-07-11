@@ -14,10 +14,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logutil"
-	"github.com/tecnickcom/gogen/pkg/redact"
-	"github.com/tecnickcom/gogen/pkg/testutil"
+	libhttputil "github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/redact"
+	"github.com/tecnickcom/nurago/pkg/testutil"
 )
 
 func TestNew(t *testing.T) {

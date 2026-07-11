@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tecnickcom/gogen/pkg/sliceutil"
+	"github.com/tecnickcom/nurago/pkg/sliceutil"
 )
 
 func ExampleStats() {

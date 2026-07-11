@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/threadsafe"
+	"github.com/tecnickcom/nurago/pkg/threadsafe"
 )
 
 // Compile-time assertions documenting the intended lock implementers.

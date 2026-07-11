@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/logutil"
 )
 
 func TestNewLogger(t *testing.T) {

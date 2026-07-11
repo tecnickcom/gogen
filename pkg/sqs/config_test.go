@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/awsopt"
+	"github.com/tecnickcom/nurago/pkg/awsopt"
 )
 
 func Test_loadConfig(t *testing.T) {

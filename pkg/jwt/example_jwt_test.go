@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/jwt"
-	"github.com/tecnickcom/gogen/pkg/passwordhash"
+	"github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/jwt"
+	"github.com/tecnickcom/nurago/pkg/passwordhash"
 )
 
 // Example shows a full login then authorization round-trip. Credentials are

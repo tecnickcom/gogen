@@ -1,15 +1,15 @@
-# gogenexample
+# nuragoexample
 
-*gogenexampleshortdesc*
+*nuragoexampleshortdesc*
 
-![gogenexample logo](doc/images/logo.png)
+![nuragoexample logo](doc/images/logo.png)
 
 * **category:**    Application
-* **copyright:**   2025-2026 gogenexampleowner
-* **license:**     [LICENSE](https://github.com/gogenexampleowner/gogenexample/blob/main/LICENSE)
-* **cvs:**         https://github.com/gogenexampleowner/gogenexample
+* **copyright:**   2025-2026 nuragoexampleowner
+* **license:**     [LICENSE](https://github.com/nuragoexampleowner/nuragoexample/blob/main/LICENSE)
+* **cvs:**         https://github.com/nuragoexampleowner/nuragoexample
 
-[![check](https://github.com/gogenexampleowner/gogenexample/actions/workflows/check.yaml/badge.svg)](https://github.com/gogenexampleowner/gogenexample/actions/workflows/check.yaml)
+[![check](https://github.com/nuragoexampleowner/nuragoexample/actions/workflows/check.yaml/badge.svg)](https://github.com/nuragoexampleowner/nuragoexample/actions/workflows/check.yaml)
 
 ----------
 
@@ -28,7 +28,7 @@
 
 ## Description
 
-gogenexamplelongdesc
+nuragoexamplelongdesc
 
 
 ----------
@@ -45,7 +45,7 @@ gogenexamplelongdesc
   <a name="documentation_public_general"></a>
   * General  
     _General project documentation_
-    * [GitHub project page](gogenexampleprojectlink)
+    * [GitHub project page](nuragoexampleprojectlink)
 
 
 ----------
@@ -83,11 +83,11 @@ For the general style and conventions, please refer to [external documents](http
 To quickly get started with this project, follow these steps:
 
 1. Ensure you have installed the latest Go version and Python3 for some extra tests.
-2. Clone the repository: `git clone https://github.com/gogenexampleowner/gogenexample.git`.
-3. Change into the project directory: `cd gogenexample`.
+2. Clone the repository: `git clone https://github.com/nuragoexampleowner/nuragoexample.git`.
+3. Change into the project directory: `cd nuragoexample`.
 4. Install the required dependencies and test everything: `DEVMODE=LOCAL make x`.
 
-Now you are ready to start developing with gogenexample!
+Now you are ready to start developing with nuragoexample!
 
 This project includes a *Makefile* that allows you to test and build the project in a Linux-compatible system with simple commands.  
 All the artifacts and reports produced using this *Makefile* are stored in the *target* folder.  
@@ -174,7 +174,7 @@ This folder contains the application-specific implementation details that should
 | `internal/db` | Shared database abstractions used by the service wiring. |
 | `internal/httphandlerpriv` | Private API route definitions and handlers. |
 | `internal/httphandlerpub` | Public API route definitions and handlers. |
-| `internal/metrics` | Service-specific Prometheus collectors and instrumentation helpers layered on top of gogen metrics. |
+| `internal/metrics` | Service-specific Prometheus collectors and instrumentation helpers layered on top of nurago metrics. |
 
 ### `resources`
 
@@ -241,7 +241,7 @@ make gendoc
 ## Usage
 
 ```bash
-gogenexample [flags]
+nuragoexample [flags]
 
 Flags:
 
@@ -257,7 +257,7 @@ Flags:
 Once the application has been compiled with `make build`, it can be quickly tested:
 
 ```bash
-target/usr/bin/gogenexample -c resources/test/etc/gogenexample
+target/usr/bin/nuragoexample -c resources/test/etc/nuragoexample
 ```
 
 <a name="logs"></a>
@@ -271,7 +271,7 @@ This program logs the log messages in JSON format:
   "level": "info",
   "timestamp": 1595942715776382171,
   "msg": "Request",
-  "program": "gogenexample",
+  "program": "nuragoexample",
   "version": "0.0.0",
   "release": "0",
   "hostname":"myserver",
@@ -321,7 +321,7 @@ pprof -seconds 10 -http=localhost:8182 http://INSTANCE_URL:PORT/pprof/profile
 
 ## OpenAPI
 
-The gogenexample API is specified via the [OpenAPI 3](https://www.openapis.org/) files: `openapi_public.yaml`, `openapi_private.yaml` and `openapi_monitoring.yaml`.
+The nuragoexample API is specified via the [OpenAPI 3](https://www.openapis.org/) files: `openapi_public.yaml`, `openapi_private.yaml` and `openapi_monitoring.yaml`.
 
 The OpenAPI files can be edited using the Swagger Editor:
 
@@ -336,7 +336,7 @@ and pointing the Web browser to http://localhost:8056
 
 ## Docker
 
-To build a Docker scratch container for the gogenexample executable binary execute the following command:
+To build a Docker scratch container for the nuragoexample executable binary execute the following command:
 
 ```bash
 make docker
@@ -347,19 +347,19 @@ make docker
 To manually create the container you can execute:
 
 ```bash
-docker build --tag="gogenexampleowner/gogenexampledev" .
+docker build --tag="nuragoexampleowner/nuragoexampledev" .
 ```
 
 To log into the newly created container:
 
 ```bash
-docker run -t -i gogenexampleowner/gogenexampledev /bin/bash
+docker run -t -i nuragoexampleowner/nuragoexampledev /bin/bash
 ```
 
 To get the container ID:
 
 ```bash
-CONTAINER_ID=`docker ps -a | grep gogenexampleowner/gogenexampledev | cut -c1-12`
+CONTAINER_ID=`docker ps -a | grep nuragoexampleowner/nuragoexampledev | cut -c1-12`
 ```
 
 To delete the newly created docker container:
@@ -371,7 +371,7 @@ docker rm -f $CONTAINER_ID
 To delete the docker image:
 
 ```bash
-docker rmi -f gogenexampleowner/gogenexampledev
+docker rmi -f nuragoexampleowner/nuragoexampledev
 ```
 
 

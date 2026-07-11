@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/httpretrier"
-	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/httpretrier"
+	"github.com/tecnickcom/nurago/pkg/httputil"
 )
 
 // Default configuration values.

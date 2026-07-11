@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/logutil"
 )
 
 // BenchmarkNewHandler_Ungrouped exercises the common, ungrouped zerolog-backed JSON path.

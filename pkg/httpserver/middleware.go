@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/random"
-	"github.com/tecnickcom/gogen/pkg/redact"
-	"github.com/tecnickcom/gogen/pkg/traceid"
+	libhttputil "github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/redact"
+	"github.com/tecnickcom/nurago/pkg/traceid"
 )
 
 // MiddlewareArgs contains extra optional arguments to be passed to the middleware handler function MiddlewareFn.

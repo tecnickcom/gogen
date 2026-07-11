@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/maputil"
+	"github.com/tecnickcom/nurago/pkg/maputil"
 )
 
 func TestGuarded_zeroValueSet(t *testing.T) {

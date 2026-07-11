@@ -89,7 +89,7 @@ func TestNew(t *testing.T) {
 			name: "succeeds with in-memory exporter",
 			opts: []Option{
 				WithTracerProviderFn(func(ctx context.Context, _ *sdkresource.Resource) (*sdktrace.TracerProvider, error) {
-					return DefaultTracerProviderWithExporter(DefaultSDKResource(ctx, "gogen-test", "0.0.0-1"), tracetest.NewInMemoryExporter()), nil
+					return DefaultTracerProviderWithExporter(DefaultSDKResource(ctx, "nurago-test", "0.0.0-1"), tracetest.NewInMemoryExporter()), nil
 				}),
 				WithMeterProviderFn(func(_ context.Context, _ *sdkresource.Resource) (*sdkmetric.MeterProvider, error) {
 					return sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewManualReader())), nil
@@ -128,7 +128,7 @@ func TestNew(t *testing.T) {
 				tt.setEnvFn()
 			}
 
-			c, err := New(t.Context(), "gogen-test", "0.0.0-1", tt.opts...)
+			c, err := New(t.Context(), "nurago-test", "0.0.0-1", tt.opts...)
 			if err == nil {
 				defer func() {
 					err := c.Close()
@@ -153,7 +153,7 @@ func TestInstrumentHandler(t *testing.T) {
 
 	ctx := t.Context()
 
-	c, err := New(ctx, "gogen-test", "0.0.0-1")
+	c, err := New(ctx, "nurago-test", "0.0.0-1")
 	require.NoError(t, err)
 
 	defer func() {
@@ -178,7 +178,7 @@ func TestInstrumentHandler(t *testing.T) {
 func TestInstrumentRoundTripper(t *testing.T) {
 	t.Parallel()
 
-	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
+	c, err := New(t.Context(), "nurago-test", "0.0.0-1")
 	require.NoError(t, err)
 
 	defer func() {
@@ -226,7 +226,7 @@ func TestInstrumentRoundTripper(t *testing.T) {
 func TestIncLogLevelCounter(t *testing.T) {
 	t.Parallel()
 
-	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
+	c, err := New(t.Context(), "nurago-test", "0.0.0-1")
 	require.NoError(t, err)
 
 	defer func() {
@@ -240,7 +240,7 @@ func TestIncLogLevelCounter(t *testing.T) {
 func TestIncErrorCounter(t *testing.T) {
 	t.Parallel()
 
-	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
+	c, err := New(t.Context(), "nurago-test", "0.0.0-1")
 	require.NoError(t, err)
 
 	defer func() {
@@ -254,7 +254,7 @@ func TestIncErrorCounter(t *testing.T) {
 func TestClose(t *testing.T) {
 	t.Parallel()
 
-	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
+	c, err := New(t.Context(), "nurago-test", "0.0.0-1")
 	require.NoError(t, err)
 
 	err = c.Close()
@@ -264,7 +264,7 @@ func TestClose(t *testing.T) {
 func TestSqlOpen(t *testing.T) {
 	t.Parallel()
 
-	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
+	c, err := New(t.Context(), "nurago-test", "0.0.0-1")
 	require.NoError(t, err)
 
 	defer func() {
@@ -291,7 +291,7 @@ func TestSqlOpen(t *testing.T) {
 func TestInstrumentDB(t *testing.T) {
 	t.Parallel()
 
-	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
+	c, err := New(t.Context(), "nurago-test", "0.0.0-1")
 	require.NoError(t, err)
 
 	defer func() {
@@ -319,7 +319,7 @@ func Test_setInt64CounterError(t *testing.T) {
 func Test_resolveResource(t *testing.T) {
 	t.Parallel()
 
-	attrs := []attribute.KeyValue{attribute.String("service.name", "gogen-test")}
+	attrs := []attribute.KeyValue{attribute.String("service.name", "nurago-test")}
 	res := sdkresource.NewSchemaless(attrs...)
 
 	// A usable resource is passed through even when a non-fatal error is reported
@@ -333,7 +333,7 @@ func Test_resolveResource(t *testing.T) {
 	// is built so service metadata is not dropped.
 	got := resolveResource(nil, errors.New("fatal"), attrs)
 	require.NotNil(t, got)
-	require.Contains(t, got.Attributes(), attribute.String("service.name", "gogen-test"))
+	require.Contains(t, got.Attributes(), attribute.String("service.name", "nurago-test"))
 }
 
 //nolint:paralleltest // mutates the package-level newMeter seam and reads the otel globals
@@ -350,7 +350,7 @@ func TestNew_counterSetupError(t *testing.T) {
 	prevTracerProvider := otel.GetTracerProvider()
 	prevMeterProvider := otel.GetMeterProvider()
 
-	c, err := New(t.Context(), "gogen-test", "0.0.0-1")
+	c, err := New(t.Context(), "nurago-test", "0.0.0-1")
 	require.Error(t, err)
 	require.Nil(t, c)
 

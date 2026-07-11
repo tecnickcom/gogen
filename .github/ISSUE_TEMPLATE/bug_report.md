@@ -23,7 +23,7 @@ If applicable, copy the relevant logs to help explain your problem.
 **Environment:**
  - OS:
  - Go version:
- - gogen version:
+ - nurago version:
 
 **Additional context**
 Add any other context about the problem here.

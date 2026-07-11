@@ -1,16 +1,16 @@
 Source: ~#PKGNAME#~
-Maintainer: gogenexampleowner <gogenexampleemail>
+Maintainer: nuragoexampleowner <nuragoexampleemail>
 Section: utils
 Priority: optional
 Build-Depends: debhelper-compat (= 13), dh-golang
 Standards-Version: 4.7.2
-Homepage: gogenexampleprojectlink
-Vcs-Git: gogenexamplevcsgit
-Vcs-Browser: gogenexamplevcsgit
+Homepage: nuragoexampleprojectlink
+Vcs-Git: nuragoexamplevcsgit
+Vcs-Browser: nuragoexamplevcsgit
 
 Package: ~#PKGNAME#~
-Provides: gogenexample
+Provides: nuragoexample
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: gogenexampleshortdesc
- gogenexample : gogenexampleshortdesc
+Description: nuragoexampleshortdesc
+ nuragoexample : nuragoexampleshortdesc

@@ -50,9 +50,9 @@ accumulated with method calls and then materialized into an [aws.Config] via
 # Integrated Packages
 
 awsopt is used as the AWS configuration layer by:
-  - [github.com/tecnickcom/gogen/pkg/awssecretcache]
-  - [github.com/tecnickcom/gogen/pkg/s3]
-  - [github.com/tecnickcom/gogen/pkg/sqs]
+  - [github.com/tecnickcom/nurago/pkg/awssecretcache]
+  - [github.com/tecnickcom/nurago/pkg/s3]
+  - [github.com/tecnickcom/nurago/pkg/sqs]
 
 # Usage
 

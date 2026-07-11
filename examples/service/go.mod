@@ -1,8 +1,8 @@
-module github.com/gogenexampleowner/gogenexample
+module github.com/nuragoexampleowner/nuragoexample
 
 go 1.26
 
-replace github.com/tecnickcom/gogen => ../..
+replace github.com/tecnickcom/nurago => ../..
 
 tool go.uber.org/mock/mockgen
 
@@ -14,7 +14,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tecnickcom/gogen v1.145.0
+	github.com/tecnickcom/nurago v1.146.0
 )
 
 require (

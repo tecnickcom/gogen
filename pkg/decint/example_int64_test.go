@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tecnickcom/gogen/pkg/decint"
+	"github.com/tecnickcom/nurago/pkg/decint"
 )
 
 func ExampleFloatToInt() {

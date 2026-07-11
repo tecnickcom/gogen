@@ -3,7 +3,7 @@ package httpserver
 import (
 	"net/http"
 
-	"github.com/tecnickcom/gogen/pkg/profiling"
+	"github.com/tecnickcom/nurago/pkg/profiling"
 )
 
 // DefaultRoute is the type for the default route names.

@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/awsopt"
+	"github.com/tecnickcom/nurago/pkg/awsopt"
 )
 
 type mockSecretsManagerClient struct {

@@ -83,7 +83,7 @@ import (
 	"unicode"
 
 	farmhash64 "github.com/tecnickcom/farmhash64/go/src"
-	"github.com/tecnickcom/gogen/pkg/uhex"
+	"github.com/tecnickcom/nurago/pkg/uhex"
 	"golang.org/x/text/unicode/norm"
 )
 

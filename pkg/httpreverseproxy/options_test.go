@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/redact"
+	"github.com/tecnickcom/nurago/pkg/redact"
 )
 
 type testHTTPClient struct{}

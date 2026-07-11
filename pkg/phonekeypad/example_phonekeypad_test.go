@@ -3,7 +3,7 @@ package phonekeypad_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/phonekeypad"
+	"github.com/tecnickcom/nurago/pkg/phonekeypad"
 )
 
 func ExampleKeypadDigit() {

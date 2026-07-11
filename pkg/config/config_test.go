@@ -596,7 +596,7 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 				tt.setupMocks(v)
 			}
 
-			err := loadFromEnvVarSource(v, tt.setupConfigSource(), "TESTGOGEN")
+			err := loadFromEnvVarSource(v, tt.setupConfigSource(), "TESTNURAGO")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadFromEnvVarSource() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -605,7 +605,7 @@ func Test_loadFromEnvVarSource(t *testing.T) {
 }
 
 func Test_loadFromEnvVarSource_with_override(t *testing.T) {
-	t.Setenv("TESTGOGEN_OVKEY", "two_from_env")
+	t.Setenv("TESTNURAGO_OVKEY", "two_from_env")
 
 	setupConfigSource := func() *remoteSourceConfig {
 		return &remoteSourceConfig{
@@ -620,13 +620,13 @@ func Test_loadFromEnvVarSource_with_override(t *testing.T) {
 	v := viper.New()
 	v.SetConfigType("json")
 	v.AutomaticEnv()
-	v.SetEnvPrefix("TESTGOGEN")
+	v.SetEnvPrefix("TESTNURAGO")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	err := loadFromEnvVarSource(v, setupConfigSource(), "TESTGOGEN")
+	err := loadFromEnvVarSource(v, setupConfigSource(), "TESTNURAGO")
 	require.NoError(t, err)
 
-	require.Equal(t, os.Getenv("TESTGOGEN_OVKEY"), v.Get("ovkey"))
+	require.Equal(t, os.Getenv("TESTNURAGO_OVKEY"), v.Get("ovkey"))
 }
 
 func Test_loadFromRemoteSource(t *testing.T) {
@@ -1267,7 +1267,7 @@ func TestLoad_noLocalConfigFileWithEnvVarProvider(t *testing.T) {
 	// The provided config directory is empty and no config.json exists in any
 	// other search path, so loading must succeed purely from the built-in
 	// defaults plus the envvar-provider data (fully file-less deployment).
-	err := Load("gogen-config-test-nofile", t.TempDir(), "testnofile", targetConfig)
+	err := Load("nurago-config-test-nofile", t.TempDir(), "testnofile", targetConfig)
 	require.NoError(t, err)
 	require.Equal(t, "envvar_value", targetConfig.String)
 	require.Equal(t, 7, targetConfig.Int)
@@ -1289,7 +1289,7 @@ func TestLoad_nilConfiguration(t *testing.T) {
 func TestLoad_invalidRemoteProviderFailsFast(t *testing.T) {
 	t.Setenv("TESTBADPROV_REMOTECONFIGPROVIDER", "notaprovider")
 
-	err := Load("gogen-config-test-badprov", t.TempDir(), "testbadprov", &testConfig{})
+	err := Load("nurago-config-test-badprov", t.TempDir(), "testbadprov", &testConfig{})
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrInvalidRemoteConfig)
 	require.ErrorIs(t, err, ErrLocalConfig)
@@ -1303,7 +1303,7 @@ func TestLoad_envOverridesRegisteredDefault(t *testing.T) {
 
 	targetConfig := &testConfig{}
 
-	err := Load("gogen-config-test-envovr", t.TempDir(), "testenvovr", targetConfig)
+	err := Load("nurago-config-test-envovr", t.TempDir(), "testenvovr", targetConfig)
 	require.NoError(t, err)
 	require.Equal(t, "CONSOLE", targetConfig.Log.Format)
 }

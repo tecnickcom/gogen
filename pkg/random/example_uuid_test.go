@@ -3,7 +3,7 @@ package random_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/random"
 )
 
 //nolint:testableexamples

@@ -142,8 +142,8 @@ Optional behaviors are enabled with options:
 	)
 
 Example applications in this repository include:
-  - github.com/tecnickcom/gogen/pkg/awssecretcache
-  - github.com/tecnickcom/gogen/pkg/dnscache
+  - github.com/tecnickcom/nurago/pkg/awssecretcache
+  - github.com/tecnickcom/nurago/pkg/dnscache
 */
 package sfcache
 

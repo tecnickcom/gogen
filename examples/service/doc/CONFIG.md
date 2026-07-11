@@ -1,18 +1,18 @@
 # Configuration Guide
 
-The gogenexample service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/etcd-io/etcd) or a single environment variable.
+The nuragoexample service can load the configuration either from a local configuration file or remotely via [Consul](https://www.consul.io/), [Etcd](https://github.com/etcd-io/etcd) or a single environment variable.
 
 The local configuration file is always loaded before the remote configuration, the latter always overwrites any local setting.
 
 If the *configDir* parameter is not specified, then the program searches for a **config.json** file in the following directories (in order of precedence):
 
 * ./
-* $HOME/gogenexample/
-* /etc/gogenexample/
+* $HOME/nuragoexample/
+* /etc/nuragoexample/
 
 ## Default Configuration
 
-The default configuration file is installed in the **/etc/gogenexample/** folder (**config.json**) along with the JSON schema **config.schema.json**.
+The default configuration file is installed in the **/etc/nuragoexample/** folder (**config.json**) along with the JSON schema **config.schema.json**.
 
 ## Remote Configuration
 
@@ -23,17 +23,17 @@ The configuration fields are:
 
 * **remoteConfigProvider**      : Remote configuration source ("consul", "etcd", "envvar")
 * **remoteConfigEndpoint**      : Remote configuration URL (ip:port)
-* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/gogenexample")
-* **remoteConfigSecretKeyring** : Path to the [OpenPGP](https://www.openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/gogenexample/configkey.gpg"); if empty a non-secure connection will be used instead
-* **remoteConfigData**          : Base64 encoded JSON configuration data to be used with the "envvar" provider (can only be set via the GOGENEXAMPLE_REMOTECONFIGDATA environment variable, not in the configuration file)
+* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/nuragoexample")
+* **remoteConfigSecretKeyring** : Path to the [OpenPGP](https://www.openpgp.org/) secret keyring used to decrypt the remote configuration data (e.g. "/etc/nuragoexample/configkey.gpg"); if empty a non-secure connection will be used instead
+* **remoteConfigData**          : Base64 encoded JSON configuration data to be used with the "envvar" provider (can only be set via the NURAGOEXAMPLE_REMOTECONFIGDATA environment variable, not in the configuration file)
 
 The equivalent environment variables are:
 
-* GOGENEXAMPLE_REMOTECONFIGPROVIDER
-* GOGENEXAMPLE_REMOTECONFIGENDPOINT
-* GOGENEXAMPLE_REMOTECONFIGPATH
-* GOGENEXAMPLE_REMOTECONFIGSECRETKEYRING
-* GOGENEXAMPLE_REMOTECONFIGDATA
+* NURAGOEXAMPLE_REMOTECONFIGPROVIDER
+* NURAGOEXAMPLE_REMOTECONFIGENDPOINT
+* NURAGOEXAMPLE_REMOTECONFIGPATH
+* NURAGOEXAMPLE_REMOTECONFIGSECRETKEYRING
+* NURAGOEXAMPLE_REMOTECONFIGDATA
 
 ## Configuration Format
 
@@ -41,8 +41,8 @@ The configuration format is a single JSON structure with the following fields:
 
 * **remoteConfigProvider**      : Remote configuration source ("consul", "etcd", "envvar")
 * **remoteConfigEndpoint**      : Remote configuration URL (ip:port)
-* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/gogenexample")
-* **remoteConfigSecretKeyring** : Path to the OpenPGP secret keyring used to decrypt the remote configuration data (e.g. "/etc/gogenexample/configkey.gpg"); if empty a non-secure connection will be used instead
+* **remoteConfigPath**          : Remote configuration path in which to search for the configuration file (e.g. "/config/nuragoexample")
+* **remoteConfigSecretKeyring** : Path to the OpenPGP secret keyring used to decrypt the remote configuration data (e.g. "/etc/nuragoexample/configkey.gpg"); if empty a non-secure connection will be used instead
 
 * **enabled**: Enable or disable the service
 
@@ -95,7 +95,7 @@ All configuration files are formatted and ordered by key using the [jq](https://
 For example:
 
 ```bash
-cat 'resources/etc/gogenexample/config.schema.json' | jq -S .
+cat 'resources/etc/nuragoexample/config.schema.json' | jq -S .
 ```
 
 ## Validating Configuration
@@ -109,5 +109,5 @@ go install github.com/santhosh-tekuri/jsonschema/cmd/jv@latest
 Example usage:
 
 ```bash
-jv resources/etc/gogenexample/config.schema.json resources/etc/gogenexample/config.json
+jv resources/etc/nuragoexample/config.schema.json resources/etc/nuragoexample/config.json
 ```

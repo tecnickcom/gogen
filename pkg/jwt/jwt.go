@@ -28,7 +28,7 @@ This package wraps the core flow in a small API compatible with net/http:
 
 Credential verification is fully delegated to a caller-provided
 [VerifyCredentialsFn], so the package is agnostic to the password-hashing
-scheme; use the OWASP-compliant github.com/tecnickcom/gogen/pkg/passwordhash
+scheme; use the OWASP-compliant github.com/tecnickcom/nurago/pkg/passwordhash
 (Argon2id) for storage.
 
 # Implementation
@@ -104,7 +104,7 @@ Functional options allow custom behavior without replacing core handlers:
     the caller.
   - The default responder logs the full response body, including the issued
     token, at debug level. Where debug logs are retained, disable them or pass a
-    redacting logger via [WithLogger] (see github.com/tecnickcom/gogen/pkg/redact,
+    redacting logger via [WithLogger] (see github.com/tecnickcom/nurago/pkg/redact,
     which detects JWT compact serializations).
 
 # Benefits
@@ -122,8 +122,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/random"
 )
 
 const (
@@ -190,7 +190,7 @@ type SendResponseFn func(ctx context.Context, w http.ResponseWriter, statusCode 
 // Implementations MUST NOT leak account existence through response timing:
 // perform comparable work for unknown and known users (for example, verify the
 // password against a fixed decoy hash when the user does not exist). See
-// github.com/tecnickcom/gogen/pkg/passwordhash for a constant-time,
+// github.com/tecnickcom/nurago/pkg/passwordhash for a constant-time,
 // OWASP-compliant verifier.
 type VerifyCredentialsFn func(username, password string) (bool, error)
 

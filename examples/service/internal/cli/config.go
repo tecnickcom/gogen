@@ -1,22 +1,22 @@
 package cli
 
 import (
-	"github.com/tecnickcom/gogen/pkg/config"
-	"github.com/tecnickcom/gogen/pkg/validator"
+	"github.com/tecnickcom/nurago/pkg/config"
+	"github.com/tecnickcom/nurago/pkg/validator"
 )
 
 const (
 	// AppName is the name of the application executable.
-	AppName = "gogenexample"
+	AppName = "nuragoexample"
 
 	// appEnvPrefix is the prefix of the configuration environment variables.
-	appEnvPrefix = "GOGENEXAMPLE"
+	appEnvPrefix = "NURAGOEXAMPLE"
 
 	// appShortDesc is the short description of the application.
-	appShortDesc = "gogenexampleshortdesc"
+	appShortDesc = "nuragoexampleshortdesc"
 
 	// appLongDesc is the long description of the application.
-	appLongDesc = "gogenexamplelongdesc"
+	appLongDesc = "nuragoexamplelongdesc"
 
 	// fieldTagName is the name of the tag containing the original JSON field name.
 	fieldTagName = "mapstructure"

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/errutil"
+	"github.com/tecnickcom/nurago/pkg/errutil"
 )
 
 //nolint:testableexamples

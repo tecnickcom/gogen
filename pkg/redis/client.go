@@ -8,7 +8,7 @@ import (
 	"time"
 
 	libredis "github.com/redis/go-redis/v9"
-	"github.com/tecnickcom/gogen/pkg/encode"
+	"github.com/tecnickcom/nurago/pkg/encode"
 )
 
 // Sentinel errors returned by the package. They can be matched with errors.Is

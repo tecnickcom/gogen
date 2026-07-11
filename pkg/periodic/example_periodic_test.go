@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/periodic"
+	"github.com/tecnickcom/nurago/pkg/periodic"
 )
 
 func ExampleNew() {

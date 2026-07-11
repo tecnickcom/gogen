@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/httpretrier"
+	"github.com/tecnickcom/nurago/pkg/httpretrier"
 )
 
 const (
 	defaultTimeout   = 30 * time.Second
 	defaultAPIURL    = "https://api.pwnedpasswords.com"
 	rangePath        = "range"
-	defaultUserAgent = "gogen.passwordpwned/1"
+	defaultUserAgent = "nurago.passwordpwned/1"
 
 	// defaultMaxResponseBytes bounds the decoded response size to guard against
 	// decompression-bomb style memory exhaustion. Real HIBP range responses are
@@ -75,7 +75,7 @@ func defaultClient() *Client {
 //   - API URL:        https://api.pwnedpasswords.com
 //   - Timeout:        30 s
 //   - Ping timeout:   5 s (HealthCheck probe)
-//   - User-Agent:     gogen.passwordpwned/1
+//   - User-Agent:     nurago.passwordpwned/1
 //   - Retry attempts: httpretrier.DefaultAttempts
 //   - Max response:   8 MiB (decoded)
 //

@@ -51,7 +51,7 @@ once with [Node.Add], then query it repeatedly with [Node.Get]:
     without sanitisation.
   - Alphabetical key support: letter characters in keys are converted to
     their ITU E.161 phone-keypad digits via
-    [github.com/tecnickcom/gogen/pkg/phonekeypad], enabling vanity numbers
+    [github.com/tecnickcom/nurago/pkg/phonekeypad], enabling vanity numbers
     like "1-800-FLOWERS" to be stored and matched transparently.
   - Efficient memory layout: each node holds a fixed 10-slot children array
     (one slot per digit 0–9), avoiding dynamic allocation per insertion.
@@ -97,8 +97,8 @@ reporting.
 package numtrie
 
 import (
-	"github.com/tecnickcom/gogen/pkg/phonekeypad"
-	"github.com/tecnickcom/gogen/pkg/typeutil"
+	"github.com/tecnickcom/nurago/pkg/phonekeypad"
+	"github.com/tecnickcom/nurago/pkg/typeutil"
 )
 
 // Status codes to be returned when searching for a number in the trie.
@@ -136,7 +136,7 @@ const (
 )
 
 // indexSize is the number of possible children for each trie node. It matches
-// the [0, 10) range guaranteed by [github.com/tecnickcom/gogen/pkg/phonekeypad.KeypadDigit],
+// the [0, 10) range guaranteed by [github.com/tecnickcom/nurago/pkg/phonekeypad.KeypadDigit],
 // whose result indexes the children array directly; the two must stay in sync.
 const indexSize = 10 // digits from 0 to 9
 

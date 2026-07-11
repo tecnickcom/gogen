@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/config"
-	"github.com/tecnickcom/gogen/pkg/validator"
+	"github.com/tecnickcom/nurago/pkg/config"
+	"github.com/tecnickcom/nurago/pkg/validator"
 )
 
 func Test_appConfig_SetDefaults(t *testing.T) {

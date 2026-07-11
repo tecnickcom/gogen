@@ -12,8 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/awsopt"
-	"github.com/tecnickcom/gogen/pkg/testutil"
+	"github.com/tecnickcom/nurago/pkg/awsopt"
+	"github.com/tecnickcom/nurago/pkg/testutil"
 )
 
 func TestNew(t *testing.T) {

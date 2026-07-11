@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/gogenexampleowner/gogenexample/internal/metrics"
+	"github.com/nuragoexampleowner/nuragoexample/internal/metrics"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/bootstrap"
-	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
-	libmtr "github.com/tecnickcom/gogen/pkg/metrics"
+	"github.com/tecnickcom/nurago/pkg/bootstrap"
+	"github.com/tecnickcom/nurago/pkg/httputil/jsendx"
+	libmtr "github.com/tecnickcom/nurago/pkg/metrics"
 )
 
 type mockMetricsClientError struct{}

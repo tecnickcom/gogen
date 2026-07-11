@@ -17,7 +17,7 @@ JSend with runtime metadata:
   - HTTP code/message and JSend status projection
   - arbitrary response data payload
 
-The [JSXResp] helper integrates with [github.com/tecnickcom/gogen/pkg/httputil]
+The [JSXResp] helper integrates with [github.com/tecnickcom/nurago/pkg/httputil]
 to send wrapped JSON responses and includes ready-to-use default handlers for
 common service endpoints and router fallbacks.
 
@@ -29,7 +29,7 @@ common service endpoints and router fallbacks.
     index, ping, status, and public-IP endpoints.
   - Direct adapter for healthcheck result writing via
     [JSXResp.HealthCheckResultWriter].
-  - Compatibility with gogen HTTP server abstractions
+  - Compatibility with nurago HTTP server abstractions
     ([httpserver.IndexHandlerFunc], [healthcheck.ResultWriter]).
 
 # Benefits
@@ -45,9 +45,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/healthcheck"
-	"github.com/tecnickcom/gogen/pkg/httpserver"
-	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/healthcheck"
+	"github.com/tecnickcom/nurago/pkg/httpserver"
+	"github.com/tecnickcom/nurago/pkg/httputil"
 )
 
 const (

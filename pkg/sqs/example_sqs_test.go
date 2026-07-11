@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/tecnickcom/gogen/pkg/sqs"
+	"github.com/tecnickcom/nurago/pkg/sqs"
 )
 
 // exampleSQSClient is a minimal in-memory stand-in for the AWS SQS client,

@@ -8,7 +8,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/httputil"
 )
 
 const (

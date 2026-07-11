@@ -1,5 +1,5 @@
 /*
-Package prometheus implements [github.com/tecnickcom/gogen/pkg/metrics.Client]
+Package prometheus implements [github.com/tecnickcom/nurago/pkg/metrics.Client]
 using the Prometheus client ecosystem.
 
 # Problem

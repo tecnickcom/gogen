@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/sfcache"
+	"github.com/tecnickcom/nurago/pkg/sfcache"
 )
 
 // config accumulates optional settings applied by [Option] values before a

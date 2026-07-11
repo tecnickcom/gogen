@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/random"
-	"github.com/tecnickcom/gogen/pkg/redact"
-	"github.com/tecnickcom/gogen/pkg/traceid"
+	"github.com/tecnickcom/nurago/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/redact"
+	"github.com/tecnickcom/nurago/pkg/traceid"
 )
 
 // defaultMaxDumpSize is the default cap (in bytes, by advertised Content-Length)

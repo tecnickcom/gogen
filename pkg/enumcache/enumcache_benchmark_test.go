@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/enumcache"
+	"github.com/tecnickcom/nurago/pkg/enumcache"
 )
 
 // benchCache returns a cache seeded with the 32 single-bit flags flag0..flag31.

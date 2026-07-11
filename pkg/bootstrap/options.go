@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/logutil"
 )
 
 // Option configures Bootstrap runtime behavior.

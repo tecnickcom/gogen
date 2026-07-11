@@ -3,7 +3,7 @@ package maputil_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/maputil"
+	"github.com/tecnickcom/nurago/pkg/maputil"
 )
 
 func ExampleFilter() {

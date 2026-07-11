@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tecnickcom/gogen/pkg/encrypt"
+	"github.com/tecnickcom/nurago/pkg/encrypt"
 )
 
 // The nonce is random, so the ciphertext differs on every run; these examples

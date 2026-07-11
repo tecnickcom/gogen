@@ -3,7 +3,7 @@ package redact_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/redact"
+	"github.com/tecnickcom/nurago/pkg/redact"
 )
 
 const (
@@ -13,7 +13,7 @@ Host: test.redact.invalid
 User-Agent: Go-http-client/1.1
 Authorization: Basic SECRET_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789=
 authorization : ApiKey=SECRET OtherData=SECRET
-X-GOGEN-Trace-Id: abcdef0123456789
+X-NURAGO-Trace-Id: abcdef0123456789
 Accept-Encoding: gzip
 
 password=SECRET
@@ -89,7 +89,7 @@ func ExampleHTTPData() {
 	// User-Agent: Go-http-client/1.1
 	// Authorization: ***
 	// authorization : ***
-	// X-GOGEN-Trace-Id: abcdef0123456789
+	// X-NURAGO-Trace-Id: abcdef0123456789
 	// Accept-Encoding: gzip
 	//
 	// password=***
@@ -135,7 +135,7 @@ func ExampleHTTPDataString() {
 	// User-Agent: Go-http-client/1.1
 	// Authorization: ***
 	// authorization : ***
-	// X-GOGEN-Trace-Id: abcdef0123456789
+	// X-NURAGO-Trace-Id: abcdef0123456789
 	// Accept-Encoding: gzip
 	//
 	// password=***

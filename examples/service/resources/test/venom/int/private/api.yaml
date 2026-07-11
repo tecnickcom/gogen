@@ -1,7 +1,7 @@
 version: "2"
-name: gogenexample Private API tests
+name: nuragoexample Private API tests
 vars:
-  gogenexample.url: 'http://gogenexample:8072'
+  nuragoexample.url: 'http://nuragoexample:8072'
 
 testcases:
 
@@ -10,7 +10,7 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gogenexample.url}}/error'
+    url: '{{.nuragoexample.url}}/error'
     assertions:
     - result.statuscode ShouldEqual 404
 
@@ -19,7 +19,7 @@ testcases:
     - type: http
       ignore_verify_ssl optional: true
       method: GET
-      url: '{{.gogenexample.url}}/ping'
+      url: '{{.nuragoexample.url}}/ping'
       assertions:
         - result.statuscode ShouldEqual 200
 
@@ -28,7 +28,7 @@ testcases:
     - type: http
       ignore_verify_ssl optional: true
       method: GET
-      url: '{{.gogenexample.url}}/uid'
+      url: '{{.nuragoexample.url}}/uid'
       assertions:
         - result.statuscode ShouldEqual 200
         - result.body ShouldNotBeEmpty

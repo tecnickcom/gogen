@@ -79,7 +79,7 @@ func TestSqlOpen(t *testing.T) {
 	require.NoError(t, err, "CreateMetricsClientFunc() unexpected error = %v", err)
 	require.NotNil(t, c, "metrics.Client should not be nil")
 
-	dsn := "sqlmock_db_gogenexample"
+	dsn := "sqlmock_db_nuragoexample"
 
 	_, _, err = sqlmock.NewWithDSN(dsn)
 	require.NoError(t, err)

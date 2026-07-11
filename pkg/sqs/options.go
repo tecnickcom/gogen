@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sep "github.com/aws/smithy-go/endpoints"
-	"github.com/tecnickcom/gogen/pkg/awsopt"
+	"github.com/tecnickcom/nurago/pkg/awsopt"
 )
 
 // SrvOptionFunc aliases an AWS SDK SQS service option mutator.

@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/timeutil"
+	"github.com/tecnickcom/nurago/pkg/timeutil"
 )
 
 func ExampleDuration_MarshalJSON() {

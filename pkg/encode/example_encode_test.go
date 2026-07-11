@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tecnickcom/gogen/pkg/encode"
+	"github.com/tecnickcom/nurago/pkg/encode"
 )
 
 // The gob wire format embeds process-global type IDs, so the encoded output is

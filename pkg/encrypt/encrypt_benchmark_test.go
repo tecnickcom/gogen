@@ -3,7 +3,7 @@ package encrypt_test
 import (
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/encrypt"
+	"github.com/tecnickcom/nurago/pkg/encrypt"
 )
 
 type benchData struct {

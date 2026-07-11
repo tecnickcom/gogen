@@ -3,8 +3,8 @@ package tsmap_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/maputil"
-	"github.com/tecnickcom/gogen/pkg/threadsafe/tsmap"
+	"github.com/tecnickcom/nurago/pkg/maputil"
+	"github.com/tecnickcom/nurago/pkg/threadsafe/tsmap"
 )
 
 func ExampleGuarded() {

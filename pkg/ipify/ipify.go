@@ -16,7 +16,7 @@ This package wraps those concerns in a focused [Client] API:
   - [New] creates a configurable ipify client.
   - [Client.GetPublicIP] performs the request and returns the resolved IP.
   - [Client.HealthCheck] probes endpoint reachability for parity with the other
-    gogen HTTP clients.
+    nurago HTTP clients.
 
 The default configuration uses:
   - endpoint: https://api.ipify.org

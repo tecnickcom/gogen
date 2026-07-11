@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/encode"
+	"github.com/tecnickcom/nurago/pkg/encode"
 )
 
 // requireSentinel fails the test if err is not classified by one of the

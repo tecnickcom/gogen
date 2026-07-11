@@ -152,7 +152,7 @@ func (c *Client) GetPublicIP(ctx context.Context) (ip string, err error) {
 // returns a usable public IP.
 //
 // It performs a GetPublicIP call, discards the resolved address, and returns
-// only the error. It exists for parity with the other gogen HTTP clients that
+// only the error. It exists for parity with the other nurago HTTP clients that
 // expose a HealthCheck probe.
 func (c *Client) HealthCheck(ctx context.Context) error {
 	_, err := c.GetPublicIP(ctx)

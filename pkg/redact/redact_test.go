@@ -37,7 +37,7 @@ User-Agent: Go-http-client/1.1
 Authorization: Basic SECRET_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789=
 authorization : ApiKey=SECRET OtherData=SECRET
 AUTHORIZATION	:	Digest SECRET
-X-GOGEN-Trace-Id: abcdef0123456789
+X-NURAGO-Trace-Id: abcdef0123456789
 Accept-Encoding: gzip
 
 password=SECRET
@@ -229,7 +229,7 @@ User-Agent: Go-http-client/1.1
 Authorization: ***
 authorization : ***
 AUTHORIZATION	:	***
-X-GOGEN-Trace-Id: abcdef0123456789
+X-NURAGO-Trace-Id: abcdef0123456789
 Accept-Encoding: gzip
 
 password=***

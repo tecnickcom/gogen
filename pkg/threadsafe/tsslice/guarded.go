@@ -4,7 +4,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/tecnickcom/gogen/pkg/sliceutil"
+	"github.com/tecnickcom/nurago/pkg/sliceutil"
 )
 
 // Guarded is a slice bundled with its own [sync.RWMutex]. All access goes
@@ -150,7 +150,7 @@ func (g *Guarded[E]) Do(f func(s *[]E)) {
 
 // RDo runs f under a read lock, giving it the current slice value for atomic
 // multi-step reads (including Map/Reduce to a different type via
-// github.com/tecnickcom/gogen/pkg/sliceutil). f must not mutate the slice, call
+// github.com/tecnickcom/nurago/pkg/sliceutil). f must not mutate the slice, call
 // back into this Guarded, or retain the slice beyond its own return.
 func (g *Guarded[E]) RDo(f func(s []E)) {
 	g.mu.RLock()

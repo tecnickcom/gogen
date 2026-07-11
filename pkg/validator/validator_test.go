@@ -6,7 +6,7 @@ import (
 
 	vt "github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/errutil"
+	"github.com/tecnickcom/nurago/pkg/errutil"
 )
 
 func TestError_Error(t *testing.T) {

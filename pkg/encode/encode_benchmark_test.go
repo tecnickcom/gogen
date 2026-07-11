@@ -3,7 +3,7 @@ package encode_test
 import (
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/encode"
+	"github.com/tecnickcom/nurago/pkg/encode"
 )
 
 type benchData struct {

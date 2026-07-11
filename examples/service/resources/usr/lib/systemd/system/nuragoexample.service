@@ -1,16 +1,16 @@
 [Unit]
-Description=gogenexample service
-Documentation=https://github.com/tecnickcom/gogen
+Description=nuragoexample service
+Documentation=https://github.com/tecnickcom/nurago
 After=network.target
 Wants=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/gogenexample
+ExecStart=/usr/bin/nuragoexample
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:/var/log/gogenexample.log
-StandardError=append:/var/log/gogenexample.log
+StandardOutput=append:/var/log/nuragoexample.log
+StandardError=append:/var/log/nuragoexample.log
 
 # Security hardening options
 ProtectSystem=full

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/httputil"
 )
 
 // FuzzLoginHandler feeds arbitrary bodies to the login endpoint: it must never

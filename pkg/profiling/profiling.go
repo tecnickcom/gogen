@@ -51,7 +51,7 @@ handler serve the index page for every request.
 The /pprof/profile and /pprof/trace endpoints block for the requested duration
 (?seconds=N). Mount this handler on a route that is exempt from any per-request
 timeout, otherwise long profiles are truncated. The
-[github.com/tecnickcom/gogen/pkg/httpserver] integration disables the request
+[github.com/tecnickcom/nurago/pkg/httpserver] integration disables the request
 timeout for the pprof route for this reason.
 
 The index page served at the empty path links to the other profiles using
@@ -68,7 +68,7 @@ protect it with authentication middleware appropriate for your environment.
 
 # Integration
 
-The [github.com/tecnickcom/gogen/pkg/httpserver] package registers
+The [github.com/tecnickcom/nurago/pkg/httpserver] package registers
 [PProfHandler] as the default pprof handler on its internal router. See
 pkg/httpserver/config.go for a complete integration example.
 */

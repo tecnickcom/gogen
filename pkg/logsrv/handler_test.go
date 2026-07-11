@@ -14,7 +14,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/logutil"
 )
 
 // newLeaf builds a bare native leaf handler (no trace/hook wrappers) at TraceLevel so

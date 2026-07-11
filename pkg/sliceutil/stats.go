@@ -5,7 +5,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/tecnickcom/gogen/pkg/typeutil"
+	"github.com/tecnickcom/nurago/pkg/typeutil"
 )
 
 // ErrEmptySlice is returned by Stats when the input slice contains no elements.

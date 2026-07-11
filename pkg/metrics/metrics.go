@@ -32,9 +32,9 @@ configured metrics backend while keeping a consistent API.
 # Backends
 
 Concrete implementations are available in sibling packages:
-  - github.com/tecnickcom/gogen/pkg/metrics/statsd
-  - github.com/tecnickcom/gogen/pkg/metrics/prometheus
-  - github.com/tecnickcom/gogen/pkg/metrics/opentel
+  - github.com/tecnickcom/nurago/pkg/metrics/statsd
+  - github.com/tecnickcom/nurago/pkg/metrics/prometheus
+  - github.com/tecnickcom/nurago/pkg/metrics/opentel
 
 # Benefits
 

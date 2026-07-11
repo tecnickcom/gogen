@@ -65,7 +65,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/backoff"
+	"github.com/tecnickcom/nurago/pkg/backoff"
 )
 
 const (

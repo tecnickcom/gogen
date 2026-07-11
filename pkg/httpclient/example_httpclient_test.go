@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/httpclient"
-	"github.com/tecnickcom/gogen/pkg/traceid"
+	"github.com/tecnickcom/nurago/pkg/httpclient"
+	"github.com/tecnickcom/nurago/pkg/traceid"
 )
 
 func ExampleNew() {

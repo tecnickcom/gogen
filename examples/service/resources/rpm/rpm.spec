@@ -7,7 +7,7 @@
 Name:      %{_package}
 Version:   %{_version}
 Release:   %{_release}%{?dist}
-Summary:   gogenexampleshortdesc
+Summary:   nuragoexampleshortdesc
 
 License:   %{_docpath}/LICENSE
 URL:       https://github.com/%{gh_owner}/%{gh_project}
@@ -16,7 +16,7 @@ URL:       https://github.com/%{gh_owner}/%{gh_project}
 Provides:  %{gh_project} = %{version}
 
 %description
-gogenexampleshortdesc
+nuragoexampleshortdesc
 
 %build
 #(cd %{_current_directory} && make build)
@@ -39,6 +39,6 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %{_configpath}*
 
 %changelog
-* Wed Jan 01 2025 gogenexampleauthor <gogenexampleemail> 1.0.0-1
+* Wed Jan 01 2025 nuragoexampleauthor <nuragoexampleemail> 1.0.0-1
 - Initial Commit
 

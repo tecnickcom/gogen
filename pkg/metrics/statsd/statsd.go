@@ -1,5 +1,5 @@
 /*
-Package statsd implements [github.com/tecnickcom/gogen/pkg/metrics.Client]
+Package statsd implements [github.com/tecnickcom/nurago/pkg/metrics.Client]
 using the StatsD protocol.
 
 # Problem

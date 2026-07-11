@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/tecnickcom/gogen/pkg/httpserver"
-	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/httpserver"
+	"github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/random"
 )
 
 // Service is the interface representing the business logic of the service.
@@ -37,7 +37,7 @@ func New(s Service, l *slog.Logger) *HTTPHandlerPrivate {
 
 // BindHTTP returns the private routes exposed by this handler.
 //
-// The route list is consumed by gogen's HTTP server binder, which enables
+// The route list is consumed by nurago's HTTP server binder, which enables
 // developers to add or remove endpoints in one place while keeping method,
 // path, and handler metadata explicit and testable.
 func (h *HTTPHandlerPrivate) BindHTTP(_ context.Context) []httpserver.Route {

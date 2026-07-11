@@ -88,8 +88,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/logutil"
 )
 
 // Binder is an interface to allow configuring the HTTP router.

@@ -34,7 +34,7 @@ This package centralizes that integration into a small reusable client.
 
 # Configuration & Extensibility
 
-The client configuration composes with [github.com/tecnickcom/gogen/pkg/awsopt]
+The client configuration composes with [github.com/tecnickcom/nurago/pkg/awsopt]
 and exposes option hooks for advanced scenarios:
 
   - [WithAWSOptions] to pass generic AWS config options,

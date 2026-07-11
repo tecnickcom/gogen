@@ -1,18 +1,18 @@
 ---
 # yamllint disable rule:line-length
 project:
-  name: gogenexample
-  title: gogenexample
+  name: nuragoexample
+  title: nuragoexample
   category: Application
   copyright_start_year: "2025"
-  copyright_owner: gogenexampleowner
-  license_url: https://github.com/gogenexampleowner/gogenexample/blob/main/LICENSE
-  cvs: https://github.com/gogenexampleowner/gogenexample
-  tagline: gogenexampleshortdesc
+  copyright_owner: nuragoexampleowner
+  license_url: https://github.com/nuragoexampleowner/nuragoexample/blob/main/LICENSE
+  cvs: https://github.com/nuragoexampleowner/nuragoexample
+  tagline: nuragoexampleshortdesc
   logo: doc/images/logo.png
 team:
-  name: gogenexampleowner
-  title: gogenexampleowner
+  name: nuragoexampleowner
+  title: nuragoexampleowner
   info:
   slack:
   escalation:
@@ -25,7 +25,7 @@ doclinks:
       links:
         github:
           name: GitHub project page
-          url: gogenexampleprojectlink
+          url: nuragoexampleprojectlink
 slack:
 dependencies:
 environment:

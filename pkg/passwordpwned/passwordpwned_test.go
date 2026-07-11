@@ -14,7 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/httputil"
 	"github.com/undefinedlabs/go-mpatch"
 	"go.uber.org/mock/gomock"
 )

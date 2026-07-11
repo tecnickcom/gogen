@@ -1,40 +1,38 @@
-# gogen
+# nurago
 
 > [!IMPORTANT]
 > **This project has been renamed to [nurago](https://github.com/tecnickcom/nurago)** — same library, same packages, new name.
 >
-> The `github.com/tecnickcom/gogen` module path is **deprecated** and will receive no further updates; all existing versions remain permanently available via the Go module proxy. Please switch to the new module path:
+> The `github.com/tecnickcom/nurago` module path is **deprecated** and will receive no further updates; all existing versions remain permanently available via the Go module proxy. Please switch to the new module path:
 >
 > ```bash
 > go get github.com/tecnickcom/nurago@latest
-> find . -name '*.go' -exec sed -i 's|github.com/tecnickcom/gogen|github.com/tecnickcom/nurago|g' {} +
+> find . -name '*.go' -exec sed -i 's|github.com/tecnickcom/nurago|github.com/tecnickcom/nurago|g' {} +
 > go mod tidy
 > ```
 >
 > *Why "nurago"?* From *nuraghe* + Go: the Bronze Age Sardinian stone towers, built without mortar, ~7,000 of which still stand after 3,500 years — modular, stone-solid foundations with no lock-in, which is exactly what this library aims to be.
 
-[![GitHub Release](https://img.shields.io/github/v/release/tecnickcom/gogen)](https://github.com/tecnickcom/gogen/releases)
-[![Go Reference](https://pkg.go.dev/badge/github.com/tecnickcom/gogen.svg)](https://pkg.go.dev/github.com/tecnickcom/gogen)
-[![Coverage Status](https://coveralls.io/repos/github/tecnickcom/gogen/badge.svg?branch=main)](https://coveralls.io/github/tecnickcom/gogen?branch=main)
+[![GitHub Release](https://img.shields.io/github/v/release/tecnickcom/nurago)](https://github.com/tecnickcom/nurago/releases)
+[![Go Reference](https://pkg.go.dev/badge/github.com/tecnickcom/nurago.svg)](https://pkg.go.dev/github.com/tecnickcom/nurago)
+[![Coverage Status](https://coveralls.io/repos/github/tecnickcom/nurago/badge.svg?branch=main)](https://coveralls.io/github/tecnickcom/nurago?branch=main)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11517/badge)](https://www.bestpractices.dev/projects/11517)
 
 [![Sponsor on GitHub](https://img.shields.io/badge/sponsor-github-EA4AAA.svg?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/tecnickcom)
 
 If this project is useful to you, please consider [supporting development via GitHub Sponsors](https://github.com/sponsors/tecnickcom).
 
-![gogen logo](gogen_logo.png)
-
-**`gogen` is a production-oriented collection of modular, reusable Go packages for building services and infrastructure code.**
+**`nurago` is a production-oriented collection of modular, reusable Go packages for building services and infrastructure code.**
 
 It solves a common problem in backend teams: repeatedly re-implementing the same foundational components (configuration loading, retries, health checks, logging, metrics, AWS integration, validation, caching, and more) across multiple repositories.
 
 Instead of assembling and maintaining ad-hoc helpers per project, you can adopt tested packages with consistent patterns.
 
-Source documentation: [pkg.go.dev/github.com/tecnickcom/gogen](https://pkg.go.dev/github.com/tecnickcom/gogen)
+Source documentation: [pkg.go.dev/github.com/tecnickcom/nurago](https://pkg.go.dev/github.com/tecnickcom/nurago)
 
 ## Table of Contents
 
-1. [Why gogen](#why-gogen)
+1. [Why nurago](#why-nurago)
 2. [Feature Highlights](#feature-highlights)
 3. [Benefits Summary](#benefits-summary)
 4. [Package Catalog](#package-catalog)
@@ -43,9 +41,9 @@ Source documentation: [pkg.go.dev/github.com/tecnickcom/gogen](https://pkg.go.de
 7. [How To Create a New Web Service](#how-to-create-a-new-web-service)
 8. [Contributing](#contributing)
 
-## Why gogen
+## Why nurago
 
-`gogen` is a good fit for Go teams that want:
+`nurago` is a good fit for Go teams that want:
 
 - A consistent utility layer across services
 - Reusable packages rather than project-specific scripts
@@ -83,7 +81,7 @@ This scaffolds a new web service from the provided configuration.
 
 ## Package Catalog
 
-`gogen` offers a comprehensive set of well-tested packages.
+`nurago` offers a comprehensive set of well-tested packages.
 
 - [awsopt](pkg/awsopt) - Utilities for configuring common AWS options with the aws-sdk-go-v2 library. `aws`, `configuration`
 - [awssecretcache](pkg/awssecretcache) - Client for retrieving and caching secrets from AWS Secrets Manager. `aws`, `secrets`, `caching`
@@ -166,8 +164,8 @@ Requirements:
 Clone and validate the repository:
 
 ```bash
-git clone https://github.com/tecnickcom/gogen.git
-cd gogen
+git clone https://github.com/tecnickcom/nurago.git
+cd nurago
 make x
 ```
 
@@ -203,22 +201,22 @@ make dbuild
 
 ## How To Create a New Web Service
 
-The directory `examples/service` contains a sample web service built with `gogen`.
+The directory `examples/service` contains a sample web service built with `nurago`.
 
 To scaffold a new project:
 
-### Clone the gogen repository
+### Clone the nurago repository
 
 ```bash
-$ git clone https://github.com/tecnickcom/gogen.git
+$ git clone https://github.com/tecnickcom/nurago.git
 
-Cloning into 'gogen'...
+Cloning into 'nurago'...
 ```
 
 ### Move to the cloned project directory
 
 ```bash
-$ cd gogen/
+$ cd nurago/
 ```
 
 ### List available Make targets
@@ -226,7 +224,7 @@ $ cd gogen/
 ```bash
 $ make
 
-# gogen Makefile.
+# nurago Makefile.
 # GOPATH=/home/demo/GO
 # The following commands are available:
 #
@@ -286,7 +284,7 @@ $ make x
         # 8.6.2. make confcheck : Check the configuration files (jv)
         # 8.6.3. make test      : Run unit tests (go test)
         # 8.6.4. make coverage  : Generate the coverage report (target/report/coverage.html)
-    # 8.7. make build       : Compile the application (go build > target/usr/bin/gogenexample)
+    # 8.7. make build       : Compile the application (go build > target/usr/bin/nuragoexample)
 ```
 
 ### Create a new project from the examples/service template
@@ -333,7 +331,7 @@ $ make x
     #  7.2. make confcheck : Check the configuration files (jv)
     #  7.3. make test      : Run unit tests (go test)
     #  7.4. make coverage  : Generate the coverage report (target/report/coverage.html)
-#  8. make build       : Compile the application (go build > target/usr/bin/gogenexample)
+#  8. make build       : Compile the application (go build > target/usr/bin/nuragoexample)
 #  9. make docker      : Build a scratch Docker container to run this service
 # 10. make dockertest  : Test the newly built Docker container in an ephemeral Docker Compose environment
     # 10.1. DEPLOY_ENV=int make openapitest apitest
@@ -343,4 +341,4 @@ $ make x
 
 ## Contributing
 
-Contributions are welcome. Please review [CONTRIBUTING.md](https://github.com/tecnickcom/gogen/blob/main/CONTRIBUTING.md) before opening a pull request.
+Contributions are welcome. Please review [CONTRIBUTING.md](https://github.com/tecnickcom/nurago/blob/main/CONTRIBUTING.md) before opening a pull request.

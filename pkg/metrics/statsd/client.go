@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	libhttputil "github.com/tecnickcom/gogen/pkg/httputil"
+	libhttputil "github.com/tecnickcom/nurago/pkg/httputil"
 	"github.com/tecnickcom/statsd"
 )
 

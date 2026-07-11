@@ -1,20 +1,20 @@
 services:
-  gogenexample:
-    image: gogenexampleowner/gogenexample
-    container_name: gogenexample
+  nuragoexample:
+    image: nuragoexampleowner/nuragoexample
+    container_name: nuragoexample
     environment:
       DEPLOY_ENV: "local"
     restart: always
     depends_on:
-      - gogenexample_smocker_ipify
-      - gogenexample_mysql
-      - gogenexample_flyway_mysql
+      - nuragoexample_smocker_ipify
+      - nuragoexample_mysql
+      - nuragoexample_flyway_mysql
     env_file:
-      - target/gogenexample.cfg.env
+      - target/nuragoexample.cfg.env
     entrypoint: [
         "/usr/bin/dockerize",
-        "-wait", "tcp://gogenexample_mysql:3306",
-        "/usr/bin/gogenexample"
+        "-wait", "tcp://nuragoexample_mysql:3306",
+        "/usr/bin/nuragoexample"
     ]
     ports:
       - "8071:8071"
@@ -23,16 +23,16 @@ services:
     volumes:
       - ./target/binutil/dockerize:/usr/bin/dockerize
 
-  gogenexample_smocker_ipify:
-    container_name: gogenexample_smocker_ipify
+  nuragoexample_smocker_ipify:
+    container_name: nuragoexample_smocker_ipify
     image: thiht/smocker
 
-  gogenexample_mysql:
-    container_name: gogenexample_mysql
+  nuragoexample_mysql:
+    container_name: nuragoexample_mysql
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: gogenexample
+      MYSQL_DATABASE: nuragoexample
     ports:
       - "9306:3306"
     volumes:
@@ -44,31 +44,31 @@ services:
       timeout: 5s
       retries: 5
 
-  gogenexample_flyway_mysql:
+  nuragoexample_flyway_mysql:
     depends_on:
-      gogenexample_mysql:
+      nuragoexample_mysql:
         condition: service_healthy
-    image: gogenexampleowner/gogenexample_db:latest
-    container_name: gogenexample_db
+    image: nuragoexampleowner/nuragoexample_db:latest
+    container_name: nuragoexample_db
     entrypoint:
       - /bin/sh
       - -c
       - |
         set -e && \
         echo 'flyway start' && \
-        if flyway migrate -url="jdbc:mysql://gogenexample_mysql:3306/gogenexample?allowPublicKeyRetrieval=true&useSSL=false" -user=root -password=root -locations=filesystem:/flyway/sql 2>&1 | tee /dev/stderr | grep -q "ERROR: "; then
+        if flyway migrate -url="jdbc:mysql://nuragoexample_mysql:3306/nuragoexample?allowPublicKeyRetrieval=true&useSSL=false" -user=root -password=root -locations=filesystem:/flyway/sql 2>&1 | tee /dev/stderr | grep -q "ERROR: "; then
           echo "flyway error!"
           exit 1
         fi
         echo 'flyway completed'
 
-#  gogenexample_postgres:
-#    container_name: gogenexample_postgres
+#  nuragoexample_postgres:
+#    container_name: nuragoexample_postgres
 #    image: postgres:18
 #    environment:
 #      POSTGRES_USER: postgres
 #      POSTGRES_PASSWORD: postgres
-#      POSTGRES_DB: gogenexample
+#      POSTGRES_DB: nuragoexample
 #    ports:
 #      - "9432:5432"
 #    volumes:
@@ -79,12 +79,12 @@ services:
 #      timeout: 5s
 #      retries: 5
 
-#  gogenexample_flyway_postgres:
+#  nuragoexample_flyway_postgres:
 #    depends_on:
-#      gogenexample_postgres:
+#      nuragoexample_postgres:
 #        condition: service_healthy
-#    image: gogenexampleowner/gogenexample_db:latest
-#    container_name: gogenexample_db
+#    image: nuragoexampleowner/nuragoexample_db:latest
+#    container_name: nuragoexample_db
 #    restart: "no"
 #    entrypoint: [
 #      - /bin/sh
@@ -92,7 +92,7 @@ services:
 #      - |
 #        set -e
 #        echo 'flyway start'
-#        if flyway migrate -url=jdbc:postgresql://gogenexample_postgres:5432/gogenexample -user=postgres -password=postgres -locations=filesystem:/flyway/sql 2>&1 | tee /dev/stderr | grep -q "ERROR: "; then
+#        if flyway migrate -url=jdbc:postgresql://nuragoexample_postgres:5432/nuragoexample -user=postgres -password=postgres -locations=filesystem:/flyway/sql 2>&1 | tee /dev/stderr | grep -q "ERROR: "; then
 #          echo "flyway error!"
 #          exit 1
 #        fi

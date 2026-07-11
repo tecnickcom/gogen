@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/tecnickcom/gogen/pkg/awsopt"
+	"github.com/tecnickcom/nurago/pkg/awsopt"
 )
 
 const (

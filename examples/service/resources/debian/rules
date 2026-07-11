@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 export DH_VERBOSE=1
-export DH_GOPKG := gogenexampleprojectlink
+export DH_GOPKG := nuragoexampleprojectlink
 %:
 	#dh $@ --buildsystem=golang --with=golang
 	dh $@

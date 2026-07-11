@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/enumbitmap"
+	"github.com/tecnickcom/nurago/pkg/enumbitmap"
 )
 
 // benchEnums builds the two full 32-entry lookup maps used by the benchmarks,

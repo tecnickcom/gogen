@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/sfcache"
+	"github.com/tecnickcom/nurago/pkg/sfcache"
 )
 
 func ExampleCache_Lookup() {

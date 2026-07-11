@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/httpserver"
+	"github.com/tecnickcom/nurago/pkg/httpserver"
 )
 
 // exampleBinder supplies the custom service routes.

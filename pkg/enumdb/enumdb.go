@@ -14,7 +14,7 @@ string column named "name".
 Top features:
 
 - load multiple enum tables in one call by passing a map of table name to SQL query
-- build github.com/tecnickcom/gogen/pkg/enumcache.EnumCache instances per table
+- build github.com/tecnickcom/nurago/pkg/enumcache.EnumCache instances per table
 - provide fast runtime lookups in both directions through enumcache APIs
 - wrap query, scan, and row-iteration failures with contextual errors for easier debugging
 - close rows safely, joining close errors with main execution errors
@@ -45,7 +45,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/enumcache"
+	"github.com/tecnickcom/nurago/pkg/enumcache"
 )
 
 // EnumDB maps each enumeration table name with the corresponding enumeration cache.

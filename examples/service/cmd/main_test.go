@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/gogenexampleowner/gogenexample/internal/cli"
+	"github.com/nuragoexampleowner/nuragoexample/internal/cli"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/testutil"
+	"github.com/tecnickcom/nurago/pkg/testutil"
 )
 
 //nolint:paralleltest

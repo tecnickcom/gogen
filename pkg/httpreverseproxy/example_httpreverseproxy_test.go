@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/tecnickcom/gogen/pkg/httpreverseproxy"
+	"github.com/tecnickcom/nurago/pkg/httpreverseproxy"
 )
 
 // ExampleClient_ForwardRequest wires the reverse-proxy client to a catch-all route

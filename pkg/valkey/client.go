@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/encode"
+	"github.com/tecnickcom/nurago/pkg/encode"
 	libvalkey "github.com/valkey-io/valkey-go"
 )
 

@@ -50,7 +50,7 @@ Typed payload methods use configurable codec hooks:
   - [DefaultMessageEncodeFunc] powers [Producer.SendData]
   - [DefaultMessageDecodeFunc] powers [Consumer.ReceiveData]
 
-Both defaults use github.com/tecnickcom/gogen/pkg/encode. Replace them via
+Both defaults use github.com/tecnickcom/nurago/pkg/encode. Replace them via
 [WithMessageEncodeFunc] and [WithMessageDecodeFunc] to add custom wire formats,
 encryption, compression, or schema validation.
 

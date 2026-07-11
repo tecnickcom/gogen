@@ -8,10 +8,10 @@ import (
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/gogenexampleowner/gogenexample/internal/cli"
-	"github.com/tecnickcom/gogen/pkg/bootstrap"
-	"github.com/tecnickcom/gogen/pkg/logsrv"
-	"github.com/tecnickcom/gogen/pkg/logutil"
+	"github.com/nuragoexampleowner/nuragoexample/internal/cli"
+	"github.com/tecnickcom/nurago/pkg/bootstrap"
+	"github.com/tecnickcom/nurago/pkg/logsrv"
+	"github.com/tecnickcom/nurago/pkg/logutil"
 )
 
 var (

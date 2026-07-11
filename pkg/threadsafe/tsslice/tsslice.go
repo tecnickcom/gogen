@@ -17,7 +17,7 @@ and consistent while preserving the ergonomics of slice utility operations.
 # How It Works
 
 Each function takes a pointer to the slice and a lock interface from
-github.com/tecnickcom/gogen/pkg/threadsafe:
+github.com/tecnickcom/nurago/pkg/threadsafe:
 
   - write operations ([Set], [SetOK], [Delete], [Append], [Do]) require
     [threadsafe.Locker] and use exclusive `Lock`/`Unlock`.
@@ -25,7 +25,7 @@ github.com/tecnickcom/gogen/pkg/threadsafe:
     [Filter], [Map], [Reduce], [RDo]) require [threadsafe.RLocker] and use shared
     `RLock`/`RUnlock`.
 
-The helpers delegate functional operations to github.com/tecnickcom/gogen/pkg/sliceutil
+The helpers delegate functional operations to github.com/tecnickcom/nurago/pkg/sliceutil
 while enforcing synchronization around the access.
 
 # Key Features
@@ -111,15 +111,15 @@ slice is the unit of sharing; keep the free functions when one lock must guard
 several containers at once. Transforms to a different element type (Map/Reduce)
 are expressed through [Guarded.RDo].
 
-See also: github.com/tecnickcom/gogen/pkg/threadsafe
+See also: github.com/tecnickcom/nurago/pkg/threadsafe
 */
 package tsslice
 
 import (
 	"slices"
 
-	"github.com/tecnickcom/gogen/pkg/sliceutil"
-	"github.com/tecnickcom/gogen/pkg/threadsafe"
+	"github.com/tecnickcom/nurago/pkg/sliceutil"
+	"github.com/tecnickcom/nurago/pkg/threadsafe"
 )
 
 // Set assigns value v at index k using an exclusive lock.

@@ -1,14 +1,14 @@
 FROM scratch
 COPY ./ /
 USER nonroot
-ENTRYPOINT ["/usr/bin/gogenexample"]
+ENTRYPOINT ["/usr/bin/nuragoexample"]
 HEALTHCHECK NONE
 
-LABEL "org.opencontainers.image.authors"="gogenexampleemail"
-LABEL "org.opencontainers.image.url"="https://github.com/gogenexampleowner/gogenexample/blob/main/resources/docker/Dockerfile.run"
-LABEL "org.opencontainers.image.documentation"="https://github.com/gogenexampleowner/gogenexample/blob/main/README.md"
-LABEL "org.opencontainers.image.source"="https://github.com/gogenexampleowner/gogenexample"
-LABEL "org.opencontainers.image.vendor"="gogenexampleowner"
+LABEL "org.opencontainers.image.authors"="nuragoexampleemail"
+LABEL "org.opencontainers.image.url"="https://github.com/nuragoexampleowner/nuragoexample/blob/main/resources/docker/Dockerfile.run"
+LABEL "org.opencontainers.image.documentation"="https://github.com/nuragoexampleowner/nuragoexample/blob/main/README.md"
+LABEL "org.opencontainers.image.source"="https://github.com/nuragoexampleowner/nuragoexample"
+LABEL "org.opencontainers.image.vendor"="nuragoexampleowner"
 LABEL "org.opencontainers.image.licenses"="RESERVED"
-LABEL "org.opencontainers.image.title"="gogenexample"
-LABEL "org.opencontainers.image.description"="gogenexampleshortdesc"
+LABEL "org.opencontainers.image.title"="nuragoexample"
+LABEL "org.opencontainers.image.description"="nuragoexampleshortdesc"

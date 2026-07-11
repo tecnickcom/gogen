@@ -107,7 +107,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/metrics"
+	"github.com/tecnickcom/nurago/pkg/metrics"
 )
 
 // Bootstrap initializes core service infrastructure and manages process lifecycle.

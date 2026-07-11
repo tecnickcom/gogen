@@ -1,7 +1,7 @@
 version: "2"
-name: gogenexample monitoring API tests
+name: nuragoexample monitoring API tests
 vars:
-  gogenexample.url: 'http://gogenexample:8071'
+  nuragoexample.url: 'http://nuragoexample:8071'
 
 testcases:
 
@@ -10,7 +10,7 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gogenexample.url}}/error'
+    url: '{{.nuragoexample.url}}/error'
     assertions:
     - result.statuscode ShouldEqual 404
     - result.bodyjson.status ShouldEqual "fail"
@@ -22,7 +22,7 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: POST
-    url: '{{.gogenexample.url}}/ping'
+    url: '{{.nuragoexample.url}}/ping'
     assertions:
     - result.statuscode ShouldEqual 405
     - result.bodyjson.status ShouldEqual "fail"
@@ -34,7 +34,7 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gogenexample.url}}'
+    url: '{{.nuragoexample.url}}'
     assertions:
     - result.statuscode ShouldEqual 200
     - result.bodyjson.code ShouldEqual 200
@@ -49,7 +49,7 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gogenexample.url}}/metrics'
+    url: '{{.nuragoexample.url}}/metrics'
     assertions:
     - result.statuscode ShouldEqual 200
     - result.body ShouldContainSubstring '# HELP'
@@ -60,10 +60,10 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gogenexample.url}}/ping'
+    url: '{{.nuragoexample.url}}/ping'
     assertions:
     - result.statuscode ShouldEqual 200
-    - result.bodyjson.program ShouldEqual "gogenexample"
+    - result.bodyjson.program ShouldEqual "nuragoexample"
     - result.bodyjson.status ShouldEqual "success"
     - result.bodyjson.code ShouldEqual 200
     - result.bodyjson.message ShouldEqual "OK"
@@ -74,7 +74,7 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gogenexample.url}}/status'
+    url: '{{.nuragoexample.url}}/status'
     assertions:
     - result.statuscode ShouldEqual 200
     - result.bodyjson.code ShouldEqual 200
@@ -84,7 +84,7 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gogenexample.url}}/pprof'
+    url: '{{.nuragoexample.url}}/pprof'
     assertions:
     - result.statuscode ShouldEqual 200
 
@@ -93,6 +93,6 @@ testcases:
   - type: http
     ignore_verify_ssl optional: true
     method: GET
-    url: '{{.gogenexample.url}}/ip'
+    url: '{{.nuragoexample.url}}/ip'
     assertions:
     - result.statuscode ShouldEqual 200

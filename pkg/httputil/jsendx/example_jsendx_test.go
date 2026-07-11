@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/tecnickcom/gogen/pkg/httputil/jsendx"
+	"github.com/tecnickcom/nurago/pkg/httputil/jsendx"
 )
 
 func ExampleWrap() {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/tecnickcom/gogen/pkg/threadsafe/tsmap"
+	"github.com/tecnickcom/nurago/pkg/threadsafe/tsmap"
 )
 
 func ExampleSet() {

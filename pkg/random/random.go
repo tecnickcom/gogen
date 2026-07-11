@@ -84,7 +84,7 @@ import (
 	mrand "math/rand/v2"
 	"strconv"
 
-	"github.com/tecnickcom/gogen/pkg/uhex"
+	"github.com/tecnickcom/nurago/pkg/uhex"
 )
 
 // ErrNegativeLength is returned when a negative length is requested from a

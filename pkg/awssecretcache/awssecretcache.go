@@ -18,7 +18,7 @@ package fixes both problems at once.
 
 [New] creates a [Cache] that wraps an aws-sdk-go-v2 SecretsManager client
 (https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/secretsmanager) and
-composes it with [github.com/tecnickcom/gogen/pkg/sfcache] — a fixed-size,
+composes it with [github.com/tecnickcom/nurago/pkg/sfcache] — a fixed-size,
 single-flight cache. The lookup flow is:
 
  1. On the first call for a given SecretId the cache is cold; one goroutine

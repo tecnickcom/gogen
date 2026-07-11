@@ -6,8 +6,8 @@ import (
 	"errors"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/tecnickcom/gogen/pkg/metrics"
-	prom "github.com/tecnickcom/gogen/pkg/metrics/prometheus"
+	"github.com/tecnickcom/nurago/pkg/metrics"
+	prom "github.com/tecnickcom/nurago/pkg/metrics/prometheus"
 )
 
 const (
@@ -39,7 +39,7 @@ type Client struct {
 // New creates a metrics client wrapper with service-specific collectors.
 //
 // It solves a common observability need: keeping custom application metrics
-// close to business events while still integrating with the shared gogen
+// close to business events while still integrating with the shared nurago
 // metrics client.
 func New() *Client {
 	return &Client{

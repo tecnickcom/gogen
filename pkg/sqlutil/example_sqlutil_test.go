@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tecnickcom/gogen/pkg/sqlutil"
+	"github.com/tecnickcom/nurago/pkg/sqlutil"
 )
 
 func ExampleSQLUtil_QuoteID() {

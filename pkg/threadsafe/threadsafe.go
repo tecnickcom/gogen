@@ -35,8 +35,8 @@ goroutines.
 # Usage
 
 See the examples in:
-  - github.com/tecnickcom/gogen/pkg/threadsafe/tsmap
-  - github.com/tecnickcom/gogen/pkg/threadsafe/tsslice
+  - github.com/tecnickcom/nurago/pkg/threadsafe/tsmap
+  - github.com/tecnickcom/nurago/pkg/threadsafe/tsslice
 
 Those packages demonstrate how these interfaces are used to build practical,
 thread-safe containers.

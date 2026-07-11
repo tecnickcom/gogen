@@ -3,8 +3,8 @@ package tsslice_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/sliceutil"
-	"github.com/tecnickcom/gogen/pkg/threadsafe/tsslice"
+	"github.com/tecnickcom/nurago/pkg/sliceutil"
+	"github.com/tecnickcom/nurago/pkg/threadsafe/tsslice"
 )
 
 func ExampleGuarded() {

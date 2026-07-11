@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/logsrv"
-	"github.com/tecnickcom/gogen/pkg/logutil"
-	"github.com/tecnickcom/gogen/pkg/metrics"
+	"github.com/tecnickcom/nurago/pkg/logsrv"
+	"github.com/tecnickcom/nurago/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/metrics"
 )
 
 // Exported sentinel errors returned by Bootstrap and its configuration validation

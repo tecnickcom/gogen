@@ -4,7 +4,7 @@ import (
 	"maps"
 	"sync"
 
-	"github.com/tecnickcom/gogen/pkg/maputil"
+	"github.com/tecnickcom/nurago/pkg/maputil"
 )
 
 // Guarded is a map bundled with its own [sync.RWMutex]. All access goes through
@@ -118,7 +118,7 @@ func (g *Guarded[K, V]) Do(f func(m map[K]V)) {
 }
 
 // RDo runs f under a read lock for atomic multi-step reads (including Map,
-// Reduce, or Invert via github.com/tecnickcom/gogen/pkg/maputil). f must not
+// Reduce, or Invert via github.com/tecnickcom/nurago/pkg/maputil). f must not
 // mutate the map, call back into this Guarded, or retain the map beyond its own
 // return.
 func (g *Guarded[K, V]) RDo(f func(m map[K]V)) {

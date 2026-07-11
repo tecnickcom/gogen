@@ -3,7 +3,7 @@ package strsplit_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/strsplit"
+	"github.com/tecnickcom/nurago/pkg/strsplit"
 )
 
 func ExampleChunk() {

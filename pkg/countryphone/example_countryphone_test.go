@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/tecnickcom/gogen/pkg/countryphone"
+	"github.com/tecnickcom/nurago/pkg/countryphone"
 )
 
 func ExampleData_NumberInfo() {

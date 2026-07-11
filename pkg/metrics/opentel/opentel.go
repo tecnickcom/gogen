@@ -1,5 +1,5 @@
 /*
-Package opentel implements [github.com/tecnickcom/gogen/pkg/metrics.Client]
+Package opentel implements [github.com/tecnickcom/nurago/pkg/metrics.Client]
 using OpenTelemetry for both metrics and tracing.
 
 # Problem

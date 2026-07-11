@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/tecnickcom/gogen/pkg/encode"
+	"github.com/tecnickcom/nurago/pkg/encode"
 )
 
 // TEncodeFunc is the type of function used to replace the default message encoding function used by SendData().

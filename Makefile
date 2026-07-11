@@ -1,7 +1,7 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni
-# @link        https://github.com/tecnickcom/gogen
+# @link        https://github.com/tecnickcom/nurago
 # ------------------------------------------------------------------------------
 
 SHELL=/bin/bash
@@ -20,7 +20,7 @@ LCVENDOR=$(shell echo "${VENDOR}" | tr '[:upper:]' '[:lower:]')
 CVSPATH=github.com/${VENDOR}
 
 # Project name
-PROJECT=gogen
+PROJECT=nurago
 
 # Project version
 VERSION=$(shell cat VERSION)
@@ -183,22 +183,22 @@ mod: gotools
 .PHONY: project
 project:
 	cd examples/service && $(MAKE) clean
-	@mkdir -p ./target/$(gogenexamplecvspath)/$(gogenexample)
-	@rm -rf ./target/$(gogenexamplecvspath)/$(gogenexample)/*
-	@cp -rf examples/service/. ./target/$(gogenexamplecvspath)/$(gogenexample)/
-	sed $(SEDINPLACE) '/^replace /d' ./target/$(gogenexamplecvspath)/$(gogenexample)/go.mod
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -name '*gogenexample*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/gogenexample/$(gogenexample)/)"' \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -depth -name '*GOGENEXAMPLE*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/GOGENEXAMPLE/$(GOGENEXAMPLE)/)"' \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleshortdesc|$(gogenexampleshortdesc)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexamplelongdesc|$(gogenexamplelongdesc)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleauthor|$(gogenexampleauthor)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleemail|$(gogenexampleemail)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexamplecvspath|$(gogenexamplecvspath)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleprojectlink|$(gogenexampleprojectlink)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexampleowner|$(gogenexampleowner)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexamplevcsgit|$(gogenexamplevcsgit)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|gogenexample|$(gogenexample)|g" {} \;
-	find ./target/$(gogenexamplecvspath)/$(gogenexample) -type f -exec sed $(SEDINPLACE) "s|GOGENEXAMPLE|$(GOGENEXAMPLE)|g" {} \;
+	@mkdir -p ./target/$(nuragoexamplecvspath)/$(nuragoexample)
+	@rm -rf ./target/$(nuragoexamplecvspath)/$(nuragoexample)/*
+	@cp -rf examples/service/. ./target/$(nuragoexamplecvspath)/$(nuragoexample)/
+	sed $(SEDINPLACE) '/^replace /d' ./target/$(nuragoexamplecvspath)/$(nuragoexample)/go.mod
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -depth -name '*nuragoexample*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/nuragoexample/$(nuragoexample)/)"' \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -depth -name '*NURAGOEXAMPLE*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/NURAGOEXAMPLE/$(NURAGOEXAMPLE)/)"' \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleshortdesc|$(nuragoexampleshortdesc)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexamplelongdesc|$(nuragoexamplelongdesc)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleauthor|$(nuragoexampleauthor)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleemail|$(nuragoexampleemail)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexamplecvspath|$(nuragoexamplecvspath)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleprojectlink|$(nuragoexampleprojectlink)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleowner|$(nuragoexampleowner)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexamplevcsgit|$(nuragoexamplevcsgit)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexample|$(nuragoexample)|g" {} \;
+	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|NURAGOEXAMPLE|$(NURAGOEXAMPLE)|g" {} \;
 
 ## Run all tests and static analysis tools
 .PHONY: qa
@@ -274,7 +274,7 @@ updatemod: mod
 ## Update this library version in the examples
 .PHONY: version
 version:
-	sed $(SEDINPLACE) "s|github.com/tecnickcom/gogen v.*$$|github.com/tecnickcom/gogen v$(VERSION)|" examples/service/go.mod
+	sed $(SEDINPLACE) "s|github.com/tecnickcom/nurago v.*$$|github.com/tecnickcom/nurago v$(VERSION)|" examples/service/go.mod
 
 ## Increase the patch number in the VERSION file
 .PHONY: versionup

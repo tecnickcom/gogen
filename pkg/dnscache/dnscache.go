@@ -58,7 +58,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/sfcache"
+	"github.com/tecnickcom/nurago/pkg/sfcache"
 )
 
 // defaultKeepAlive mirrors the keep-alive used by net/http's default transport

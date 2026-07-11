@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/errutil"
+	"github.com/tecnickcom/nurago/pkg/errutil"
 )
 
 // TestErrorTemplates_CoversCustomTags guards that every custom validation tag

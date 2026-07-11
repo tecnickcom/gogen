@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/traceid"
+	"github.com/tecnickcom/nurago/pkg/traceid"
 	"go.uber.org/mock/gomock"
 )
 

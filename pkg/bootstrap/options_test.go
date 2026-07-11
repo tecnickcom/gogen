@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/logutil"
-	"github.com/tecnickcom/gogen/pkg/metrics"
+	"github.com/tecnickcom/nurago/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/metrics"
 )
 
 func TestWithContext(t *testing.T) {

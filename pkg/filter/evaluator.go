@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/tecnickcom/gogen/pkg/typeutil"
+	"github.com/tecnickcom/nurago/pkg/typeutil"
 )
 
 // evaluator determines if a given value matches filter criteria.

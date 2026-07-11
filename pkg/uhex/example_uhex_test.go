@@ -3,7 +3,7 @@ package uhex_test
 import (
 	"fmt"
 
-	"github.com/tecnickcom/gogen/pkg/uhex"
+	"github.com/tecnickcom/nurago/pkg/uhex"
 )
 
 func ExampleHex64() {

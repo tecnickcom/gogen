@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/retrier"
+	"github.com/tecnickcom/nurago/pkg/retrier"
 )
 
 func ExampleRetrier_Run() {

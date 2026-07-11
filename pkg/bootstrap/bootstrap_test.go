@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/logutil"
-	"github.com/tecnickcom/gogen/pkg/metrics"
-	"github.com/tecnickcom/gogen/pkg/metrics/prometheus"
+	"github.com/tecnickcom/nurago/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/metrics"
+	"github.com/tecnickcom/nurago/pkg/metrics/prometheus"
 )
 
 // noopBind is a BindFunc that wires nothing and never fails; used by cases that

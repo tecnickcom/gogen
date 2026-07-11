@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/uhex"
+	"github.com/tecnickcom/nurago/pkg/uhex"
 )
 
 // TUID128 is a time-ordered 128-bit identifier: the high 64 bits (t) are the

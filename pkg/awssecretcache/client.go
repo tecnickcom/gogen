@@ -8,7 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	"github.com/tecnickcom/gogen/pkg/sfcache"
+	"github.com/tecnickcom/nurago/pkg/sfcache"
 )
 
 // Cache provides TTL and single-flight caching for AWS Secrets Manager lookups.
@@ -77,7 +77,7 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 // exceptions: a failure caused by the initiating caller's own context makes
 // one waiting caller retry the lookup with its own context instead, and a
 // caller whose own context ends while waiting receives an error wrapping
-// [github.com/tecnickcom/gogen/pkg/sfcache.ErrLookupAborted]. Failed lookups
+// [github.com/tecnickcom/nurago/pkg/sfcache.ErrLookupAborted]. Failed lookups
 // are not cached, so a subsequent call after the flight completes triggers a
 // fresh upstream request. Callers that need resilience against transient
 // failures can enable [WithStaleIfError] to serve the last known good secret
@@ -99,7 +99,7 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 // errors propagate through the %w wrapping, so callers can still match AWS SDK
 // typed errors with errors.As (e.g. new(*types.ResourceNotFoundException) for a
 // missing secret) and context/abort errors with errors.Is (against
-// [github.com/tecnickcom/gogen/pkg/sfcache.ErrLookupAborted], [context.Canceled],
+// [github.com/tecnickcom/nurago/pkg/sfcache.ErrLookupAborted], [context.Canceled],
 // or [context.DeadlineExceeded]).
 func (c *Cache) GetSecretData(ctx context.Context, key string) (*awssm.GetSecretValueOutput, error) {
 	if key == "" {

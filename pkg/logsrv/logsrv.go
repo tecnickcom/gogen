@@ -13,7 +13,7 @@ duplicated setup logic across services.
 
 This package bridges [log/slog] and zerolog with a native slog.Handler that
 writes each record's attributes directly onto a zerolog Event. It reuses the
-shared configuration model from gogen's logutil package.
+shared configuration model from nurago's logutil package.
 
 [NewLogger] creates a slog.Logger backed by zerolog and applies:
   - log format selection (JSON, console, discard),
@@ -29,7 +29,7 @@ The logging model is compatible with:
     https://technick.net/guides/software/software_logging_format/
 
 See also:
-  - github.com/tecnickcom/gogen/pkg/logutil
+  - github.com/tecnickcom/nurago/pkg/logutil
 
 # Notes
 
@@ -65,7 +65,7 @@ import (
 	"runtime"
 
 	"github.com/rs/zerolog"
-	"github.com/tecnickcom/gogen/pkg/logutil"
+	"github.com/tecnickcom/nurago/pkg/logutil"
 )
 
 // NewLogger constructs a slog.Logger backed by zerolog, configured via logutil.Config,

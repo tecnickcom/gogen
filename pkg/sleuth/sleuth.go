@@ -31,7 +31,7 @@ the endpoint URL templates used by each API action.
 
 For each send operation:
 
- 1. The request struct is validated using gogen's validator package and the
+ 1. The request struct is validated using nurago's validator package and the
     tag rules declared on fields.
  2. The payload is JSON-encoded and sent as an authenticated HTTP POST
     (`Authorization: apikey <key>`).

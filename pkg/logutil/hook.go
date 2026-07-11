@@ -6,7 +6,7 @@ import (
 )
 
 // TraceIDKey is the record attribute key used to carry the trace ID. It is the
-// single source of truth for the field name across gogen's logging packages.
+// single source of truth for the field name across nurago's logging packages.
 const TraceIDKey = "trace_id"
 
 // HookFunc is used to intercept the log message before passing it to the underlying handler.

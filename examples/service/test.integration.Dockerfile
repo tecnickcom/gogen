@@ -1,4 +1,4 @@
-FROM gogenexampleowner/dev_gogenexample:dev
+FROM nuragoexampleowner/dev_nuragoexample:dev
 
 ARG HOST_USER="root"
 ARG HOST_GROUP="root"

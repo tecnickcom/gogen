@@ -8,7 +8,7 @@ BEGIN
 END
 $$;
 
-GRANT CONNECT ON DATABASE gogenexample TO readonly;
+GRANT CONNECT ON DATABASE nuragoexample TO readonly;
 
 -- read-write role
 
@@ -20,7 +20,7 @@ BEGIN
 END
 $$;
 
-GRANT CONNECT ON DATABASE gogenexample TO readwrite;
+GRANT CONNECT ON DATABASE nuragoexample TO readwrite;
 
 -- read-only user
 

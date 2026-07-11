@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/timeutil"
+	"github.com/tecnickcom/nurago/pkg/timeutil"
 )
 
 func TestComment_MarshalJSON(t *testing.T) {

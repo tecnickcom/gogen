@@ -69,7 +69,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/backoff"
+	"github.com/tecnickcom/nurago/pkg/backoff"
 )
 
 // TaskFn is the function signature executed on each scheduler tick.

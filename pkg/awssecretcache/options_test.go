@@ -8,7 +8,7 @@ import (
 
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/awsopt"
+	"github.com/tecnickcom/nurago/pkg/awsopt"
 )
 
 func Test_WithAWSOptions(t *testing.T) {

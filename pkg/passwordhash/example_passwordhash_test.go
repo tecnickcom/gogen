@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/tecnickcom/gogen/pkg/passwordhash"
+	"github.com/tecnickcom/nurago/pkg/passwordhash"
 )
 
 func ExampleParams_PasswordVerify() {

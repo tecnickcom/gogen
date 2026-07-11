@@ -50,7 +50,7 @@ const (
 	// instrumentationScope is the OpenTelemetry instrumentation scope (meter and
 	// tracer name). Per OTel conventions it is the instrumenting library's
 	// import path rather than a metric category.
-	instrumentationScope = "github.com/tecnickcom/gogen/pkg/metrics/opentel"
+	instrumentationScope = "github.com/tecnickcom/nurago/pkg/metrics/opentel"
 
 	// NameLogLevel is the name of the counter that records the number of log
 	// lines emitted for each log severity level.

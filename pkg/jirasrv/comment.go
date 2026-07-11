@@ -1,6 +1,6 @@
 package jirasrv
 
-import "github.com/tecnickcom/gogen/pkg/timeutil"
+import "github.com/tecnickcom/nurago/pkg/timeutil"
 
 // Comment models a Jira issue comment payload.
 // Ref.: https://docs.atlassian.com/software/jira/docs/api/REST/9.17.0

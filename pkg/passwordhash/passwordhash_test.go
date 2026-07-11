@@ -8,8 +8,8 @@ import (
 	"testing/iotest"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tecnickcom/gogen/pkg/encode"
-	"github.com/tecnickcom/gogen/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/encode"
+	"github.com/tecnickcom/nurago/pkg/random"
 	"golang.org/x/crypto/argon2"
 )
 

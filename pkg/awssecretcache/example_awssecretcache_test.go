@@ -7,7 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awssm "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
-	"github.com/tecnickcom/gogen/pkg/awssecretcache"
+	"github.com/tecnickcom/nurago/pkg/awssecretcache"
 )
 
 // exampleSMClient is a stand-in for the AWS Secrets Manager client,

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/dnscache"
+	"github.com/tecnickcom/nurago/pkg/dnscache"
 )
 
 // staticResolver is a deterministic Resolver used to keep the examples

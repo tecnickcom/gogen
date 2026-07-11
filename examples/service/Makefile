@@ -1,14 +1,14 @@
 # MAKEFILE
 #
 # @author      Nicola Asuni
-# @link        https://github.com/gogenexampleowner/gogenexample
+# @link        https://github.com/nuragoexampleowner/nuragoexample
 # ------------------------------------------------------------------------------
 
 SHELL=/bin/bash
 .SHELLFLAGS=-o pipefail -c
 
 # Project owner
-OWNER=gogenexampleowner
+OWNER=nuragoexampleowner
 
 # Project vendor
 VENDOR=${OWNER}
@@ -20,7 +20,7 @@ LCVENDOR=$(shell echo "${VENDOR}" | tr '[:upper:]' '[:lower:]')
 CVSPATH=github.com/${VENDOR}
 
 # Project name
-PROJECT=gogenexample
+PROJECT=nuragoexample
 
 # Project version
 VERSION=$(shell cat VERSION)
@@ -239,9 +239,9 @@ ifeq ($(DEPLOY_ENV), int)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
 	#DOCKER_REGISTRY_PULL=
 	#DOCKER_REGISTRY_PUSH=
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
-	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
-	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
+	NURAGOEXAMPLE_MONITORING_URL=http://nuragoexample:8071
+	NURAGOEXAMPLE_PRIVATE_URL=http://nuragoexample:8072
+	NURAGOEXAMPLE_PUBLIC_URL=http://nuragoexample:8073
 	API_TEST_FILE=*.yaml
 endif
 
@@ -252,9 +252,9 @@ ifeq ($(DEPLOY_ENV), local)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
 	#DOCKER_REGISTRY_PULL=
 	#DOCKER_REGISTRY_PUSH=
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
-	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
-	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
+	NURAGOEXAMPLE_MONITORING_URL=http://nuragoexample:8071
+	NURAGOEXAMPLE_PRIVATE_URL=http://nuragoexample:8072
+	NURAGOEXAMPLE_PUBLIC_URL=http://nuragoexample:8073
 	API_TEST_FILE=*.yaml
 endif
 
@@ -265,9 +265,9 @@ ifeq ($(DEPLOY_ENV), dev)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_DEV}
 	#DOCKER_REGISTRY_PULL=
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_DEV}
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
-	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
-	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
+	NURAGOEXAMPLE_MONITORING_URL=http://nuragoexample:8071
+	NURAGOEXAMPLE_PRIVATE_URL=http://nuragoexample:8072
+	NURAGOEXAMPLE_PUBLIC_URL=http://nuragoexample:8073
 	API_TEST_FILE=*.yaml
 endif
 
@@ -278,9 +278,9 @@ ifeq ($(DEPLOY_ENV), qa)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_QA}
 	DOCKER_REGISTRY_PULL=${DOCKER_REGISTRY_DEV}
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_QA}
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
-	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
-	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
+	NURAGOEXAMPLE_MONITORING_URL=http://nuragoexample:8071
+	NURAGOEXAMPLE_PRIVATE_URL=http://nuragoexample:8072
+	NURAGOEXAMPLE_PUBLIC_URL=http://nuragoexample:8073
 endif
 
 # Production environment
@@ -290,9 +290,9 @@ ifeq ($(DEPLOY_ENV), prod)
 	DOCKER_REGISTRY=${DOCKER_REGISTRY_PROD}
 	DOCKER_REGISTRY_PULL=${DOCKER_REGISTRY_QA}
 	DOCKER_REGISTRY_PUSH=${DOCKER_REGISTRY_PROD}
-	GOGENEXAMPLE_MONITORING_URL=http://gogenexample:8071
-	GOGENEXAMPLE_PRIVATE_URL=http://gogenexample:8072
-	GOGENEXAMPLE_PUBLIC_URL=http://gogenexample:8073
+	NURAGOEXAMPLE_MONITORING_URL=http://nuragoexample:8071
+	NURAGOEXAMPLE_PRIVATE_URL=http://nuragoexample:8072
+	NURAGOEXAMPLE_PUBLIC_URL=http://nuragoexample:8073
 	API_TEST_FILE=*.yaml
 endif
 
@@ -331,9 +331,9 @@ x:
 ## Execute API tests
 .PHONY: apitest
 apitest:
-	$(MAKE) venomtest API_TEST_DIR=monitoring API_TEST_URL=${GOGENEXAMPLE_MONITORING_URL} API_TEST_FILE=api.yaml
-	$(MAKE) venomtest API_TEST_DIR=private API_TEST_URL=${GOGENEXAMPLE_PRIVATE_URL} API_TEST_FILE=${API_TEST_FILE}
-	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${GOGENEXAMPLE_PUBLIC_URL} API_TEST_FILE=${API_TEST_FILE}
+	$(MAKE) venomtest API_TEST_DIR=monitoring API_TEST_URL=${NURAGOEXAMPLE_MONITORING_URL} API_TEST_FILE=api.yaml
+	$(MAKE) venomtest API_TEST_DIR=private API_TEST_URL=${NURAGOEXAMPLE_PRIVATE_URL} API_TEST_FILE=${API_TEST_FILE}
+	$(MAKE) venomtest API_TEST_DIR=public API_TEST_URL=${NURAGOEXAMPLE_PUBLIC_URL} API_TEST_FILE=${API_TEST_FILE}
 
 ## Full build and test sequence
 .PHONY: buildall
@@ -534,8 +534,8 @@ dcenvdown:
 ## Configure environment for docker-compose integration tests
 .PHONY: dockerenvcfg
 dockerenvcfg: ensuretarget
-	@echo "GOGENEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/gogenexample.cfg.env
-	@echo "GOGENEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/$(DEPLOY_ENV)/gogenexample/config.json | base64 | tr -d \\n)" >> $(TARGETDIR)/gogenexample.cfg.env
+	@echo "NURAGOEXAMPLE_REMOTECONFIGPROVIDER=envvar" > $(TARGETDIR)/nuragoexample.cfg.env
+	@echo "NURAGOEXAMPLE_REMOTECONFIGDATA=$(shell cat resources/test/$(DEPLOY_ENV)/nuragoexample/config.json | base64 | tr -d \\n)" >> $(TARGETDIR)/nuragoexample.cfg.env
 
 ## Create the target directories if missing
 .PHONY: ensuretarget
@@ -642,14 +642,14 @@ mod: gotools
 ## Test the OpenAPI specification
 .PHONY: openapitest
 openapitest:
-	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
-	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_PRIVATE_URL} OPENAPI_FILE=openapi_private.yaml
-	$(MAKE) schemathesistest API_TEST_URL=${GOGENEXAMPLE_PUBLIC_URL} OPENAPI_FILE=openapi_public.yaml
+	$(MAKE) schemathesistest API_TEST_URL=${NURAGOEXAMPLE_MONITORING_URL} OPENAPI_FILE=openapi_monitoring.yaml
+	$(MAKE) schemathesistest API_TEST_URL=${NURAGOEXAMPLE_PRIVATE_URL} OPENAPI_FILE=openapi_private.yaml
+	$(MAKE) schemathesistest API_TEST_URL=${NURAGOEXAMPLE_PUBLIC_URL} OPENAPI_FILE=openapi_public.yaml
 
 ## Ping the deployed service
 .PHONY: ping
 ping:
-	if [ "200_$(VERSION)_$(RELEASE)_" != "$(shell curl --silent --insecure '$(GOGENEXAMPLE_MONITORING_URL)/ping' | jq -r '.code,.version,.release' | tr '\n' '_')" ]; then exit 1; fi
+	if [ "200_$(VERSION)_$(RELEASE)_" != "$(shell curl --silent --insecure '$(NURAGOEXAMPLE_MONITORING_URL)/ping' | jq -r '.code,.version,.release' | tr '\n' '_')" ]; then exit 1; fi
 
 ## Run all tests and static analysis tools
 .PHONY: qa
@@ -762,9 +762,9 @@ updatemod: mod
 venomtest:
 	@mkdir -p $(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR)
 	venom run \
-		--var gogenexample.url="${API_TEST_URL}" \
-		--var gogenexample.version="${VERSION}" \
-		--var gogenexample.release="${RELEASE}" \
+		--var nuragoexample.url="${API_TEST_URL}" \
+		--var nuragoexample.version="${VERSION}" \
+		--var nuragoexample.release="${RELEASE}" \
 		-vv \
 		--output-dir=$(TARGETDIR)/report/${DEPLOY_ENV}/venom/$(API_TEST_DIR) \
 		resources/test/venom/$(DEPLOY_ENV)/$(API_TEST_DIR)/$(API_TEST_FILE)

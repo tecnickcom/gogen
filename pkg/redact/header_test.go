@@ -139,7 +139,7 @@ func TestHTTPDataSensitiveHeaderNames(t *testing.T) {
 		// Non-sensitive header names stay visible.
 		{"Host: example.com\n", "Host: example.com\n"},
 		{"User-Agent: Go-http-client/1.1\n", "User-Agent: Go-http-client/1.1\n"},
-		{"X-GOGEN-Trace-Id: abc123\n", "X-GOGEN-Trace-Id: abc123\n"},
+		{"X-NURAGO-Trace-Id: abc123\n", "X-NURAGO-Trace-Id: abc123\n"},
 		{"Content-Type: application/json\n", "Content-Type: application/json\n"},
 	}
 

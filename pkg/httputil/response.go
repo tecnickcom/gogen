@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tecnickcom/gogen/pkg/traceid"
+	"github.com/tecnickcom/nurago/pkg/traceid"
 )
 
 const (

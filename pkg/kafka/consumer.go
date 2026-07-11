@@ -8,7 +8,7 @@ import (
 	"slices"
 
 	"github.com/segmentio/kafka-go"
-	"github.com/tecnickcom/gogen/pkg/encode"
+	"github.com/tecnickcom/nurago/pkg/encode"
 )
 
 // TDecodeFunc is the type of function used to replace the default message decoding function used by ReceiveData().

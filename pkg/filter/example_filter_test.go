@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/tecnickcom/gogen/pkg/filter"
+	"github.com/tecnickcom/nurago/pkg/filter"
 )
 
 // Address is an example structure type used to test nested structures.

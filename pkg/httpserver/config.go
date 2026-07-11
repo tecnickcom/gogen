@@ -16,12 +16,12 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/tecnickcom/gogen/pkg/httputil"
-	"github.com/tecnickcom/gogen/pkg/ipify"
-	"github.com/tecnickcom/gogen/pkg/profiling"
-	"github.com/tecnickcom/gogen/pkg/random"
-	"github.com/tecnickcom/gogen/pkg/redact"
-	"github.com/tecnickcom/gogen/pkg/traceid"
+	"github.com/tecnickcom/nurago/pkg/httputil"
+	"github.com/tecnickcom/nurago/pkg/ipify"
+	"github.com/tecnickcom/nurago/pkg/profiling"
+	"github.com/tecnickcom/nurago/pkg/random"
+	"github.com/tecnickcom/nurago/pkg/redact"
+	"github.com/tecnickcom/nurago/pkg/traceid"
 )
 
 // timeoutMessage is the message used for timeout responses.

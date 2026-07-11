@@ -3,7 +3,7 @@ package countryphone_test
 import (
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/countryphone"
+	"github.com/tecnickcom/nurago/pkg/countryphone"
 )
 
 func BenchmarkNew(b *testing.B) {

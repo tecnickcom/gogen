@@ -3,11 +3,11 @@ package phonekeypad_test
 import (
 	"testing"
 
-	"github.com/tecnickcom/gogen/pkg/phonekeypad"
+	"github.com/tecnickcom/nurago/pkg/phonekeypad"
 )
 
 // benchInput mixes digits, letters, and separators to exercise every path.
-const benchInput = "1-800-FLOWERS (555) 123-GOGEN"
+const benchInput = "1-800-FLOWERS (555) 123-NURAGO"
 
 func BenchmarkKeypadDigit(b *testing.B) {
 	b.ReportAllocs()

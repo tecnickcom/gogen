@@ -26,7 +26,7 @@ This package centralizes those concerns behind a small client API.
 
   - Simple send API for webhook messages with sensible defaults.
   - Optional per-message metadata overrides without reconstructing the client.
-  - Write-request retry strategy (via gogen httpretrier) for transient failures.
+  - Write-request retry strategy (via nurago httpretrier) for transient failures.
   - Configurable HTTP behavior through options:
     [WithTimeout], [WithPingTimeout], [WithPingURL],
     [WithHTTPClient], [WithRetryAttempts].
