@@ -1,17 +1,13 @@
 # nurago
 
 > [!IMPORTANT]
-> **This project was previously named [gogen](https://github.com/tecnickcom/gogen)** — same library, same packages, new name.
->
-> The old `github.com/tecnickcom/gogen` module path is **deprecated** and will receive no further updates; all existing versions remain permanently available via the Go module proxy. Please switch to the new module path:
+> **This project was previously named [gogen](https://github.com/tecnickcom/gogen)** — same library, same packages, new name. The old `github.com/tecnickcom/gogen` module path is **deprecated**; all existing versions remain available via the Go module proxy. To migrate:
 >
 > ```bash
 > go get github.com/tecnickcom/nurago@latest
 > find . -name '*.go' -exec sed -i 's|github.com/tecnickcom/gogen|github.com/tecnickcom/nurago|g' {} +
 > go mod tidy
 > ```
->
-> *Why "nurago"?* From *nuraghe* + Go: the Bronze Age Sardinian stone towers, built without mortar, ~7,000 of which still stand after 3,500 years — modular, stone-solid foundations with no lock-in, which is exactly what this library aims to be.
 
 [![GitHub Release](https://img.shields.io/github/v/release/tecnickcom/nurago)](https://github.com/tecnickcom/nurago/releases)
 [![Go Reference](https://pkg.go.dev/badge/github.com/tecnickcom/nurago.svg)](https://pkg.go.dev/github.com/tecnickcom/nurago)
@@ -27,6 +23,8 @@ If this project is useful to you, please consider [supporting development via Gi
 It solves a common problem in backend teams: repeatedly re-implementing the same foundational components (configuration loading, retries, health checks, logging, metrics, AWS integration, validation, caching, and more) across multiple repositories.
 
 Instead of assembling and maintaining ad-hoc helpers per project, you can adopt tested packages with consistent patterns.
+
+*Why "nurago"?* From *nuraghe* + Go: the Bronze Age Sardinian stone towers, built without mortar, ~7,000 of which still stand after 3,500 years — modular, stone-solid foundations with no lock-in, which is exactly what this library aims to be.
 
 Source documentation: [pkg.go.dev/github.com/tecnickcom/nurago](https://pkg.go.dev/github.com/tecnickcom/nurago)
 
