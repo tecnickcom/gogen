@@ -1,13 +1,13 @@
 # nurago
 
 > [!IMPORTANT]
-> **This project has been renamed to [nurago](https://github.com/tecnickcom/nurago)** — same library, same packages, new name.
+> **This project was previously named [gogen](https://github.com/tecnickcom/gogen)** — same library, same packages, new name.
 >
-> The `github.com/tecnickcom/nurago` module path is **deprecated** and will receive no further updates; all existing versions remain permanently available via the Go module proxy. Please switch to the new module path:
+> The old `github.com/tecnickcom/gogen` module path is **deprecated** and will receive no further updates; all existing versions remain permanently available via the Go module proxy. Please switch to the new module path:
 >
 > ```bash
 > go get github.com/tecnickcom/nurago@latest
-> find . -name '*.go' -exec sed -i 's|github.com/tecnickcom/nurago|github.com/tecnickcom/nurago|g' {} +
+> find . -name '*.go' -exec sed -i 's|github.com/tecnickcom/gogen|github.com/tecnickcom/nurago|g' {} +
 > go mod tidy
 > ```
 >
