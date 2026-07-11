@@ -107,13 +107,6 @@ func JSONEncoder(enc io.WriteCloser, data any) error {
 	return enc.Close() //nolint:wrapcheck
 }
 
-// JsonEncoder JSON-encodes data into enc and closes enc.
-//
-// Deprecated: use JSONEncoder.
-func JsonEncoder(enc io.WriteCloser, data any) error {
-	return JSONEncoder(enc, data)
-}
-
 // ByteEncode encodes data as gob+Base64 bytes.
 //
 // This format is convenient for binary channels while still staying text-safe.

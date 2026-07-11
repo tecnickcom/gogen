@@ -103,13 +103,6 @@ func Zero[T any](_ T) T {
 	return zero
 }
 
-// Pointer returns the address of v.
-//
-// Deprecated: use new() instead.
-func Pointer[T any](v T) *T {
-	return new(v)
-}
-
 // Value safely dereferences pointer p, returning zero value of T if nil.
 //
 // The nil check is a direct pointer comparison (no reflection), keeping this

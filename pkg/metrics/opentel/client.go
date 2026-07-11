@@ -60,13 +60,6 @@ const (
 	// by task, operation and error code.
 	NameErrorCode = "error_code_total"
 
-	// NameErrorLevel is the previous name of the log-level counter.
-	//
-	// Deprecated: the counter records every log line by severity level (not only
-	// errors) and is no longer registered under an "errors" meter, so it has been
-	// renamed from "level" to "log_level_total". Use [NameLogLevel] instead.
-	NameErrorLevel = NameLogLevel
-
 	// descLogLevel documents the log-level counter.
 	descLogLevel = "Number of log lines emitted for each severity level."
 

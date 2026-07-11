@@ -39,13 +39,6 @@ const (
 	// NameLogLevel is the name of the collector that counts the number of log lines emitted for each severity level.
 	NameLogLevel = "log_level_total"
 
-	// NameErrorLevel is the previous name of the log-level counter collector.
-	//
-	// Deprecated: the collector counts every log line by severity level (not
-	// only errors), so the metric has been renamed from "error_level_total" to
-	// "log_level_total". Use [NameLogLevel] instead.
-	NameErrorLevel = NameLogLevel
-
 	// NameErrorCode is the name of the collector that counts the number of errors by task, operation and error code.
 	NameErrorCode = "error_code_total"
 

@@ -261,14 +261,6 @@ func Test_JSONEncoder(t *testing.T) {
 	}
 }
 
-func Test_JsonEncoder(t *testing.T) {
-	t.Parallel()
-
-	err := JsonEncoder(Base64Encoder(new(bytes.Buffer)), 5) // exercises the deprecated alias
-
-	require.NoError(t, err)
-}
-
 func Test_GobEncoder_ClosesEncoderOnError(t *testing.T) {
 	t.Parallel()
 

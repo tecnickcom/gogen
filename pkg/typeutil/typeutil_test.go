@@ -271,42 +271,6 @@ func TestZero(t *testing.T) {
 	})
 }
 
-func TestPointer(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name  string
-		value any
-	}{
-		{
-			name:  "int",
-			value: 1,
-		},
-		{
-			name:  "string",
-			value: "test",
-		},
-		{
-			name:  "slice",
-			value: []int{1, 2},
-		},
-		{
-			name:  "map",
-			value: map[string]string{"one": "alpha", "two": "beta"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got := Pointer(tt.value)
-			require.NotNil(t, got)
-			require.Equal(t, tt.value, *got)
-		})
-	}
-}
-
 func TestValue(t *testing.T) {
 	t.Parallel()
 
