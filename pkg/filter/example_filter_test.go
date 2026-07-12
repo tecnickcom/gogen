@@ -30,7 +30,6 @@ func ExampleProcessor_Apply() {
 	}
 
 	// Initialize the filter with options
-	// * WithJSONValues: We want to be lenient on the typing since we create the filter from JSON which handles a few types
 	// * WithFieldNameTag: to express the filter based on JSON tags and not the actual field names
 	f, err := filter.New(
 		filter.WithFieldNameTag("json"),

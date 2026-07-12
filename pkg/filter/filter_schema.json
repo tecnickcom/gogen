@@ -20,7 +20,7 @@
         "field": {
           "type": "string",
           "title": "Field selector",
-          "description": "The path used to to get the field of an input item to evaluate against. It can target a nested field, in which case it's dot-separated.",
+          "description": "The path used to get the field of an input item to evaluate against. It can target a nested field, in which case it's dot-separated. The empty string selects the whole element (e.g. to filter a list of scalars); the key itself is required.",
           "examples": [
             "name",
             "address.country"
@@ -29,12 +29,18 @@
         "type": {
           "type": "string",
           "title": "The type of the rule",
+          "description": "The operator to apply. Matched case-insensitively, so \"regexp\", \"REGEXP\" and \"==\" are all valid; the enumerated forms below are the canonical lowercase spellings.",
           "enum": [
             "regexp",
+            "!<",
+            "!<=",
             "!=",
             "!=$",
             "!==",
+            "!>",
+            "!>=",
             "!^=",
+            "!regexp",
             "!~=",
             "<",
             "<=",
@@ -50,11 +56,12 @@
         "value": {
           "type": [
             "string",
-            "integer",
+            "number",
             "boolean",
             "null"
           ],
           "title": "The value to evaluate against",
+          "description": "The reference value. The key is required; use null for a nil reference (e.g. with == to match a nil field). Arrays and objects are not accepted.",
           "examples": [
             "john",
             42,

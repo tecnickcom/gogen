@@ -20,8 +20,9 @@ func newEqual(r any) evaluator {
 
 // Evaluate returns true if reference and value are equal (with numeric normalization) or both nil.
 // Two numeric operands are compared exactly to preserve large-integer precision.
-// String and numeric operands are read from v without allocating; the deep-equal
-// fallback for uncomparable dynamic types (maps, slices) boxes only when reached.
+// String and numeric operands are read from v without allocating; the deep-equal fallback
+// boxes the field, and is reached for any reference that is neither numeric, nor a string,
+// nor nil: a boolean, or an uncomparable dynamic type (a map or a slice).
 func (e *equal) Evaluate(v reflect.Value) bool {
 	if e.refOK {
 		num, ok := toNumericValue(v)

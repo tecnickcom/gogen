@@ -3,7 +3,15 @@ package filter
 import (
 	"reflect"
 	"sync"
+	"sync/atomic"
 )
+
+// defaultFieldCacheMaxEntries bounds how many resolved paths a single Processor caches. A
+// self-referential element type has an unbounded number of valid selectors (only their length
+// is capped, by WithMaxFieldDepth), so without a ceiling a long-lived shared Processor fed
+// distinct untrusted filters would grow without limit. Past the ceiling, resolution still
+// works — it is just recomputed per use instead of cached.
+const defaultFieldCacheMaxEntries = 1 << 14 // 16384
 
 // fieldCacheKey uniquely identifies a resolved field path.
 // Keying by reflect.Type (comparable and unique per type) instead of its String()
@@ -16,7 +24,9 @@ type fieldCacheKey struct {
 // fieldCache caches resolved reflection paths by type and field selector.
 // It is safe for concurrent use, so a shared Processor can Apply from multiple goroutines.
 type fieldCache struct {
-	cache sync.Map // fieldCacheKey -> reflectPath
+	cache      sync.Map     // fieldCacheKey -> reflectPath
+	count      atomic.Int64 // number of entries stored, to bound growth
+	maxEntries int64        // entry ceiling; 0 selects defaultFieldCacheMaxEntries
 }
 
 // Get retrieves the cached reflectPath for a field given its type and path.
@@ -32,7 +42,21 @@ func (c *fieldCache) Get(t reflect.Type, fieldPath string) (reflectPath, bool) {
 	return path, ok
 }
 
-// Set caches the reflectPath for a field by its type and path.
+// Set caches the reflectPath for a field by its type and path, up to the entry ceiling.
 func (c *fieldCache) Set(t reflect.Type, fieldPath string, path reflectPath) {
-	c.cache.Store(fieldCacheKey{t: t, fieldPath: fieldPath}, path)
+	ceiling := c.maxEntries
+	if ceiling == 0 {
+		ceiling = defaultFieldCacheMaxEntries
+	}
+
+	// Skip once full: correctness does not depend on the cache, only speed, so a miss beyond
+	// the ceiling simply re-resolves. Counting only newly stored keys keeps the bound honest
+	// under concurrent stores of the same key.
+	if c.count.Load() >= ceiling {
+		return
+	}
+
+	if _, loaded := c.cache.LoadOrStore(fieldCacheKey{t: t, fieldPath: fieldPath}, path); !loaded {
+		c.count.Add(1)
+	}
 }

@@ -96,7 +96,7 @@ This scaffolds a new web service from the provided configuration.
 - [enumcache](pkg/enumcache) - Caching for enumeration values with bitmap support. `enum`, `caching`
 - [enumdb](pkg/enumdb) - Helpers for storing and retrieving enumeration sets in databases. `enum`, `database`
 - [errutil](pkg/errutil) - Error utility functions, including error tracing. `error handling`, `utilities`
-- [filter](pkg/filter) - Generic rule-based filtering for struct slices. `filtering`, `collections`
+- [filter](pkg/filter) - Generic rule-based filtering for in-memory slices (of structs, scalars, or any). `filtering`, `collections`
 - [healthcheck](pkg/healthcheck) - Health check endpoints and logic. `health`, `monitoring`
 - [httpclient](pkg/httpclient) - HTTP client with enhanced features. `http`, `client`
 - [httpretrier](pkg/httpretrier) - HTTP request retry logic. `http`, `retry`

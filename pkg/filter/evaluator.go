@@ -11,10 +11,13 @@ import (
 type evaluator interface {
 	// Evaluate returns true when the value satisfies the evaluator condition.
 	//
-	// The value is passed as a [reflect.Value] so that filtering large slices does
-	// not box every element and field into an any: string and numeric operands are
-	// read directly from the reflect.Value without allocating. An invalid Value
-	// (the zero [reflect.Value]) represents a nil or absent operand.
+	// The value is passed as a [reflect.Value] so that filtering large slices does not box
+	// every element and field into an any: elements are never boxed, and string and numeric
+	// operands are read directly from the reflect.Value without allocating. A field is boxed
+	// only by the deep-equal fallback of the equality evaluators, which is reached when the
+	// rule's reference value is neither numeric, nor a string, nor nil (a boolean, or an
+	// uncomparable map or slice value). An invalid Value (the zero [reflect.Value])
+	// represents a nil or absent operand.
 	Evaluate(v reflect.Value) bool
 }
 
@@ -73,18 +76,39 @@ func toNumericValue(v reflect.Value) (numeric, bool) {
 }
 
 // equalValues reports whether two normalized values are equal without panicking on
-// non-comparable dynamic types (e.g. maps or slices decoded from untrusted JSON filters),
-// which fall back to reflect.DeepEqual. Typed and untyped nils are considered equal.
+// non-comparable dynamic types (e.g. maps or slices held by an any field), which fall back to
+// reflect.DeepEqual. Typed and untyped nils are considered equal.
 func equalValues(a, b any) bool {
 	if isNil(a) || isNil(b) {
 		return isNil(a) && isNil(b)
 	}
 
 	if reflect.TypeOf(a).Comparable() && reflect.TypeOf(b).Comparable() {
-		return a == b
+		return comparableEqual(a, b)
 	}
 
 	return reflect.DeepEqual(a, b)
+}
+
+// comparableEqual reports a == b for operands whose types report Comparable, deferring to
+// reflect.DeepEqual if the comparison panics. Type.Comparable is a property of the static
+// type: a struct or array whose field/element type is an interface reports true, yet == still
+// panics at runtime when that interface holds an uncomparable value (a slice or a map). This
+// is only reachable from a Go-constructed rule; JSON rule values are scalars.
+func comparableEqual(a, b any) bool {
+	equal := false
+
+	func() {
+		defer func() {
+			if recover() != nil {
+				equal = reflect.DeepEqual(a, b)
+			}
+		}()
+
+		equal = a == b
+	}()
+
+	return equal
 }
 
 // convertValue normalizes numeric types (including named numeric types) to float64

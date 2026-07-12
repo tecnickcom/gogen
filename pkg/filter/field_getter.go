@@ -82,22 +82,37 @@ func (r *fieldGetter) getFieldPath(t reflect.Type, fieldNames []string) (reflect
 }
 
 // getStructField retrieves the struct field by name or tag.
+//
+// Any path segment that resolves to an unexported field is rejected: reflection cannot read
+// such a value (Value.Interface panics), so it can never match, and reporting it here makes
+// that deterministic instead of an eval-time error that only a non-empty slice would surface.
+// An exported field promoted through an unexported embedded type keeps PkgPath == "" and stays
+// selectable via its promoted name; naming the unexported embed explicitly (e.g. "inner.Field"
+// rather than the promoted "Field") is rejected, because the segment itself is unexported.
 func (r *fieldGetter) getStructField(t reflect.Type, name string) (reflect.StructField, error) {
-	if r.fieldTag == "" {
-		field, ok := t.FieldByName(name)
-		if !ok {
+	field, ok := r.lookupStructField(t, name)
+	if !ok {
+		if r.fieldTag == "" {
 			return reflect.StructField{}, fmt.Errorf("field %s.%s: %w", t, name, errFieldNotFound)
 		}
 
-		return field, nil
-	}
-
-	field, ok := r.lookupFieldByTag(t, name)
-	if !ok {
 		return reflect.StructField{}, fmt.Errorf("field of %s with tag %s=%s: %w", t, r.fieldTag, name, errFieldNotFound)
 	}
 
+	if field.PkgPath != "" {
+		return reflect.StructField{}, fmt.Errorf("%w: field %s.%s is unexported and cannot be read", ErrInvalidFilter, t, field.Name)
+	}
+
 	return field, nil
+}
+
+// lookupStructField finds a struct field by name, or by the configured tag when set.
+func (r *fieldGetter) lookupStructField(t reflect.Type, name string) (reflect.StructField, bool) {
+	if r.fieldTag == "" {
+		return t.FieldByName(name)
+	}
+
+	return r.lookupFieldByTag(t, name)
 }
 
 // lookupFieldByTag looks up a struct field by its tag value.

@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/url"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 
@@ -44,7 +45,7 @@ func TestParseJSON(t *testing.T) {
 			want: [][]Rule{
 				{
 					{Field: "name", Type: TypeEqual, Value: "doe"},
-					{Field: "age", Type: TypeLTE, Value: 42.0},
+					{Field: "age", Type: TypeLTE, Value: int64(42)},
 				},
 				{
 					{Field: "address.country", Type: TypeRegexp, Value: "^EN$|^FR$"},
@@ -53,9 +54,100 @@ func TestParseJSON(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			// The whole point of decoding with json.Number: 2^53+1 has no exact float64
+			// representation, so a float64 rule value would match 2^53 as well.
+			name: "success - integer beyond 2^53 stays exact",
+			json: `[[{"field":"ID","type":"==","value":9007199254740993}]]`,
+			want: [][]Rule{{
+				{Field: "ID", Type: TypeEqual, Value: int64(9007199254740993)},
+			}},
+		},
+		{
+			name: "success - integer beyond MaxInt64 becomes uint64",
+			json: `[[{"field":"ID","type":"==","value":18446744073709551615}]]`,
+			want: [][]Rule{{
+				{Field: "ID", Type: TypeEqual, Value: uint64(math.MaxUint64)},
+			}},
+		},
+		{
+			name: "success - negative integer",
+			json: `[[{"field":"ID","type":"==","value":-9223372036854775808}]]`,
+			want: [][]Rule{{
+				{Field: "ID", Type: TypeEqual, Value: int64(math.MinInt64)},
+			}},
+		},
+		{
+			name: "success - fractional value stays float64",
+			json: `[[{"field":"Score","type":"<","value":1.5}]]`,
+			want: [][]Rule{{
+				{Field: "Score", Type: TypeLT, Value: 1.5},
+			}},
+		},
+		{
+			// Exponent notation is a JSON float, so it stays a float64 even when it happens
+			// to hold an integral value.
+			name: "success - exponent notation stays float64",
+			json: `[[{"field":"Score","type":"<","value":1e3}]]`,
+			want: [][]Rule{{
+				{Field: "Score", Type: TypeLT, Value: float64(1000)},
+			}},
+		},
+		{
 			name:    "error - invalid json",
 			json:    `[`,
 			wantErr: true,
+		},
+		{
+			// json.Unmarshal rejects trailing data; json.Decoder ignores it unless asked.
+			name:    "error - data after the rule set",
+			json:    `[[{"field":"ID","type":"==","value":1}]] {"trailing":"junk"}`,
+			wantErr: true,
+		},
+		{
+			name:    "error - number no Go type can represent",
+			json:    `[[{"field":"ID","type":"==","value":1e400}]]`,
+			wantErr: true,
+		},
+		{
+			name:    "error - array rule value",
+			json:    `[[{"field":"ID","type":"==","value":[1,2]}]]`,
+			wantErr: true,
+		},
+		{
+			name:    "error - object rule value",
+			json:    `[[{"field":"ID","type":"==","value":{"a":1}}]]`,
+			wantErr: true,
+		},
+		{
+			// The schema requires all three keys; an omitted one is a malformed filter,
+			// distinct from an explicit null.
+			name:    "error - missing field key",
+			json:    `[[{"type":"==","value":"x"}]]`,
+			wantErr: true,
+		},
+		{
+			name:    "error - missing type key",
+			json:    `[[{"field":"ID","value":"x"}]]`,
+			wantErr: true,
+		},
+		{
+			name:    "error - missing value key",
+			json:    `[[{"field":"ID","type":"=="}]]`,
+			wantErr: true,
+		},
+		{
+			name:    "error - empty outer array",
+			json:    `[]`,
+			wantErr: true,
+		},
+		{
+			// An explicit null value is present (distinct from an omitted key) and normalizes
+			// to a nil reference.
+			name: "success - explicit null value",
+			json: `[[{"field":"","type":"==","value":null}]]`,
+			want: [][]Rule{{
+				{Field: "", Type: TypeEqual, Value: nil},
+			}},
 		},
 	}
 
@@ -66,7 +158,7 @@ func TestParseJSON(t *testing.T) {
 			r, err := parseJSON(tt.json)
 
 			if tt.wantErr {
-				require.Error(t, err, "ParseRules() error = %v, wantErr %v", err, tt.wantErr)
+				require.ErrorIs(t, err, ErrInvalidFilter, "ParseRules() error = %v, wantErr %v", err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, r, "Filtered = %v, want %v", r, tt.want)
@@ -136,7 +228,7 @@ func TestFilter_ParseURLQuery(t *testing.T) {
 			want: [][]Rule{{{
 				Field: "Age",
 				Type:  TypeEqual,
-				Value: 42.0,
+				Value: int64(42),
 			}}},
 			wantErr: false,
 		},
@@ -148,7 +240,7 @@ func TestFilter_ParseURLQuery(t *testing.T) {
 			want: [][]Rule{{{
 				Field: "Age",
 				Type:  TypeEqual,
-				Value: 42.0,
+				Value: int64(42),
 			}}},
 			wantErr: false,
 		},
@@ -795,11 +887,12 @@ func TestFilter_Apply(t *testing.T) {
 			wantTotalMatches: 3,
 		},
 		{
-			name:             "success - with empty OR filter",
-			elements:         &[]int{41, 42, 43},
-			rules:            [][]Rule{{}},
-			want:             &[]int{},
-			wantTotalMatches: 0,
+			// An empty OR group is an empty disjunction (always false) that would silently
+			// drop every element, so it is rejected rather than treated as "match nothing".
+			name:     "error - empty OR group",
+			elements: &[]int{41, 42, 43},
+			rules:    [][]Rule{{}},
+			wantErr:  true,
 		},
 		{
 			name: "success - nested path not found",
@@ -977,7 +1070,10 @@ func TestFilter_Apply(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "success - missing field on concrete slice",
+			// A selector absent from a concrete element type can never match: it is a
+			// malformed client filter, not a data condition, so it is rejected rather than
+			// silently filtering every element out.
+			name: "error - unknown field on concrete slice",
 			elements: &[]simpleStruct{
 				{StringField: "value 1"},
 			},
@@ -986,8 +1082,33 @@ func TestFilter_Apply(t *testing.T) {
 				Type:  TypeEqual,
 				Value: "value 1",
 			}}},
-			want:             &[]simpleStruct{},
-			wantTotalMatches: 0,
+			wantErr: true,
+		},
+		{
+			name: "error - unknown nested segment on concrete slice",
+			elements: &[]complexStruct{
+				{Internal: simpleStruct{StringField: "value 1"}},
+			},
+			rules: [][]Rule{{{
+				Field: "Internal.NoSuchField",
+				Type:  TypeEqual,
+				Value: "value 1",
+			}}},
+			wantErr: true,
+		},
+		{
+			// The JSON-style selector a client would naturally send does not match the Go
+			// field names of a Processor configured without WithFieldNameTag.
+			name: "error - case-mismatched selector without a field tag",
+			elements: &[]complexStruct{
+				{Internal: simpleStruct{StringField: "value 1"}},
+			},
+			rules: [][]Rule{{{
+				Field: "internal.string_field",
+				Type:  TypeEqual,
+				Value: "value 1",
+			}}},
+			wantErr: true,
 		},
 		{
 			name: "error - concrete nested path inside a basic type",
@@ -1427,41 +1548,54 @@ func TestFilter_Apply_NilPointerInFieldPath(t *testing.T) {
 	})
 }
 
-// TestFilter_Apply_UncomparableJSONValue ensures untrusted JSON filter values of
-// non-comparable dynamic types (maps, slices) cannot panic the process: equality
-// falls back to deep comparison instead of the interface "==" operator.
-func TestFilter_Apply_UncomparableJSONValue(t *testing.T) {
+// TestParseJSON_RejectsCompositeValue verifies that array and object rule values are rejected
+// by the JSON parser (the untrusted-input surface is scalars only), for every operator.
+func TestParseJSON_RejectsCompositeValue(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		json string
-	}{
-		{name: "equal", json: `[[{"field":"","type":"==","value":{"a":1}}]]`},
-		{name: "equal fold", json: `[[{"field":"","type":"=","value":{"a":1}}]]`},
+	p, err := New()
+	require.NoError(t, err)
+
+	for _, payload := range []string{
+		`[[{"field":"","type":"==","value":{"a":1}}]]`,
+		`[[{"field":"","type":"=","value":[1,2]}]]`,
+		`[[{"field":"X","type":"<","value":[1]}]]`,
+		`[[{"field":"X","type":"regexp","value":{"k":"v"}}]]`,
+	} {
+		_, perr := p.ParseJSON(payload)
+		require.ErrorIs(t, perr, ErrInvalidFilter, "payload %s", payload)
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+// TestFilter_Apply_UncomparableGoValue ensures a Go-constructed rule whose reference value is
+// a runtime-uncomparable dynamic type (a struct holding a slice via an any field) cannot panic
+// the process: equality falls back to deep comparison instead of the interface "==" operator.
+// This value shape is only reachable from a Go caller; the JSON parser rejects it.
+func TestFilter_Apply_UncomparableGoValue(t *testing.T) {
+	t.Parallel()
+
+	type box struct{ V any }
+
+	for _, typ := range []string{TypeEqual, TypeEqualFold} {
+		t.Run(typ, func(t *testing.T) {
 			t.Parallel()
-
-			rules, err := parseJSON(tt.json)
-			require.NoError(t, err)
 
 			p, err := New()
 			require.NoError(t, err)
 
-			data := []map[string]any{
-				{"a": 1.0},
-				{"a": 2.0},
-				{"b": []any{"x"}},
+			// box{V: []int} is a Comparable *type* whose == panics at runtime.
+			rules := [][]Rule{{{Field: "", Type: typ, Value: box{V: []int{1, 2}}}}}
+
+			data := []box{
+				{V: []int{1, 2}},
+				{V: []int{3}},
 			}
 
 			n, total, err := p.Apply(rules, &data)
 			require.NoError(t, err)
 			require.Equal(t, uint(1), n)
 			require.Equal(t, uint(1), total)
-			require.Equal(t, []map[string]any{{"a": 1.0}}, data)
+			require.Equal(t, []box{{V: []int{1, 2}}}, data)
 		})
 	}
 }
@@ -1830,6 +1964,136 @@ func makeCollisionSliceTwo() any {
 	}
 
 	return &[]collideT{{B: "x", A: 1}, {B: "y", A: 3}}
+}
+
+// parityRow carries the same numbers in every numeric field kind an element may have, so that
+// one rule can be evaluated against each of them.
+type parityRow struct {
+	I64 int64
+	U64 uint64
+	F64 float64
+	Int int
+}
+
+// TestFilter_Apply_JSONGoRuleParity is the regression guard for the JSON path losing integer
+// exactness: a rule parsed from JSON must select exactly the same elements as the equivalent
+// rule constructed in Go. Before rule values were decoded with json.Number, every JSON number
+// arrived as a float64, so an integer beyond 2^53 also matched its float64 neighbors.
+func TestFilter_Apply_JSONGoRuleParity(t *testing.T) {
+	t.Parallel()
+
+	values := []struct {
+		json string
+		val  any
+	}{
+		{json: `0`, val: int64(0)},
+		{json: `-1`, val: int64(-1)},
+		{json: `9007199254740992`, val: int64(1) << 53},
+		{json: `9007199254740993`, val: int64(1)<<53 + 1},
+		{json: `-9007199254740993`, val: -(int64(1)<<53 + 1)},
+		{json: `9223372036854775807`, val: int64(math.MaxInt64)},
+		{json: `9223372036854775808`, val: uint64(math.MaxInt64) + 1},
+		{json: `18446744073709551615`, val: uint64(math.MaxUint64)},
+		{json: `1.5`, val: 1.5},
+		{json: `-0.0`, val: math.Copysign(0, -1)},
+	}
+
+	types := []string{TypeEqual, TypeEqualFold, TypeLT, TypeLTE, TypeGT, TypeGTE}
+	fields := []string{"I64", "U64", "F64", "Int"}
+
+	data := []parityRow{
+		{I64: 1 << 53, U64: 1 << 53, F64: 1 << 53, Int: 1 << 53},
+		{I64: 1<<53 + 1, U64: 1<<53 + 1, F64: 1<<53 + 1, Int: 1<<53 + 1},
+		{I64: math.MaxInt64, U64: math.MaxUint64, F64: math.MaxFloat64, Int: math.MaxInt64},
+		{I64: -1, U64: 0, F64: math.Copysign(0, -1), Int: -1},
+		{I64: 0, U64: 1, F64: 1.5, Int: 2},
+	}
+
+	p, err := New()
+	require.NoError(t, err)
+
+	for _, value := range values {
+		for _, typ := range types {
+			for _, field := range fields {
+				jsonRules, err := parseJSON(
+					`[[{"field":"` + field + `","type":"` + typ + `","value":` + value.json + `}]]`)
+				require.NoError(t, err)
+
+				goRules := [][]Rule{{{Field: field, Type: typ, Value: value.val}}}
+
+				fromJSON := slices.Clone(data)
+				_, jsonTotal, err := p.Apply(jsonRules, &fromJSON)
+				require.NoError(t, err)
+
+				fromGo := slices.Clone(data)
+				_, goTotal, err := p.Apply(goRules, &fromGo)
+				require.NoError(t, err)
+
+				require.Equal(t, goTotal, jsonTotal, "match count differs for %s %s %s", field, typ, value.json)
+				require.Equal(t, fromGo, fromJSON, "matched elements differ for %s %s %s", field, typ, value.json)
+			}
+		}
+	}
+}
+
+// TestFilter_Apply_JSONExactInteger pins the concrete failure the parity test guards against:
+// 2^53+1 has no exact float64 representation, so a float64-decoded rule value matched 2^53
+// too, silently returning a record the client did not ask for.
+func TestFilter_Apply_JSONExactInteger(t *testing.T) {
+	t.Parallel()
+
+	p, err := New()
+	require.NoError(t, err)
+
+	rules, err := p.ParseURLQuery(url.Values{
+		DefaultURLQueryFilterKey: {`[[{"field":"I64","type":"==","value":9007199254740993}]]`},
+	})
+	require.NoError(t, err)
+
+	data := []parityRow{{I64: 1 << 53}, {I64: 1<<53 + 1}}
+
+	n, total, err := p.Apply(rules, &data)
+	require.NoError(t, err)
+	require.Equal(t, uint(1), n)
+	require.Equal(t, uint(1), total)
+	require.Equal(t, []parityRow{{I64: 1<<53 + 1}}, data)
+}
+
+// TestFilter_Apply_UnknownFieldSelector verifies that a selector absent from a concrete
+// element type is reported as a client error, while a selector that can only be resolved per
+// element (an interface-typed slice) remains a silent non-match.
+func TestFilter_Apply_UnknownFieldSelector(t *testing.T) {
+	t.Parallel()
+
+	type row struct {
+		Name string
+	}
+
+	p, err := New()
+	require.NoError(t, err)
+
+	t.Run("concrete element type is a client error", func(t *testing.T) {
+		t.Parallel()
+
+		data := []row{{Name: "doe"}}
+
+		_, _, err := p.Apply([][]Rule{{{Field: "NoSuchField", Type: TypeEqual, Value: "doe"}}}, &data)
+		require.ErrorIs(t, err, ErrInvalidFilter)
+
+		// Rules are compiled before any filtering, so the input slice is left untouched.
+		require.Equal(t, []row{{Name: "doe"}}, data)
+	})
+
+	t.Run("interface element type stays a non-match", func(t *testing.T) {
+		t.Parallel()
+
+		data := []any{row{Name: "doe"}}
+
+		n, total, err := p.Apply([][]Rule{{{Field: "NoSuchField", Type: TypeEqual, Value: "doe"}}}, &data)
+		require.NoError(t, err)
+		require.Equal(t, uint(0), n)
+		require.Equal(t, uint(0), total)
+	})
 }
 
 func benchmarkFilterApply(b *testing.B, n int, json string, opts ...Option) {

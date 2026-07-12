@@ -59,6 +59,14 @@ type Rule struct {
 
 	// Value is the reference value to evaluate against.
 	// Its type should be accepted by the chosen Type.
+	//
+	// When a rule is decoded from JSON via [Processor.ParseJSON] or [Processor.ParseURLQuery],
+	// Value is normalized to a concrete Go type: an integer literal becomes an int64 (or a
+	// uint64 when it exceeds math.MaxInt64), any other number becomes a float64, and strings,
+	// booleans, and null pass through as string, bool, and nil. Integer literals therefore
+	// compare exactly, even beyond 2^53. A number too large for any of those types (e.g. 1e400)
+	// and any array or object value are rejected by the parser. A Go caller may still set Value
+	// to any type the chosen Type accepts.
 	Value any `json:"value"`
 }
 
