@@ -2,7 +2,6 @@ package redact
 
 import (
 	"slices"
-	"sync/atomic"
 )
 
 // maxCardDigits is the longest supported PAN length (19-digit Visa, UnionPay,
@@ -14,36 +13,6 @@ const maxCardDigits = 19
 // shorter than 16 digits are only detected when the Luhn gate is enabled (see
 // isCreditCard).
 const minShortMaestroDigits = 12
-
-// luhnCheckEnabled gates the optional Luhn-checksum validation for
-// credit-card detection. It defaults to false (disabled) so the package's
-// out-of-the-box redaction output is unchanged: any 13-19 digit run matching
-// a known card prefix is redacted (deliberate over-redaction as a safe
-// default). When enabled, such a run is only redacted if it ALSO passes the
-// Luhn checksum, reducing false positives at the cost of missing malformed
-// or test card numbers.
-var luhnCheckEnabled atomic.Bool //nolint:gochecknoglobals
-
-// SetLuhnCheck enables or disables the optional Luhn-checksum gate for
-// credit-card detection.
-//
-// This setting is process-wide and safe for concurrent use. It is additive and
-// off by default: with the default (disabled) behavior, every 13-19 digit run
-// matching a known card prefix is redacted (a deliberate, safe over-redaction).
-// When enabled, only digit runs that match a known prefix AND pass the Luhn
-// checksum are redacted, which reduces over-redaction of unrelated numeric
-// identifiers at the cost of possibly missing malformed numbers. Enabling it
-// also unlocks detection of short (12-15 digit) Maestro numbers, which are too
-// collision-prone to detect on prefix alone.
-func SetLuhnCheck(enabled bool) {
-	luhnCheckEnabled.Store(enabled)
-}
-
-// LuhnCheckEnabled reports whether the optional Luhn-checksum gate for
-// credit-card detection is currently enabled. It is safe for concurrent use.
-func LuhnCheckEnabled() bool {
-	return luhnCheckEnabled.Load()
-}
 
 // matchesCardPattern reports whether a run of ASCII digits (guaranteed by the
 // callers) has a known card-network prefix and a valid length for that
@@ -138,21 +107,19 @@ func matchesMaestroIIN(digits []byte) bool {
 
 // isCreditCard reports whether a run of ASCII digits should be redacted as a
 // credit-card number. It always requires a known card prefix; when the
-// optional Luhn gate is enabled it additionally requires a valid Luhn
-// checksum.
+// instance's Luhn gate ([WithLuhnCheck]) is enabled it additionally requires a
+// valid Luhn checksum.
 //
 // Short Maestro numbers (12-15 digits, well-known IINs only) are a special
 // case: they are detected ONLY when the Luhn gate is enabled, because a short
 // prefix-and-length match alone would over-redact far too many ordinary
 // identifiers.
 func (re *Redactor) isCreditCard(digits []byte) bool {
-	luhn := re.luhn.Load()
-
 	if matchesCardPattern(digits) {
-		return !luhn || passesLuhn(digits)
+		return !re.luhn || passesLuhn(digits)
 	}
 
-	if luhn && len(digits) >= minShortMaestroDigits && len(digits) < 16 && matchesMaestroIIN(digits) {
+	if re.luhn && len(digits) >= minShortMaestroDigits && len(digits) < 16 && matchesMaestroIIN(digits) {
 		return passesLuhn(digits)
 	}
 
@@ -220,9 +187,9 @@ func (re *Redactor) scanGroupedCardSpan(src []byte, start, firstGroupEnd int) (i
 
 // isGroupedCardCandidate reports whether joined digit groups form a card
 // number eligible for grouped-format detection. The 14-digit Diners range and
-// the legacy 15-digit JCB ranges (1800, 2131) are excluded: those cards are
-// never printed in spaced groups, and their prefixes collide with common phone
-// formats ("1 800 555 0199 1234", "36 1234 5678 9012"). Amex (15 digits,
+// the legacy 15-digit ranges (JCB 2131, Diners 1800) are excluded: those cards
+// are never printed in spaced groups, and their prefixes collide with common
+// phone formats ("1 800 555 0199 1234", "36 1234 5678 9012"). Amex (15 digits,
 // prefix 3) stays eligible — it is an active network physically printed in
 // 4-6-5 groups. Contiguous runs are unaffected and keep matching all networks.
 func (re *Redactor) isGroupedCardCandidate(digits []byte) bool {

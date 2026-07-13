@@ -1,10 +1,60 @@
 package redact
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+// TestHeaderIndentation verifies an indented header/YAML line is redacted
+// (indent preserved), so nested config dumps no longer leak.
+func TestHeaderIndentation(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"  Authorization: Bearer SEKRIT", "  Authorization: ***"},
+		{"\tX-Api-Key: SEKRIT", "\tX-Api-Key: ***"},
+		{"database:\n  password: hunter2\n  user: bob\n", "database:\n  password: ***\n  user: bob\n"},
+		// Unindented behavior is unchanged.
+		{"Authorization: Bearer SEKRIT\n", "Authorization: ***\n"},
+		// An indented line that is not a sensitive header stays visible.
+		{"  note: hello world\n", "  note: hello world\n"},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %q", tc.input)
+		once := HTTPData(tc.input)
+		require.Equal(t, once, HTTPData(once), "not idempotent: %q", tc.input)
+	}
+}
+
+// TestNonSecretHeaderAllowlist verifies that well-known non-secret headers
+// containing a sensitive token ("security"/"credentials") stay visible, while a
+// genuinely sensitive header with a similar name still redacts.
+func TestNonSecretHeaderAllowlist(t *testing.T) {
+	t.Parallel()
+
+	visible := []string{
+		"Content-Security-Policy: default-src 'self'\n",
+		"Content-Security-Policy-Report-Only: default-src 'self'\n",
+		"Strict-Transport-Security: max-age=31536000; includeSubDomains\n",
+		"Access-Control-Allow-Credentials: true\n",
+		"content-security-policy: default-src 'self'\n", // case-insensitive
+	}
+	for _, in := range visible {
+		require.Equal(t, in, HTTPData(in), "should stay visible: %q", in)
+	}
+
+	// A header whose name contains a secret token still redacts: a genuine secret
+	// (X-Amz-Security-Token) and the public Sec-WebSocket-Key handshake nonce
+	// (safe over-redaction via the `key` token — not a secret, but harmless to hide).
+	require.Equal(t, "X-Amz-Security-Token: ***\n", HTTPData("X-Amz-Security-Token: SEKRIT\n"))
+	require.Equal(t, "Sec-WebSocket-Key: ***\n", HTTPData("Sec-WebSocket-Key: dGhlIHNhbXBsZQ==\n"))
+}
 
 func TestHTTPDataAuthorizationLineBranches(t *testing.T) {
 	t.Parallel()
@@ -146,4 +196,13 @@ func TestHTTPDataSensitiveHeaderNames(t *testing.T) {
 	for _, tc := range cases {
 		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
 	}
+}
+
+// TestHeaderNameLengthBoundary verifies a long sensitive header name is not
+// mistaken for a non-secret allowlist entry: it still redacts.
+func TestHeaderNameLengthBoundary(t *testing.T) {
+	t.Parallel()
+
+	long := "X-" + strings.Repeat("a", 60) + "-Security: SECRET\n"
+	require.Equal(t, "X-"+strings.Repeat("a", 60)+"-Security: ***\n", HTTPData(long))
 }

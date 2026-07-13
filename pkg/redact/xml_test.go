@@ -82,3 +82,47 @@ func TestHTTPDataXMLCDATA(t *testing.T) {
 		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
 	}
 }
+
+// TestXMLNonFlatContent covers content shapes that previously failed open
+// (leaving the whole element visible): embedded comments and mid-content CDATA,
+// whitespace inside the closing tag, and a case-mismatched closing tag. Prose
+// placeholders and genuinely nested elements must still stay untouched.
+func TestXMLNonFlatContent(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`<password>ab<![CDATA[hunter2]]></password>`, `<password>***</password>`},
+		{`<password><!--comment-->hunter2</password>`, `<password>***</password>`},
+		{`<token>abc123</token >`, `<token>***</token >`},
+		{`<password>hunter2</Password>`, `<password>***</Password>`}, // HTML-style case mismatch
+		// Guarantees that must not regress:
+		{`user <token> expired`, `user <token> expired`},                       // prose placeholder
+		{`<password>a<b>c</b>d</password>`, `<password>a<b>c</b>d</password>`}, // nested element (non-goal)
+		{`<note>ab<![CDATA[ok]]></note>`, `<note>ab<![CDATA[ok]]></note>`},     // non-sensitive element
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+
+		once := HTTPData(tc.input)
+		require.Equal(t, once, HTTPData(once), "not idempotent: %s", tc.input)
+	}
+}
+
+// TestXMLUnterminatedMarkup verifies an unterminated comment or CDATA in the
+// content is treated as running to end of input, so the element is left
+// unredacted (safe) rather than mis-parsed.
+func TestXMLUnterminatedMarkup(t *testing.T) {
+	t.Parallel()
+
+	unchanged := []string{
+		"<password>x<!--unterminated comment",
+		"<password>x<![CDATA[unterminated cdata",
+	}
+	for _, in := range unchanged {
+		require.Equal(t, in, HTTPData(in), "should be unchanged: %q", in)
+	}
+}

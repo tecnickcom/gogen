@@ -54,6 +54,17 @@ func (re *Redactor) appendRedactedSensitiveJSONAt(src []byte, i int, dst []byte)
 		return 0, dst, false
 	}
 
+	// The {"name":"DB_PASSWORD","value":"secret"} shape (Kubernetes env, Docker
+	// inspect, AWS tags): a label key whose string value names a secret marks
+	// the sibling value member as the real secret; the key rule alone would
+	// leave it visible. The cheap isJSONLabelKey guard keeps ordinary keys off
+	// the (non-inlined) labeled-secret path.
+	if isJSONLabelKey(key) {
+		if next, redacted, ok := re.appendLabeledSecretJSON(src, i, key, valueStart, dst); ok {
+			return next, redacted, true
+		}
+	}
+
 	// Check key sensitivity before parsing the value: non-sensitive keys (the
 	// common case) skip value scanning entirely, including balanced-container
 	// scans for object/array values.
@@ -77,6 +88,215 @@ func (re *Redactor) appendRedactedSensitiveJSONAt(src []byte, i int, dst []byte)
 	dst = append(dst, '"')
 
 	return valueEnd, dst, true
+}
+
+// appendLabeledSecretJSON handles the labeled-secret shape
+// {"name":"<secret-name>", "value": <v>}: a label key (name/key/id, matched
+// case-insensitively) whose quoted string value classifies as a sensitive key
+// name, immediately followed by a sibling value member (value/val). It redacts
+// the sibling value and returns the index past it. The label's own value is
+// kept visible for debuggability unless the label key is itself sensitive (e.g.
+// "key"), in which case it is redacted too, preserving the key rule's behavior.
+//
+// Only this forward order (label then value) is handled — the shape every
+// producer of these maps emits. It stays convergent: on a re-pass the label
+// value still names a secret and the sibling is already the inert marker.
+func (re *Redactor) appendLabeledSecretJSON(src []byte, i int, labelKey []byte, labelValStart int, dst []byte) (int, []byte, bool) {
+	if src[labelValStart] != '"' { // caller has already checked isJSONLabelKey(labelKey)
+		return 0, dst, false
+	}
+
+	labelValEnd := parseJSONStringEnd(src, labelValStart)
+	if labelValEnd <= labelValStart+1 || src[labelValEnd-1] != '"' {
+		return 0, dst, false
+	}
+
+	// Classify the label value against the STRONG secret tokens only, not the
+	// full key check: a `{"name":"DB_PASSWORD",...}` label marks the sibling as a
+	// secret, but a weak/financial/PII label (`cardType`, `payment`, `account`)
+	// must not blank ordinary {name,value} data (chart series, metrics, tags).
+	if !re.isStrongSecretName(src[labelValStart+1 : labelValEnd-1]) {
+		return 0, dst, false
+	}
+
+	sibValStart, sibValEnd, ok := findSiblingValueMember(src, labelValEnd)
+	if !ok {
+		return 0, dst, false
+	}
+
+	dst = append(dst, src[i:labelValStart]...) // `"name":` (label key + separator)
+
+	if re.isSensitiveKey(labelKey) {
+		dst = appendQuotedMarker(dst, re.marker)
+	} else {
+		dst = append(dst, src[labelValStart:labelValEnd]...) // keep `"DB_PASSWORD"`
+	}
+
+	dst = append(dst, src[labelValEnd:sibValStart]...) // `,"value":`
+	dst = appendQuotedMarker(dst, re.marker)
+
+	return sibValEnd, dst, true
+}
+
+// findSiblingValueMember, given labelValEnd just past a label's string value,
+// requires the next member to be a value key (value/val) and returns the start
+// and end of its value. It reports false for any other shape.
+func findSiblingValueMember(src []byte, labelValEnd int) (int, int, bool) {
+	j := skipJSONWhitespace(src, labelValEnd)
+	if j >= len(src) || src[j] != ',' {
+		return 0, 0, false
+	}
+
+	j = skipJSONWhitespace(src, j+1)
+	if j >= len(src) || src[j] != '"' {
+		return 0, 0, false
+	}
+
+	vq2, ok := findJSONStringClosingQuote(src, j+1)
+	if !ok || !isJSONValueKey(src[j+1:vq2]) {
+		return 0, 0, false
+	}
+
+	sibValStart, hasKV, done := findJSONValueStart(src, vq2)
+	if done || !hasKV {
+		return 0, 0, false
+	}
+
+	sibValEnd := jsonValueEnd(src, sibValStart)
+	if sibValEnd == 0 {
+		return 0, 0, false
+	}
+
+	return sibValStart, sibValEnd, true
+}
+
+// appendQuotedMarker appends a quoted redaction marker ("***").
+func appendQuotedMarker(dst, marker []byte) []byte {
+	dst = append(dst, '"')
+	dst = append(dst, marker...)
+	dst = append(dst, '"')
+
+	return dst
+}
+
+// isJSONLabelKey reports whether key is one of the case-insensitive "label"
+// keys of a {label, value} map (name/key/id).
+func isJSONLabelKey(key []byte) bool {
+	return equalsASCIIFold(key, "name") || equalsASCIIFold(key, "key") || equalsASCIIFold(key, "id")
+}
+
+// isJSONValueKey reports whether key is the case-insensitive value member of a
+// {label, value} map (value/val).
+func isJSONValueKey(key []byte) bool {
+	return equalsASCIIFold(key, "value") || equalsASCIIFold(key, "val")
+}
+
+// appendRedactedEscapedJSONAt handles an escaped JSON key whose opening `\"`
+// closes at src[i] (the '"'; the '\' at src[i-1] has already been emitted by the
+// bulk copy). This is the shape produced when a JSON document is embedded as a
+// string value inside another JSON document (captured request bodies, webhook
+// payloads, audit records logged through a JSON handler). It redacts the escaped
+// value of a sensitive escaped key:
+//
+//	{"body":"{\"password\":\"secret\"}"}  ->  {"body":"{\"password\":\"***\"}"}
+//
+// Only simple (backslash-free) escaped keys and escaped string values are
+// handled; any inner escaping makes the handler bail, leaving the input
+// unchanged. Bailing rather than guessing keeps the engine from ever
+// mis-parsing a deeper escape level, and — because the emitted marker is
+// backslash-free — keeps redaction convergent.
+//
+//nolint:gocyclo,cyclop // One guarded parse step per escaped-key/value component.
+func (re *Redactor) appendRedactedEscapedJSONAt(src []byte, i int, dst []byte) (int, []byte, bool) {
+	// The \" must open an object member: skipping whitespace backward from before
+	// the '\' — raw spaces/tabs and the two-byte escaped \n/\t/\r a non-Go
+	// serializer emits (Python json.dumps' ", "/": " separators, JS
+	// JSON.stringify pretty-printing) — the nearest structural byte is '{' or ','
+	// (the outer bytes of the embedded object), or the start of input.
+	if p := escapedJSONKeyContext(src, i-2); p >= 0 && src[p] != '{' && src[p] != ',' {
+		return 0, dst, false
+	}
+
+	keyStart := i + 1
+
+	keyClose, ok := simpleEscapedStringEnd(src, keyStart)
+	if !ok {
+		return 0, dst, false
+	}
+
+	// The key's closing \" is 2 bytes; then ':' (optional surrounding space),
+	// then the value's opening \".
+	j := skipJSONWhitespace(src, keyClose+2)
+	if j >= len(src) || src[j] != ':' {
+		return 0, dst, false
+	}
+
+	valStart := skipJSONWhitespace(src, j+1)
+	if valStart+1 >= len(src) || src[valStart] != '\\' || src[valStart+1] != '"' {
+		return 0, dst, false // only an escaped string value is handled
+	}
+
+	valClose, ok := simpleEscapedStringEnd(src, valStart+2)
+	if !ok {
+		return 0, dst, false
+	}
+
+	if !re.isSensitiveKey(src[keyStart:keyClose]) {
+		return 0, dst, false
+	}
+
+	dst = append(dst, src[i:valStart]...) // `"password\":` (the '\' is already emitted)
+	dst = append(dst, '\\', '"')
+	dst = append(dst, re.marker...)
+	dst = append(dst, '\\', '"')
+
+	return valClose + 2, dst, true
+}
+
+// escapedJSONKeyContext scans backward from p over whitespace that can separate
+// object members inside an escaped (embedded) JSON string: raw spaces/tabs and
+// the two-byte escaped "\n"/"\t"/"\r" sequences (a '\' byte followed by
+// 'n'/'t'/'r'). It returns the index of the nearest non-whitespace byte, or -1
+// when the scan runs off the start of input (valid key context). This lets a
+// non-Go serializer's spacing (Python json.dumps' ", "/": ", JS pretty-print)
+// still reach the escaped-key parser instead of leaking every key after the
+// first.
+func escapedJSONKeyContext(src []byte, p int) int {
+	for p >= 0 {
+		switch {
+		case src[p] == ' ' || src[p] == '\t':
+			p--
+		case (src[p] == 'n' || src[p] == 't' || src[p] == 'r') && p >= 1 && src[p-1] == '\\':
+			p -= 2
+		default:
+			return p
+		}
+	}
+
+	return -1
+}
+
+// simpleEscapedStringEnd, given p just past an opening `\"`, returns the index
+// of the closing `\"`'s backslash when the content in between is simple — no
+// backslash escapes, no bare quote, no line break. It reports false otherwise,
+// so any inner escaping is left untouched rather than mis-parsed.
+func simpleEscapedStringEnd(src []byte, p int) (int, bool) {
+	for p+1 < len(src) {
+		switch src[p] {
+		case '\\':
+			if src[p+1] == '"' {
+				return p, true
+			}
+
+			return 0, false // a different escape: too complex, bail
+		case '"', '\n', '\r':
+			return 0, false
+		}
+
+		p++
+	}
+
+	return 0, false
 }
 
 // findJSONStringClosingQuote locates the closing quote of a JSON key starting

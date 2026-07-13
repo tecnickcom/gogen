@@ -297,3 +297,120 @@ func TestJSONKeyAfterRedactedPrefix(t *testing.T) {
 		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
 	}
 }
+
+// TestLabeledSecretJSON covers the {"name":"<secret-name>","value":<v>} shape
+// (Kubernetes env, Docker inspect, AWS tags): the sibling value of a label key
+// that names a secret is redacted, while the label itself stays readable unless
+// it is a sensitive key in its own right.
+func TestLabeledSecretJSON(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`{"env":[{"name":"DB_PASSWORD","value":"hunter2"}]}`, `{"env":[{"name":"DB_PASSWORD","value":"***"}]}`},
+		{`{"name":"DB_PASSWORD","value":"hunter2"}`, `{"name":"DB_PASSWORD","value":"***"}`},
+		{`{"key":"api_key","value":"AKIAIOSFODNN7SECRET"}`, `{"key":"***","value":"***"}`},
+		{`[{"Key":"apikey","Value":"SECRET"}]`, `[{"Key":"***","Value":"***"}]`}, // AWS-tag casing
+		{`{"id":"password","value":123}`, `{"id":"password","value":"***"}`},     // non-string value
+		{`{"name":"secret","val":"x"}`, `{"name":"secret","val":"***"}`},         // "val" alias
+		// A non-secret label leaves the pair untouched.
+		{`{"name":"LOG_LEVEL","value":"debug"}`, `{"name":"LOG_LEVEL","value":"debug"}`},
+		{`{"name":"foo","value":"bar"}`, `{"name":"foo","value":"bar"}`},
+		// No sibling value member: nothing to redact beyond the normal key rule.
+		{`{"name":"DB_PASSWORD"}`, `{"name":"DB_PASSWORD"}`},
+		{`{"key":"secretval"}`, `{"key":"***"}`}, // "key" is itself sensitive
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+
+		once := HTTPData(tc.input)
+		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+	}
+}
+
+// TestEscapedJSON covers a JSON document embedded as a string value inside
+// another JSON document (captured request bodies / webhook payloads). A
+// sensitive escaped key's escaped value is redacted; any inner escaping the
+// conservative parser cannot handle is left untouched rather than mis-parsed.
+func TestEscapedJSON(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`{"body":"{\"password\":\"hunter2\"}"}`, `{"body":"{\"password\":\"***\"}"}`},
+		{`{"req":"{\"user\":\"bob\",\"api_key\":\"AKIA\",\"token\":\"s3cr3t\"}"}`, `{"req":"{\"user\":\"bob\",\"api_key\":\"***\",\"token\":\"***\"}"}`},
+		{`{"body":"{\"note\":\"visible\",\"secret\":\"hidden\"}"}`, `{"body":"{\"note\":\"visible\",\"secret\":\"***\"}"}`},
+		// Non-sensitive escaped keys stay visible.
+		{`{"body":"{\"note\":\"visible\"}"}`, `{"body":"{\"note\":\"visible\"}"}`},
+		// A value with inner escaping is beyond the conservative parser: bail,
+		// leaving the input unchanged (no mis-parse, no crash).
+		{`{"body":"{\"password\":\"a\\\"b\"}"}`, `{"body":"{\"password\":\"a\\\"b\"}"}`},
+		// Backslash-heavy content (a Windows path) must not be disturbed.
+		{`{"path":"C:\\Users\\bob\\secret.txt"}`, `{"path":"C:\\Users\\bob\\secret.txt"}`},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, tc.want, HTTPData(tc.input), "input: %s", tc.input)
+
+		// Convergence: two passes reach a fixed point.
+		twice := HTTPData(HTTPData(tc.input))
+		require.Equal(t, twice, HTTPData(twice), "not convergent for input: %s", tc.input)
+	}
+}
+
+// TestEscapedJSONBailPaths exercises the conservative parser's early exits: it
+// must leave malformed or too-complex escaped input unchanged, never crashing
+// or half-redacting.
+func TestEscapedJSONBailPaths(t *testing.T) {
+	t.Parallel()
+
+	// Each input reaches the escaped-JSON dispatch (a `{\"` or `,\"`) but fails
+	// one of the parse steps, so the output equals the input.
+	unchanged := []string{
+		`{\"password`,            // unterminated key
+		`{\"password\" x`,        // no ':' after key
+		`{\"password\":123`,      // value is not an escaped string
+		`{\"password\":\"secret`, // unterminated value
+		`{\"`,                    // key opens at end of input
+		`,\"token\":\"`,          // value opens at end of input
+		`{\"note\":\"visible\"}`, // non-sensitive key, left alone
+	}
+	for _, in := range unchanged {
+		require.Equal(t, in, HTTPData(in), "should be unchanged: %q", in)
+	}
+}
+
+// TestLabeledSecretJSONBailPaths exercises the label/value parser's early exits.
+func TestLabeledSecretJSONBailPaths(t *testing.T) {
+	t.Parallel()
+
+	unchanged := []string{
+		`{"name":123,"value":"x"}`,         // label value is not a string
+		`{"name":"password","other":"x"}`,  // sibling is not a value key
+		`{"name":"password"}`,              // no sibling member
+		`{"name":"password","value"}`,      // sibling has no value
+		`{"label":"password","value":"x"}`, // not a recognized label key
+		`{"name":"password`,                // label value string is never closed
+		`{"name":"`,                        // label value is empty and unterminated
+		`{"name":"password", 123}`,         // sibling member is not a quoted key
+		`{"name":"password","value":}`,     // sibling value key has no parsable value
+	}
+	for _, in := range unchanged {
+		require.Equal(t, in, HTTPData(in), "should be unchanged: %q", in)
+	}
+}
+
+// TestEscapedJSONNewlineInContentBails covers the line-break branch of the
+// conservative escaped-string scanner: a raw newline cannot appear inside a
+// JSON string, so the parser bails and leaves the input unchanged.
+func TestEscapedJSONNewlineInContentBails(t *testing.T) {
+	t.Parallel()
+
+	in := "{\\\"pass\nword\\\":\\\"x\\\"}"
+	require.Equal(t, in, HTTPData(in))
+}

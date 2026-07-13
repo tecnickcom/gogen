@@ -78,19 +78,18 @@ func TestPassesLuhn(t *testing.T) {
 func TestLuhnCheckDefaultDisabled(t *testing.T) {
 	t.Parallel()
 
-	// The Luhn gate is off by default.
-	require.False(t, LuhnCheckEnabled())
-
 	digits := []byte("4012888888881882") // valid Visa prefix/length, invalid Luhn.
 
-	// With the gate disabled, prefix match alone is enough to flag as a card.
+	// The gate is off by default, so prefix match alone flags a card, both on
+	// the package default and on a plain instance.
 	require.True(t, defaultRedactor.isCreditCard(digits))
+	require.True(t, New().isCreditCard(digits))
 }
 
-//nolint:paralleltest // Mutates the process-wide Luhn toggle.
-func TestSetLuhnCheckGatesRedaction(t *testing.T) {
-	// Not parallel: SetLuhnCheck mutates process-wide state.
-	t.Cleanup(func() { SetLuhnCheck(false) })
+// TestWithLuhnCheckGatesRedaction covers the gate on a configured instance:
+// with it enabled, a card prefix alone is no longer enough.
+func TestWithLuhnCheckGatesRedaction(t *testing.T) {
+	t.Parallel()
 
 	// A run that matches a card prefix/length but fails Luhn.
 	invalidLuhn := []byte("4012888888881882")
@@ -98,19 +97,15 @@ func TestSetLuhnCheckGatesRedaction(t *testing.T) {
 	// A run that matches a card prefix/length and passes Luhn.
 	validLuhn := []byte("4012888888881881")
 
-	SetLuhnCheck(true)
-	require.True(t, LuhnCheckEnabled())
+	strict := New(WithLuhnCheck(true))
 
 	// Enabled: only the Luhn-valid number is treated as a card.
-	require.False(t, defaultRedactor.isCreditCard(invalidLuhn))
-	require.True(t, defaultRedactor.isCreditCard(validLuhn))
+	require.False(t, strict.isCreditCard(invalidLuhn))
+	require.True(t, strict.isCreditCard(validLuhn))
 
 	// And through the public redaction path.
-	require.Equal(t, invalidLuhn, HTTPDataBytes(invalidLuhn))
-	require.Equal(t, []byte("***"), HTTPDataBytes(validLuhn))
-
-	SetLuhnCheck(false)
-	require.False(t, LuhnCheckEnabled())
+	require.Equal(t, invalidLuhn, strict.Bytes(invalidLuhn))
+	require.Equal(t, []byte("***"), strict.Bytes(validLuhn))
 
 	// Disabled (default): both are redacted because prefix match alone suffices.
 	require.Equal(t, []byte("***"), HTTPDataBytes(invalidLuhn))
@@ -236,10 +231,8 @@ func TestMaestroCards(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Mutates the process-wide Luhn toggle.
 func TestMaestroShortLuhnGated(t *testing.T) {
-	// Not parallel: SetLuhnCheck mutates process-wide state.
-	t.Cleanup(func() { SetLuhnCheck(false) })
+	t.Parallel()
 
 	shortValid12 := []byte("501800000009")    // 12-digit Maestro IIN, Luhn-valid
 	shortValid15 := []byte("501800000000007") // 15-digit Maestro IIN, Luhn-valid
@@ -253,15 +246,15 @@ func TestMaestroShortLuhnGated(t *testing.T) {
 	// Gate off (default): short Maestro numbers stay visible.
 	require.Equal(t, shortValid12, HTTPDataBytes(shortValid12))
 
-	SetLuhnCheck(true)
+	strict := New(WithLuhnCheck(true))
 
 	// Gate on: Luhn-valid short Maestro numbers are redacted...
-	require.Equal(t, []byte("***"), HTTPDataBytes(shortValid12))
-	require.Equal(t, []byte("***"), HTTPDataBytes(shortValid15))
+	require.Equal(t, []byte("***"), strict.Bytes(shortValid12))
+	require.Equal(t, []byte("***"), strict.Bytes(shortValid15))
 
 	// ...while Luhn-invalid ones and non-Maestro short runs stay visible.
-	require.Equal(t, shortInvalid, HTTPDataBytes(shortInvalid))
-	require.Equal(t, []byte("991800000009"), HTTPDataBytes([]byte("991800000009")))
+	require.Equal(t, shortInvalid, strict.Bytes(shortInvalid))
+	require.Equal(t, []byte("991800000009"), strict.Bytes([]byte("991800000009")))
 }
 
 // TestGroupedCardLegacyPrefixesExcluded verifies the grouped-format scan does
@@ -286,6 +279,43 @@ func TestGroupedCardLegacyPrefixesExcluded(t *testing.T) {
 		{"213100000000008", "***"},
 		{"180000000000002", "***"},
 		{"30569309025904", "***"},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+	}
+}
+
+// TestMastercard16Digits covers the 16-digit-only Mastercard ranges: the classic
+// 51-57 series and the 2-series (2221-2720, approximated as a 21-27 second digit).
+func TestMastercard16Digits(t *testing.T) {
+	t.Parallel()
+
+	// 51-57 series.
+	require.True(t, matchesCardPattern([]byte("5555555555554444")))
+	require.True(t, matchesCardPattern([]byte("5105105105105100")))
+	require.True(t, matchesCardPattern([]byte("5712345678901234")))
+	// 2-series.
+	require.True(t, matchesCardPattern([]byte("2221000000000009")))
+	require.True(t, matchesCardPattern([]byte("2720999999999996")))
+	// Second digit outside 1-7 is not a Mastercard prefix.
+	require.False(t, matchesCardPattern([]byte("5899999999999999")))
+	require.False(t, matchesCardPattern([]byte("2099999999999999")))
+	require.False(t, matchesCardPattern([]byte("2899999999999999")))
+	// Both series are 16 digits only.
+	require.False(t, matchesCardPattern([]byte("22210000000000098")))
+	require.False(t, matchesCardPattern([]byte("571234567890123")))
+
+	// End-to-end, in free text with no sensitive key to trigger the key rules.
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"paid with 5555555555554444 today", "paid with *** today"},
+		{"paid with 2221000000000009 today", "paid with *** today"},
+		{"5555 5555 5555 4444", "***"},                         // grouped
+		{"ref 5899999999999999 x", "ref 5899999999999999 x"},   // not a card prefix
+		{"ref 22210000000000098 x", "ref 22210000000000098 x"}, // 17 digits
 	}
 
 	for _, tc := range cases {

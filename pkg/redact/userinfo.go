@@ -14,9 +14,12 @@ const maxUserinfoScan = 256
 //	postgres://app:hunter2@db.example.com  ->  postgres://app:***@db.example.com
 //
 // URLs without a password (ftp://anonymous@host) and without userinfo at all
-// are left untouched. This catches bare DSNs in prose and error messages; DSNs
-// in sensitive JSON/URL-encoded fields are already redacted whole by those
-// rules.
+// are left untouched. This catches bare "scheme://user:password@host" DSNs in
+// prose and error messages. A scheme-LESS driver DSN (e.g. go-sql-driver/mysql
+// "user:password@tcp(host)/db") is not matched bare — anchoring on a plain
+// "user:password@" without a scheme would fire on ordinary "key:value@..."
+// text — but it is still redacted when it appears as a sensitive field value
+// (dsn=..., "database_url":"...") via the URL-encoded and JSON rules.
 func (re *Redactor) appendRedactedURLPasswordAt(src []byte, colon int, dst []byte) (int, []byte, bool) {
 	if colon+2 >= len(src) || src[colon+1] != '/' || src[colon+2] != '/' {
 		return 0, dst, false

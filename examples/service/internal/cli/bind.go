@@ -20,6 +20,7 @@ import (
 	"github.com/tecnickcom/nurago/pkg/httputil/jsendx"
 	"github.com/tecnickcom/nurago/pkg/ipify"
 	"github.com/tecnickcom/nurago/pkg/metrics"
+	"github.com/tecnickcom/nurago/pkg/redact"
 	"github.com/tecnickcom/nurago/pkg/sqlconn"
 	"github.com/tecnickcom/nurago/pkg/traceid"
 )
@@ -48,6 +49,10 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 	return func(ctx context.Context, l *slog.Logger, m metrics.Client) error {
 		jsx := jsendx.NewJSXResp(httputil.NewHTTPResp(l))
 
+		// Sanitizes the HTTP dumps, query strings, and error URLs before they are
+		// logged. One instance is shared by every client and server below.
+		logRedactor := newLogRedactor()
+
 		// Common outbound HTTP client options shared by every external client
 		// (structured logging, trace propagation, and metrics instrumentation).
 		// This base is built once and reused: each client constructor appends its
@@ -58,6 +63,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 			httpclient.WithRoundTripper(m.InstrumentRoundTripper),
 			httpclient.WithTraceIDHeaderName(traceid.DefaultHeader),
 			httpclient.WithComponent(appInfo.ProgramName),
+			httpclient.WithRedactFn(logRedactor.BytesToString),
 		}
 
 		// ipify is used only as a diagnostic (the monitoring /ip route); it is
@@ -93,6 +99,7 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 			httpserver.WithIPHandlerFunc(jsx.DefaultIPHandler(appInfo, ipifyClient.GetPublicIP)),
 			httpserver.WithPingHandlerFunc(jsx.DefaultPingHandler(appInfo)),
 			httpserver.WithStatusHandlerFunc(statusHandler),
+			httpserver.WithRedactFn(logRedactor.BytesToString),
 			httpserver.WithShutdownWaitGroup(wg),
 			httpserver.WithShutdownSignalChan(sc),
 		}
@@ -109,12 +116,12 @@ func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.W
 		// Both expose only the default ping route plus their binder's routes, so
 		// they are created through the shared startServiceServer helper.
 
-		err = startServiceServer(ctx, "private", serviceBinderPrivate, cfgServer(cfg.Servers.Private), l, middleware, wg, sc)
+		err = startServiceServer(ctx, "private", serviceBinderPrivate, cfgServer(cfg.Servers.Private), l, middleware, logRedactor, wg, sc)
 		if err != nil {
 			return err
 		}
 
-		err = startServiceServer(ctx, "public", serviceBinderPublic, cfgServer(cfg.Servers.Public), l, middleware, wg, sc)
+		err = startServiceServer(ctx, "public", serviceBinderPublic, cfgServer(cfg.Servers.Public), l, middleware, logRedactor, wg, sc)
 		if err != nil {
 			return err
 		}
@@ -242,6 +249,54 @@ func newDatabases(
 	return healthchecks, nil
 }
 
+// newLogRedactor builds the redactor that sanitizes the HTTP request and
+// response dumps, query strings, and error URLs written to the logs.
+//
+// Wiring one is optional: httpclient, httpserver, and httpreverseproxy already
+// redact with the package-level default ([redact.HTTPDataString]) when the
+// WithRedactFn option is omitted, so this function exists to show how to depart
+// from that default when the service needs it. A [redact.Redactor] is immutable
+// after construction and safe for concurrent use, so a single instance is shared
+// by every client and server.
+//
+// The options below are illustrative; the full set also includes
+// [redact.WithMarker] (replace the `***` placeholder) and [redact.WithoutRules]
+// (turn off whole rule classes, as shown by the commented-out block). Deleting
+// this function and the WithRedactFn options that reference it restores the
+// default behavior.
+func newLogRedactor() *redact.Redactor {
+	return redact.New(
+		// House-style secret field names the built-in keyword set does not cover.
+		// Each argument is a single word matched against the tokenized key, so
+		// "floof" redacts `floof`, `userFloof`, and `floof_id`.
+		redact.WithExtraTokens("floof"),
+		// Keep these built-in keywords readable: this service logs monetary
+		// amounts that are not sensitive on their own.
+		redact.WithoutTokens("amount", "balance"),
+		// Redact only digit runs that look like a card number AND pass the Luhn
+		// checksum. The default (off) is the safer over-redacting choice: it also
+		// hides unrelated identifiers that share a card prefix and length.
+		redact.WithLuhnCheck(true),
+		// Whole rule classes can be switched off individually. Uncommenting the
+		// block below disables every one of them, turning the redactor into a
+		// pass-through: nothing is sanitized and any secret reaching a logged dump,
+		// query string, or error URL is written to the logs verbatim. Keep only the
+		// rules to disable, and leave the block commented out to redact everything.
+		//
+		// redact.WithoutRules(
+		// 	redact.RuleHeaders,
+		// 	redact.RuleJSON,
+		// 	redact.RuleURLEncoded,
+		// 	redact.RuleXML,
+		// 	redact.RuleUserinfo,
+		// 	redact.RuleJWT,
+		// 	redact.RuleVendorTokens,
+		// 	redact.RulePEM,
+		// 	redact.RuleCards,
+		// ),
+	)
+}
+
 // startServiceServer builds, starts, and registers a service HTTP server that
 // exposes the default ping route plus the routes provided by binder.
 //
@@ -254,6 +309,7 @@ func startServiceServer(
 	srv cfgServer,
 	l *slog.Logger,
 	middleware httpserver.MiddlewareFn,
+	logRedactor *redact.Redactor,
 	wg *sync.WaitGroup,
 	sc chan struct{},
 ) error {
@@ -264,6 +320,7 @@ func startServiceServer(
 		httpserver.WithMiddlewareFn(middleware),
 		httpserver.WithTraceIDHeaderName(traceid.DefaultHeader),
 		httpserver.WithEnableDefaultRoutes(httpserver.PingRoute),
+		httpserver.WithRedactFn(logRedactor.BytesToString),
 		httpserver.WithShutdownWaitGroup(wg),
 		httpserver.WithShutdownSignalChan(sc),
 	}

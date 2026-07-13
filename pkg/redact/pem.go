@@ -10,10 +10,60 @@ const (
 	pemEndPrefix   = "-----END "
 )
 
-// pemPrivateKeyLabel is the label fragment identifying secret PEM blocks
-// (RSA/EC/OPENSSH/ENCRYPTED/... PRIVATE KEY). Public material such as
-// CERTIFICATE or PUBLIC KEY blocks is deliberately left visible.
-var pemPrivateKeyLabel = []byte("PRIVATE KEY-----") //nolint:gochecknoglobals
+// pemPrivateKeyLabels are the label fragments that terminate a secret PEM BEGIN
+// line: the plain "PRIVATE KEY-----" (RSA/EC/OPENSSH/ENCRYPTED/... private keys)
+// and the "PRIVATE KEY BLOCK-----" form used by armored OpenPGP secret keys
+// (gpg --export-secret-keys --armor). Public material such as CERTIFICATE or
+// PUBLIC KEY blocks is deliberately left visible.
+var pemPrivateKeyLabels = [][]byte{ //nolint:gochecknoglobals
+	[]byte("PRIVATE KEY-----"),
+	[]byte("PRIVATE KEY BLOCK-----"),
+}
+
+// maxPEMBeginScan bounds the window searched for a private-key label after a
+// BEGIN marker; the longest real BEGIN line ("-----BEGIN PGP PRIVATE KEY
+// BLOCK-----") is under 40 bytes. Bounding it keeps a line packed with BEGIN
+// markers from being rescanned to the far end for each one (quadratic).
+const maxPEMBeginScan = 64
+
+// pemBeginLineIsPrivateKey reports whether a BEGIN line (without its trailing
+// '\r') is exactly a private-key marker: the FIRST occurrence of a label must
+// terminate the line. A line whose first label is not at the end carries
+// trailing content (e.g. a whole key blob with escaped "\n" sequences, or an
+// END marker on the same logical line) and is left to the inline rule — a plain
+// HasSuffix would wrongly match the "PRIVATE KEY-----" tail of an END marker.
+func pemBeginLineIsPrivateKey(line []byte) bool {
+	for _, label := range pemPrivateKeyLabels {
+		if idx := bytes.Index(line, label); idx >= 0 && idx+len(label) == len(line) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// inlinePEMPrivateKeyLabelEnd returns the index just past a private-key label
+// found within maxPEMBeginScan bytes of i, and true, or (0, false) when none is
+// present in that window.
+func inlinePEMPrivateKeyLabelEnd(src []byte, i int) (int, bool) {
+	window := src[i:min(len(src), i+maxPEMBeginScan)]
+
+	best := -1
+
+	for _, label := range pemPrivateKeyLabels {
+		if idx := bytes.Index(window, label); idx >= 0 {
+			if end := i + idx + len(label); best < 0 || end < best {
+				best = end
+			}
+		}
+	}
+
+	if best < 0 {
+		return 0, false
+	}
+
+	return best, true
+}
 
 // appendRedactedPEMKeyAt handles a '-' at a line start src[i]: when the line
 // is a PEM "-----BEGIN ... PRIVATE KEY-----" boundary, the whole base64 body
@@ -37,8 +87,7 @@ func (re *Redactor) appendRedactedPEMKeyAt(src []byte, i int, dst []byte) (int, 
 	// label (e.g. a whole key blob with escaped "\n" sequences) is left to the
 	// inline PEM rule, which redacts the blob itself instead of mistaking the
 	// following unrelated lines for the key body.
-	idx := bytes.Index(line, pemPrivateKeyLabel)
-	if idx < 0 || idx+len(pemPrivateKeyLabel) != len(line) {
+	if !pemBeginLineIsPrivateKey(line) {
 		return 0, dst, false
 	}
 
@@ -114,15 +163,11 @@ func (re *Redactor) appendRedactedInlinePEMKeyAt(src []byte, i int, dst []byte) 
 		return 0, dst, false
 	}
 
-	// The label must identify secret material and complete the BEGIN marker.
-	lineEnd := scanToLineFeed(src, i)
-
-	idx := bytes.Index(src[i:lineEnd], pemPrivateKeyLabel)
-	if idx < 0 {
+	// The label must identify secret material within the bounded BEGIN window.
+	markerEnd, ok := inlinePEMPrivateKeyLabelEnd(src, i)
+	if !ok {
 		return 0, dst, false
 	}
-
-	markerEnd := i + idx + len(pemPrivateKeyLabel)
 
 	end := inlinePEMBodyEnd(src, markerEnd)
 	if isWhitespaceOnly(src[markerEnd:end]) {
@@ -148,11 +193,27 @@ func isWhitespaceOnly(b []byte) bool {
 	return true
 }
 
+// maxPEMBodyScan bounds the search for the "-----END" marker of an inline key
+// body. A PEM private-key body (even a 4096-bit RSA key, with escaped "\n" line
+// breaks) is a few KB; searching further for END would let a line packed with
+// unterminated BEGIN markers rescan the whole tail for each one (quadratic).
+// When END is not found within the window the body is redacted through the
+// value's closing '"' or the line end instead (see inlinePEMBodyEnd): that scan
+// cannot go quadratic, because a long non-whitespace body is redacted and
+// consumed in one pass rather than re-scanned.
+const maxPEMBodyScan = 1 << 14
+
 // inlinePEMBodyEnd returns the end of the key material following an inline
-// BEGIN marker: the start of the "-----END" marker when present, else the
-// closing '"' (JSON-embedded blob), else the line end or EOF.
+// BEGIN marker: the start of the "-----END" marker when present within the
+// bounded window, else the closing '"' (JSON-embedded blob) or the line end.
+// The END search is bounded (quadratic guard); the '"'/line-end fallback is not
+// — stopping it at the window would truncate a large key body mid-base64 and
+// leave its tail visible. The fallback still cannot go quadratic: it consumes
+// whatever it scans, so it runs at most once over any span.
 func inlinePEMBodyEnd(src []byte, markerEnd int) int {
-	if idx := bytes.Index(src[markerEnd:], pemEndMarker); idx >= 0 {
+	limit := min(len(src), markerEnd+maxPEMBodyScan)
+
+	if idx := bytes.Index(src[markerEnd:limit], pemEndMarker); idx >= 0 {
 		return markerEnd + idx
 	}
 

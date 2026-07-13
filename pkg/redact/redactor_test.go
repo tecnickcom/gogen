@@ -52,6 +52,49 @@ func TestNewWithoutOptionsMatchesPackageFunctions(t *testing.T) {
 	require.NotPanics(t, func() { re.Pooled([]byte("x"), nil) })
 }
 
+// TestZeroValueRedactorDegradesGracefully verifies the exported zero value does
+// not panic or emit an empty marker; it redacts correctly (with the default
+// marker) on every rule path, including the non-ASCII key path that used to
+// dereference a nil memo.
+func TestZeroValueRedactorDegradesGracefully(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`{"password":"x"}`, `{"password":"***"}`}, // ASCII key: used to emit an empty marker
+		{`{"pässword":"x"}`, `{"pässword":"x"}`},   // non-ASCII key: used to panic on the nil memo
+		{"4012888888881881", "***"},                // card path
+		{"Authorization: Bearer S\n", "Authorization: ***\n"},
+		{"token=SECRET&note=ok", "token=***&note=ok"},
+	}
+
+	for _, tc := range cases {
+		var zero Redactor
+
+		require.NotPanicsf(t, func() {
+			require.Equal(t, tc.want, zero.String(tc.input), "input: %s", tc.input)
+		}, "input: %s", tc.input)
+	}
+}
+
+// TestNewDoesNotEagerlyAllocateMemo verifies the ~200 KB key-memo map is
+// allocated only when a non-ASCII key is actually classified, so a fresh
+// instance driven over ASCII-only input carries no cache.
+func TestNewDoesNotEagerlyAllocateMemo(t *testing.T) {
+	t.Parallel()
+
+	re := New()
+	require.Nil(t, re.keyMemo.data, "New() must not pre-allocate the memo map")
+
+	re.String(`{"password":"x","user":"bob","trace":"abc123"}`)
+	require.Nil(t, re.keyMemo.data, "an ASCII-only workload must never touch the memo")
+
+	re.String(`{"pässword":"x"}`)
+	require.NotNil(t, re.keyMemo.data, "a non-ASCII key must lazily allocate the memo")
+}
+
 func TestRedactorConcurrentUse(t *testing.T) {
 	t.Parallel()
 
@@ -90,4 +133,30 @@ func TestRedactorConvergenceWithCustomMarker(t *testing.T) {
 		twice := re.String(once)
 		require.Equal(t, twice, re.String(twice), "no fixed point after two passes for input: %q", doc)
 	}
+}
+
+// TestUsableRedactorPartialZeroValue covers the individual field-defaulting
+// branches of a partially-initialized Redactor.
+func TestUsableRedactorPartialZeroValue(t *testing.T) {
+	t.Parallel()
+
+	// Only the marker set: the key memo is defaulted so a non-ASCII key does
+	// not panic, and redaction still works.
+	markerOnly := &Redactor{marker: []byte("XX")}
+	require.Equal(t, "token=XX", markerOnly.String("token=SECRET"))
+	require.NotPanics(t, func() { markerOnly.String(`{"pässword":"x"}`) })
+
+	// Only the key memo set: the marker is defaulted to the standard one.
+	memoOnly := &Redactor{keyMemo: newSensitiveKeyMemo()}
+	require.Equal(t, "token=***", memoOnly.String("token=SECRET"))
+}
+
+// TestUsableRedactorReturnsCompleteReceiver covers the fast path: an instance
+// built by New already has both the marker and the key memo, so it is returned
+// as-is and keeps its shared (caching) memo instead of a per-call copy.
+func TestUsableRedactorReturnsCompleteReceiver(t *testing.T) {
+	t.Parallel()
+
+	re := New(WithMarker("#"))
+	require.Same(t, re, re.usableRedactor())
 }

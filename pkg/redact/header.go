@@ -8,7 +8,9 @@ package redact
 // The header name may only contain header-name characters, so JSON or
 // URL-encoded lines containing a colon are rejected cheaply (usually on their
 // first byte) and left to the dedicated redaction rules. Name sensitivity uses
-// the same tokenized keyword check as JSON and URL-encoded keys.
+// the same tokenized keyword check as JSON and URL-encoded keys, including the
+// shared nonSensitiveKeys allowlist (CSP/HSTS/CORS and auth-challenge headers),
+// so ordinary non-secret headers stay visible on every surface.
 func (re *Redactor) sensitiveHeaderValueStart(src []byte, i int) (int, bool) {
 	nameEnd := i
 	for nameEnd < len(src) && isHeaderNameByte(src[nameEnd]) {
@@ -34,6 +36,21 @@ func (re *Redactor) sensitiveHeaderValueStart(src []byte, i int) (int, bool) {
 
 func isHeaderNameByte(c byte) bool {
 	return isASCIIAlphaNum(c) || c == '-' || c == '_'
+}
+
+// skipHeaderLinePrefix skips leading indentation and an optional single trace
+// decoration ("> " or "< ", as emitted per header line by `curl -v`, go-resty
+// trace mode, and similar RoundTripper loggers) before a header name. The prefix
+// is not consumed from the output — the caller emits src[i:valueStart] verbatim,
+// so the "> " marker and indentation are preserved. A continuation/obs-fold line
+// still has no "name:" shape, so this does not resurrect that non-goal.
+func skipHeaderLinePrefix(src []byte, i int) int {
+	j := skipInlineSpaces(src, i)
+	if j < len(src) && (src[j] == '>' || src[j] == '<') {
+		j = skipInlineSpaces(src, j+1)
+	}
+
+	return j
 }
 
 func skipInlineSpaces(src []byte, i int) int {

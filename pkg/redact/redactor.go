@@ -1,32 +1,26 @@
 package redact
 
-import (
-	"sync/atomic"
-)
-
 // Redactor is a configurable instance of the redaction engine (see
 // [options.go] for the available configuration). The zero configuration
 // (from [New] without options) behaves exactly like the package-level
-// functions, except that its Luhn gate is instance-scoped and starts
-// disabled instead of following [SetLuhnCheck].
+// functions.
 //
 // A Redactor is immutable after construction and safe for concurrent use.
+// Always construct one with [New]: the zero value ([Redactor]{}) is not the
+// intended entry point, but it degrades to correct (uncached) redaction with
+// the default marker rather than panicking — see usableRedactor.
 type Redactor struct {
 	marker      []byte
 	disabled    Rule
-	luhn        *atomic.Bool
+	luhn        bool
 	extraTokens map[string]struct{}
 	dropTokens  map[string]struct{}
 	keyMemo     *sensitiveKeyMemo
 }
 
 // defaultRedactor backs the package-level functions: standard marker, all
-// rules enabled, built-in tokens, and the process-wide Luhn toggle.
-var defaultRedactor = &Redactor{ //nolint:gochecknoglobals
-	marker:  redactedBytes,
-	luhn:    &luhnCheckEnabled,
-	keyMemo: sensitiveKeyCache,
-}
+// rules enabled, built-in tokens, and the Luhn gate off.
+var defaultRedactor = New() //nolint:gochecknoglobals
 
 // Default returns the Redactor instance backing the package-level functions.
 func Default() *Redactor {
@@ -34,12 +28,10 @@ func Default() *Redactor {
 }
 
 // New builds a Redactor with the given options. Without options it matches
-// the package-level behavior (with an instance-scoped Luhn gate, default
-// off).
+// the package-level behavior.
 func New(opts ...Option) *Redactor {
 	re := &Redactor{
 		marker:  redactedBytes,
-		luhn:    new(atomic.Bool),
 		keyMemo: newSensitiveKeyMemo(),
 	}
 
@@ -67,6 +59,15 @@ func (re *Redactor) Bytes(b []byte) []byte {
 // AppendTo redacts sensitive data from src and appends the result into dst
 // (after resetting its length to zero); see the package-level [AppendTo].
 func (re *Redactor) AppendTo(dst, src []byte) []byte {
+	// AppendTo is the only entry point whose destination is caller-controlled
+	// and could alias src (an in-place AppendTo(b, b)); redacting into an
+	// aliasing buffer would let the write cursor overtake the read cursor and
+	// corrupt — and leak — not-yet-scanned bytes. Bytes and Pooled always pass a
+	// fresh or pooled destination, so they skip this check.
+	if backingOverlap(dst, src) {
+		dst = make([]byte, 0, len(src))
+	}
+
 	return re.redactInto(dst, src)
 }
 
@@ -96,6 +97,29 @@ func (re *Redactor) BytesToString(b []byte) string {
 	})
 
 	return out
+}
+
+// usableRedactor returns a Redactor safe to run: for a [New]-built instance it
+// is the receiver unchanged, and for the zero value it is a defensive copy with
+// the nil marker and key memo filled in. The copy is not mutated in place, so a
+// zero value shared across goroutines cannot race here; it is uncached (a fresh
+// memo per call), which is acceptable because the zero value is not the intended
+// construction path (see [New]).
+func (re *Redactor) usableRedactor() *Redactor {
+	if re.marker != nil && re.keyMemo != nil {
+		return re
+	}
+
+	clone := *re
+	if clone.marker == nil {
+		clone.marker = redactedBytes
+	}
+
+	if clone.keyMemo == nil {
+		clone.keyMemo = newSensitiveKeyMemo()
+	}
+
+	return &clone
 }
 
 // enabled reports whether the given rule class is active on this instance.

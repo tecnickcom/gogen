@@ -37,26 +37,29 @@ func TestWithMarker(t *testing.T) {
 	require.Equal(t, "token=***", New(WithMarker("")).String("token=SECRET"))
 }
 
-//nolint:paralleltest // Exercises the interaction with the process-wide Luhn toggle.
+// TestWithLuhnCheckIsInstanceScoped verifies the Luhn gate is per-instance:
+// one Redactor enabling it changes nothing for other instances or for the
+// package-level API, which always runs with the gate off.
 func TestWithLuhnCheckIsInstanceScoped(t *testing.T) {
-	t.Cleanup(func() { SetLuhnCheck(false) })
+	t.Parallel()
 
 	invalidLuhn := "4012888888881882" // valid Visa prefix/length, invalid checksum.
 
 	strict := New(WithLuhnCheck(true))
 	relaxed := New()
+	explicitOff := New(WithLuhnCheck(false))
 
-	// The strict instance rejects the invalid checksum; the fresh instance and
+	// The strict instance rejects the invalid checksum; the other instances and
 	// the package default (gate off) redact on prefix alone.
 	require.Equal(t, invalidLuhn, strict.String(invalidLuhn))
 	require.Equal(t, RedactionMarker, relaxed.String(invalidLuhn))
+	require.Equal(t, RedactionMarker, explicitOff.String(invalidLuhn))
 	require.Equal(t, RedactionMarker, String(invalidLuhn))
 
-	// Toggling the process-wide gate affects the default instance only.
-	SetLuhnCheck(true)
-	require.Equal(t, invalidLuhn, String(invalidLuhn))
-	require.Equal(t, RedactionMarker, relaxed.String(invalidLuhn))
-	require.Equal(t, invalidLuhn, strict.String(invalidLuhn))
+	// A Luhn-valid card is redacted everywhere.
+	validLuhn := "4012888888881881"
+	require.Equal(t, RedactionMarker, strict.String(validLuhn))
+	require.Equal(t, RedactionMarker, String(validLuhn))
 }
 
 func TestWithExtraTokens(t *testing.T) {
@@ -110,6 +113,35 @@ func TestWithoutTokens(t *testing.T) {
 
 	// The default instance still redacts the dropped tokens.
 	require.Equal(t, `{"amount": "***"}`, String(`{"amount": 9999}`)) //nolint:testifylint // byte-exact output comparison is the point
+}
+
+// TestWithoutTokensDropsRootSuffixRule verifies that dropping a token that is
+// also a glued-compound root disables its suffix rule and its plural, so the
+// three matching modes stay coherent.
+func TestWithoutTokensDropsRootSuffixRule(t *testing.T) {
+	t.Parallel()
+
+	re := New(WithoutTokens("secret"))
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"secret=VISIBLE", "secret=VISIBLE"},        // exact
+		{"mysecret=VISIBLE", "mysecret=VISIBLE"},    // root suffix
+		{"secrets=VISIBLE", "secrets=VISIBLE"},      // plural
+		{"my_secret=VISIBLE", "my_secret=VISIBLE"},  // tokenized
+		{"clientsecret=SECRET", "clientsecret=***"}, // separate enumerated token
+		{"password=SECRET", "password=***"},         // other roots keep matching
+		{"newpassword=SECRET", "newpassword=***"},   // other roots keep matching
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), re.String(tc.input), "input: %s", tc.input)
+	}
+
+	// The default instance is unaffected.
+	require.Equal(t, "mysecret=***", String("mysecret=SECRET"))
 }
 
 //nolint:gosec // The PEM fixtures are fake fragments, not real credentials.

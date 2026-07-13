@@ -52,7 +52,7 @@ password=SECRET&key=SECRET
 ApiKey=SECRET&alpha=beta&password=SECRET&key=SECRET&gamma=delta
 Token=SECRET
 security_key=SECRET
-secure_data=SECRET
+secure_data=VISIBLE
 auth_token=SECRET
 bearer_token=SECRET
 cert_chain=SECRET
@@ -93,7 +93,7 @@ cvv_code=SECRET
 iban_code=SECRET
 pay_ref=SECRET
 swift_code=SECRET
-addr_line=SECRET
+addr_line=VISIBLE
 birth_date=SECRET
 cell_number=SECRET
 dob_value=SECRET
@@ -162,7 +162,7 @@ JCB35=(3566002020360505)
     "Discover" : "6011000990139424",
     "JCB" : "3566002020360505",
 	"Security_Key": "SECRET",
-	"Secure_Data": "SECRET",
+	"Secure_Data": "VISIBLE",
 	"Auth_Token": "SECRET",
 	"BearerToken": "SECRET",
 	"CertChain": "SECRET",
@@ -203,7 +203,7 @@ JCB35=(3566002020360505)
 	"IBAN_Code": "SECRET",
 	"PayRef": "SECRET",
 	"SwiftCode": "SECRET",
-	"AddrLine": "SECRET",
+	"AddrLine": "VISIBLE",
 	"BirthDate": "SECRET",
 	"CellNumber": "SECRET",
 	"DobValue": "SECRET",
@@ -244,7 +244,7 @@ password=***&key=***
 ApiKey=***&alpha=beta&password=***&key=***&gamma=delta
 Token=***
 security_key=***
-secure_data=***
+secure_data=VISIBLE
 auth_token=***
 bearer_token=***
 cert_chain=***
@@ -285,7 +285,7 @@ cvv_code=***
 iban_code=***
 pay_ref=***
 swift_code=***
-addr_line=***
+addr_line=VISIBLE
 birth_date=***
 cell_number=***
 dob_value=***
@@ -305,8 +305,8 @@ reference=VISIBLE
 note=VISIBLE
 Visa13=(***)
 Visa16=(***)
-MasterCard2Series=(***)
-MasterCard5Series=(***)
+MasterCard2Series=***
+MasterCard5Series=***
 Discover6011=(***)
 Discover65Series=(***)
 Amex34=(***)
@@ -354,7 +354,7 @@ JCB35=(***)
     "Discover" : "***",
     "JCB" : "***",
 	"Security_Key": "***",
-	"Secure_Data": "***",
+	"Secure_Data": "VISIBLE",
 	"Auth_Token": "***",
 	"BearerToken": "***",
 	"CertChain": "***",
@@ -395,7 +395,7 @@ JCB35=(***)
 	"IBAN_Code": "***",
 	"PayRef": "***",
 	"SwiftCode": "***",
-	"AddrLine": "***",
+	"AddrLine": "VISIBLE",
 	"BirthDate": "***",
 	"CellNumber": "***",
 	"DobValue": "***",
@@ -531,9 +531,9 @@ func TestCanonicalAPI(t *testing.T) {
 	t.Parallel()
 
 	input := benchmarkHTTPDataInput
-	want := HTTPData(input) // the aliases and canonical forms must agree
+	want := String(input) // canonical reference; every other entry point must agree
 
-	require.Equal(t, want, String(input))
+	require.Equal(t, want, HTTPData(input)) // the compatibility alias delegates to String
 	require.Equal(t, want, string(Bytes([]byte(input))))
 	require.Equal(t, want, BytesToString([]byte(input)))
 
@@ -548,6 +548,28 @@ func TestCanonicalAPI(t *testing.T) {
 	require.Equal(t, want, pooled)
 
 	require.NotPanics(t, func() { Pooled([]byte(input), nil) })
+}
+
+// TestAppendToInPlaceAliasing verifies that an in-place AppendTo(b, b) — where
+// the destination and source share storage — produces the same output as a
+// clean redaction, instead of corrupting the buffer and leaking a secret whose
+// key the write cursor overran.
+func TestAppendToInPlaceAliasing(t *testing.T) {
+	t.Parallel()
+
+	inputs := []string{
+		"pin=1&password=SUPERSECRET",
+		"a=1&b=2&password=SUPERSECRET",
+		"cvv=1&cvv=2&token=SUPERSECRET&x=9",
+		benchmarkHTTPDataInput,
+	}
+
+	for _, in := range inputs {
+		buf := make([]byte, 0, len(in)+16)
+		buf = append(buf, in...)
+
+		require.Equal(t, String(in), string(AppendTo(buf, buf)), "in-place alias for %q", in)
+	}
 }
 
 // TestRedactionIdempotency locks the property that redacting already-redacted
@@ -583,6 +605,11 @@ func TestRedactionIdempotency(t *testing.T) {
 // property is convergence: the second pass is a fixed point, and re-redaction
 // only ever redacts more, never less. A violation here means stacked
 // redaction layers (middleware + log sink) would keep mangling output.
+//
+// Both properties are checked, on the default redactor and on a configured one
+// (custom marker, a disabled rule class, Luhn gate on): a fixed point alone is
+// not enough, since an engine that un-redacts on the second pass and stabilizes
+// on the third would still reach one.
 func FuzzRedactionIdempotency(f *testing.F) {
 	seeds := []string{
 		benchmarkHTTPDataInput,
@@ -597,22 +624,48 @@ func FuzzRedactionIdempotency(f *testing.F) {
 		"<password>SECRET</password>", "<a>***</a>", "<password><![CDATA[x]]></password>",
 		"pan 6759 6498 2643 8453 end", "1 800 555 0199 1234",
 		"ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345", "AKIAIOSFODNN7EXAMPLE",
-		"PGPASSWORD=secret",
+		"PGPASSWORD=secret", "newpassword=x&oldpassword=y", "note=#R# tail",
+		`{"body":"{\"password\":\"hunter2\"}"}`, `{\"password\":\"x`,
+		`{"name":"DB_PASSWORD","value":"hunter2"}`, `{"key":"api_key","value":"AKIA"}`,
+		"https://app/cb#access_token=SECRET&type=Bearer",
+		"  password: hunter2\n", "-----BEGIN PGP PRIVATE KEY BLOCK-----\nMIIE\n-----END PGP PRIVATE KEY BLOCK-----\n",
+		"root:hunter2@tcp(127.0.0.1:3306)/db",
 	}
 	for _, s := range seeds {
 		f.Add(s)
 	}
 
-	f.Fuzz(func(t *testing.T, s string) {
-		once := String(s)
-		twice := String(once)
-		thrice := String(twice)
+	// Built once: New() pre-sizes a key memo, which is too costly per iteration.
+	configured := New(WithMarker("#R#"), WithoutRules(RuleJSON), WithLuhnCheck(true))
 
-		if twice != thrice {
-			t.Fatalf("redaction does not converge after two passes:\nin    : %q\nonce  : %q\ntwice : %q\nthrice: %q",
-				s, once, twice, thrice)
-		}
+	f.Fuzz(func(t *testing.T, s string) {
+		assertConvergent(t, Default(), RedactionMarker, s)
+		assertConvergent(t, configured, "#R#", s)
 	})
+}
+
+// assertConvergent checks the two guaranteed properties of a redaction pass on
+// one input: convergence (the second pass is a fixed point) and monotonicity
+// (each pass redacts at least as much as the previous one, never less).
+func assertConvergent(t *testing.T, re *Redactor, marker, s string) {
+	t.Helper()
+
+	once := re.String(s)
+	twice := re.String(once)
+	thrice := re.String(twice)
+
+	if twice != thrice {
+		t.Fatalf("redaction does not converge after two passes:\nin    : %q\nonce  : %q\ntwice : %q\nthrice: %q",
+			s, once, twice, thrice)
+	}
+
+	// Monotonicity: a later pass can only add markers. Counting them is a
+	// proxy for "reveals no more than before" that a re-redaction cannot fake:
+	// dropping a marker means a value that was hidden became visible again.
+	if got, want := strings.Count(twice, marker), strings.Count(once, marker); got < want {
+		t.Fatalf("re-redaction removed markers (%d -> %d):\nin   : %q\nonce : %q\ntwice: %q",
+			want, got, s, once, twice)
+	}
 }
 
 // TestRedactionConvergence pins the known pathological inputs where a single

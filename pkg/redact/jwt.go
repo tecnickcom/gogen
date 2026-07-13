@@ -40,6 +40,8 @@ func (re *Redactor) appendRedactedJWTAt(src []byte, i int, dst []byte) (int, []b
 // at src[i], or 0 when the required "eyJ<header>.<payload>" shape is absent.
 // All further dot-joined segments are consumed so JWE tokens do not leave
 // ciphertext fragments behind.
+//
+//nolint:gocyclo,cyclop // Sequential segment-shape checks; splitting would obscure the format.
 func jwtTokenEnd(src []byte, i int) int {
 	if !hasPrefixAt(src, i, jwtPrefix) {
 		return 0
@@ -51,7 +53,18 @@ func jwtTokenEnd(src []byte, i int) int {
 	}
 
 	seg2End := scanBase64URL(src, seg1End+1)
-	if seg2End-(seg1End+1) < minJWTSegmentLen {
+	seg2Len := seg2End - (seg1End + 1)
+
+	// The classic two-segment form (header.payload, including unsigned alg=none)
+	// needs a real payload. An EMPTY middle segment is valid only when at least
+	// one further '.'-joined segment follows: this is the "dir" JWE compact form
+	// (header..iv.ciphertext.tag) and detached-payload JWS (header..signature),
+	// which would otherwise leak whole.
+	hasNextSegment := seg2End < len(src) && src[seg2End] == '.' &&
+		seg2End+1 < len(src) && isBase64URLByte(src[seg2End+1])
+
+	seg2OK := seg2Len >= minJWTSegmentLen || (seg2Len == 0 && hasNextSegment)
+	if !seg2OK {
 		return 0
 	}
 

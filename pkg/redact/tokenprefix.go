@@ -4,11 +4,15 @@ package redact
 // as prefix + at least minTail token-body characters at a word boundary.
 // dotBody additionally allows '.' inside the token body (SendGrid keys use
 // dot-joined segments); trailing dots are trimmed so sentence punctuation
-// after a token is preserved.
+// after a token is preserved. noDash excludes '-' from the token body: bare
+// "sk-" keys are alphanumeric, so stopping at a '-' keeps dash-separated
+// identifiers (e.g. SpinKit "sk-loading-…" CSS classes) from matching, while
+// the genuinely dashed "sk-proj-"/"sk-ant-" keys have their own entries.
 type vendorPrefix struct {
 	prefix  string
 	minTail int
 	dotBody bool
+	noDash  bool
 }
 
 // vendorTokenPrefixes maps a token's first byte to the candidate prefixes
@@ -34,11 +38,13 @@ var vendorTokenPrefixes = map[byte][]vendorPrefix{ //nolint:gochecknoglobals
 		{prefix: "xoxe-", minTail: 10}, // Slack token rotation
 	},
 	's': {
-		{prefix: "sk_live_", minTail: 16}, // Stripe live secret key
-		{prefix: "sk_test_", minTail: 16}, // Stripe test secret key
-		{prefix: "sk-", minTail: 20},      // OpenAI / Anthropic API keys (sk-proj-, sk-ant-, ...)
-		{prefix: "shpat_", minTail: 24},   // Shopify admin token
-		{prefix: "shpss_", minTail: 24},   // Shopify shared secret
+		{prefix: "sk_live_", minTail: 16},          // Stripe live secret key
+		{prefix: "sk_test_", minTail: 16},          // Stripe test secret key
+		{prefix: "sk-proj-", minTail: 16},          // OpenAI project key (dashed body)
+		{prefix: "sk-ant-", minTail: 16},           // Anthropic API key (dashed body)
+		{prefix: "sk-", minTail: 20, noDash: true}, // OpenAI classic key (alphanumeric body)
+		{prefix: "shpat_", minTail: 24},            // Shopify admin token
+		{prefix: "shpss_", minTail: 24},            // Shopify shared secret
 	},
 	'S': {
 		{prefix: "SG.", minTail: 16, dotBody: true}, // SendGrid API key
@@ -98,7 +104,7 @@ func (re *Redactor) appendRedactedVendorTokenAt(src []byte, i int, dst []byte) (
 			continue
 		}
 
-		end := scanVendorTokenBody(src, i+len(vp.prefix), vp.dotBody)
+		end := scanVendorTokenBody(src, i+len(vp.prefix), vp)
 		if end-(i+len(vp.prefix)) < vp.minTail {
 			continue
 		}
@@ -112,15 +118,22 @@ func (re *Redactor) appendRedactedVendorTokenAt(src []byte, i int, dst []byte) (
 }
 
 // scanVendorTokenBody returns the index just past the run of token-body bytes
-// (word characters and '-', plus '.' when dotBody is set) starting at i.
-// Trailing dots are trimmed so sentence punctuation after a token is
-// preserved.
-func scanVendorTokenBody(src []byte, i int, dotBody bool) int {
-	for i < len(src) && (isWordChar(src[i]) || src[i] == '-' || (dotBody && src[i] == '.')) {
-		i++
+// starting at i: word characters, '-' (unless vp.noDash), and '.' when
+// vp.dotBody is set. Trailing dots are trimmed so sentence punctuation after a
+// token is preserved.
+func scanVendorTokenBody(src []byte, i int, vp vendorPrefix) int {
+	for i < len(src) {
+		c := src[i]
+		if isWordChar(c) || (vp.dotBody && c == '.') || (!vp.noDash && c == '-') {
+			i++
+
+			continue
+		}
+
+		break
 	}
 
-	for dotBody && i > 0 && src[i-1] == '.' {
+	for vp.dotBody && i > 0 && src[i-1] == '.' {
 		i--
 	}
 

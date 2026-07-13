@@ -26,6 +26,33 @@ func TestHTTPDataURLEncodedNoFalsePositive(t *testing.T) {
 	}
 }
 
+// TestHTTPDataURLFragmentParams verifies parameters in a URL fragment
+// (OAuth 2.0 implicit-flow / SAML tokens) redact just like query params, with
+// the path before the '#' left intact.
+func TestHTTPDataURLFragmentParams(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"https://app.example.com/cb#access_token=ya29.SECRET&token_type=Bearer", "https://app.example.com/cb#access_token=***&token_type=***"},
+		{"https://app.example.com/cb#id_token=SECRET.VALUE", "https://app.example.com/cb#id_token=***"},
+		// A space is not a value boundary (documented safe over-redaction), so a
+		// trailing " HTTP/1.1" on the last param is consumed into the marker.
+		{"GET /oauth/callback#access_token=SECRET HTTP/1.1", "GET /oauth/callback#access_token=***"},
+		// A non-sensitive fragment key stays visible, and the path is untouched.
+		{"/dashboard#tab=billing", "/dashboard#tab=billing"},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		// The fix must not disturb convergence.
+		once := HTTPData(tc.input)
+		require.Equal(t, once, HTTPData(once), "not idempotent: %s", tc.input)
+	}
+}
+
 func TestHTTPDataURLEncodedSlashInKey(t *testing.T) {
 	t.Parallel()
 

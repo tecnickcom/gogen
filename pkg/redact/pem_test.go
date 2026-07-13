@@ -1,10 +1,69 @@
 package redact
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+// TestPEMPGPPrivateKey verifies armored OpenPGP secret-key blocks
+// ("BEGIN PGP PRIVATE KEY BLOCK") are redacted, both standalone and inline.
+func TestPEMPGPPrivateKey(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{
+			"-----BEGIN PGP PRIVATE KEY BLOCK-----\n\nlQOYBGKxSECRET\n=abcd\n-----END PGP PRIVATE KEY BLOCK-----\n",
+			"-----BEGIN PGP PRIVATE KEY BLOCK-----\n***\n-----END PGP PRIVATE KEY BLOCK-----\n",
+		},
+		{
+			`{"blob":"-----BEGIN PGP PRIVATE KEY BLOCK-----\nlQOYSECRET\n-----END PGP PRIVATE KEY BLOCK-----"}`,
+			`{"blob":"-----BEGIN PGP PRIVATE KEY BLOCK-----***-----END PGP PRIVATE KEY BLOCK-----"}`,
+		},
+		// A PGP PUBLIC key block stays visible.
+		{
+			"-----BEGIN PGP PUBLIC KEY BLOCK-----\nmQENBGKx\n-----END PGP PUBLIC KEY BLOCK-----",
+			"-----BEGIN PGP PUBLIC KEY BLOCK-----\nmQENBGKx\n-----END PGP PUBLIC KEY BLOCK-----",
+		},
+	}
+
+	for _, tc := range cases {
+		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		once := HTTPData(tc.input)
+		require.Equal(t, once, HTTPData(once), "not idempotent: %s", tc.input)
+	}
+}
+
+// TestInlinePEMScanIsLinear guards against the quadratic blow-up on a payload
+// packed with unterminated BEGIN markers: redaction must stay well under a
+// second even for a large adversarial input.
+func TestInlinePEMScanIsLinear(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range [][]byte{
+		[]byte(strings.Repeat("-----BEGIN A PRIVATE KEY-----x\n", 40000)), // ~1.2 MB, no END markers
+		[]byte(strings.Repeat("-----BEGIN A PRIVATE KEY-----x ", 40000)),  // ~1.2 MB, no newlines
+	} {
+		done := make(chan struct{})
+
+		go func() {
+			_ = Bytes(input)
+
+			close(done)
+		}()
+
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatalf("inline PEM scan did not finish in 2s for a %d-byte input (quadratic?)", len(input))
+		}
+	}
+}
 
 //nolint:gosec // The PEM fixtures are fake fragments, not real credentials.
 func TestHTTPDataPEMPrivateKeys(t *testing.T) {

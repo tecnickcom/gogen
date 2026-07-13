@@ -34,6 +34,13 @@ func TestHTTPDataJWTLiterals(t *testing.T) {
 		{"token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0. Next", "token ***. Next"},
 		// 'e' at end of input.
 		{"the e", "the e"},
+		// "dir" JWE compact form: empty middle (encrypted-key) segment, further
+		// segments follow — must be consumed whole.
+		{"eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..48V1iv.5eym8ct.XFBotag end", "*** end"},
+		// Detached-payload JWS: empty middle, one signature segment follows.
+		{"eyJhbGciOiJSUzI1NiJ9..signatureABCDEF end", "*** end"},
+		// An empty middle with NO following segment is not a token.
+		{"eyJhbGciOiJIUzI1NiJ9.. x", "eyJhbGciOiJIUzI1NiJ9.. x"},
 	}
 
 	for _, tc := range cases {
