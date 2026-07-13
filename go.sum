@@ -18,8 +18,8 @@ github.com/GoogleCloudPlatform/cloudsql-proxy v0.0.0-20190129172621-c8b1d7a94ddf
 github.com/GoogleCloudPlatform/cloudsql-proxy v0.0.0-20190129172621-c8b1d7a94ddf/go.mod h1:aJ4qN3TfrelA6NZ6AXsXRfmEVaYin3EDbSPJrKS8OXo=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.32.0 h1:rIkQfkCOVKc1OiRCNcSDD8ml5RJlZbH/Xsq7lbpynwc=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.32.0/go.mod h1:RD2SsorTmYhF6HkTmDw7KmPYQk8OBYwTkuasChwv7R4=
-github.com/XSAM/otelsql v0.42.0 h1:Li0xF4eJUxG2e0x3D4rvRlys1f27yJKvjTh7ljkUP5o=
-github.com/XSAM/otelsql v0.42.0/go.mod h1:4mOrEv+cS1KmKzrvTktvJnstr5GtKSAK+QHvFR9OcpI=
+github.com/XSAM/otelsql v0.43.0 h1:ZIhXqRoMhILXQwBQoq/Dl6Taap/KEFQXZrWjYV1L8X8=
+github.com/XSAM/otelsql v0.43.0/go.mod h1:DJBGBvbtwf1OCBYRTjpRFxOqi6ONpdfb+htr4ncRWuw=
 github.com/aclements/go-gg v0.0.0-20170118225347-6dbb4e4fefb0 h1:E5Dzlk3akC+T2Zj1LBHgfPK1y8YWgLDnNDRmG+tpSKw=
 github.com/aclements/go-gg v0.0.0-20170118225347-6dbb4e4fefb0/go.mod h1:55qNq4vcpkIuHowELi5C8e+1yUHtoLoOUR9QU5j7Tes=
 github.com/aclements/go-moremath v0.0.0-20210112150236-f10218a38794 h1:xlwdaKcTNVW4PtpQb8aKA4Pjy0CdJHEqvFbAnvR5m2g=
@@ -324,10 +324,10 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
-github.com/tecnickcom/farmhash64 v1.9.74 h1:hdK+9URgd76/XxCPJMMegdJXalqpP2mW7TWEU2aIE3c=
-github.com/tecnickcom/farmhash64 v1.9.74/go.mod h1:IzGVkAkpJ/udd8T6N5b+zRyFjQ5ICItuPWRfbSm1ZQs=
-github.com/tecnickcom/statsd v1.1.1 h1:BkeY6EKApykFmz01E4eFXYQTpon5BMD5uZLLhpaBTIM=
-github.com/tecnickcom/statsd v1.1.1/go.mod h1:kl+kkmrZ+BgxokRsaxNb1iO3kJRUPyQcrIZl0tIaiJw=
+github.com/tecnickcom/farmhash64 v1.9.75 h1:QGhl/VzEk7Ii3CFspzggwPTWnkvDZls/ftKssyBT8uA=
+github.com/tecnickcom/farmhash64 v1.9.75/go.mod h1:P6qVO4/A26nzuVF5He+UOHc/27Bg9NGgMwReOsIm0dQ=
+github.com/tecnickcom/statsd v1.1.2 h1:3NPn/SIxrcTJaM4ZxEBaDVsMAiXf6h2xRg9RQsy6Kg4=
+github.com/tecnickcom/statsd v1.1.2/go.mod h1:4iLAIbZbV6FVCAGp7j6pPDEDFu2cha7WbrbZA9Ucn5Y=
 github.com/undefinedlabs/go-mpatch v1.0.7 h1:943FMskd9oqfbZV0qRVKOUsXQhTLXL0bQTVbQSpzmBs=
 github.com/undefinedlabs/go-mpatch v1.0.7/go.mod h1:TyJZDQ/5AgyN7FSLiBJ8RO9u2c6wbtRvK827b6AVqY4=
 github.com/valkey-io/valkey-go v1.0.76 h1:Rcown7FFseVhG9b0+4MWfMs4xWu8otPzHjrsK044ET4=

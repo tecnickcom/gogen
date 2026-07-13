@@ -29,10 +29,10 @@ VERSION=$(shell cat VERSION)
 RELEASE=$(shell cat RELEASE)
 
 # Current directory
-CURRENTDIR=$(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+CURRENTDIR=$(CURDIR)/
 
 # Target directory
-TARGETDIR=$(CURRENTDIR)target
+TARGETDIR=target
 
 # Directory where to store binary utility tools
 BINUTIL=$(TARGETDIR)/binutil
@@ -40,7 +40,7 @@ BINUTIL=$(TARGETDIR)/binutil
 # GO lang path
 ifeq ($(GOPATH),)
 	# extract the GOPATH
-	GOPATH=$(firstword $(subst /src/, ,$(CURRENTDIR)))
+	GOPATH=$(shell echo "$(CURDIR)" | sed 's|/src/.*||')
 endif
 
 # Add the GO binary dir in the PATH
@@ -61,11 +61,11 @@ ifeq ($(DOCKER),)
 endif
 
 # Common commands
-GO=GOPATH=$(GOPATH) GOPRIVATE=$(CVSPATH) $(shell which go)
+GO=GOPATH="$(GOPATH)" GOPRIVATE=$(CVSPATH) $(shell which go)
 GOVERSION=${shell go version | grep -Eo '(go[0-9]+.[0-9]+)'}
 GOFMT=$(shell which gofmt)
 GOTEST=$(GO) test
-GODOC=GOPATH=$(GOPATH) $(shell which godoc)
+GODOC=GOPATH="$(GOPATH)" $(shell which godoc)
 GOLANGCILINT=$(BINUTIL)/golangci-lint
 GOLANGCILINTVERSION=v2.12.2
 GOVULNCHECK=$(GO) tool govulncheck
@@ -89,7 +89,7 @@ GOPKGS=$(shell $(GO) list $(SRCDIR)/...)
 ifeq ($(strip $(DEVMODE)),LOCAL)
 	TESTEXTRACMD=&& $(GO) tool cover -func=$(TARGETDIR)/report/coverage.out
 else
-	TESTEXTRACMD=2>&1 | tee >(PATH=$(GOPATH)/bin:$(PATH) go-junit-report > $(TARGETDIR)/test/report.xml); test $${PIPESTATUS[0]} -eq 0
+	TESTEXTRACMD=2>&1 | tee >(PATH="$(GOPATH)/bin:$(PATH)" go-junit-report > $(TARGETDIR)/test/report.xml); test $${PIPESTATUS[0]} -eq 0
 endif
 
 # Set default configuration file to generate a new project from the example service
@@ -126,38 +126,38 @@ x:
 ## Remove any build artifact
 .PHONY: clean
 clean:
-	rm -rf $(TARGETDIR)
+	rm -rf "$(TARGETDIR)"
 
 ## Generate the coverage report
 .PHONY: coverage
 coverage: ensuretarget
-	$(GO) tool cover -html=$(TARGETDIR)/report/coverage.out -o $(TARGETDIR)/report/coverage.html
+	$(GO) tool cover -html="$(TARGETDIR)/report/coverage.out" -o "$(TARGETDIR)/report/coverage.html"
 
 ## Build everything inside a Docker container
 .PHONY: dbuild
 dbuild: dockerdev
-	@mkdir -p $(TARGETDIR)
-	@rm -rf $(TARGETDIR)/*
-	@echo 0 > $(TARGETDIR)/make.exit
-	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' DOCKERTAG='$(DOCKERTAG)' $(CURRENTDIR)dockerbuild.sh
+	@mkdir -p "$(TARGETDIR)"
+	@rm -rf "$(TARGETDIR)/"*
+	@echo 0 > "$(TARGETDIR)/make.exit"
+	CVSPATH=$(CVSPATH) VENDOR=$(LCVENDOR) PROJECT=$(PROJECT) MAKETARGET='$(MAKETARGET)' DOCKERTAG='$(DOCKERTAG)' "$(CURRENTDIR)dockerbuild.sh"
 	@exit `cat $(TARGETDIR)/make.exit`
 
 ## Get dependencies
 .PHONY: deps
 deps: ensuretarget
-	curl --silent --show-error --fail --location "https://golangci-lint.run/install.sh" | sh -s -- -b $(BINUTIL) $(GOLANGCILINTVERSION)
+	curl --silent --show-error --fail --location "https://golangci-lint.run/install.sh" | sh -s -- -b "$(BINUTIL)" $(GOLANGCILINTVERSION)
 
 ## Build a base development Docker image
 .PHONY: dockerdev
 dockerdev:
-	$(DOCKER) build --pull --tag ${LCVENDOR}/dev_${PROJECT} --file ./resources/docker/Dockerfile.dev ./resources/docker/
+	$(DOCKER) build --pull --tag "${LCVENDOR}/dev_${PROJECT}" --file ./resources/docker/Dockerfile.dev ./resources/docker/
 
 ## Create the target directories if missing
 .PHONY: ensuretarget
 ensuretarget:
-	@mkdir -p $(TARGETDIR)/test
-	@mkdir -p $(TARGETDIR)/report
-	@mkdir -p $(TARGETDIR)/binutil
+	@mkdir -p "$(TARGETDIR)/test"
+	@mkdir -p "$(TARGETDIR)/report"
+	@mkdir -p "$(TARGETDIR)/binutil"
 
 ## Build and test the service example
 .PHONY: example
@@ -168,27 +168,27 @@ example:
 ## Format the source code
 .PHONY: format
 format:
-	@find $(SRCDIR) -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
+	@find "$(SRCDIR)" -type f -name "*.go" -exec $(GOFMT) -s -w {} \;
 	cd examples/service && $(MAKE) format
 
 ## Generate go code automatically
 .PHONY: generate
 generate:
-	@find $(SRCDIR) -type f -name "*mock_test.go" -exec rm {} \;
+	@find "$(SRCDIR)" -type f -name "*mock_test.go" -exec rm {} \;
 	$(GO) generate $(GOPKGS)
 
 ## Check dependencies for known vulnerabilities
 .PHONY: govulncheck
 govulncheck:
 	@echo -e "\n\n>>> START: Vulnerability check <<<\n\n"
-	$(GOVULNCHECK) $(SRCDIR)/...
+	$(GOVULNCHECK) "$(SRCDIR)/..."
 	@echo -e "\n\n>>> END: Vulnerability check <<<\n\n"
 
 ## Check code against multiple linters
 .PHONY: linter
 linter:
 	@echo -e "\n\n>>> START: Static code analysis <<<\n\n"
-	$(GOLANGCILINT) run --max-issues-per-linter 0 --max-same-issues 0 $(SRCDIR)/...
+	$(GOLANGCILINT) run --max-issues-per-linter 0 --max-same-issues 0 "$(SRCDIR)/..."
 	@echo -e "\n\n>>> END: Static code analysis <<<\n\n"
 
 ## Download dependencies
@@ -200,22 +200,22 @@ mod: gotools
 .PHONY: project
 project:
 	cd examples/service && $(MAKE) clean
-	@mkdir -p ./target/$(nuragoexamplecvspath)/$(nuragoexample)
-	@rm -rf ./target/$(nuragoexamplecvspath)/$(nuragoexample)/*
-	@cp -rf examples/service/. ./target/$(nuragoexamplecvspath)/$(nuragoexample)/
-	sed $(SEDINPLACE) '/^replace /d' ./target/$(nuragoexamplecvspath)/$(nuragoexample)/go.mod
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -depth -name '*nuragoexample*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/nuragoexample/$(nuragoexample)/)"' \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -depth -name '*NURAGOEXAMPLE*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/NURAGOEXAMPLE/$(NURAGOEXAMPLE)/)"' \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleshortdesc|$(nuragoexampleshortdesc)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexamplelongdesc|$(nuragoexamplelongdesc)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleauthor|$(nuragoexampleauthor)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleemail|$(nuragoexampleemail)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexamplecvspath|$(nuragoexamplecvspath)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleprojectlink|$(nuragoexampleprojectlink)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexampleowner|$(nuragoexampleowner)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexamplevcsgit|$(nuragoexamplevcsgit)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|nuragoexample|$(nuragoexample)|g" {} \;
-	find ./target/$(nuragoexamplecvspath)/$(nuragoexample) -type f -exec sed $(SEDINPLACE) "s|NURAGOEXAMPLE|$(NURAGOEXAMPLE)|g" {} \;
+	@mkdir -p "./target/$(nuragoexamplecvspath)/$(nuragoexample)"
+	@rm -rf "./target/$(nuragoexamplecvspath)/$(nuragoexample)/"*
+	@cp -rf examples/service/. "./target/$(nuragoexamplecvspath)/$(nuragoexample)/"
+	sed $(SEDINPLACE) '/^replace /d' "./target/$(nuragoexamplecvspath)/$(nuragoexample)/go.mod"
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -depth -name '*nuragoexample*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/nuragoexample/$(nuragoexample)/)"' \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -depth -name '*NURAGOEXAMPLE*' -execdir sh -c 'f="{}"; mv -- "$$f" "$$(echo "$$f" | sed s/NURAGOEXAMPLE/$(NURAGOEXAMPLE)/)"' \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexampleshortdesc|$(nuragoexampleshortdesc)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexamplelongdesc|$(nuragoexamplelongdesc)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexampleauthor|$(nuragoexampleauthor)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexampleemail|$(nuragoexampleemail)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexamplecvspath|$(nuragoexamplecvspath)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexampleprojectlink|$(nuragoexampleprojectlink)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexampleowner|$(nuragoexampleowner)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexamplevcsgit|$(nuragoexamplevcsgit)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|nuragoexample|$(nuragoexample)|g" {} \;
+	find "./target/$(nuragoexamplecvspath)/$(nuragoexample)" -type f -exec sed $(SEDINPLACE) "s|NURAGOEXAMPLE|$(NURAGOEXAMPLE)|g" {} \;
 
 ## Run all tests and static analysis tools
 .PHONY: qa
@@ -247,24 +247,24 @@ test: ensuretarget
 .PHONY: bench
 bench: ensuretarget
 	@echo -e "\n\n>>> START: Benchmarks <<<\n\n"
-	$(GOTEST) $(BENCHFLAGS) $(GOPKGS) | tee $(TARGETDIR)/report/bench.txt
+	$(GOTEST) $(BENCHFLAGS) $(GOPKGS) | tee "$(TARGETDIR)/report/bench.txt"
 	@echo -e "\n\n>>> END: Benchmarks <<<\n\n"
 
 ## Run base benchmarks (without -race or coverage) and store the results for comparison (target/report/bench_base.txt)
 .PHONY: benchbase
 benchbase:
 	@echo -e "\n\n>>> START: Base Benchmarks <<<\n\n"
-	@rm -rf $(TARGETDIR)/benchbase
+	@rm -rf "$(TARGETDIR)/benchbase"
 	@git worktree prune
-	git worktree add --detach $(TARGETDIR)/benchbase $(BENCHBASE)
-	cd $(TARGETDIR)/benchbase && $(GOTEST) $(BENCHFLAGS) ./pkg/... | tee $(TARGETDIR)/report/bench_base.txt
-	git worktree remove --force $(TARGETDIR)/benchbase
+	git worktree add --detach "$(TARGETDIR)/benchbase" "$(BENCHBASE)"
+	cd "$(TARGETDIR)/benchbase" && $(GOTEST) $(BENCHFLAGS) ./pkg/... | tee "$(TARGETDIR)/report/bench_base.txt"
+	git worktree remove --force "$(TARGETDIR)/benchbase"
 	@echo -e "\n\n>>> END: Base Benchmarks <<<\n\n"
 
 ## Compare benchmark allocation counts against a base git ref and fail on regressions (set BENCHBASE=ref, default main)
 .PHONY: benchcmp
 benchcmp: bench benchbase
-	$(MAKE) benchgate BASELINE=$(TARGETDIR)/report/bench_base.txt
+	$(MAKE) benchgate BASELINE="$(TARGETDIR)/report/bench_base.txt"
 
 ## Compare benchmark allocation counts against a baseline file and fail on regressions (set BASELINE=path/to/baseline.txt)
 .PHONY: benchgate
@@ -272,8 +272,8 @@ benchgate:
 	@echo -e "\n\n>>> START: Benchmark allocation gate <<<\n\n"
 	@test -f "$(BASELINE)" || { echo "ERROR: baseline file not found: $(BASELINE)"; exit 1; }
 	@test -f "$(TARGETDIR)/report/bench.txt" || { echo "ERROR: benchmark results not found, run 'make bench' first"; exit 1; }
-	$(BENCHSTAT) $(BASELINE) $(TARGETDIR)/report/bench.txt 2> >(grep -vE "^[A-Z][0-9]+: " >&2)
-	$(BENCHSTAT) -filter ".unit:allocs/op" -format csv $(BASELINE) $(TARGETDIR)/report/bench.txt 2> >(grep -vE "^[A-Z][0-9]+: " >&2) \
+	$(BENCHSTAT) $(BASELINE) "$(TARGETDIR)/report/bench.txt" 2> >(grep -vE "^[A-Z][0-9]+: " >&2)
+	$(BENCHSTAT) -filter ".unit:allocs/op" -format csv $(BASELINE) "$(TARGETDIR)/report/bench.txt" 2> >(grep -vE "^[A-Z][0-9]+: " >&2) \
 	| awk -F, '\
 	$$1!="" && $$1!="geomean" && $$7 ~ /^p=/ && $$6!="~" && ($$4+0) > ($$2+0) \
 	{print "ALLOC REGRESSION: "$$1" allocs/op: "$$2" -> "$$4" ("$$6")"; fail=1} END {exit fail}'

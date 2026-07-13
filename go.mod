@@ -10,7 +10,7 @@ tool (
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/XSAM/otelsql v0.42.0
+	github.com/XSAM/otelsql v0.43.0
 	github.com/aperturerobotics/go-brotli-decoder v1.2.2
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.29
@@ -31,8 +31,8 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tecnickcom/farmhash64 v1.9.74
-	github.com/tecnickcom/statsd v1.1.1
+	github.com/tecnickcom/farmhash64 v1.9.75
+	github.com/tecnickcom/statsd v1.1.2
 	github.com/undefinedlabs/go-mpatch v1.0.7
 	github.com/valkey-io/valkey-go v1.0.76
 	github.com/valkey-io/valkey-go/mock v1.0.76
