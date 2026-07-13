@@ -8,6 +8,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestSlogWriter_ZeroValue pins that the zero value works as documented: it writes to slog.Default at
+// LevelInfo. A struct literal is the natural way to pick a level (SlogWriter{Level: LevelWarning}), and
+// leaving Logger unset must not panic on the first write.
+func TestSlogWriter_ZeroValue(t *testing.T) { //nolint:paralleltest // mutates the slog default.
+	var buf bytes.Buffer
+
+	prev := slog.Default()
+
+	defer slog.SetDefault(prev)
+
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: LevelDebug})))
+
+	var w SlogWriter // zero value: no Logger, LevelInfo
+
+	require.NotPanics(t, func() {
+		n, err := w.Write([]byte("zero value\n"))
+		require.NoError(t, err)
+		require.Equal(t, len("zero value\n"), n)
+	})
+
+	require.Contains(t, buf.String(), `"msg":"zero value"`, "a nil Logger must fall back to slog.Default")
+	require.Contains(t, buf.String(), `"level":"INFO"`, "the zero Level is info")
+}
+
 func TestNewSlogWriter_NilLogger(t *testing.T) {
 	t.Parallel()
 

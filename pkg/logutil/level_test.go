@@ -208,8 +208,14 @@ func TestLevelName(t *testing.T) {
 		value LogLevel
 	}{
 		{
-			want:  "-128",
+			// An unnamed level falls back to slog's banded form, never to a bare number: a bare
+			// number would be read back by ParseLevel as a numeric syslog severity (see below).
+			want:  "DEBUG-124",
 			value: -128,
+		},
+		{
+			want:  "INFO+1",
+			value: LevelInfo + 1,
 		},
 		{
 			want:  "emergency",

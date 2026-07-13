@@ -76,6 +76,18 @@ func (c *Config) SlogLogger() *slog.Logger {
 	return slog.New(c.SlogHandler())
 }
 
+// OutWriter returns the effective output destination: Config.Out, or os.Stderr when Out is unusable —
+// nil, or a typed nil (a nil *os.File, say, held in a non-nil io.Writer interface), which Out being an
+// exported field allows even though WithOutWriter rejects it. Both backends resolve the destination
+// through it, so a hand-built Config never yields a handler that panics on the first write.
+func (c *Config) OutWriter() io.Writer {
+	if isNilWriter(c.Out) {
+		return os.Stderr
+	}
+
+	return c.Out
+}
+
 // SlogHandler constructs a slog.Handler from Config settings with optional hook interception.
 func (c *Config) SlogHandler() slog.Handler {
 	// FormatNone with no hook has nothing to write and no side effect to fire, so a
@@ -85,12 +97,7 @@ func (c *Config) SlogHandler() slog.Handler {
 		return slog.DiscardHandler
 	}
 
-	// Guard against a nil writer (e.g. a hand-built Config) so construction never
-	// yields a handler that panics on the first write.
-	out := c.Out
-	if out == nil {
-		out = os.Stderr
-	}
+	out := c.OutWriter()
 
 	// ReplaceAttr renders the syslog-style level names (see replaceLevelName). Note it
 	// makes slog invoke the callback for every attribute of every record, disabling some
@@ -120,9 +127,30 @@ func (c *Config) SlogHandler() slog.Handler {
 		h = slog.NewJSONHandler(out, opt)
 	}
 
-	h = h.WithAttrs(c.CommonAttr)
+	// The common attributes are preformatted into the handler once, before the trace wrapper is
+	// installed: applying them through the wrapper instead would record them as a derivation the
+	// wrapper has to replay on every record of a grouped logger (to keep the trace ID at the root),
+	// re-encoding them per line. The wrapper cannot see attributes already baked into h, so the
+	// trace-ID deduplication for a CommonAttr-supplied trace_id is seeded explicitly here.
+	//
+	// They are filtered first: they are preformatted in a single WithAttrs call, so one attribute among
+	// them that the standard library encodes incorrectly — a group that renders nothing, or a time whose
+	// year it cannot write — would corrupt every line the handler ever writes (see slogSanitizeHandler).
+	// Nothing above can filter them, since they never pass through it again.
+	common, _ := sanitizeAttrs(c.CommonAttr)
+	h = h.WithAttrs(common)
 
-	h = NewSlogTraceIDHandler(h, c.TraceIDFn)
+	if c.TraceIDFn != nil {
+		h = newSlogTraceIDHandler(h, c.TraceIDFn, hasRootKey(common, TraceIDKey))
+	}
+
+	// The sanitizing handler goes above the trace wrapper, not below it: every record and every
+	// derivation then reaches the wrapper already stripped of the groups that render nothing, so the
+	// trace ID it injects can never be the attribute that follows one — and the per-record replay a
+	// grouped logger performs runs on a chain the sanitizer is not part of, keeping it off the hot
+	// path. It is installed whatever else is configured, so a nil TraceIDFn (which leaves no trace
+	// wrapper at all) is protected just the same.
+	h = newSlogSanitizeHandler(h)
 
 	if c.HookFn != nil {
 		h = NewSlogHookHandler(h, c.HookFn)

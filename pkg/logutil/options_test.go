@@ -1,6 +1,8 @@
 package logutil
 
 import (
+	"bytes"
+	"io"
 	"log/slog"
 	"os"
 	"reflect"
@@ -19,15 +21,40 @@ func TestWithOutWriter(t *testing.T) {
 	require.Equal(t, os.Stdout, cfg.Out)
 }
 
+// TestWithOutWriter_nil pins that an unusable writer is rejected at construction rather than left to
+// panic on the first log line. A typed nil is the case a plain `w == nil` check misses: the interface
+// holding a nil *os.File is not itself nil, but writing to it panics all the same.
 func TestWithOutWriter_nil(t *testing.T) {
 	t.Parallel()
 
-	cfg := &Config{}
+	tests := []struct {
+		name string
+		out  io.Writer
+	}{
+		{name: "untyped nil", out: nil},
+		{name: "typed nil pointer", out: (*os.File)(nil)},
+		{name: "typed nil pointer to a buffer", out: (*bytes.Buffer)(nil)},
+		{name: "typed nil map", out: nilMapWriter(nil)},
+	}
 
-	err := WithOutWriter(nil)(cfg)
-	require.Error(t, err)
-	require.Nil(t, cfg.Out, "a nil writer must be rejected, not stored")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &Config{}
+
+			err := WithOutWriter(tt.out)(cfg)
+			require.Error(t, err, "an unusable writer must be rejected")
+			require.Nil(t, cfg.Out, "and must not be stored")
+		})
+	}
 }
+
+// nilMapWriter is a writer whose underlying type is a map, so a nil one is a typed nil of a kind other
+// than a pointer.
+type nilMapWriter map[string]string
+
+func (nilMapWriter) Write(p []byte) (int, error) { return len(p), nil }
 
 func TestWithFormat(t *testing.T) {
 	t.Parallel()

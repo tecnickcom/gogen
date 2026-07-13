@@ -3,8 +3,8 @@ package logutil
 import (
 	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
+	"time"
 )
 
 // LogLevel is an alias for slog.Level to represent extended log severity levels.
@@ -70,16 +70,34 @@ func ValidLevel(l LogLevel) bool {
 	}
 }
 
-// replaceLevelName is a slog.HandlerOptions.ReplaceAttr callback that renders the
-// top-level "level" attribute using the syslog-style names from LevelName (e.g.
-// "critical", "notice", "emergency") instead of slog's numeric-offset fallbacks
-// ("ERROR+8", "INFO+2"). Unrecognized level values are left untouched so slog's own
-// "WARN+1"-style banding is preserved rather than reduced to a bare number. It leaves
-// attributes inside groups untouched.
+// replaceLevelName is a slog.HandlerOptions.ReplaceAttr callback that repairs the two built-in
+// attributes slog would otherwise render badly. It leaves attributes inside groups untouched.
+//
+// The top-level "level" attribute is rendered with the syslog-style names from LevelName (e.g.
+// "critical", "notice", "emergency") instead of slog's numeric-offset fallbacks ("ERROR+8", "INFO+2").
+// Unrecognized level values are left untouched so slog's own "WARN+1"-style banding is preserved rather
+// than reduced to a bare number.
+//
+// The top-level "time" attribute — the record's own timestamp — is rewritten as an RFC 3339 string when
+// its year falls outside [0,9999], because slog's JSON encoder writes an "!ERROR:" string for such a
+// value and then writes the value as well, putting two JSON strings under one key and making the line
+// invalid (see slogSanitizeHandler, which repairs the same shape in an *attribute*; the record's
+// timestamp never passes through it, since it is not an attribute). A record only carries such a time
+// if it was hand-built — slog.Logger always stamps time.Now() — but a middleware, tee, or replay
+// handler can hand one over.
 func replaceLevelName(groups []string, a Attr) Attr {
-	if len(groups) == 0 && a.Key == slog.LevelKey {
+	if len(groups) != 0 {
+		return a
+	}
+
+	switch a.Key {
+	case slog.LevelKey:
 		if level, ok := a.Value.Any().(LogLevel); ok && ValidLevel(level) {
 			a.Value = slog.StringValue(LevelName(level))
+		}
+	case slog.TimeKey:
+		if t := a.Value; t.Kind() == slog.KindTime && !encodableJSONTime(t.Time()) {
+			a.Value = slog.StringValue(t.Time().Format(time.RFC3339Nano))
 		}
 	}
 
@@ -87,6 +105,11 @@ func replaceLevelName(groups []string, a Attr) Attr {
 }
 
 // LevelName returns the string name of the specified log level (e.g., "error", "debug").
+//
+// slog levels are arbitrary integers, so a level that is not one of the named severities has no name
+// here. It falls back to slog's own banded form ("INFO+1", "WARN-2"), never to a bare number: a bare
+// number would collide with the numeric syslog vocabulary that ParseLevel accepts, where "1" means
+// alert — so a record one notch above info would be read back as a near-fatal severity.
 //
 //nolint:cyclop
 func LevelName(l LogLevel) string {
@@ -110,6 +133,6 @@ func LevelName(l LogLevel) string {
 	case LevelTrace:
 		return "trace"
 	default:
-		return strconv.Itoa(int(l))
+		return l.String()
 	}
 }

@@ -2,6 +2,7 @@ package logutil
 
 import (
 	"bytes"
+	"io"
 	"log/slog"
 	"os"
 	"testing"
@@ -165,18 +166,54 @@ func TestSlogHandler_DefaultFormatHonorsOut(t *testing.T) {
 	require.Contains(t, buf.String(), `"level":"debug"`, "default branch must honor the configured level (syslog-style name)")
 }
 
+// TestSlogHandler_NilOutFallsBackToStderr pins that an unusable Out writer falls back to os.Stderr
+// rather than yielding a handler that panics on the first write. Out is an exported field, so a
+// hand-built Config can hold a typed nil that WithOutWriter would have rejected — and which a plain
+// `Out == nil` check misses, since the interface holding it is not nil.
 func TestSlogHandler_NilOutFallsBackToStderr(t *testing.T) {
 	t.Parallel()
 
-	cfg, err := NewConfig()
-	require.NoError(t, err)
+	tests := []struct {
+		name string
+		out  io.Writer
+	}{
+		{name: "untyped nil", out: nil},
+		{name: "typed nil", out: (*os.File)(nil)},
+	}
 
-	cfg.Out = nil // hand-cleared writer must not panic when building the handler
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	require.NotPanics(t, func() {
-		h := cfg.SlogHandler()
-		require.NotNil(t, h)
-	})
+			cfg, err := NewConfig()
+			require.NoError(t, err)
+
+			cfg.Out = tt.out // hand-assigned writer must not panic when building the handler
+
+			require.Equal(t, os.Stderr, cfg.OutWriter(), "an unusable writer must resolve to stderr")
+
+			var h slog.Handler
+
+			require.NotPanics(t, func() { h = cfg.SlogHandler() })
+			require.NotNil(t, h)
+
+			// The first write is where an unusable destination would panic.
+			require.NotPanics(t, func() {
+				slog.New(h).Info("fallback to stderr")
+			}, "the fallback destination must accept the first write")
+		})
+	}
+}
+
+// TestConfig_OutWriter pins that a usable writer is returned untouched.
+func TestConfig_OutWriter(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	cfg := &Config{Out: &buf}
+
+	require.Same(t, &buf, cfg.OutWriter())
 }
 
 func TestSlogHandler_FormatNoneNoHookIsDiscard(t *testing.T) {

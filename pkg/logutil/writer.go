@@ -6,7 +6,11 @@ import (
 )
 
 // SlogWriter is a custom io.Writer that writes to slog.Logger at a configurable level.
+//
+// The zero value is usable: it writes to slog.Default at LevelInfo.
 type SlogWriter struct {
+	// Logger is the destination. A nil Logger writes to slog.Default, resolved per write, so the
+	// zero value works and a logger installed later is picked up.
 	Logger *slog.Logger
 	// Level is the severity used for every bridged line. The zero value is
 	// LevelInfo; construct with NewSlogWriter for the Error default.
@@ -39,7 +43,17 @@ func (w SlogWriter) Write(p []byte) (int, error) {
 		msg = msg[:len(msg)-1]
 	}
 
-	w.Logger.Log(context.Background(), w.Level, msg)
+	w.logger().Log(context.Background(), w.Level, msg)
 
 	return len(p), nil
+}
+
+// logger returns the destination logger, falling back to slog.Default for the zero value (see
+// SlogWriter), so a write never panics on a nil Logger.
+func (w SlogWriter) logger() *slog.Logger {
+	if w.Logger == nil {
+		return slog.Default()
+	}
+
+	return w.Logger
 }
