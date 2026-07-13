@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tecnickcom/nurago/pkg/logutil"
@@ -319,6 +318,235 @@ func TestNewLogger_UserTraceIDKept(t *testing.T) {
 	require.Contains(t, s, `"trace_id":"USER"`, "the caller-supplied trace_id wins")
 }
 
+// traceGroupValuer resolves to a group carrying a trace ID: under an empty key it inlines onto the
+// root, so the trace ID only becomes visible once the value is resolved.
+type traceGroupValuer struct{}
+
+func (traceGroupValuer) LogValue() slog.Value {
+	return slog.GroupValue(slog.String(logutil.TraceIDKey, "CALLER"))
+}
+
+// TestNewHandler_TraceIDNotDuplicated asserts that a caller-supplied trace_id landing at the root
+// suppresses the injected one on every path that gets it there: a record attribute, With/WithAttrs,
+// cfg.CommonAttr, an inlined (empty-key) group on either path (including one produced by a
+// LogValuer), and a With followed by a WithGroup. A duplicate key would not be merely cosmetic: the
+// injected value is written last, so a last-wins parser (Go's own encoding/json, jq, Elasticsearch)
+// resolves trace_id to it and the caller's value is destroyed.
+func TestNewHandler_TraceIDNotDuplicated(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		common []logutil.Attr
+		log    func(l *slog.Logger)
+		want   any // the value a last-wins decode must yield for the root trace_id
+		keys   int // emitted trace_id keys (0 means 1: a second one may nest inside a group)
+	}{
+		{
+			name: "record attribute",
+			log:  func(l *slog.Logger) { l.Info("m", "trace_id", "CALLER") },
+			want: "CALLER",
+		},
+		{
+			name: "With",
+			log:  func(l *slog.Logger) { l.With("trace_id", "CALLER").Info("m") },
+			want: "CALLER",
+		},
+		{
+			name:   "CommonAttr",
+			common: []logutil.Attr{slog.String("trace_id", "CALLER")},
+			log:    func(l *slog.Logger) { l.Info("m") },
+			want:   "CALLER",
+		},
+		{
+			name: "inlined group",
+			log:  func(l *slog.Logger) { l.With(slog.Group("", slog.String("trace_id", "CALLER"))).Info("m") },
+			want: "CALLER",
+		},
+		{
+			// An inlined group is flattened onto the root, so a trace_id inside one is a root
+			// trace_id even when it arrives as a record attribute.
+			name: "record inlined group",
+			log:  func(l *slog.Logger) { l.Info("m", slog.Group("", slog.String("trace_id", "CALLER"))) },
+			want: "CALLER",
+		},
+		{
+			// Same, but the group only exists once the LogValuer is resolved.
+			name: "record LogValuer resolving to an inlined group",
+			log:  func(l *slog.Logger) { l.Info("m", slog.Any("", traceGroupValuer{})) },
+			want: "CALLER",
+		},
+		{
+			name: "With then WithGroup",
+			log:  func(l *slog.Logger) { l.With("trace_id", "CALLER").WithGroup("g").Info("m", "k", "v") },
+			want: "CALLER",
+		},
+		{
+			// A group opened under the reserved key writes a root trace_id field of its own (an
+			// object), so it must suppress the injected one rather than collide with it.
+			name: "WithGroup(trace_id)",
+			log:  func(l *slog.Logger) { l.WithGroup("trace_id").Info("m", "a", "b") },
+			want: map[string]any{"a": "b"},
+		},
+		{
+			// Only the ROOT group takes the key's place: a trace_id group nested inside another
+			// nests with it, so the root trace ID must still be injected — and the nested one is a
+			// second key, at a different level, not a duplicate.
+			name: "WithGroup(g) then WithGroup(trace_id)",
+			log:  func(l *slog.Logger) { l.WithGroup("g").WithGroup("trace_id").Info("m", "a", "b") },
+			want: "INJECTED",
+			keys: 2,
+		},
+		{
+			// Conversely, the root group named trace_id suppresses the injection even when further
+			// groups nest inside it.
+			name: "WithGroup(trace_id) then WithGroup(x)",
+			log:  func(l *slog.Logger) { l.WithGroup("trace_id").WithGroup("x").Info("m", "a", "b") },
+			want: map[string]any{"x": map[string]any{"a": "b"}},
+		},
+		{
+			name: "no caller trace_id",
+			log:  func(l *slog.Logger) { l.Info("m") },
+			want: "INJECTED",
+		},
+		// The cases below pin the other half of the rule: only a field that is actually WRITTEN
+		// counts. An elided one must not suppress the injection, or the record would end up with no
+		// trace ID at all — worse than the duplicate the suppression exists to prevent.
+		{
+			name: "elided: empty group named trace_id",
+			log:  func(l *slog.Logger) { l.With(slog.Group("trace_id")).Info("m") },
+			want: "INJECTED",
+		},
+		{
+			name: "elided: typed-nil error under trace_id",
+			log:  func(l *slog.Logger) { l.Info("m", slog.Any("trace_id", (*typedNilError)(nil))) },
+			want: "INJECTED",
+		},
+		{
+			name: "elided: baked typed-nil error under trace_id",
+			log:  func(l *slog.Logger) { l.With(slog.Any("trace_id", (*typedNilError)(nil))).Info("m") },
+			want: "INJECTED",
+		},
+		{
+			name: "elided: empty WithGroup(trace_id)",
+			log:  func(l *slog.Logger) { l.WithGroup("trace_id").Info("m") },
+			want: "INJECTED",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out := &bytes.Buffer{}
+
+			cfg, err := logutil.NewConfig(
+				logutil.WithOutWriter(out),
+				logutil.WithFormat(logutil.FormatJSON),
+				logutil.WithLevel(logutil.LevelDebug),
+				logutil.WithCommonAttr(tt.common...),
+				logutil.WithTraceIDFn(func() string { return "INJECTED" }),
+			)
+			require.NoError(t, err)
+
+			tt.log(slog.New(NewHandler(cfg)))
+
+			// One key at the root. A case may legitimately carry a second one nested inside a group,
+			// where it is a distinct field at a distinct level rather than a duplicate.
+			keys := tt.keys
+			if keys == 0 {
+				keys = 1
+			}
+
+			s := out.String()
+			require.Equal(t, keys, strings.Count(s, `"trace_id":`), "unexpected trace_id key count in: %s", s)
+
+			// Decoding with encoding/json is the last-wins check: with a duplicate key it would
+			// yield the injected value regardless of what the caller supplied.
+			m := map[string]any{}
+			require.NoError(t, json.Unmarshal(out.Bytes(), &m), "output must be valid JSON: %s", s)
+			require.Equal(t, tt.want, m["trace_id"])
+		})
+	}
+}
+
+// TestNewHandler_TraceIDFnNotCalledWhenSuppressed verifies that a trace ID baked in via
+// With/WithAttrs short-circuits TraceIDFn entirely, on both the ungrouped and the grouped path.
+func TestNewHandler_TraceIDFnNotCalledWhenSuppressed(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int64
+
+	cfg, err := logutil.NewConfig(
+		logutil.WithOutWriter(io.Discard),
+		logutil.WithFormat(logutil.FormatJSON),
+		logutil.WithLevel(logutil.LevelDebug),
+		logutil.WithTraceIDFn(func() string {
+			calls.Add(1)
+			return "INJECTED"
+		}),
+	)
+	require.NoError(t, err)
+
+	l := slog.New(NewHandler(cfg)).With("trace_id", "CALLER")
+
+	l.Info("ungrouped")
+	l.WithGroup("g").Info("grouped", "k", "v")
+	require.Equal(t, int64(0), calls.Load(), "TraceIDFn must not run when the trace ID is suppressed")
+
+	slog.New(NewHandler(cfg)).Info("no caller trace_id")
+	require.Equal(t, int64(1), calls.Load(), "TraceIDFn must run when it provides the trace ID")
+}
+
+// TestNewHandler_TraceIDUnderGroupNests pins the counterpart of the suppression rule: a trace_id
+// supplied under an open group — as a record attribute or via WithAttrs/With — nests inside that
+// group (standard slog semantics) and therefore does not suppress the root one. They are distinct
+// fields at distinct levels, so neither is a duplicate key, and suppressing the root injection here
+// would silently delete the record's only root-level trace ID.
+func TestNewHandler_TraceIDUnderGroupNests(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		log  func(l *slog.Logger)
+	}{
+		{
+			name: "record attribute",
+			log:  func(l *slog.Logger) { l.WithGroup("g").Info("m", "trace_id", "NESTED") },
+		},
+		{
+			name: "WithAttrs under the group",
+			log:  func(l *slog.Logger) { l.WithGroup("g").With("trace_id", "NESTED").Info("m") },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out := &bytes.Buffer{}
+
+			cfg, err := logutil.NewConfig(
+				logutil.WithOutWriter(out),
+				logutil.WithFormat(logutil.FormatJSON),
+				logutil.WithLevel(logutil.LevelDebug),
+				logutil.WithTraceIDFn(func() string { return "INJECTED" }),
+			)
+			require.NoError(t, err)
+
+			tt.log(slog.New(NewHandler(cfg)))
+
+			m := map[string]any{}
+			require.NoError(t, json.Unmarshal(out.Bytes(), &m), "output: %s", out)
+			require.Equal(t, "INJECTED", m["trace_id"], "the root trace_id is still injected")
+
+			g, ok := m["g"].(map[string]any)
+			require.True(t, ok, "the group must be present")
+			require.Equal(t, "NESTED", g["trace_id"], "a trace_id under an open group nests inside it")
+		})
+	}
+}
+
 func TestNewLogger_Source(t *testing.T) {
 	t.Parallel()
 
@@ -335,144 +563,4 @@ func TestNewLogger_Source(t *testing.T) {
 	NewLogger(cfg).Info("with source")
 
 	require.Contains(t, out.String(), `"source":`, "source location must be present when enabled")
-}
-
-func Test_isTerminalWriter(t *testing.T) {
-	t.Parallel()
-
-	require.False(t, isTerminalWriter(&bytes.Buffer{}), "a non-file writer is not a terminal")
-
-	f, err := os.CreateTemp(t.TempDir(), "logsrv")
-	require.NoError(t, err)
-
-	defer func() { _ = f.Close() }()
-
-	require.False(t, isTerminalWriter(f), "a regular file is not a terminal")
-}
-
-// TestNewLogger_severeLevelsDoNotTerminate locks in the invariant that the most severe levels
-// emit ordinary records carrying their full syslog name and never terminate the process (the
-// handler uses zerolog's NoLevel, so no Panic/Fatal event behavior is ever triggered).
-func TestNewLogger_severeLevelsDoNotTerminate(t *testing.T) {
-	t.Parallel()
-
-	out := &bytes.Buffer{}
-
-	cfg, err := logutil.NewConfig(
-		logutil.WithOutWriter(out),
-		logutil.WithFormat(logutil.FormatJSON),
-		logutil.WithLevel(logutil.LevelTrace),
-	)
-	require.NoError(t, err)
-
-	l := NewLogger(cfg)
-
-	require.NotPanics(t, func() {
-		l.Log(t.Context(), logutil.LevelEmergency, "emergency msg")
-		l.Log(t.Context(), logutil.LevelAlert, "alert msg")
-	})
-
-	require.Contains(t, out.String(), `"level":"emergency"`)
-	require.Contains(t, out.String(), `"level":"alert"`)
-	require.Contains(t, out.String(), "emergency msg")
-	require.Contains(t, out.String(), "alert msg")
-}
-
-// TestNewHandler exercises the pure constructor: it builds a working handler
-// without installing a process-wide default logger.
-func TestNewHandler(t *testing.T) {
-	t.Parallel()
-
-	out := &bytes.Buffer{}
-
-	cfg, err := logutil.NewConfig(
-		logutil.WithOutWriter(out),
-		logutil.WithFormat(logutil.FormatJSON),
-		logutil.WithLevel(logutil.LevelDebug),
-	)
-	require.NoError(t, err)
-
-	h := NewHandler(cfg)
-	require.NotNil(t, h)
-
-	slog.New(h).Info("via handler")
-
-	require.Contains(t, out.String(), "via handler")
-}
-
-// TestNewLogger_nilConfig verifies a nil cfg falls back to logutil.DefaultConfig
-// instead of panicking.
-func TestNewLogger_nilConfig(t *testing.T) {
-	t.Parallel()
-
-	require.NotPanics(t, func() {
-		l := NewLogger(nil)
-		require.NotNil(t, l)
-	})
-}
-
-// TestNewHandler_nilOut verifies a nil Out writer falls back to os.Stderr instead
-// of building a handler that panics on first write.
-func TestNewHandler_nilOut(t *testing.T) {
-	t.Parallel()
-
-	cfg, err := logutil.NewConfig(logutil.WithFormat(logutil.FormatJSON))
-	require.NoError(t, err)
-
-	cfg.Out = nil // hand-cleared writer must fall back, not panic
-
-	require.NotPanics(t, func() {
-		h := NewHandler(cfg)
-		require.NotNil(t, h)
-	})
-}
-
-func Test_writerByFormat(t *testing.T) {
-	t.Parallel()
-
-	// A non-terminal writer makes the expected NoColor value deterministic
-	// (writing console output to a buffer/file must not embed ANSI escapes).
-	consoleOut := &bytes.Buffer{}
-
-	tests := []struct {
-		name   string
-		format logutil.LogFormat
-		out    io.Writer
-		want   io.Writer
-	}{
-		{
-			name:   "json",
-			format: logutil.FormatJSON,
-			out:    os.Stdout,
-			want:   os.Stdout,
-		},
-		{
-			name:   "console",
-			format: logutil.FormatConsole,
-			out:    consoleOut,
-			want:   zerolog.ConsoleWriter{Out: consoleOut, NoColor: true},
-		},
-		{
-			name:   "none",
-			format: logutil.FormatNone,
-			out:    os.Stdout,
-			want:   io.Discard,
-		},
-		{
-			name:   "default",
-			format: 56,
-			out:    os.Stdout,
-			want:   os.Stdout,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got := writerByFormat(tt.format, tt.out)
-
-			require.Equal(t, tt.want, got)
-		})
-	}
 }

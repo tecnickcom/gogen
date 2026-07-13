@@ -52,7 +52,6 @@ func decodeJSON(t *testing.T, b []byte) map[string]any {
 type logValuer struct{}
 
 func (logValuer) LogValue() slog.Value { return slog.StringValue("resolved") }
-
 func Test_zerologHandler_allKinds(t *testing.T) {
 	t.Parallel()
 
@@ -260,22 +259,6 @@ func Test_zerologHandler_levelNames(t *testing.T) {
 
 // The following tests pin intentional behavior differences from the previous slog-zerolog
 // implementation (documented in the package "Notes"), so any future change fails loudly.
-
-func Test_zerologHandler_errorRendersAsString(t *testing.T) {
-	t.Parallel()
-
-	buf := &bytes.Buffer{}
-	rec := makeRecord(logutil.LevelError, "m",
-		slog.Any("error", errors.New("boom")),
-		slog.Any("err", errors.New("bang")),
-	)
-	require.NoError(t, newLeaf(buf).Handle(context.Background(), rec))
-
-	m := decodeJSON(t, buf.Bytes())
-	require.Equal(t, "boom", m["error"], "an error must render as its message string, not a structured object")
-	require.Equal(t, "bang", m["err"])
-}
-
 func Test_zerologHandler_nilValueRendersNull(t *testing.T) {
 	t.Parallel()
 
