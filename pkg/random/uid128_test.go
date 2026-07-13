@@ -1,9 +1,12 @@
 package random
 
 import (
+	"bytes"
+	"encoding/binary"
 	"math"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -83,6 +86,58 @@ func TestRnd_UID128_String_MatchesFormatUint(t *testing.T) {
 		want := strconv.FormatUint(u.t, 36) + strconv.FormatUint(u.r, 36)
 		require.Equal(t, want, u.String())
 	}
+}
+
+// TestRnd_UID128_Golden pins the exact hexadecimal layout against a hand-computed
+// vector: the time half must come first, most-significant nibble first, which is
+// what makes the hexadecimal form time-ordered. Swapping the halves would pass
+// every assertion that compares Format against Hex, since Hex is built on Format.
+func TestRnd_UID128_Golden(t *testing.T) {
+	t.Parallel()
+
+	u := TUID128{t: 0x0123456789abcdef, r: 0xfedcba9876543210}
+
+	const want = "0123456789abcdef" + "fedcba9876543210"
+
+	var dst [32]byte
+
+	u.Format(&dst)
+
+	require.Equal(t, want, string(dst[:]), "Format")
+	require.Equal(t, want, string(u.Byte()), "Byte")
+	require.Equal(t, want, u.Hex(), "Hex")
+}
+
+// TestRnd_UID128_Layout asserts the documented split: the high 64 bits are the
+// generation time in Unix nanoseconds, and the low 64 bits come from the reader.
+func TestRnd_UID128_Layout(t *testing.T) {
+	t.Parallel()
+
+	entropy := []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
+
+	before := time.Now().UnixNano()
+	u := New(bytes.NewReader(entropy)).UID128()
+	after := time.Now().UnixNano()
+
+	require.GreaterOrEqual(t, u.t, uint64(before), "time half must not predate the call")
+	require.LessOrEqual(t, u.t, uint64(after), "time half must not postdate the call")
+
+	require.Equal(t, binary.LittleEndian.Uint64(entropy), u.r,
+		"random half must come from the configured reader")
+}
+
+// TestRnd_UID128_StringAmbiguity pins the ambiguity the String doc warns about:
+// two distinct values can render as the same base-36 string, which is why Hex is
+// the round-trippable form.
+func TestRnd_UID128_StringAmbiguity(t *testing.T) {
+	t.Parallel()
+
+	a := TUID128{t: 1, r: 75} // "1" + "23"
+	b := TUID128{t: 38, r: 3} // "12" + "3"
+
+	require.NotEqual(t, a, b)
+	require.Equal(t, a.String(), b.String(), "distinct values collide in String, as documented")
+	require.NotEqual(t, a.Hex(), b.Hex(), "Hex must stay unambiguous")
 }
 
 func TestRnd_UID128_Hex_Collision(t *testing.T) {

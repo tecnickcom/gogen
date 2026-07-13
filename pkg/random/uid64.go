@@ -16,9 +16,10 @@ type TUID64 uint64
 // Because only the lower 32 bits are random and the upper 32 bits are shared by
 // all identifiers generated within the same second, uniqueness relies on a
 // single 32-bit random draw per second: birthday collisions become likely at
-// roughly 2^16 (~77k) identifiers generated within the same second. For
-// high-throughput or collision-critical use, prefer [Rnd.UID128] (64 random
-// bits) or [Rnd.UUIDv7] (~74 random bits).
+// roughly 2^16 (~65k) identifiers generated within the same second — about a 39%
+// chance at 65k, and 50% at ~77k. For high-throughput or collision-critical use,
+// prefer [Rnd.UID128] (64 random bits) or [Rnd.UUIDv7] (62 random bits; its other
+// 12 non-timestamp bits are clock-derived, not random).
 //
 // The second offset is measured from the start of the current decade, so it
 // stays well within 32 bits; note that it resets at each decade boundary, which
@@ -46,8 +47,14 @@ func (u TUID64) Format(dst *[16]byte) {
 
 // Byte returns the UID64 as its 16-character hexadecimal form in a byte slice.
 //
-// Each call allocates a new [16]byte array. Use [TUID64.Hex] for a string, or
-// [TUID64.Format] to write into a pre-allocated buffer without allocating.
+// Byte fills a local [16]byte array and returns a slice over it, so whether it
+// allocates depends on escape analysis at the call site: if the returned slice
+// does not escape the caller (it is read and discarded, or only its bytes are
+// consumed), the array stays on the stack and no allocation occurs; if it escapes
+// (stored, returned, sent on a channel, or passed to a function the compiler
+// cannot inline), the array is heap-allocated. Use [TUID64.Hex] for a string, or
+// [TUID64.Format] to write into a pre-allocated buffer and never allocate
+// regardless of escape analysis.
 func (u TUID64) Byte() []byte {
 	var b [16]byte
 

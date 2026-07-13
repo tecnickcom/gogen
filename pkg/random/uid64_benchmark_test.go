@@ -8,7 +8,7 @@ func BenchmarkRnd_UID64(b *testing.B) {
 	r := New(nil)
 
 	for b.Loop() {
-		_ = r.UID64()
+		sinkUID64 = r.UID64()
 	}
 }
 
@@ -20,28 +20,49 @@ func BenchmarkRnd_UID64_Format(b *testing.B) {
 	for b.Loop() {
 		u.Format(&dst)
 	}
+
+	sinkByte = dst[0]
 }
 
-func BenchmarkRnd_UID64_Byte(b *testing.B) {
+// BenchmarkRnd_UID64_Byte_NoEscape measures Byte when the returned slice stays
+// local: the backing array is stack-allocated and the call is free.
+func BenchmarkRnd_UID64_Byte_NoEscape(b *testing.B) {
+	u := New(nil).UID64()
+
+	var acc byte
+
+	for b.Loop() {
+		p := u.Byte()
+		acc ^= p[0] ^ p[15]
+	}
+
+	sinkByte = acc
+}
+
+// BenchmarkRnd_UID64_Byte_Escaping measures Byte when the returned slice outlives
+// the call: the backing array is heap-allocated. Both numbers are documented.
+func BenchmarkRnd_UID64_Byte_Escaping(b *testing.B) {
 	u := New(nil).UID64()
 
 	for b.Loop() {
-		_ = u.Byte()
+		sinkBytes = u.Byte()
 	}
 }
 
+// The Hex and String benchmarks measure formatting only: generation is hoisted out
+// of the loop so the entropy read does not mask the cost of the conversion.
 func BenchmarkRnd_UID64_Hex(b *testing.B) {
-	r := New(nil)
+	u := New(nil).UID64()
 
 	for b.Loop() {
-		_ = r.UID64().Hex()
+		sinkString = u.Hex()
 	}
 }
 
 func BenchmarkRnd_UID64_String(b *testing.B) {
-	r := New(nil)
+	u := New(nil).UID64()
 
 	for b.Loop() {
-		_ = r.UID64().String()
+		sinkString = u.String()
 	}
 }

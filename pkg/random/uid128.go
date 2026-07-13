@@ -37,8 +37,14 @@ func (u TUID128) Format(dst *[32]byte) {
 
 // Byte returns the UID128 as its 32-character hexadecimal form in a byte slice.
 //
-// Each call allocates a new [32]byte array. Use [TUID128.Hex] for a string, or
-// [TUID128.Format] to write into a pre-allocated buffer without allocating.
+// Byte fills a local [32]byte array and returns a slice over it, so whether it
+// allocates depends on escape analysis at the call site: if the returned slice
+// does not escape the caller (it is read and discarded, or only its bytes are
+// consumed), the array stays on the stack and no allocation occurs; if it escapes
+// (stored, returned, sent on a channel, or passed to a function the compiler
+// cannot inline), the array is heap-allocated. Use [TUID128.Hex] for a string, or
+// [TUID128.Format] to write into a pre-allocated buffer and never allocate
+// regardless of escape analysis.
 func (u TUID128) Byte() []byte {
 	var b [32]byte
 
