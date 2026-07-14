@@ -2,146 +2,138 @@
 Package sfcache provides a local, thread-safe, fixed-size cache for expensive
 lookups with single-flight deduplication.
 
-# Problem
-
-Services that repeatedly fetch the same external value (DNS, secrets, remote
-metadata, API responses) often suffer from duplicated work under concurrency.
-Without coordination, multiple goroutines can trigger identical slow lookups at
-the same time, increasing latency, cost, and upstream load.
-
-sfcache solves this by combining TTL caching, bounded memory, and in-flight
-request coalescing for identical keys.
-
-# How It Works
-
-Create a cache with [New], providing:
-
-  - a [LookupFunc] that performs the external lookup,
-  - a maximum entry count (`size`),
-  - a time-to-live (`ttl`) for successful values,
-  - optional behavior overrides such as [WithTTLFunc] (per-entry TTLs) and
-    [WithStaleIfError] (serve the last known good value on refresh failure).
-
-On [Cache.Lookup]:
-
- 1. If a non-expired entry exists, the cached value is returned immediately.
- 2. If the key is being resolved by another goroutine, duplicate callers wait
-    and receive that same result (single-flight behavior).
- 3. On miss or expiry, one lookup function call is executed and its result is
-    stored in cache.
- 4. If cache capacity is reached, eviction removes an expired entry first, or
-    otherwise the oldest entry by expiration deadline.
-
-# Key Features
-
-  - Fixed-size local cache with explicit capacity to avoid unbounded memory
-    growth.
-  - Internal synchronization for safe concurrent access without external locks.
-  - Lock-friendly fast path: cache hits only acquire a read lock.
-  - Single-flight request collapsing for duplicate in-flight lookups.
-  - TTL-based freshness with automatic refresh on next miss after expiry,
-    with optional per-entry TTLs via [WithTTLFunc].
-  - Optional stale-if-error resilience via [WithStaleIfError].
-  - Monotonic-clock expiration, immune to wall-clock adjustments (e.g. NTP).
-  - Explicit cache control via [Cache.Remove], [Cache.Reset], and
-    [Cache.PurgeExpired].
-
-# Semantics and Caveats
-
-  - Only successful values are cached for the TTL (including legitimate nil
-    values). Lookup errors are shared with all coalesced callers but never
-    cached (no negative caching); a failed key leaves an already-expired entry
-    behind until it is lazily evicted or overwritten, and at capacity this
-    residue can displace a healthy entry.
-  - Whatever the lookup function returns is passed through as-is, including a
-    non-nil value returned alongside a non-nil error.
-  - A ttl <= 0 disables value caching: every call triggers a new lookup, but
-    concurrent callers for the same key are still coalesced. Two options
-    qualify this: [WithTTLFunc] can still assign individual entries a
-    positive TTL, and with [WithStaleIfError] the previous value is retained
-    and can be served after a failed refresh. A caller that waited for an
-    in-flight lookup accepts the latest completed outcome for the key, which
-    under heavy churn may come from a later flight than the one it first
-    awaited.
-  - The external lookup runs under the context of the caller that started it.
-    If the lookup fails with that context's error while coalesced waiters are
-    queued, the error is not shared: one of the waiters retries the lookup
-    with its own context. A caller whose own context ends receives
-    [ErrLookupAborted]; no external lookup is ever started with an
-    already-ended context, while fresh cached values are served regardless of
-    context state.
-  - If a waiting caller's context ends at the same instant the awaited
-    lookup completes, either outcome may be observed: the caller can receive
-    [ErrLookupAborted] even though a result just became available, or the
-    result even though its context just ended (select nondeterminism).
-  - Expiration uses the monotonic clock, which on most platforms (e.g. Linux
-    CLOCK_MONOTONIC) does not advance while the system is suspended: TTLs
-    are effectively extended by the time spent in suspend. This matters on
-    laptops and sleeping virtual machines, not on always-on servers.
-  - The lookup function must honor context cancellation and eventually
-    return: a lookup that hangs forever pins its key (in-flight entries never
-    expire and are never evicted) until [Cache.Remove] or [Cache.Reset]. It
-    must not call [Cache.Lookup] for the same key of the same cache, which
-    would self-deadlock. If it panics, the panic propagates to the caller
-    that ran it and waiters retry.
-  - With [WithStaleIfError], a failed refresh serves the last known good
-    value (with a nil error) until its original expiration plus maxStale;
-    the revived entry stays expired so every call still attempts a refresh,
-    and the first success replaces it. The stale window takes precedence
-    over the context-induced retry, so an upstream that hangs (every
-    refresh dying by caller timeout) is still served stale. Error residue
-    is never served stale, and callers cannot distinguish a stale value
-    from a fresh one. Stale protection is best-effort: the value is lost to
-    capacity eviction (expired entries are evicted first),
-    [Cache.PurgeExpired], [Cache.Remove], [Cache.Reset], and a panicking
-    lookup function.
-  - [Cache.Remove] and [Cache.Reset] also invalidate in-flight lookups: the
-    result of a removed flight is returned to the caller that performed it
-    but not cached, and coalesced waiters retry with a fresh lookup.
-  - The capacity bound can be exceeded while more than `size` distinct keys
-    are being resolved at once, as in-flight entries are never evicted; the
-    excess is reclaimed as those lookups complete and new entries are stored.
-    Expired entries are removed lazily (or via [Cache.PurgeExpired]) and are
-    counted by [Cache.Len].
-  - Keys must be hashable and equal to themselves: interface keys holding
-    unhashable dynamic types cause [Cache.Lookup] to panic, and keys
-    containing NaN never match themselves, leaking unevictable entries until
-    [Cache.Reset].
-  - Cached values are returned by reference: callers must treat returned
-    values as read-only.
-
-# Why It Matters
-
-  - Reduces repeated network, database, or compute cost for hot keys.
-  - Improves throughput in high-concurrency workloads by collapsing duplicate
-    calls.
-  - Keeps memory usage predictable with bounded capacity.
+Concurrent callers asking for the same key share a single lookup: one goroutine
+calls the external service and the others wait for its result. Values are cached
+for a TTL, the capacity is bounded, and an optional stale-if-error window keeps
+serving the last known good value while the upstream is down.
 
 # Usage
 
-The value type V is inferred from the lookup function, so Lookup returns
+The value type is inferred from the lookup function, so [Cache.Lookup] returns
 typed values with no assertions:
 
 	cache := sfcache.New(func(ctx context.Context, key string) (*Customer, error) {
 	    return fetchCustomer(ctx, key)
-	}, 256, 5*time.Minute)
+	}, sfcache.Config{Size: 256, TTL: 5 * time.Minute})
 
 	customer, err := cache.Lookup(ctx, "customer:123")
-	if err != nil {
-	    return err
-	}
-	_ = customer // *Customer
 
-Optional behaviors are enabled with options:
+Settings that do not depend on the cache types live in [Config]; those that do
+live in options ([WithTTLFunc]).
 
-	cache := sfcache.New(lookupFn, 256, 5*time.Minute,
-	    sfcache.WithTTLFunc(func(key string, c *Customer) time.Duration {
-	        return c.TTL // freshness is a property of the data
-	    }),
-	    sfcache.WithStaleIfError[string, *Customer](10*time.Minute),
-	)
+# Caching
 
-Example applications in this repository include:
+Only successful lookups are cached, for [Config.TTL] (a nil value is a value).
+Errors are shared with the callers coalesced onto the same lookup but never
+cached, so the next call retries; the failed key leaves an already-expired entry
+behind until it is reclaimed or overwritten. A lookup that failed with its OWN
+context's error publishes nothing at all. Whatever the lookup function returns is
+passed through as-is, including a non-nil value alongside a non-nil error.
+
+A [Config.TTL] <= 0 serves no value from the cache and only coalesces, unless
+[WithTTLFunc] gives the entry a positive TTL. With stale-if-error enabled the last
+value is still retained and can be served after a failed refresh.
+
+Expiration uses the monotonic clock, which on most platforms does not advance while
+the system is suspended: TTLs are effectively extended by the suspended time.
+
+Cached values are shared by reference: treat them as read-only.
+
+# Capacity
+
+[Config.Size] bounds the values held, not [Cache.Len]. Len can exceed Size by the
+number of lookups in flight, plus the residue of a failed lookup, plus one value
+when a stale revive can evict nothing. The excess is reclaimed as those lookups
+complete and the next value is stored.
+
+A store may only evict something worth less than what it stores:
+
+  - a failed lookup stores no value, so it reclaims only entries that hold
+    nothing worth keeping, and otherwise leaves the cache over capacity;
+  - a stale revive may also take a value that is itself being served stale: the
+    one no caller has asked for, or else the one closest to its own deadline. When
+    it can take nothing it exceeds the capacity by one value, reclaimed by the next
+    successful store;
+  - only a successful lookup may displace a valid entry, taking the one closest to
+    expiring.
+
+A lookup that is merely attempted, and may yet fail, can never cost the cache a
+live value.
+
+Every entry is held in one of three queues, in deadline order, so an eviction takes
+the head of a queue rather than searching for it. A store costs O(log Size) holding
+the exclusive write lock, and one with no victim it may take says so in constant
+time. Cache hits take only the read lock.
+
+[Cache.PurgeExpired] is the only linear pass. It sifts entries out one at a time
+while few have expired, and past a fraction of the queue rebuilds the heap around
+the survivors instead, so its cost is then bounded by what the cache HOLDS rather
+than by what it removes. It holds the exclusive write lock throughout: on a cache
+whose entries all expire together it is the longest lock this package takes.
+
+The queues hold a copy of each key, so they cost about sizeof(K) + 16 bytes per
+entry on top of the value: roughly 27 for a word-sized key, 35 for a string key.
+
+# Single flight and context
+
+The external lookup runs under the context of the caller that started it. A caller
+that finds a lookup already in flight for its key waits for it and takes its
+result, which under heavy churn may come from a later flight than the one it first
+awaited.
+
+[ErrLookupAborted] is returned to a caller whose context ends while it WAITS for an
+in-flight lookup, or before its own lookup would start. The caller that RAN the
+lookup receives the lookup function's own error instead. No lookup is started with
+an already-ended context, while FRESH cached values are served regardless of
+context state.
+
+A stale value is not: serving one requires attempting a refresh, so a caller that
+arrives with an already-ended context gets [ErrLookupAborted], not the stale value.
+A caller whose context dies DURING its own lookup can still be handed one, with a
+nil error.
+
+If a lookup fails with the error of the context of the caller that ran it, that
+error is not shared: a coalesced waiter retries with its own context. The test is
+[errors.Is] against the context's error, so an upstream error that wraps
+[context.DeadlineExceeded] or [context.Canceled] is treated as context-induced when
+the producing context has also ended. The cost is one extra lookup.
+
+If a waiter's context ends at the same instant the awaited lookup completes, either
+outcome may be observed.
+
+The lookup function must honor context cancellation and eventually return: one that
+hangs forever pins its key until [Cache.Remove] or [Cache.Reset]. It must not call
+[Cache.Lookup] for the same key of the same cache, which self-deadlocks. If it
+panics, the panic reaches the caller that ran it and the waiters retry.
+
+[Cache.Remove] and [Cache.Reset] invalidate the lookups in flight: the result is
+returned to the caller that ran it but not cached, and the callers coalesced onto it
+are released to retry. The orphaned lookup still runs to completion on its own
+context.
+
+# Stale-if-error
+
+With [Config.MaxStale] or [Config.MaxStaleOnFailure] set, a failed refresh serves
+the last known good value with a NIL error, so callers cannot tell a stale value
+from a fresh one. The revived entry stays expired, so every call still attempts a
+refresh and the first success replaces it. The stale window takes precedence over
+the context-induced retry above. An entry whose last outcome was an error is never
+served stale.
+
+Stale protection is best-effort: the value is lost to [Cache.Remove], [Cache.Reset],
+a panicking lookup or TTL function, and capacity eviction. [Cache.PurgeExpired] also
+loses it, except for a key whose refresh is already in flight, whose value is held by
+the flight rather than by an entry.
+
+# Key requirements
+
+A key must be hashable and equal to itself. An interface key holding an unhashable
+dynamic type panics, in [Cache.Lookup] and in [Cache.Remove] alike, as any map access
+would. A key that is not equal to itself — one that is or contains a NaN — could never
+be found in a map again, so [Cache.Lookup] rejects it with [ErrInvalidKey] before any
+lookup is attempted.
+
+Example applications in this repository:
   - github.com/tecnickcom/nurago/pkg/awssecretcache
   - github.com/tecnickcom/nurago/pkg/dnscache
 */
@@ -150,64 +142,58 @@ package sfcache
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
 
-// ErrNilLookupFunc is returned by [Cache.Lookup] when the cache was
-// constructed with a nil lookup function.
+// initialCapacity bounds how much of [Config.Size] the cache reserves up front: Size
+// is a bound, not a reservation.
+const initialCapacity = 1024
+
+// bulkPurgeRatio is the fraction of the values queue [Cache.PurgeExpired] sifts out
+// one entry at a time before it rebuilds the heap around the survivors instead.
+// Sifting is cheaper for a sparse expiry, rebuilding for a bulk one; measured on this
+// heap, the two cross between a twelfth and a tenth of the queue.
+const bulkPurgeRatio = 12
+
+// ErrNilLookupFunc is returned by [Cache.Lookup] when the cache was constructed
+// with a nil lookup function.
 var ErrNilLookupFunc = errors.New("sfcache: the lookup function is nil")
 
-// ErrLookupAborted is returned by [Cache.Lookup] when the caller's context
-// ends while waiting for an in-flight lookup, or when the context has already
-// ended before an external lookup would start. It wraps the context error, so
-// errors.Is with [context.Canceled] or [context.DeadlineExceeded] keeps
-// working.
+// ErrLookupAborted is returned by [Cache.Lookup] when the caller's context ends
+// while waiting for an in-flight lookup, or when it has already ended before an
+// external lookup would start. It wraps the context error, so errors.Is with
+// [context.Canceled] or [context.DeadlineExceeded] keeps working.
 var ErrLookupAborted = errors.New("sfcache: lookup aborted by context")
+
+// ErrInvalidKey is returned by [Cache.Lookup] for a key that is not equal to
+// itself: one that is or contains a NaN (a float field of a struct key is
+// enough). Such a key hashes to a map slot that no subsequent lookup can reach,
+// so it can be neither cached nor coalesced.
+var ErrInvalidKey = errors.New("sfcache: the key is not equal to itself (NaN) and can never be cached")
 
 // LookupFunc is the generic function signature for external lookup calls.
 type LookupFunc[K comparable, V any] func(ctx context.Context, key K) (V, error)
 
-// entry stores cached value state for a single key.
-// Entries are immutable once stored: updates replace the whole entry,
-// so an *entry read under lock can be safely used after the lock is released.
-type entry[V any] struct {
-	// wait for each duplicate lookup call for the same key.
-	// It is owned by the producing flight, which is the only one allowed to
-	// close it (in fetch's defer); waiters only ever receive from it.
-	wait chan struct{}
-
-	// err is the error returned by the external lookup.
-	err error
-
-	// expireAt is the expiration deadline (monotonic clock).
-	// The zero Time marks the entry as already expired
-	// (in-flight placeholders, errors, and revived stale entries).
-	expireAt time.Time
-
-	// staleUntil is the deadline until which val may be served after a
-	// failed refresh (see [WithStaleIfError]). The zero Time means no stale
-	// value is available.
-	staleUntil time.Time
-
-	// val is the value associated with the key. On in-flight placeholders
-	// with a non-zero staleUntil, it carries the last known good value.
-	val V
-}
-
-// usable reports whether the entry holds a completed lookup outcome that the
-// caller can return: a non-expired value or, for a caller that awaited this
-// entry's flight, any completed outcome (even if already expired, e.g. with
-// ttl <= 0 or a non-cached error).
-func (e *entry[V]) usable(waited bool) bool {
-	return e.wait == nil && (waited || time.Now().Before(e.expireAt))
-}
-
 // Cache is a generic, size-bounded single-flight cache with TTL expiration.
+//
+// It must be used through the pointer returned by [New] and never copied. A copy
+// shares the original's maps but gets its own lock and its own copy of the eviction
+// queues, so the two diverge on the first store through either handle and corrupt each
+// other's queues. go vet's copylocks check rejects the copy.
 type Cache[K comparable, V any] struct {
-	// keymap maps a key name to an item.
+	// keymap holds the COMPLETED entries: values, error residue, and revived stale
+	// values. A lookup in flight is not in here; it lives in flights.
+	// INVARIANT: every entry in here is filed in exactly one of vic's three queues.
+	// [Cache.store] and [Cache.drop] maintain that one entry at a time;
+	// [Cache.PurgeExpired] and [Cache.resetLocked] maintain it in bulk.
 	keymap map[K]*entry[V]
+
+	// flights holds the lookups in progress, keyed by the key being resolved. Keeping
+	// them out of keymap is what bounds the capacity by the values held, and what keeps
+	// a lookup in flight from being evicted: it holds no entry.
+	// INVARIANT: a key is never in both maps, and a registered flight is never finished.
+	flights map[K]*flight
 
 	// lookupFn is the function performing the external lookup call.
 	lookupFn LookupFunc[K, V]
@@ -215,28 +201,77 @@ type Cache[K comparable, V any] struct {
 	// ttlFn optionally computes a per-entry TTL (see [WithTTLFunc]).
 	ttlFn TTLFunc[K, V]
 
-	// mux is the mutex for the cache.
-	mux *sync.RWMutex
+	// mux guards everything above. It is a value rather than a pointer so that go vet's
+	// copylocks check rejects an accidental copy of the Cache.
+	mux sync.RWMutex
 
-	// ttl is the default time-to-live for the items.
+	// ttl is the default time-to-live of an entry (see [Config.TTL]).
 	ttl time.Duration
 
-	// maxStale bounds how long past its expiration a value may be served
-	// when a refresh fails (see [WithStaleIfError]). Zero disables it.
+	// maxStale bounds how long past its original expiration a value may be served when
+	// a refresh fails (see [Config.MaxStale]). Zero disables it.
 	maxStale time.Duration
 
-	// size is the maximum size of the cache (min = 1).
+	// maxStaleOnFailure bounds how long past the first failed refresh a value may be
+	// served (see [Config.MaxStaleOnFailure]). Zero disables it.
+	maxStaleOnFailure time.Duration
+
+	// vic holds every entry of keymap, filed in one of three queues by how expendable it
+	// is, and chooses the victim of an eviction. It has no access to keymap (see
+	// [victims]).
+	// INVARIANT: keymap and vic are only ever mutated together.
+	vic victims[K, V]
+
+	// size is the maximum number of values held (min = 1, see [Config.Size]).
 	size int
 }
 
-// New constructs a single-flight cache with the specified lookup function, max entries, and time-to-live.
-// If lookupFn is nil, a default function is used that always fails with [ErrNilLookupFunc].
-// Capacity defaults to 1 if size <= 0.
-// A ttl <= 0 disables value caching while still coalescing duplicate in-flight
-// requests for the same key (unless overridden per entry via [WithTTLFunc]).
-// The default behavior can be customized with options such as [WithTTLFunc]
-// and [WithStaleIfError].
-func New[K comparable, V any](lookupFn LookupFunc[K, V], size int, ttl time.Duration, opts ...Option[K, V]) *Cache[K, V] {
+// Config holds the settings of a [Cache] that do not depend on its key and value
+// types; those that do live in an [Option].
+//
+// The zero Config is valid: a single-entry cache that caches no value and only
+// coalesces concurrent lookups.
+type Config struct {
+	// Size is the maximum number of VALUES the cache holds. A Size <= 0 is clamped
+	// to 1. It is not a hard bound on [Cache.Len] (see the capacity section of the
+	// package documentation).
+	Size int
+
+	// TTL is the default time-to-live of a successfully looked up value.
+	// A TTL <= 0 disables value caching while still coalescing duplicate in-flight
+	// requests for the same key (unless a per-entry TTL is set via [WithTTLFunc]).
+	// A negative TTL behaves exactly like a zero one.
+	TTL time.Duration
+
+	// MaxStale enables RFC 5861 stale-if-error semantics: when a refresh of an expired
+	// key fails, the last known good value is returned instead (with a nil error), but
+	// only until its ORIGINAL expiration plus MaxStale.
+	//
+	// The window is anchored to the value's expiration, not to the failure, so a key
+	// idle for longer than TTL + MaxStale gets no protection at all. Use
+	// [Config.MaxStaleOnFailure] to protect rarely fetched keys.
+	//
+	// A MaxStale <= 0 disables it (default).
+	MaxStale time.Duration
+
+	// MaxStaleOnFailure enables failure-anchored stale-if-error: when a refresh of an
+	// expired key fails, the last known good value is returned instead (with a nil
+	// error) for up to MaxStaleOnFailure measured from that first failure, however long
+	// the key had been idle before it. Unlike [Config.MaxStale] it holds for cold keys.
+	//
+	// The window is anchored once, by the first failed refresh: further failures keep
+	// serving the same value until that deadline but never push it back, so a
+	// permanently failing upstream cannot make a value immortal.
+	//
+	// When both are set, the value is served stale until the later of the two
+	// deadlines. A MaxStaleOnFailure <= 0 disables it (default).
+	MaxStaleOnFailure time.Duration
+}
+
+// New constructs a single-flight cache with the given lookup function and
+// configuration. If lookupFn is nil, a default one is used that always fails with
+// [ErrNilLookupFunc].
+func New[K comparable, V any](lookupFn LookupFunc[K, V], cfg Config, opts ...Option[K, V]) *Cache[K, V] {
 	if lookupFn == nil {
 		lookupFn = func(_ context.Context, _ K) (V, error) {
 			var zero V
@@ -245,17 +280,27 @@ func New[K comparable, V any](lookupFn LookupFunc[K, V], size int, ttl time.Dura
 		}
 	}
 
+	size := cfg.Size
 	if size <= 0 {
 		size = 1
 	}
 
 	c := &Cache[K, V]{
-		lookupFn: lookupFn,
-		mux:      &sync.RWMutex{},
-		ttl:      ttl,
-		size:     size,
-		keymap:   make(map[K]*entry[V], size),
+		lookupFn:          lookupFn,
+		ttl:               cfg.TTL,
+		maxStale:          cfg.MaxStale,
+		maxStaleOnFailure: cfg.MaxStaleOnFailure,
+		size:              size,
+		keymap:            make(map[K]*entry[V], min(size, initialCapacity)),
+		flights:           make(map[K]*flight),
+		vic: victims[K, V]{
+			maxStale:          cfg.MaxStale,
+			maxStaleOnFailure: cfg.MaxStaleOnFailure,
+		},
 	}
+	// NOTE: neither the queues nor the map are preallocated to Size. They grow as they
+	// are used, so an effectively unbounded cache (a Size near math.MaxInt) costs
+	// nothing up front.
 
 	for _, opt := range opts {
 		opt(c)
@@ -264,370 +309,144 @@ func New[K comparable, V any](lookupFn LookupFunc[K, V], size int, ttl time.Dura
 	return c
 }
 
-// Len returns the current number of entries in the cache, including expired
-// entries that have not been evicted yet and in-flight lookup placeholders.
+// Len returns the current number of entries, including the expired ones not yet
+// reclaimed and the keys being resolved. It can therefore exceed [Config.Size], which
+// bounds only the values held.
 func (c *Cache[K, V]) Len() int {
 	c.mux.RLock()
 	defer c.mux.RUnlock()
 
-	return len(c.keymap)
+	return len(c.keymap) + len(c.flights)
 }
 
-// Reset clears all entries from the cache,
-// including in-flight lookups, whose results will not be cached.
+// Reset clears all entries, including the lookups in flight, whose results will
+// not be cached. Callers waiting on one are released and retry with a fresh
+// lookup.
 func (c *Cache[K, V]) Reset() {
+	// Finish the invalidated flights only after the lock is released: waking the parked
+	// callers is O(waiters) work, and deregistering them under the lock is what makes
+	// the state they wake to terminal.
+	for _, fl := range c.resetLocked() {
+		fl.finish()
+	}
+}
+
+// resetLocked swaps in fresh maps and returns the flights it invalidated, for the
+// caller to finish once the lock is released.
+func (c *Cache[K, V]) resetLocked() map[K]*flight {
+	// Build the replacements BEFORE taking the lock: only the swap has to be exclusive.
+	// c.size is fixed at construction, so reading it here is safe.
+	keymap := make(map[K]*entry[V], min(c.size, initialCapacity))
+	empty := make(map[K]*flight)
+
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	c.keymap = make(map[K]*entry[V], c.size)
+	flights := c.flights
+
+	c.keymap = keymap
+	c.flights = empty
+
+	c.vic.reset()
+
+	return flights
 }
 
-// Remove deletes the cache entry for the specified key.
-// If a lookup for the key is in flight, its result will not be cached.
+// Remove deletes the entry for the key. If a lookup for it is in flight, its
+// result will not be cached, and the callers waiting on it are released and retry
+// with a fresh lookup.
 func (c *Cache[K, V]) Remove(key K) {
+	// Finish the invalidated flight after the lock is released: see [Cache.Reset].
+	if fl := c.removeLocked(key); fl != nil {
+		fl.finish()
+	}
+}
+
+// removeLocked drops the entry and deregisters the flight for the key, returning
+// the invalidated flight (if any) for the caller to finish once the lock is
+// released.
+func (c *Cache[K, V]) removeLocked(key K) *flight {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	delete(c.keymap, key)
+	c.drop(key)
+
+	fl, ok := c.flights[key]
+	if !ok {
+		return nil
+	}
+
+	delete(c.flights, key)
+
+	return fl
 }
 
-// PurgeExpired removes all expired completed entries from the cache and
-// returns the number of entries removed. In-flight lookups are not affected.
-// NOTE: revived stale values (see [WithStaleIfError]) are stored as expired
-// entries and are therefore purged too, forfeiting stale protection for
-// their keys until the next successful lookup.
+// PurgeExpired removes every expired entry and returns how many it removed.
+// Lookups in flight are not affected.
+//
+// NOTE: this forfeits stale-if-error protection for every key it purges, not only for
+// those a failed refresh already revived: any value retained to be served stale rides on
+// an expired entry. Calling PurgeExpired on a timer voids the protection that
+// [Config.MaxStale] and [Config.MaxStaleOnFailure] provide, before any outage happens.
+//
+// NOTE: it is the longest hold of the exclusive write lock this package takes, blocking
+// every other caller for the whole pass. Calling it is rarely necessary: an expired
+// entry is reclaimed for free by the next store that needs its room.
 func (c *Cache[K, V]) PurgeExpired() int {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	cuttime := time.Now()
 	purged := 0
-
-	for h, d := range c.keymap {
-		if (d.wait == nil) && d.expireAt.Before(cuttime) {
-			delete(c.keymap, h)
-
-			purged++
+	forget := func(key K, _ *entry[V]) {
+		if _, ok := c.keymap[key]; !ok {
+			return // a queue naming a key the map does not hold must not be counted
 		}
+
+		delete(c.keymap, key)
+
+		purged++
 	}
+
+	// Error residue and revived values are stored ALREADY expired, so every one of them
+	// goes: take both queues wholesale.
+	c.vic.residue.drain(forget)
+	c.vic.stale.drain(forget)
+
+	c.purgeValues(time.Now(), forget)
 
 	return purged
 }
 
-// Lookup retrieves the value for a key, performing single-flight deduplication for concurrent requests.
-// Returns cached value if not expired; coalesces duplicate in-flight requests; evicts old/expired entries on capacity.
-// Only successful values are cached for the TTL: errors are not cached (no negative caching), so every error triggers a fresh lookup on the next call.
-// With [WithStaleIfError], a failed refresh may instead return the last known good value with a nil error.
-// If the entry is removed (e.g. via [Cache.Remove] or [Cache.Reset]) while a lookup is in flight, the result is returned to its callers but not cached.
-func (c *Cache[K, V]) Lookup(ctx context.Context, key K) (V, error) {
-	// Fast path: a fresh cached value only requires the read lock.
-	if item, ok := c.fresh(key); ok {
-		return item.val, item.err
-	}
-
-	return c.lookupSlow(ctx, key)
-}
-
-// fresh returns the entry for the given key if it holds a non-expired
-// completed value.
-// The read lock is released via defer because this is the first map access
-// for the key: an unhashable key (e.g. an interface holding a slice) panics
-// here, and the lock must not leak with the panic. Later map accesses reuse a
-// key that has already hashed successfully.
-func (c *Cache[K, V]) fresh(key K) (*entry[V], bool) {
-	c.mux.RLock()
-	defer c.mux.RUnlock()
-
-	item, ok := c.keymap[key]
-
-	return item, ok && item.usable(false)
-}
-
-// lookupSlow coalesces onto an in-flight lookup for the key, or performs the
-// external lookup when the cache holds no usable entry.
-func (c *Cache[K, V]) lookupSlow(ctx context.Context, key K) (V, error) {
-	c.mux.Lock()
-
-	waited := false
-
-	for {
-		item, ok := c.keymap[key]
-
-		if !ok {
-			// No entry: this caller performs the external lookup.
-			return c.fetch(ctx, key)
-		}
-
-		if item.usable(waited) {
-			c.mux.Unlock()
-			return item.val, item.err
-		}
-
-		if item.wait == nil {
-			// Expired completed entry: this caller refreshes it.
-			return c.fetch(ctx, key)
-		}
-
-		// Another external lookup is already in progress,
-		// waiting for completion and return values from cache.
-		c.mux.Unlock()
-
-		// Wait until the external lookup is completed,
-		// or the Context is canceled.
-		// NOTE: when both channels are ready at the same instant, select
-		// picks pseudo-randomly: a waiter whose context ends as the flight
-		// completes may observe either outcome. This nondeterminism is
-		// inherent and documented in the package comment.
-		select {
-		case <-ctx.Done():
-			// A waiter must never close item.wait: it is owned by the
-			// in-flight goroutine, which closes it when lookupFn returns.
-			// Closing it here would double-close and panic.
-			var zero V
-
-			return zero, fmt.Errorf("%w: %w", ErrLookupAborted, ctx.Err())
-		case <-item.wait:
-		}
-
-		// Re-evaluate the cache state from scratch: the entry may have
-		// completed, been removed (Remove, Reset, panic recovery, or a
-		// canceled lookup), or been replaced by a new in-flight lookup.
-		waited = true
-
-		c.mux.Lock()
-	}
-}
-
-// fetch performs the external lookup as the single producer for the key,
-// publishing the in-flight placeholder and then the final result.
-// NOTE: it must be called with the write lock held; it releases it.
-func (c *Cache[K, V]) fetch(ctx context.Context, key K) (V, error) {
-	var zero V
-
-	ctxErr := ctx.Err()
-	if ctxErr != nil {
-		// Never start an external lookup with an already-ended context.
-		c.mux.Unlock()
-		return zero, fmt.Errorf("%w: %w", ErrLookupAborted, ctxErr)
-	}
-
-	wait := make(chan struct{})
-	finalized := false
-
-	defer func() {
-		if !finalized {
-			// lookupFn panicked: remove the in-flight placeholder so waiters
-			// observe a terminal state (missing entry) instead of busy-spinning
-			// on a closed wait channel. The panic propagates to the caller.
-			c.abortFlight(key, wait)
-		}
-
-		close(wait)
-	}()
-
-	// Carry the last known good value through the flight, so that a failed
-	// refresh can serve it (see [WithStaleIfError]).
-	staleVal, staleUntil := c.staleFrom(c.keymap[key])
-
-	c.set(key, zero, nil, wait)
-
-	if !staleUntil.IsZero() {
-		// Replace (not mutate) the just-installed placeholder:
-		// entries are immutable once stored.
-		c.keymap[key] = &entry[V]{wait: wait, val: staleVal, staleUntil: staleUntil}
-	}
-
-	c.mux.Unlock()
-
-	val, err := c.lookupFn(ctx, key)
-
-	val, err = c.publish(ctx, key, wait, val, err)
-
-	finalized = true
-
-	return val, err
-}
-
-// staleFrom extracts the last known good value and its serving deadline from
-// the entry being replaced by a refresh flight, when stale-if-error is
-// enabled. A previously revived stale entry keeps its original deadline; a
-// regular value entry gets its expiration plus maxStale; error residue and
-// missing entries yield no stale value.
-func (c *Cache[K, V]) staleFrom(old *entry[V]) (V, time.Time) {
-	if (c.maxStale <= 0) || (old == nil) || (old.err != nil) {
-		var zero V
-
-		return zero, time.Time{}
-	}
-
-	if !old.staleUntil.IsZero() {
-		return old.val, old.staleUntil
-	}
-
-	return old.val, old.expireAt.Add(c.maxStale)
-}
-
-// abortFlight removes the in-flight placeholder identified by its wait
-// channel, leaving a terminal state (missing entry) for waiters to observe.
-func (c *Cache[K, V]) abortFlight(key K, wait chan struct{}) {
-	c.mux.Lock()
-
-	if item, ok := c.keymap[key]; ok && (item.wait == wait) {
-		delete(c.keymap, key)
-	}
-
-	c.mux.Unlock()
-}
-
-// publish stores the outcome of the lookup flight identified by its wait
-// channel and returns the outcome the flight's caller must receive.
-// If the placeholder was removed (Remove or Reset) mid-flight, the outcome is
-// discarded: it is still returned to the flight's caller but not cached.
-// If the lookup failed while a stale value is available (see
-// [WithStaleIfError]), the stale value is revived and returned with a nil
-// error, regardless of the failure's cause: serving the last known good value
-// beats retrying an upstream that may be hanging.
-// Otherwise, if the lookup failed with the producing caller's own context
-// error, the placeholder is removed instead of publishing the context-induced
-// error, so that a coalesced waiter with a live context retries the lookup.
-// NOTE: the context check uses errors.Is against ctx.Err(), which matches
-// sentinel identity rather than provenance: a lookup error wrapping an
-// unrelated context.DeadlineExceeded can be misclassified when the producing
-// context has also ended, turning an error residue into a waiter retry.
-// Remaining genuine errors are published and shared with waiters as usual.
-func (c *Cache[K, V]) publish(ctx context.Context, key K, wait chan struct{}, val V, err error) (V, error) {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	item, ok := c.keymap[key]
-	if !ok || (item.wait != wait) {
-		// The placeholder was removed (Remove or Reset) mid-flight:
-		// the result is returned to this caller but not cached.
-		return val, err
-	}
-
-	if err == nil {
-		c.set(key, val, nil, nil)
-
-		return val, nil
-	}
-
-	if time.Now().Before(item.staleUntil) {
-		// Stale-if-error: revive the last known good value carried by the
-		// placeholder instead of publishing the error. The revived entry
-		// stays expired (zero expireAt), so the next call attempts a fresh
-		// lookup again. Reclaim any capacity excess first: the placeholder
-		// for this key is never evicted, so the revived entry cannot be its
-		// own victim.
-		c.makeRoom(key)
-
-		c.keymap[key] = &entry[V]{val: item.val, staleUntil: item.staleUntil}
-
-		return item.val, nil
-	}
-
-	if (ctx.Err() != nil) && errors.Is(err, ctx.Err()) {
-		delete(c.keymap, key)
-
-		return val, err
-	}
-
-	c.set(key, val, err, nil)
-
-	return val, err
-}
-
-// set adds or updates the cache entry for the given key with the provided value.
-// If the cache is over its capacity, it frees up space by removing expired or
-// old entries, also reclaiming any excess accumulated while more than `size`
-// distinct keys were in flight at once.
-// If the key already exists in the cache, it will update the entry with the new value.
+// purgeValues removes the expired values: it sifts them out of the head of the queue
+// one at a time, and falls back to rebuilding the heap around the survivors once more
+// than [bulkPurgeRatio] of them have gone.
+//
+// The values are ordered by expiration, so the expired ones are exactly the head of the
+// queue and the valid ones are never looked at.
 // NOTE: this is not thread-safe, it should be called within a mutex lock.
-func (c *Cache[K, V]) set(key K, val V, err error, wait chan struct{}) {
-	c.makeRoom(key)
+func (c *Cache[K, V]) purgeValues(now time.Time, forget func(key K, item *entry[V])) {
+	expired := func(item *entry[V]) bool { return item.expired(now) }
 
-	var expireAt time.Time
+	budget := (c.vic.values.len() / bulkPurgeRatio) + 1
 
-	if (err == nil) && (wait == nil) {
-		// Only successful completed lookups are cached for the TTL
-		// (including legitimate nil values): errors are never cached
-		// (no negative caching) and in-flight placeholders (wait != nil)
-		// must stay expired so duplicate callers wait on the channel.
-		expireAt = time.Now().Add(c.entryTTL(key, val))
-	}
-
-	c.keymap[key] = &entry[V]{
-		wait:     wait,
-		err:      err,
-		expireAt: expireAt,
-		val:      val,
-	}
-}
-
-// entryTTL returns the time-to-live for a new entry: the per-entry override
-// when a TTL function is configured and returns a positive duration (see
-// [WithTTLFunc]), or the cache-wide default otherwise.
-func (c *Cache[K, V]) entryTTL(key K, val V) time.Duration {
-	if c.ttlFn != nil {
-		if d := c.ttlFn(key, val); d > 0 {
-			return d
-		}
-	}
-
-	return c.ttl
-}
-
-// makeRoom evicts entries until the cache fits its capacity target for
-// storing the given key. Eviction can fall short when the remainder is made
-// of in-flight placeholders, which are never evicted.
-// NOTE: this is not thread-safe, it should be called within a mutex lock.
-func (c *Cache[K, V]) makeRoom(key K) {
-	target := c.size
-
-	if _, ok := c.keymap[key]; !ok {
-		// make room for the new entry
-		target--
-	}
-
-	for (len(c.keymap) > target) && c.evict() {
-	}
-}
-
-// evict removes either the first expired entry found or the oldest entry by
-// expiration deadline from the cache, reporting whether an entry was removed.
-// In-flight placeholders (entries with a non-nil wait channel) are never evicted,
-// as removing them would break single-flight deduplication.
-// NOTE: this is not thread-safe, it should be called within a mutex lock.
-func (c *Cache[K, V]) evict() bool {
-	cuttime := time.Now()
-	found := false
-
-	var (
-		oldest    time.Time
-		oldestkey K
-	)
-
-	for h, d := range c.keymap {
-		if d.wait != nil {
-			// skip in-flight placeholders
-			continue
+	for range budget {
+		key, item, ok := c.vic.values.top()
+		if !ok || !expired(item) {
+			return // the head is valid, so nothing behind it has expired either
 		}
 
-		if d.expireAt.Before(cuttime) {
-			delete(c.keymap, h)
-			return true
-		}
-
-		if !found || d.expireAt.Before(oldest) {
-			oldest = d.expireAt
-			oldestkey = h
-			found = true
-		}
+		forget(key, item)
+		c.vic.values.remove(item)
 	}
 
-	if found {
-		delete(c.keymap, oldestkey)
+	// The budget ran out. If it ran out exactly ON the last expired entry there is
+	// nothing left to remove, and the pass below would walk every survivor to find that
+	// out.
+	if _, item, ok := c.vic.values.top(); !ok || !expired(item) {
+		return
 	}
 
-	return found
+	// Too many have expired to sift out one by one: keep the survivors and rebuild the
+	// heap around them, in one linear pass.
+	c.vic.values.partition(expired, forget)
 }

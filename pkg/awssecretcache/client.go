@@ -16,22 +16,12 @@ type Cache struct {
 	cache *sfcache.Cache[string, *awssm.GetSecretValueOutput]
 }
 
-// New constructs a Secrets Manager cache with single-flight lookups and TTL-based storage.
+// New constructs a Secrets Manager cache with single-flight lookups and TTL-based
+// storage. The returned Cache is safe for concurrent use.
 //
-// It addresses two common production problems: repeated network latency from
-// fetching the same secret on every call, and duplicate upstream requests when
-// many goroutines request an expired key at the same time.
-//
-// Key features:
-//   - fixed-size cache capacity via size to bound memory use;
-//   - TTL-driven refresh via ttl to keep rotated secrets up to date;
-//   - option-based AWS and client customization for real or mocked backends.
-//
-// Edge cases: a size <= 0 is clamped to a capacity of 1, and a ttl <= 0
-// disables value caching (every call performs a fresh upstream lookup) while
-// still coalescing concurrent lookups for the same key via single-flight.
-//
-// The returned Cache is safe for concurrent use.
+// A size <= 0 is clamped to a capacity of 1. A ttl <= 0 disables value caching (every
+// call performs a fresh upstream lookup) while still coalescing concurrent lookups for
+// the same key.
 func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cache, error) {
 	cfg, err := loadConfig(ctx, opts...)
 	if err != nil {
@@ -51,14 +41,13 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 		return smclient.GetSecretValue(ctx, input)
 	}
 
-	var sfopts []sfcache.Option[string, *awssm.GetSecretValueOutput]
-
-	if cfg.maxStale > 0 {
-		sfopts = append(sfopts, sfcache.WithStaleIfError[string, *awssm.GetSecretValueOutput](cfg.maxStale))
-	}
-
 	return &Cache{
-		cache: sfcache.New(lookupFn, size, ttl, sfopts...),
+		cache: sfcache.New(lookupFn, sfcache.Config{
+			Size:              size,
+			TTL:               ttl,
+			MaxStale:          cfg.maxStale,
+			MaxStaleOnFailure: cfg.maxStaleOnFailure,
+		}),
 	}, nil
 }
 
@@ -68,21 +57,27 @@ func New(ctx context.Context, size int, ttl time.Duration, opts ...Option) (*Cac
 // goroutine performs the upstream GetSecretValue call while concurrent callers
 // for the same key wait and share that result (single-flight behavior).
 //
-// This reduces latency variance, avoids API bursts, and provides a single
-// entry point when callers need metadata in GetSecretValueOutput in addition to
-// the secret payload.
+// Use it when callers need the metadata in GetSecretValueOutput in addition to the
+// secret payload.
 //
 // Error fan-out: when the upstream GetSecretValue call fails, that error is
 // shared with the callers coalesced into the same in-flight lookup, with two
 // exceptions: a failure caused by the initiating caller's own context makes
 // one waiting caller retry the lookup with its own context instead, and a
 // caller whose own context ends while waiting receives an error wrapping
-// [github.com/tecnickcom/nurago/pkg/sfcache.ErrLookupAborted]. Failed lookups
+// [github.com/tecnickcom/nurago/pkg/sfcache.ErrLookupAborted]. The first
+// exception is matched on the error's identity, so an SDK timeout error, which
+// wraps context.DeadlineExceeded, also makes one waiting caller retry when the
+// initiating caller's context has ended too: that costs one extra upstream call
+// against an already timing-out endpoint, never a wrong result. Failed lookups
 // are not cached, so a subsequent call after the flight completes triggers a
-// fresh upstream request. Callers that need resilience against transient
-// failures can enable [WithStaleIfError] to serve the last known good secret
-// during upstream outages, or wrap this method in their own retry/backoff
-// logic.
+// fresh upstream request. Enable [WithStaleOnFailure] or [WithStaleIfError] to
+// serve the last known good secret during upstream outages.
+//
+// With either stale option enabled, a failed refresh returns the last
+// successfully fetched secret with a NIL error: callers cannot tell a stale
+// secret from a freshly fetched one, and a secret rotated upstream during an
+// outage keeps being served until the window closes.
 //
 // The returned output is shared by reference with every other caller of the
 // same key: treat it as read-only. Use [Cache.GetSecretBinary] or
@@ -152,10 +147,8 @@ func (c *Cache) GetSecretBinary(ctx context.Context, key string) ([]byte, error)
 // GetSecretString returns key as text, regardless of how it is stored in AWS.
 //
 // If the secret is stored as SecretBinary, the bytes are converted to string;
-// otherwise SecretString is returned directly. This simplifies application code
-// that expects textual secrets such as DSNs, API keys, or tokens. When the
-// response holds no value at all (neither SecretString nor SecretBinary), it
-// returns [ErrEmptySecret].
+// otherwise SecretString is returned directly. When the response holds no value at
+// all (neither SecretString nor SecretBinary), it returns [ErrEmptySecret].
 func (c *Cache) GetSecretString(ctx context.Context, key string) (string, error) {
 	val, err := c.GetSecretData(ctx, key)
 	if err != nil {
@@ -175,36 +168,45 @@ func (c *Cache) GetSecretString(ctx context.Context, key string) (string, error)
 
 // Len reports the current number of cached entries.
 //
-// It is useful for observability and capacity tuning when choosing cache size
-// and TTL values for workload patterns.
+// It is not the cache's occupancy against its capacity: it also counts the secrets
+// being fetched and the residue of a failed fetch, neither of which holds a value, so
+// it can exceed the configured size. The overrun is bounded by the caller's own
+// request concurrency plus two, never by the number of distinct secrets requested.
+//
+// During an outage, a stale serve that could evict nothing holds one secret more (see
+// [WithStaleOnFailure]). It is reclaimed by the next secret successfully fetched.
 func (c *Cache) Len() int {
 	return c.cache.Len()
 }
 
 // Reset removes all cached entries.
 //
-// Use it after broad secret rotation events or test setup/teardown when a
-// full cache invalidation is preferred over key-by-key removal.
+// Fetches in flight are invalidated: their results are returned to the callers
+// that started them but not cached, and callers waiting on them are released to
+// fetch again.
 func (c *Cache) Reset() {
 	c.cache.Reset()
 }
 
 // Remove evicts key from the cache.
 //
-// This allows targeted invalidation after rotating a single secret without
-// disrupting other hot entries.
+// A fetch in flight for key is invalidated: its result is returned to the caller
+// that started it but not cached, and callers waiting on it are released to
+// fetch again. Removing a secret whose fetch is still in flight therefore allows
+// a second concurrent upstream call for it — the price of not serving the
+// pre-rotation value.
 func (c *Cache) Remove(key string) {
 	c.cache.Remove(key)
 }
 
-// PurgeExpired removes all expired entries from the cache and returns the
-// number of entries removed.
+// PurgeExpired removes all expired entries from the cache and returns the number of
+// entries removed. It bounds how long expired secret material stays in process memory:
+// expired entries are otherwise removed only when capacity pressure or a new lookup
+// replaces them.
 //
-// Use it (e.g. on a timer) to bound how long expired secret material stays
-// in process memory: expired entries are otherwise only removed lazily,
-// when capacity pressure or a new lookup replaces them. Note that it also
-// removes values retained by [WithStaleIfError], forfeiting stale
-// protection for those keys until the next successful lookup.
+// NOTE: it also removes the values retained by [WithStaleIfError] and
+// [WithStaleOnFailure], forfeiting stale protection for those keys until the next
+// successful lookup.
 func (c *Cache) PurgeExpired() int {
 	return c.cache.PurgeExpired()
 }

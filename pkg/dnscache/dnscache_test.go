@@ -988,3 +988,27 @@ func Test_DialContext_concurrent(t *testing.T) {
 
 	wg.Wait()
 }
+
+// Test_New_honors_the_configured_size pins that the size passed to New is the
+// capacity the underlying cache is actually built with: nothing else in this
+// package's tests would notice an off-by-one in that wiring.
+func Test_New_honors_the_configured_size(t *testing.T) {
+	t.Parallel()
+
+	resolver := &mockResolver{
+		lookupHost: func(_ context.Context, host string) ([]string, error) {
+			return []string{"192.0.2." + host[:1]}, nil
+		},
+	}
+
+	const size = 3
+
+	c := New(resolver, size, time.Hour)
+
+	for i := range 4 * size {
+		_, err := c.LookupHost(t.Context(), fmt.Sprintf("%dhost.example.com", i%10))
+		require.NoError(t, err)
+
+		require.LessOrEqual(t, c.Len(), size, "the cache must never hold more than the configured size")
+	}
+}

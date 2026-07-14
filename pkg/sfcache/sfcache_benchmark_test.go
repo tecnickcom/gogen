@@ -43,7 +43,7 @@ func benchLookupFn(_ context.Context, _ string) ([]string, error) {
 // BenchmarkLookup_cache_miss measures the pure miss path on an unbounded
 // cache: every key is new and no eviction ever happens.
 func BenchmarkLookup_cache_miss(b *testing.B) {
-	c := New(benchLookupFn, math.MaxInt, 1*time.Hour)
+	c := New(benchLookupFn, Config{Size: math.MaxInt, TTL: 1 * time.Hour})
 	keys := benchKeys(b.N)
 	ctx := context.Background()
 
@@ -58,11 +58,11 @@ func BenchmarkLookup_cache_miss(b *testing.B) {
 }
 
 // BenchmarkLookup_cache_miss_at_capacity measures the steady-state miss path
-// on a full cache: every miss pays the O(size) eviction scan.
+// on a full cache: every miss must evict to make room for what it stores.
 func BenchmarkLookup_cache_miss_at_capacity(b *testing.B) {
 	size := 255
 
-	c := New(benchLookupFn, size, 1*time.Hour)
+	c := New(benchLookupFn, Config{Size: size, TTL: 1 * time.Hour})
 	ctx := context.Background()
 
 	all := benchKeys(b.N + size)
@@ -85,7 +85,7 @@ func BenchmarkLookup_cache_miss_at_capacity(b *testing.B) {
 func BenchmarkLookup_cache_hit(b *testing.B) {
 	size := 255
 
-	c := New(benchLookupFn, size, 1*time.Hour)
+	c := New(benchLookupFn, Config{Size: size, TTL: 1 * time.Hour})
 	ctx := context.Background()
 	keys := benchKeys(size)
 
@@ -109,7 +109,7 @@ func BenchmarkLookup_cache_hit(b *testing.B) {
 // BenchmarkLookup_cache_hit_parallel measures contended hits on a single hot
 // key across all CPUs.
 func BenchmarkLookup_cache_hit_parallel(b *testing.B) {
-	c := New(benchLookupFn, 16, 1*time.Hour)
+	c := New(benchLookupFn, Config{Size: 16, TTL: 1 * time.Hour})
 	ctx := context.Background()
 
 	fillCache(b, c, []string{testDomain})
@@ -132,7 +132,7 @@ func BenchmarkLookup_cache_hit_parallel(b *testing.B) {
 func BenchmarkLookup_cache_hit_parallel_keys(b *testing.B) {
 	size := 255
 
-	c := New(benchLookupFn, size, 1*time.Hour)
+	c := New(benchLookupFn, Config{Size: size, TTL: 1 * time.Hour})
 	ctx := context.Background()
 	keys := benchKeys(size)
 
@@ -159,9 +159,9 @@ func BenchmarkLookup_cache_hit_parallel_keys(b *testing.B) {
 }
 
 // BenchmarkLookup_refresh measures the refresh path: with a zero TTL every
-// lookup for the same key runs the full placeholder + lookup + publish cycle.
+// lookup for the same key runs the full startFlight + lookup + publish cycle.
 func BenchmarkLookup_refresh(b *testing.B) {
-	c := New(benchLookupFn, 16, 0)
+	c := New(benchLookupFn, Config{Size: 16, TTL: 0})
 	ctx := context.Background()
 
 	fillCache(b, c, []string{testDomain})
@@ -176,11 +176,11 @@ func BenchmarkLookup_refresh(b *testing.B) {
 	}
 }
 
-// BenchmarkLookup_refresh_stale measures the refresh path with
-// WithStaleIfError enabled: each refresh of a previously good key pays the
-// stale carry (staleFrom plus one extra placeholder allocation).
+// BenchmarkLookup_refresh_stale measures the refresh path with stale-if-error
+// enabled via Config.MaxStale: each refresh of a previously good key pays the
+// stale carry (the staleFrom capture on top of the plain refresh).
 func BenchmarkLookup_refresh_stale(b *testing.B) {
-	c := New(benchLookupFn, 16, 0, WithStaleIfError[string, []string](1*time.Hour))
+	c := New(benchLookupFn, Config{Size: 16, MaxStale: 1 * time.Hour})
 	ctx := context.Background()
 
 	fillCache(b, c, []string{testDomain})

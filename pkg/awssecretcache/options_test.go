@@ -118,3 +118,15 @@ func Test_WithStaleIfError(t *testing.T) {
 	WithStaleIfError(0)(conf)
 	require.Equal(t, time.Duration(0), conf.maxStale)
 }
+
+func Test_WithStaleOnFailure(t *testing.T) {
+	t.Parallel()
+
+	conf := &cfg{}
+
+	WithStaleOnFailure(30 * time.Second)(conf)
+	require.Equal(t, 30*time.Second, conf.maxStaleOnFailure)
+
+	WithStaleOnFailure(0)(conf)
+	require.Equal(t, time.Duration(0), conf.maxStaleOnFailure)
+}

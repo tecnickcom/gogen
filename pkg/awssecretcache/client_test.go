@@ -3,6 +3,7 @@ package awssecretcache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -678,5 +679,95 @@ func Test_single_flight(t *testing.T) {
 	for i := range n {
 		require.NoError(t, errs[i])
 		require.Equal(t, secval, results[i])
+	}
+}
+
+// Test_stale_on_failure verifies the WithStaleOnFailure pass-through: the
+// failure-anchored window protects a secret that has been idle for far longer
+// than ttl + maxStale, which is exactly the case WithStaleIfError does not
+// cover.
+//
+// The two caches share the same timeline and differ only in the option, so the
+// expiry-anchored one is the negative control: without it, this test would pass
+// just as happily if the two options were wired to the same window.
+func Test_stale_on_failure(t *testing.T) {
+	t.Parallel()
+
+	secval := "secret_string_stale_on_failure"
+
+	newClient := func() *mockSecretsManagerClient {
+		var calls int
+
+		return &mockSecretsManagerClient{
+			getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+				calls++
+
+				if calls == 1 {
+					return &awssm.GetSecretValueOutput{SecretString: &secval}, nil
+				}
+
+				return nil, errors.New("mock AWS outage")
+			},
+		}
+	}
+
+	const (
+		ttl      = 20 * time.Millisecond
+		maxStale = 20 * time.Millisecond
+	)
+
+	expiryAnchored, err := New(t.Context(), 3, ttl,
+		WithSecretsManagerClient(newClient()),
+		WithStaleIfError(maxStale),
+	)
+	require.NoError(t, err)
+
+	failureAnchored, err := New(t.Context(), 3, ttl,
+		WithSecretsManagerClient(newClient()),
+		WithStaleOnFailure(1*time.Minute),
+	)
+	require.NoError(t, err)
+
+	for _, c := range []*Cache{expiryAnchored, failureAnchored} {
+		got, err := c.GetSecretString(t.Context(), "test_key_stale_on_failure")
+		require.NoError(t, err)
+		require.Equal(t, secval, got)
+	}
+
+	// Idle well past ttl + maxStale: the RFC 5861 window is long closed.
+	time.Sleep(120 * time.Millisecond)
+
+	_, err = expiryAnchored.GetSecretString(t.Context(), "test_key_stale_on_failure")
+	require.Error(t, err, "WithStaleIfError is anchored to the expiry: an idle secret is not protected")
+
+	got, err := failureAnchored.GetSecretString(t.Context(), "test_key_stale_on_failure")
+	require.NoError(t, err, "WithStaleOnFailure is anchored to the failure: an idle secret is still protected")
+	require.Equal(t, secval, got)
+}
+
+// Test_New_honors_the_configured_size pins that the size passed to New is the
+// capacity the underlying cache is actually built with: nothing else in this
+// package's tests would notice an off-by-one in that wiring.
+func Test_New_honors_the_configured_size(t *testing.T) {
+	t.Parallel()
+
+	secval := "secret_string_size"
+
+	smclient := &mockSecretsManagerClient{
+		getSecretValue: func(_ context.Context, _ *awssm.GetSecretValueInput, _ ...func(*awssm.Options)) (*awssm.GetSecretValueOutput, error) {
+			return &awssm.GetSecretValueOutput{SecretString: &secval}, nil
+		},
+	}
+
+	const size = 3
+
+	c, err := New(t.Context(), size, time.Hour, WithSecretsManagerClient(smclient))
+	require.NoError(t, err)
+
+	for i := range 4 * size {
+		_, err := c.GetSecretString(t.Context(), fmt.Sprintf("test_key_size_%d", i))
+		require.NoError(t, err)
+
+		require.LessOrEqual(t, c.Len(), size, "the cache must never hold more than the configured size")
 	}
 }

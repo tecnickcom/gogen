@@ -3,48 +3,41 @@ Package dnscache provides a local DNS cache that is safe for concurrent use,
 bounded in size, and uses single-flight request collapsing to avoid duplicate
 lookups.
 
-The package is designed as a drop-in complement to the standard net package.
-It exposes LookupHost and DialContext helpers that cache resolved host names,
-so repeated DNS lookups for the same host return cached results and only one
-outstanding lookup is performed at a time.
+It exposes [Cache.LookupHost] and [Cache.DialContext], a drop-in replacement for
+an http.Transport DialContext.
 
-Key features:
+# Caching
 
-  - fixed-size in-memory cache with configurable capacity
-  - TTL-based expiry (one cache-wide TTL for all entries) to keep DNS data
-    fresh; authoritative DNS record TTLs are not consulted
-  - host names are matched case-insensitively and an equivalent trailing dot
-    (FQDN form) is ignored, so "Example.com", "example.com" and "example.com."
-    share a single cache entry
-  - thread-safe access for concurrent goroutines
-  - single-flight behavior so duplicate lookups share one network request
-  - optional custom net.Resolver support with sensible default behavior
-  - DialContext helper that dials the resolved IPs sequentially in the
-    resolver's preference order, interleaving address families (leading with the
-    resolver-preferred family) so a dead family is not exhausted before the
-    other is tried; family-restricted networks ("tcp4", "udp6", ...) dial only
-    addresses of the matching family
-  - configurable dialer via [WithDialer], a per-attempt dial timeout via
-    [WithDialTimeout], optional client-side address rotation via
-    [WithAddressRotation], and stale-if-error resilience via [WithStaleIfError]
+Resolved host names are cached for one cache-wide TTL; the authoritative DNS
+record TTLs are not consulted. Concurrent callers asking for the same host share
+a single lookup.
 
-Why it matters:
+Host names are matched case-insensitively and an equivalent trailing dot (FQDN
+form) is ignored, so "Example.com", "example.com" and "example.com." share a
+single entry. A custom [Resolver] therefore observes the normalized name. Host
+names that are already IP literals bypass the resolver and the cache entirely,
+mirroring net.Resolver.LookupHost.
 
-  - reduces DNS resolution latency for repeated host names
-  - lowers load on upstream resolvers and avoids query storms
-  - keeps memory usage predictable with a capped entry count
-  - makes DNS-heavy applications more resilient under concurrency
-  - provides a practical http.Transport DialContext replacement for DNS-aware
-    clients
+The configured size bounds the number of cached address sets, never the number of
+distinct hosts looked up; [Cache.Len] can exceed it.
 
-Use this package in any Go service that performs frequent DNS lookups or needs
-an efficient, safe cache for host resolution.
+# Dialing
 
-Note: the [Resolver] interface is generic. Because host names are normalized to
-their lower-case, dot-trimmed form before lookup, a custom resolver that treats
-host names case-sensitively will observe the normalized name. Host names that
-are already IP literals bypass the resolver and the cache entirely, mirroring
-net.Resolver.LookupHost.
+[Cache.DialContext] dials the resolved IPs sequentially (not raced) in the
+resolver's preference order, interleaving address families — leading with the
+resolver-preferred one — so a dead family is not exhausted before the other is
+tried. Family-restricted networks ("tcp4", "udp6", ...) dial only addresses of the
+matching family.
+
+[WithDialer] configures the dialer, [WithDialTimeout] bounds each attempt, and
+[WithAddressRotation] spreads connections across a host's records.
+
+# Stale-if-error
+
+[WithStaleOnFailure] serves the last successfully resolved addresses for a window
+measured from the failed refresh, so rarely resolved hosts are protected too.
+[WithStaleIfError] is the RFC 5861 variant, whose window is measured from the
+addresses' original expiry.
 */
 package dnscache
 
@@ -110,11 +103,12 @@ type Cache struct {
 // If resolver is nil, a default net.Resolver is used. size bounds cache
 // capacity (minimum effective size is 1), and ttl controls how long each
 // hostname resolution remains valid. Behavior can be tuned with options such
-// as [WithDialer], [WithDialTimeout], [WithAddressRotation], and
-// [WithStaleIfError].
+// as [WithDialer], [WithDialTimeout], [WithAddressRotation],
+// [WithStaleOnFailure], and [WithStaleIfError].
 //
-// This constructor is useful for DNS-heavy clients that need lower latency and
-// fewer duplicate upstream queries.
+// A size <= 0 is clamped to a capacity of 1. A ttl <= 0 disables caching entirely
+// (every call queries the resolver) while still coalescing concurrent lookups for the
+// same host: a zero ttl means "never cache", not "cache forever".
 func New(resolver Resolver, size int, ttl time.Duration, opts ...Option) *Cache {
 	if resolver == nil {
 		resolver = &net.Resolver{}
@@ -138,7 +132,12 @@ func New(resolver Resolver, size int, ttl time.Duration, opts ...Option) *Cache 
 	}
 
 	return &Cache{
-		cache:       sfcache.New(lookupFn, size, ttl, cfg.sfcacheOpts...),
+		cache: sfcache.New(lookupFn, sfcache.Config{
+			Size:              size,
+			TTL:               ttl,
+			MaxStale:          cfg.maxStale,
+			MaxStaleOnFailure: cfg.maxStaleOnFailure,
+		}),
 		dialCtx:     cfg.dialer.DialContext,
 		dialTimeout: cfg.dialTimeout,
 		rotate:      cfg.rotate,
@@ -152,9 +151,12 @@ func New(resolver Resolver, size int, ttl time.Duration, opts ...Option) *Cache 
 // are matched case-insensitively and a trailing dot is ignored; an IP literal
 // is returned as-is without a lookup.
 //
-// This reduces resolver load and avoids thundering-herd lookups.
-// The returned slice is a copy: callers may freely modify it without
-// affecting the cached entry shared with other callers.
+// The returned slice is a copy: callers may freely modify it without affecting the
+// cached entry shared with other callers.
+//
+// With [WithStaleOnFailure] or [WithStaleIfError] enabled, a failed refresh
+// returns the last successfully resolved addresses with a NIL error: callers
+// cannot tell a stale answer from a fresh one.
 func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 	val, err := c.lookup(ctx, host)
 	if err != nil {
@@ -167,16 +169,14 @@ func (c *Cache) LookupHost(ctx context.Context, host string) ([]string, error) {
 
 // DialContext resolves address through the cache and dials the resolved IPs.
 //
-// It is intended as a drop-in replacement for transport DialContext functions
-// (for example in http.Transport) when DNS caching is desired. Addresses are
-// tried sequentially (not raced), in the resolver's preference order with IPv4
-// and IPv6 candidates interleaved (leading with the resolver-preferred family)
-// until one connection succeeds; if every attempt fails, the individual errors
-// are aggregated into the returned error. For family-restricted networks
-// ("tcp4", "udp6", ...)
-// only addresses of the matching family are dialed; if none remain, an error
-// wrapping [ErrNoAddresses] is returned. Use [WithAddressRotation] for
-// client-side load spreading and [WithDialTimeout] to bound each attempt.
+// It is a drop-in replacement for a transport DialContext (for example in
+// http.Transport). Addresses are tried sequentially (not raced), in the resolver's
+// preference order with IPv4 and IPv6 candidates interleaved (leading with the
+// resolver-preferred family), until one connection succeeds; if every attempt fails,
+// the individual errors are aggregated into the returned error.
+//
+// For family-restricted networks ("tcp4", "udp6", ...) only addresses of the matching
+// family are dialed; if none remain, an error wrapping [ErrNoAddresses] is returned.
 func (c *Cache) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
@@ -206,11 +206,23 @@ func (c *Cache) DialContext(ctx context.Context, network, address string) (net.C
 }
 
 // Len reports the current number of cached host entries.
+//
+// It is not the cache's occupancy against its capacity: it also counts the hosts being
+// resolved and the residue of a failed resolution, neither of which holds addresses, so
+// it can exceed the configured size. The overrun is bounded by the caller's own request
+// concurrency plus two, never by the number of distinct hosts looked up.
+//
+// During an outage, a stale serve that could evict nothing holds one address set more
+// (see [WithStaleOnFailure]). It is reclaimed by the next host successfully resolved.
 func (c *Cache) Len() int {
 	return c.cache.Len()
 }
 
 // Reset clears all cached DNS entries.
+//
+// Resolutions in flight are invalidated: their results are returned to the
+// callers that started them but not cached, and callers waiting on them are
+// released to resolve again.
 func (c *Cache) Reset() {
 	c.cache.Reset()
 }
@@ -218,6 +230,11 @@ func (c *Cache) Reset() {
 // Remove evicts a single host entry from the cache. The host is normalized the
 // same way as in [Cache.LookupHost], so any case or trailing-dot variant of a
 // cached name removes the shared entry.
+//
+// A resolution in flight for the host is invalidated: its result is returned to
+// the caller that started it but not cached, and callers waiting on it are
+// released to resolve again — so a second concurrent resolver call for that host
+// may start alongside the one it superseded.
 func (c *Cache) Remove(host string) {
 	c.cache.Remove(normalizeHost(host))
 }
@@ -225,6 +242,11 @@ func (c *Cache) Remove(host string) {
 // PurgeExpired removes all expired host entries from the cache and returns
 // the number of entries removed. Expired entries are otherwise only removed
 // lazily, when capacity pressure or a new lookup replaces them.
+//
+// NOTE: it also removes the addresses retained by [WithStaleOnFailure] or
+// [WithStaleIfError], forfeiting stale protection for those hosts until the
+// next successful resolution. Calling it on a timer therefore voids the outage
+// protection those options provide.
 func (c *Cache) PurgeExpired() int {
 	return c.cache.PurgeExpired()
 }

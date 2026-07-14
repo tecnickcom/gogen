@@ -28,21 +28,22 @@ type cfg struct {
 	// smclient is the AWS SDK Secrets Manager client.
 	smclient SecretsManagerClient
 
-	// maxStale bounds how long past its TTL a secret may be served when a
-	// refresh fails (stale-if-error). Zero disables it.
+	// maxStale bounds how long past its original expiration a secret may be
+	// served when a refresh fails (see [WithStaleIfError]). Zero disables it.
 	maxStale time.Duration
+
+	// maxStaleOnFailure bounds how long past the first failed refresh a secret
+	// may be served (see [WithStaleOnFailure]). Zero disables it.
+	maxStaleOnFailure time.Duration
 }
 
-// loadConfig applies options and materializes the AWS SDK configuration.
+// loadConfig applies the options and materializes the AWS SDK configuration.
 //
-// It centralizes option processing so New can build the cache from one
-// validated cfg value. When no client is injected, it guarantees that
-// awsConfig is loaded once with all collected awsopt options before any Secrets
-// Manager client is used. When a client is injected via
-// [WithSecretsManagerClient], the AWS configuration is neither loaded nor used:
-// the injected client fully replaces the SDK client, so loading it would only
-// add latency and a spurious failure mode (e.g. EC2 IMDS probing in an
-// isolated/unit-test environment).
+// When no client is injected, awsConfig is loaded once with all collected awsopt
+// options before any Secrets Manager client is used. When a client is injected via
+// [WithSecretsManagerClient], the AWS configuration is neither loaded nor used: loading
+// it would only add latency and a spurious failure mode (EC2 IMDS probing in an isolated
+// environment).
 func loadConfig(ctx context.Context, opts ...Option) (*cfg, error) {
 	c := &cfg{}
 

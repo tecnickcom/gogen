@@ -1,74 +1,18 @@
 /*
-Package awssecretcache solves the performance and reliability problem of
-repeated AWS Secrets Manager lookups in high-throughput Go services. Fetching a
-secret on every request adds network latency and can exhaust API quotas; this
-package eliminates those costs with a local, in-memory, TTL-based cache backed
-by a single-flight deduplication layer.
+Package awssecretcache provides a local, thread-safe, fixed-size cache for AWS
+Secrets Manager lookups, with single-flight deduplication.
 
-# Problem
-
-AWS Secrets Manager calls are synchronous, network-bound, and subject to
-throttling. Applications that resolve secrets per-request — for database
-credentials, API keys, or feature flags — can easily become bottlenecked or
-rate-limited. A naive local cache helps, but concurrent goroutines racing to
-refresh an expired entry still trigger multiple redundant API calls. This
-package fixes both problems at once.
-
-# How It Works
-
-[New] creates a [Cache] that wraps an aws-sdk-go-v2 SecretsManager client
-(https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/secretsmanager) and
-composes it with [github.com/tecnickcom/nurago/pkg/sfcache] — a fixed-size,
-single-flight cache. The lookup flow is:
-
- 1. On the first call for a given SecretId the cache is cold; one goroutine
-    makes the real AWS API call while all other concurrent callers for the same
-    key wait and share the result (single-flight).
- 2. The result is stored in the fixed-size cache with the configured TTL; when
-    the cache is full, an already-expired entry is evicted first if any exists,
-    otherwise the entry with the earliest expiration time (expiry-ordered /
-    FIFO eviction, not LRU: reads do not refresh recency).
- 3. Subsequent calls within the TTL window are served entirely from memory.
- 4. After TTL expiry the next call triggers a fresh lookup with the same
-    single-flight guarantees. Expired entries are not proactively removed at
-    TTL: they are replaced on the next lookup or lazily evicted under capacity
-    pressure, so expired secret material can remain in process memory until
-    then. Call [Cache.Remove] or [Cache.Reset] when prompt removal matters
-    (e.g. immediately after a rotation event).
-
-# Key Features
-
-  - Single-flight deduplication: only one in-flight AWS API call per secret at
-    any moment, regardless of goroutine concurrency. Prevents thundering-herd
-    storms on TTL expiry.
-  - TTL-based expiry: each entry lives for a caller-defined duration, ensuring
-    secrets are refreshed regularly for rotation compliance.
-  - Fixed-size cache: the maximum number of entries is set at construction time
-    via the size parameter of [New], bounding memory usage predictably. When
-    full, expired entries are evicted first, then eviction is expiry-ordered
-    (FIFO), removing the entry closest to expiration.
-  - Thread-safe: all cache operations are safe for concurrent use with no
-    external synchronization required.
-  - Flexible secret retrieval: [Cache.GetSecretData] returns the raw SDK output;
-    [Cache.GetSecretString] and [Cache.GetSecretBinary] each transparently
-    handle both storage formats (SecretString and SecretBinary).
-  - Manual cache control: [Cache.Remove] evicts a single entry (useful after a
-    secret rotation event), [Cache.Reset] clears the entire cache, and
-    [Cache.PurgeExpired] promptly removes expired secret material from memory.
-  - Optional stale-if-error resilience: [WithStaleIfError] serves the last
-    known good secret during transient AWS unavailability, bounded by a
-    caller-defined maximum staleness.
-  - Pluggable AWS configuration: [WithAWSOptions], [WithSrvOptionFuncs],
-    [WithEndpointMutable], and [WithEndpointImmutable] cover every AWS SDK
-    customisation need, including local testing against mock endpoints.
-  - Mockable client: [WithSecretsManagerClient] injects a custom
-    [SecretsManagerClient], making unit tests fast and dependency-free.
+[New] wraps an aws-sdk-go-v2 SecretsManager client
+(https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/secretsmanager) in a
+[github.com/tecnickcom/nurago/pkg/sfcache] cache. Concurrent callers asking for
+the same secret share a single upstream GetSecretValue call; the result is
+cached for the TTL.
 
 # Usage
 
 	cache, err := awssecretcache.New(
 	    ctx,
-	    128,              // maximum number of cached secrets
+	    128,             // maximum number of cached secrets
 	    5*time.Minute,   // TTL per entry
 	    awssecretcache.WithEndpointMutable("https://secretsmanager.us-east-1.amazonaws.com"),
 	)
@@ -81,12 +25,54 @@ single-flight cache. The lookup flow is:
 	    return err
 	}
 
-After a secret rotation, evict the stale entry immediately:
+After a secret rotation, evict the entry immediately:
 
 	cache.Remove("prod/myapp/db-password")
 
-This package is ideal for any Go application — microservices, Lambda functions,
-batch jobs — that relies heavily on AWS Secrets Manager and needs low-latency,
-quota-friendly secret resolution.
+# Caching
+
+Only successful lookups are cached, for the TTL. Errors are shared with the
+callers coalesced onto the same lookup but never cached, so the next call
+retries.
+
+Expired entries are not removed at the TTL: they are replaced by the next lookup
+or evicted under capacity pressure, so **expired secret material can remain in
+process memory until then**. Use [Cache.Remove], [Cache.Reset] or
+[Cache.PurgeExpired] when prompt removal matters.
+
+The size given to [New] bounds the number of SECRETS held, never the number of
+distinct secrets requested. [Cache.Len] can exceed it: it also counts the
+secrets being fetched and the residue of a failed fetch, and a stale serve that
+can evict nothing holds one secret more.
+
+When the cache is full, storing a secret evicts an expired entry holding nothing
+worth keeping first, then a secret only being served stale, and only then the
+entry closest to expiration (expiry-ordered, not LRU: reads do not refresh
+recency). A fetch that FAILS evicts nothing of value.
+
+# Stale-if-error
+
+[WithStaleOnFailure] serves the last known good secret for a window measured
+from the first failed refresh, so it protects rarely read secrets too.
+[WithStaleIfError] is the RFC 5861 variant, whose window is anchored to the
+secret's original expiration and therefore only covers secrets read more often
+than ttl + maxStale.
+
+With either enabled, a failed refresh returns the last known good secret with a
+NIL error: callers cannot tell a stale secret from a fresh one, and a secret
+rotated upstream during an outage keeps being served until the window closes.
+
+# Retrieval
+
+[Cache.GetSecretData] returns the raw SDK output, shared by reference: treat it
+as read-only. [Cache.GetSecretString] and [Cache.GetSecretBinary] return a copy
+and handle both storage formats (SecretString and SecretBinary).
+
+# AWS configuration
+
+[WithAWSOptions], [WithSrvOptionFuncs], [WithEndpointMutable] and
+[WithEndpointImmutable] customize the SDK client. [WithSecretsManagerClient]
+injects a client directly, in which case the AWS configuration is neither loaded
+nor used.
 */
 package awssecretcache
