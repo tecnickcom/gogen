@@ -795,6 +795,180 @@ func TestOversizedHashRejected(t *testing.T) {
 	require.False(t, ok)
 }
 
+// storedBlobJSON builds a base64-JSON stored hash declaring the given time and
+// memory cost, with otherwise valid default-length salt and key (all zero
+// bytes). It is used to forge cost parameters the verify path must reject
+// before any Argon2 computation runs.
+func storedBlobJSON(t *testing.T, memory, time uint32) string {
+	t.Helper()
+
+	blob, err := encode.Serialize(&Hashed{
+		Params: &Params{
+			Algo:    DefaultAlgo,
+			Version: argon2.Version,
+			KeyLen:  DefaultKeyLen,
+			SaltLen: DefaultSaltLen,
+			Time:    time,
+			Memory:  memory,
+			Threads: 1,
+		},
+		Salt: make([]byte, DefaultSaltLen),
+		Key:  make([]byte, DefaultKeyLen),
+	})
+	require.NoError(t, err)
+
+	return blob
+}
+
+// storedBlobPHC is the PHC-format counterpart to storedBlobJSON: the same forged
+// cost parameters rendered as a canonical argon2id PHC string.
+func storedBlobPHC(memory, time uint32) string {
+	return marshalPHC(&Hashed{
+		Params: &Params{
+			Algo:    DefaultAlgo,
+			Version: argon2.Version,
+			Time:    time,
+			Memory:  memory,
+			Threads: 1,
+		},
+		Salt: make([]byte, DefaultSaltLen),
+		Key:  make([]byte, DefaultKeyLen),
+	})
+}
+
+func TestVerifyCostCeilingRejectsAbusiveParams(t *testing.T) {
+	t.Parallel()
+
+	p := New() // Memory 64 MiB, Time 3, default multiplier 4.
+
+	memCeiling := uint32(p.verifyMemoryCeiling())
+	timeCeiling := uint32(p.verifyTimeCeiling())
+
+	// Both forged values sit above the per-configuration ceiling yet below the
+	// absolute maxVerify* limits, so only the relative ceiling can reject them:
+	// the old absolute-only bound would have let each through and started Argon2.
+	require.Less(t, memCeiling, uint32(maxVerifyMemory))
+	require.Less(t, timeCeiling, uint32(maxVerifyTime))
+
+	cases := []struct {
+		name string
+		blob string
+	}{
+		{"json memory over ceiling", storedBlobJSON(t, memCeiling+1, DefaultTime)},
+		{"json time over ceiling", storedBlobJSON(t, DefaultMemory, timeCeiling+1)},
+		{"phc memory over ceiling", storedBlobPHC(memCeiling+1, DefaultTime)},
+		{"phc time over ceiling", storedBlobPHC(DefaultMemory, timeCeiling+1)},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Rejected before any Argon2 work, so the forged cost is never paid.
+			require.NotPanics(t, func() {
+				ok, err := p.PasswordVerify("test-password", tc.blob)
+
+				require.ErrorIs(t, err, ErrInvalidHashData)
+				require.False(t, ok)
+			})
+
+			// PasswordNeedsRehash shares the same validation path.
+			need, err := p.PasswordNeedsRehash(tc.blob)
+
+			require.ErrorIs(t, err, ErrInvalidHashData)
+			require.False(t, need)
+		})
+	}
+}
+
+func TestVerifyCostCeilingRejectsMaxMemoryBlob(t *testing.T) {
+	t.Parallel()
+
+	// The exact abuse the ceiling exists to stop: a ~200-byte blob demanding the
+	// absolute maximum 4 GiB. Under the default relative ceiling (256 MiB for a
+	// 64 MiB configuration) it is rejected at validation, before Argon2 would
+	// allocate anything.
+	p := New()
+
+	blob := storedBlobJSON(t, maxVerifyMemory, minTime)
+
+	require.NotPanics(t, func() {
+		ok, err := p.PasswordVerify("test-password", blob)
+
+		require.ErrorIs(t, err, ErrInvalidHashData)
+		require.False(t, ok)
+	})
+}
+
+func TestVerifyCostCeilingUpgradePath(t *testing.T) {
+	t.Parallel()
+
+	// The standard "raise the configuration, then rehash on the next login"
+	// upgrade: a hash minted at the default cost stays verifiable under a
+	// configuration whose memory has since been quadrupled, and verification
+	// spends only the stored cost, never the raised configured cost.
+	secret := "Test-Password-01234"
+
+	minter := New()
+
+	hash, err := minter.PasswordHash(secret)
+
+	require.NoError(t, err)
+
+	upgraded := New(WithMemory(minter.Memory * 4))
+
+	ok, err := upgraded.PasswordVerify(secret, hash)
+
+	require.NoError(t, err)
+	require.True(t, ok)
+}
+
+func TestVerifyCostMultiplierEscapeHatch(t *testing.T) {
+	t.Parallel()
+
+	// A raised multiplier widens the accepted band. A blob the default 4x ceiling
+	// rejects is admitted once the multiplier covers it, then reaches the Argon2
+	// comparison (an ordinary non-match here). Memory is kept tiny so the admitted
+	// computation stays cheap.
+	tight := New(WithMemory(minMemory), WithThreads(1))                              // ceiling 4 * minMemory
+	loose := New(WithMemory(minMemory), WithThreads(1), WithVerifyCostMultiplier(8)) // ceiling 8 * minMemory
+
+	overTight := uint32(tight.verifyMemoryCeiling()) + 1
+	require.LessOrEqual(t, uint64(overTight), loose.verifyMemoryCeiling())
+
+	blob := storedBlobJSON(t, overTight, minTime)
+
+	// The default multiplier rejects it before Argon2.
+	ok, err := tight.PasswordVerify("test-password", blob)
+
+	require.ErrorIs(t, err, ErrInvalidHashData)
+	require.False(t, ok)
+
+	// The raised multiplier admits it: validation passes, Argon2 runs, and it is
+	// an ordinary non-match rather than an error.
+	ok, err = loose.PasswordVerify("test-password", blob)
+
+	require.NoError(t, err)
+	require.False(t, ok)
+}
+
+func TestVerifyCostCeilingClampsToAbsolute(t *testing.T) {
+	t.Parallel()
+
+	// When the multiplier times the configured cost would exceed the absolute
+	// maximum, the ceiling is clamped to that maximum.
+	atMax := New(WithMemory(maxVerifyMemory), WithTime(maxVerifyTime))
+
+	require.Equal(t, uint64(maxVerifyMemory), atMax.verifyMemoryCeiling())
+	require.Equal(t, uint64(maxVerifyTime), atMax.verifyTimeCeiling())
+
+	// With headroom, the ceiling is the relative multiple of the configured cost.
+	def := New()
+
+	require.Equal(t, uint64(defaultVerifyCostMultiplier*DefaultMemory), def.verifyMemoryCeiling())
+	require.Equal(t, uint64(defaultVerifyCostMultiplier*DefaultTime), def.verifyTimeCeiling())
+}
+
 func TestVerifyZeroValueParams(t *testing.T) {
 	t.Parallel()
 

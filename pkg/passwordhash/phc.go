@@ -47,7 +47,7 @@ func marshalPHC(data *Hashed) string {
 // salt lengths from the decoded byte lengths (PHC does not store them
 // explicitly) and returns [ErrInvalidHashData] for any malformed field, so a
 // forged or corrupt string is rejected before it reaches argon2. The numeric
-// bounds enforced elsewhere ([validateVerifyData]) still apply to the result.
+// bounds enforced elsewhere ([Params.validateVerifyData]) still apply to the result.
 //
 // Only canonical strings are accepted: newline characters (which Go's base64
 // decoder would otherwise silently skip) and non-canonical trailing base64 bits

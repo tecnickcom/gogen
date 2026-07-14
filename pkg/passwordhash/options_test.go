@@ -146,6 +146,27 @@ func TestWithMaxPasswordLength(t *testing.T) {
 	require.Equal(t, v, c.maxPLen)
 }
 
+func TestWithVerifyCostMultiplier(t *testing.T) {
+	t.Parallel()
+
+	c := defaultParams()
+
+	require.Equal(t, uint32(defaultVerifyCostMultiplier), c.verifyCostMultiplier)
+
+	WithVerifyCostMultiplier(16)(c)
+	require.Equal(t, uint32(16), c.verifyCostMultiplier)
+}
+
+func TestWithVerifyCostMultiplier_clamp(t *testing.T) {
+	t.Parallel()
+
+	c := defaultParams()
+
+	// Zero would collapse the accepted band to nothing; it is clamped to 1.
+	WithVerifyCostMultiplier(0)(c)
+	require.Equal(t, uint32(minVerifyCostMultiplier), c.verifyCostMultiplier)
+}
+
 func TestWithFormat(t *testing.T) {
 	t.Parallel()
 

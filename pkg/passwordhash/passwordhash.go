@@ -19,7 +19,7 @@ This package encapsulates the full OWASP Password Storage Cheat Sheet
 (https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 recommendations into three method pairs on a single [Params] configuration object:
 
-	p := passwordhash.New() // sensible OWASP defaults
+	p := passwordhash.New() // RFC 9106 §4 defaults
 
 	// Hash a password for storage.
 	hash, err := p.PasswordHash(plaintext)
@@ -107,6 +107,10 @@ rejected), and the same deserialization bounds that protect the JSON format.
     everywhere, rejecting oversized passwords before any CPU-intensive
     computation; oversized stored hash strings are likewise rejected before
     any decoding, preventing denial-of-service via extremely long inputs.
+    These guards bound input length only; the separate cost of the Argon2
+    parameters embedded in a stored hash is bounded at verification by the
+    verify-cost multiplier (see [WithVerifyCostMultiplier]), not by any length
+    limit.
   - Transparent parameter upgrades: [Params.PasswordNeedsRehash] and
     [Params.EncryptPasswordNeedsRehash] detect hashes minted with outdated
     parameters so they can be re-hashed on the next successful login.
@@ -134,7 +138,9 @@ rejected), and the same deserialization bounds that protect the JSON format.
  3. For PHC, reconstruct the salt and key lengths from the decoded byte lengths.
  4. Validate that the embedded parameters are within accepted bounds and
     internally consistent (the salt and key byte lengths match their declared
-    sizes), rejecting forged or corrupted blobs before any computation.
+    sizes, and the embedded time and memory cost do not exceed the verify-cost
+    multiplier times this configuration's own cost), rejecting forged or
+    corrupted blobs before any computation.
  5. Validate that the stored algorithm and version match the library.
  6. Re-derive the key from the candidate password using the stored parameters
     and salt.
@@ -189,8 +195,9 @@ const (
 	// (RFC 9106 validity bound). New hashes are held to the stricter minHashKeyLen.
 	minKeyLen = 4
 	// minHashKeyLen is the smallest key length allowed when configuring new hashes.
-	// A 16-byte (128-bit) tag is the OWASP/RFC 9106 recommended floor; shorter keys
-	// remain verifiable for backward compatibility but can no longer be minted.
+	// A 16-byte (128-bit) tag is this package's own mint floor for 128-bit strength;
+	// RFC 9106 §3.1 itself permits tags down to 4 bytes (the minKeyLen verify floor),
+	// which the verify path still accepts for legacy hashes.
 	minHashKeyLen = 16
 
 	// DefaultSaltLen is the default length of the random password salt (Nonce S).
@@ -243,15 +250,30 @@ const (
 	aesKeyLen192 = 24
 	aesKeyLen256 = 32
 
-	// Maximum bounds accepted for parameters deserialized from a stored hash.
-	// The verify path derives a key using parameters embedded in the hash blob,
-	// so they are validated against these limits (and the min* constants above)
-	// to avoid panics inside argon2 and unbounded memory allocation when the
-	// blob is forged or corrupted.
+	// Absolute maximum bounds accepted for parameters deserialized from a stored
+	// hash. The verify path derives a key using parameters embedded in the hash
+	// blob, so they are validated against these limits (and the min* constants
+	// above) to avoid panics inside argon2 and unbounded memory allocation when
+	// the blob is forged or corrupted. The time and memory cost are additionally
+	// capped at verifyCostMultiplier times the verifier's own configured cost, so
+	// these absolute ceilings are only the outer envelope, not the effective
+	// per-configuration limit.
 	maxVerifyTime    = 1 << 10 // maximum number of passes (iterations) over the memory
 	maxVerifyMemory  = 1 << 22 // maximum memory size in KiB (4 GiB)
 	maxVerifyKeyLen  = 1 << 10 // maximum derived key length in bytes
 	maxVerifySaltLen = 1 << 10 // maximum salt length in bytes
+
+	// defaultVerifyCostMultiplier bounds how much more expensive a stored hash may
+	// be to verify than this configuration's own cost: the embedded time and
+	// memory may reach this multiple of the configured Time/Memory (capped at the
+	// absolute maxVerify* ceilings above) before the blob is rejected. It stops a
+	// single forged or corrupt row from pinning a verifier far above its real
+	// cost, while leaving headroom for the standard "raise the configuration, then
+	// rehash on the next login" upgrade path — a freshly minted hash costs exactly
+	// 1x and legacy hashes cost less than the current configuration, so neither is
+	// ever rejected by this bound. Tune it with [WithVerifyCostMultiplier].
+	defaultVerifyCostMultiplier = 4
+	minVerifyCostMultiplier     = 1
 
 	// maxHashLen is the maximum accepted length in bytes of an encoded hash
 	// string passed to the verification and rehash-check methods. The verify
@@ -355,6 +377,14 @@ type Params struct {
 	// format. It always includes format itself; see WithFormat.
 	acceptedFormats uint8
 
+	// verifyCostMultiplier bounds the Argon2 time and memory a stored hash may
+	// demand at verification to this multiple of the configured Time/Memory
+	// (capped at the absolute maxVerify* ceilings). It defends against a forged or
+	// corrupt stored blob pinning a verifier far above its real cost; see
+	// [WithVerifyCostMultiplier]. It never rejects a freshly minted hash, whose
+	// cost equals the configured cost (a 1x multiple).
+	verifyCostMultiplier uint32
+
 	// rnd is the random generator.
 	rnd *random.Rnd
 }
@@ -375,23 +405,26 @@ type Hashed struct {
 // defaultParams returns the default parameter values.
 func defaultParams() *Params {
 	return &Params{
-		Algo:            DefaultAlgo,
-		Version:         argon2.Version,
-		KeyLen:          DefaultKeyLen,
-		SaltLen:         DefaultSaltLen,
-		Time:            DefaultTime,
-		Memory:          DefaultMemory,
-		Threads:         defaultThreads,
-		minPLen:         DefaultMinPasswordLength,
-		maxPLen:         DefaultMaxPasswordLength,
-		format:          FormatJSON,
-		acceptedFormats: formatBit(FormatJSON),
-		rnd:             random.New(nil),
+		Algo:                 DefaultAlgo,
+		Version:              argon2.Version,
+		KeyLen:               DefaultKeyLen,
+		SaltLen:              DefaultSaltLen,
+		Time:                 DefaultTime,
+		Memory:               DefaultMemory,
+		Threads:              defaultThreads,
+		minPLen:              DefaultMinPasswordLength,
+		maxPLen:              DefaultMaxPasswordLength,
+		format:               FormatJSON,
+		acceptedFormats:      formatBit(FormatJSON),
+		verifyCostMultiplier: defaultVerifyCostMultiplier,
+		rnd:                  random.New(nil),
 	}
 }
 
-// New creates a [Params] instance with OWASP-recommended Argon2id defaults,
-// then applies any provided [Option] functions.
+// New creates a [Params] instance with Argon2id defaults matching the second
+// recommended option set of RFC 9106 §4 (stronger than the OWASP Password
+// Storage Cheat Sheet minimum of m=19 MiB, t=2, p=1), then applies any provided
+// [Option] functions.
 //
 // Defaults:
 //   - Algorithm:       argon2id (RFC 9106)
@@ -473,13 +506,21 @@ func (ph *Params) PasswordHash(password string) (string, error) {
 // returning an error instead of letting them authenticate and be migrated. The
 // maximum-length guard is still applied, as it is the denial-of-service backstop.
 //
-// The bounds on parameters deserialized from the stored hash are intentionally
-// generous backstops against corrupted or forged blobs: up to 1024 passes,
-// 4 GiB of memory, and 1024-byte keys and salts. They assume stored hashes
-// originate from a trusted store (your own database); a single forged blob at
-// the upper bounds can still cost significant CPU and memory to verify. Hash
-// strings longer than 16 KiB — four times the largest blob those bounds allow —
-// are rejected before any decoding.
+// The parameters deserialized from the stored hash are validated before any
+// Argon2 work. The key and salt lengths are bounded absolutely (up to 1024
+// bytes each), while the time and memory cost are bounded relative to this
+// configuration: a stored hash may demand at most [WithVerifyCostMultiplier]
+// times the configured Time and Memory (never beyond the absolute ceilings of
+// 1024 passes and 4 GiB), so a forged or corrupt blob cannot pin a verifier far
+// above its own configured cost. The default multiplier is 4.
+//
+// Even so, hash should originate from a trusted store (your own database), not
+// from attacker-controlled input: within the accepted band a single forged or
+// corrupt row still amplifies every login attempt on that account up to the
+// ceiling's CPU and memory cost. Hash strings longer than 16 KiB are rejected
+// before any decoding, but that guard bounds string length only, not the
+// embedded-parameter cost. If untrusted input can ever reach hash, lower the
+// multiplier so the accepted band sits just above your real maximum cost.
 //
 // Returns (true, nil) on a successful match, (false, nil) on a non-match, or
 // (false, err) if password exceeds the configured maximum length, or if the
@@ -720,7 +761,7 @@ func (ph *Params) passwordVerifyData(password string, data *Hashed) (bool, error
 		return false, fmt.Errorf("%w: %d > %d", ErrPasswordTooLong, len(password), ph.maxPLen)
 	}
 
-	err := validateVerifyData(data)
+	err := ph.validateVerifyData(data)
 	if err != nil {
 		return false, err
 	}
@@ -754,7 +795,7 @@ func (ph *Params) needsRehashData(data *Hashed) (bool, error) {
 		return false, fmt.Errorf("%w: uninitialized parameters (use New)", ErrInvalidParams)
 	}
 
-	err := validateVerifyData(data)
+	err := ph.validateVerifyData(data)
 	if err != nil {
 		return false, err
 	}
@@ -806,7 +847,10 @@ func (ph *Params) validateHashParams() error {
 // that any hash this configuration can mint, it can also verify. The ceilings
 // matter as much as the floors — a value above the verify limit (for example
 // Time > 1024 or Memory > 4 GiB) would mint a blob that every verification path
-// rejects, a total lockout discovered only at first login. The KeyLen and
+// rejects, a total lockout discovered only at first login. Verification also
+// caps the stored time and memory at verifyCostMultiplier times the configured
+// cost, but that never rejects a freshly minted hash, whose cost equals the
+// configured cost (a 1x multiple). The KeyLen and
 // SaltLen floors are the stricter minHashKeyLen and minHashSaltLen (not the
 // looser verify-time minimums), so sub-floor hashes cannot be minted even by
 // mutating the exported fields directly; hashes that already exist outside the
@@ -835,16 +879,33 @@ func (ph *Params) validateHashCostParams() error {
 	return nil
 }
 
+// verifyTimeCeiling is the largest time cost (passes) a stored hash may declare
+// and still be verified by this configuration: verifyCostMultiplier times the
+// configured Time, capped at the absolute maxVerifyTime. The multiplier is at
+// least 1, so this is never below the configured Time and a freshly minted hash
+// always clears it.
+func (ph *Params) verifyTimeCeiling() uint64 {
+	return min(uint64(ph.verifyCostMultiplier)*uint64(ph.Time), maxVerifyTime)
+}
+
+// verifyMemoryCeiling is the largest memory cost (KiB) a stored hash may declare
+// and still be verified by this configuration: verifyCostMultiplier times the
+// configured Memory, capped at the absolute maxVerifyMemory. Computed in uint64
+// so the product cannot overflow before it is capped.
+func (ph *Params) verifyMemoryCeiling() uint64 {
+	return min(uint64(ph.verifyCostMultiplier)*uint64(ph.Memory), maxVerifyMemory)
+}
+
 // validateVerifyData checks that the parameters deserialized from a stored
 // hash are present and within sane bounds before they are fed to argon2.IDKey.
 // It returns an error for nil or out-of-range values instead of letting argon2
 // panic (or allocate unbounded memory) on forged or corrupted hash blobs.
-func validateVerifyData(data *Hashed) error {
+func (ph *Params) validateVerifyData(data *Hashed) error {
 	if data == nil || data.Params == nil {
 		return fmt.Errorf("%w: missing hash parameters", ErrInvalidHashData)
 	}
 
-	err := validateStoredParamBounds(data.Params)
+	err := ph.validateStoredParamBounds(data.Params)
 	if err != nil {
 		return err
 	}
@@ -853,14 +914,18 @@ func validateVerifyData(data *Hashed) error {
 }
 
 // validateStoredParamBounds checks each numeric Argon2 parameter deserialized
-// from a stored hash against its accepted [min, max] verification bound.
-func validateStoredParamBounds(p *Params) error {
-	if outOfRange(uint64(p.Time), minTime, maxVerifyTime) {
-		return fmt.Errorf("%w: invalid time parameter: %d", ErrInvalidHashData, p.Time)
+// from a stored hash against its accepted [min, max] verification bound. The
+// time and memory ceilings are relative to this configuration's own cost (see
+// verifyTimeCeiling and verifyMemoryCeiling), so a forged blob cannot demand
+// much more work than the verifier legitimately does; the key and salt length
+// ceilings are the absolute maxVerify* limits, as their cost is negligible.
+func (ph *Params) validateStoredParamBounds(p *Params) error {
+	if timeCeiling := ph.verifyTimeCeiling(); outOfRange(uint64(p.Time), minTime, timeCeiling) {
+		return fmt.Errorf("%w: time=%d (allowed %d..%d)", ErrInvalidHashData, p.Time, minTime, timeCeiling)
 	}
 
-	if outOfRange(uint64(p.Memory), minMemory, maxVerifyMemory) {
-		return fmt.Errorf("%w: invalid memory parameter: %d", ErrInvalidHashData, p.Memory)
+	if memCeiling := ph.verifyMemoryCeiling(); outOfRange(uint64(p.Memory), minMemory, memCeiling) {
+		return fmt.Errorf("%w: memory=%d (allowed %d..%d)", ErrInvalidHashData, p.Memory, minMemory, memCeiling)
 	}
 
 	if p.Threads < minThreads {
@@ -883,7 +948,7 @@ func validateStoredParamBounds(p *Params) error {
 // not match its declared length is internally inconsistent (corrupt or forged);
 // rejecting it up front avoids silently treating a corrupt record as a simple
 // password mismatch. Bounds on the declared lengths are enforced by
-// [validateStoredParamBounds], so the equality below also bounds the actuals.
+// [Params.validateStoredParamBounds], so the equality below also bounds the actuals.
 func validateStoredLengths(data *Hashed) error {
 	if len(data.Key) != int(data.Params.KeyLen) {
 		return fmt.Errorf("%w: key length %d does not match declared %d", ErrInvalidHashData, len(data.Key), data.Params.KeyLen)

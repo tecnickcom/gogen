@@ -81,6 +81,31 @@ func WithMaxPasswordLength(v uint32) Option {
 	}
 }
 
+// WithVerifyCostMultiplier bounds how much more expensive a stored hash may be
+// to verify than this configuration's own cost. At verification the time and
+// memory parameters embedded in a stored hash are accepted only up to this
+// multiple of the configured [WithTime] and [WithMemory] values (never beyond
+// the absolute ceilings of 1024 passes and 4 GiB); a blob demanding more is
+// rejected as [ErrInvalidHashData] before any Argon2 computation.
+//
+// The default is 4, which leaves room for the ordinary "raise the configuration,
+// then rehash on the next login" upgrade path — a freshly minted hash costs 1x
+// and a legacy hash costs less than the current configuration, so neither is
+// rejected — while stopping a single forged or corrupt row from pinning a
+// verifier at up to 4 GiB and minutes of CPU per login attempt on that account.
+//
+// Lower it toward 1 where a stored hash could ever be attacker-controlled (a
+// "verify this hash" API, a hash copied from another system) so the accepted
+// band sits just above your real maximum cost. Raise it before a large single
+// step increase in cost, or where hashes minted at a much higher cost must stay
+// verifiable under a lower configuration. The value is clamped to a minimum of 1
+// so the accepted band can never collapse to nothing.
+func WithVerifyCostMultiplier(v uint32) Option {
+	return func(ph *Params) {
+		ph.verifyCostMultiplier = max(minVerifyCostMultiplier, v)
+	}
+}
+
 // WithFormat selects the serialization emitted by [Params.PasswordHash] and the
 // set of formats [Params.PasswordNeedsRehash] treats as current.
 //

@@ -48,11 +48,11 @@ func assertRobust(t *testing.T, what string, positive bool, err error) {
 }
 
 // fuzzCostAboveBudget reports whether hash decodes to Argon2 parameters more
-// expensive than the fuzz budget. The verify bounds are deliberately generous
-// (up to 4 GiB and 1024 passes); running those costs during fuzzing would only
-// throttle throughput, and the bounds themselves are exercised by the unit
-// tests. Threads are not bounded: the Argon2 cost is driven by memory and
-// passes, not lanes.
+// expensive than the fuzz budget. The verifier (p = New()) accepts a stored
+// time and memory up to its verify-cost multiplier times the default cost;
+// running an accepted-but-costly blob during fuzzing would only throttle
+// throughput, and the ceiling itself is exercised by the unit tests. Threads
+// are not bounded: the Argon2 cost is driven by memory and passes, not lanes.
 func fuzzCostAboveBudget(hash string) bool {
 	// Mirror the production ordering: the entry points reject oversized strings
 	// before decoding, so an oversized input is cheap for them and must not be
