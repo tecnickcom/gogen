@@ -418,8 +418,14 @@ func normalizeHost(host string) string {
 	return asciiLower(host)
 }
 
-// asciiLower folds ASCII A-Z to a-z in a single pass, allocating only when a
-// fold is actually needed so an already-lower-case host incurs no copy.
+// asciiLower folds ASCII A-Z to a-z in a single pass, leaving every non-ASCII
+// byte untouched. An already-lower-case host is returned without a copy.
+//
+// It is deliberately not strings.ToLower: DNS case-insensitivity is ASCII-only
+// (RFC 4343), whereas strings.ToLower folds Unicode and would rewrite a
+// non-ASCII label into a DIFFERENT name ("İSTANBUL" -> "istanbul", fullwidth
+// "Ａ" -> "ａ", U+212A KELVIN -> "k") before it reaches the resolver and the
+// cache key.
 func asciiLower(host string) string {
 	var b []byte
 

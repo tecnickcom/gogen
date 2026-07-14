@@ -597,6 +597,14 @@ func Test_normalizeHost(t *testing.T) {
 		{name: "root kept", host: ".", want: "."},
 		{name: "empty kept", host: "", want: ""},
 		{name: "punycode untouched", host: "xn--80ak6aa92e.com", want: "xn--80ak6aa92e.com"},
+
+		// Case folding is ASCII-only (RFC 4343): a Unicode fold would key these
+		// as a different DNS name. These cases fail under strings.ToLower.
+		{name: "dotted capital I kept", host: "İSTANBUL.example.com", want: "İstanbul.example.com"},
+		{name: "fullwidth kept", host: "ＡＢＣ.example.com", want: "ＡＢＣ.example.com"},
+		{name: "cyrillic kept", host: "АБВ.example.com", want: "АБВ.example.com"},
+		{name: "kelvin sign kept", host: "K.example.com", want: "K.example.com"},
+		{name: "invalid utf8 kept", host: "\xff\xfe.example.com", want: "\xff\xfe.example.com"},
 	}
 
 	for _, tt := range tests {
