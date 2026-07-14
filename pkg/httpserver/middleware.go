@@ -44,8 +44,8 @@ type MiddlewareFn func(args MiddlewareArgs, next http.Handler) http.Handler
 // RequestInjectHandler wraps all incoming requests and injects a logger in the request scoped context.
 //
 // Nil arguments fall back to safe defaults (slog.Default(), a new random
-// generator, and the redact.HTTPDataString redact function), so the returned
-// handler never panics on missing dependencies.
+// generator, and the shared redact.Default() redactor), so the returned handler
+// never panics on missing dependencies.
 //
 // The final log entry includes the response status code (response_code, with
 // the implicit 200 recorded for handlers that never call WriteHeader) and the
@@ -141,7 +141,7 @@ func requestInjectDefaults(logger *slog.Logger, redactFn RedactFn, rnd *random.R
 	}
 
 	if redactFn == nil {
-		redactFn = redact.HTTPDataString
+		redactFn = redact.Default().BytesToString
 	}
 
 	if rnd == nil {

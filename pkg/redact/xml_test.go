@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHTTPDataXMLElementValues(t *testing.T) {
+func TestRedactXMLElementValues(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -49,7 +49,7 @@ func TestHTTPDataXMLElementValues(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -58,12 +58,12 @@ func TestIsMatchingXMLClosingTagNameMismatch(t *testing.T) {
 
 	// Same-length closing tag with a different name must not match.
 	input := "<password>x</passw0rd>"
-	require.Equal(t, input, HTTPData(input))
+	require.Equal(t, input, Default().String(input))
 }
 
-// TestHTTPDataXMLCDATA verifies CDATA sections under sensitive elements are
+// TestRedactXMLCDATA verifies CDATA sections under sensitive elements are
 // redacted as content.
-func TestHTTPDataXMLCDATA(t *testing.T) {
+func TestRedactXMLCDATA(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -79,7 +79,7 @@ func TestHTTPDataXMLCDATA(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -105,10 +105,10 @@ func TestXMLNonFlatContent(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent: %s", tc.input)
 	}
 }
 
@@ -123,6 +123,6 @@ func TestXMLUnterminatedMarkup(t *testing.T) {
 		"<password>x<![CDATA[unterminated cdata",
 	}
 	for _, in := range unchanged {
-		require.Equal(t, in, HTTPData(in), "should be unchanged: %q", in)
+		require.Equal(t, in, Default().String(in), "should be unchanged: %q", in)
 	}
 }

@@ -87,7 +87,8 @@ func WithComponent(name string) Option {
 //
 // fn is called concurrently by simultaneous Do calls (at least once per request
 // for the query string, plus once per dump at debug level), so it must be safe
-// for concurrent use. The default redact.HTTPDataString is.
+// for concurrent use. The default redact.Default().BytesToString is; so is the
+// method value of any redact.Redactor built with redact.New.
 func WithRedactFn(fn RedactFn) Option {
 	return func(c *Client) {
 		if fn == nil {

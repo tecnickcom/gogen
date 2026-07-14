@@ -12,16 +12,18 @@ can be applied at log boundaries.
 
 # API
 
-The canonical entry points are [String], [Bytes], [AppendTo], [BytesToString]
-and [Pooled]; they all run the same redaction engine and differ only in input
-and output handling. The HTTPData* functions are retained as compatibility
-aliases.
+All redaction runs through a [Redactor]. [Default] returns the shared,
+zero-configuration instance that suits most callers:
+
+	safe := redact.Default().String(rawPayload)
+
+The entry points are [Redactor.String], [Redactor.Bytes], [Redactor.AppendTo],
+[Redactor.BytesToString] and [Redactor.Pooled]; they all run the same redaction
+engine and differ only in input and output handling.
 
 # Custom Redactors
 
-The package-level functions use the default configuration ([Default]). [New]
-builds an independent [Redactor] instance with the same API when a component
-needs different behavior:
+[New] builds an independent instance when a component needs different behavior:
 
 	re := redact.New(
 		redact.WithMarker("#REDACTED#"),          // custom placeholder
@@ -32,7 +34,19 @@ needs different behavior:
 	)
 	safe := re.String(rawPayload)
 
-Instances are immutable after construction and safe for concurrent use.
+Instances are immutable after construction and safe for concurrent use. A method
+value such as re.BytesToString satisfies the redact-function option of the
+httpclient, httpserver, and httpreverseproxy packages, which default to
+[Default] when the option is omitted.
+
+# Disabling Redaction
+
+[WithoutRules] switches off individual rule classes while the rest keep
+redacting. To disable redaction outright, pass [InsecureNoRedaction] as the
+redact function: it returns its input verbatim, so secrets are logged in the
+clear, and it is named to make that choice conspicuous wherever it appears.
+Redaction is never lost by omission — an unset option falls back to [Default],
+and a nil function is ignored — only by naming that bypass.
 
 # What It Redacts
 
@@ -151,9 +165,9 @@ matches a known prefix AND passes the Luhn checksum:
 	safe := re.String(rawPayload)
 
 The gate is instance-scoped and fixed at construction, and defaults to off. The
-package-level functions ([String], [Bytes], ...) always run with it off; a
-component that wants it must build its own [Redactor]. Enabling it may cause
-malformed or non-Luhn test numbers to be left visible.
+shared [Default] instance always runs with it off; a component that wants it
+must build its own [Redactor] with [New]. Enabling it may cause malformed or
+non-Luhn test numbers to be left visible.
 
 # Key Features
 
@@ -164,14 +178,16 @@ malformed or non-Luhn test numbers to be left visible.
 
 # Usage
 
-	safe := redact.String(rawPayload)
+	re := redact.Default()
+
+	safe := re.String(rawPayload)
 	logger.Info("request", "payload", safe)
 
 For high-throughput paths, reuse an output buffer to avoid per-call allocations:
 
 	var dst []byte
 	for _, payload := range payloads {
-		dst = redact.AppendTo(dst, payload)
+		dst = re.AppendTo(dst, payload)
 		logger.Info("request", "payload", string(dst))
 	}
 
@@ -214,349 +230,3 @@ covered by the Authorization rule); obsolete obs-fold header continuation
 lines.
 */
 package redact
-
-import (
-	"sync"
-	"unsafe"
-)
-
-// Redaction patterns and replacements.
-const (
-	// RedactionMarker is the placeholder used to replace sensitive values.
-	RedactionMarker = `***`
-)
-
-// Reusable byte constants.
-var (
-	redactedBytes = []byte(RedactionMarker) //nolint:gochecknoglobals
-
-	redactionBufferPool = sync.Pool{New: newRedactionBuffer} //nolint:gochecknoglobals
-)
-
-// String redacts sensitive data from s (headers, secret fields, and card
-// patterns; see the package documentation) and returns the sanitized string.
-// It routes through the pooled output buffer to avoid a dedicated per-call
-// allocation.
-func String(s string) string {
-	return defaultRedactor.String(s)
-}
-
-// Bytes redacts sensitive data from b and returns the result as a new byte
-// slice. The input is never modified.
-func Bytes(b []byte) []byte {
-	return defaultRedactor.Bytes(b)
-}
-
-// AppendTo redacts sensitive data from src and appends the result into dst
-// (after resetting its length to zero), allowing callers to reuse output
-// buffers across calls. Like the append built-in, it returns the possibly
-// reallocated destination slice. dst and src may share storage (an in-place
-// AppendTo(b, b) is detected and handled by redacting into a fresh buffer).
-func AppendTo(dst, src []byte) []byte {
-	return defaultRedactor.AppendTo(dst, src)
-}
-
-// Pooled redacts sensitive data from src using an internal pooled buffer and
-// passes the result to consume.
-//
-// The passed slice is only valid during the consume call and must not be
-// retained after consume returns.
-func Pooled(src []byte, consume func([]byte)) {
-	defaultRedactor.Pooled(src, consume)
-}
-
-// BytesToString redacts sensitive data from a byte slice and returns the
-// result as a string. It uses a pooled output buffer to reduce allocations and
-// is the preferred form when the caller already holds a []byte (e.g. from
-// httputil.DumpRequest / DumpResponse) and needs a string.
-func BytesToString(b []byte) string {
-	return defaultRedactor.BytesToString(b)
-}
-
-// redactInto applies all enabled redaction rules while appending output into
-// dst, which is reset to length 0 before use.
-//
-//nolint:gocognit // Deliberately flat hot loop: one dispatch pass per byte class.
-func (re *Redactor) redactInto(dst, src []byte) []byte {
-	// Tolerate a zero-value Redactor (nil marker / key memo) without panicking
-	// or emitting an empty marker; a [New]-built instance passes through here.
-	if re.marker == nil || re.keyMemo == nil {
-		re = re.usableRedactor()
-	}
-
-	dst = dst[:0]
-
-	for i := 0; i < len(src); {
-		if i == 0 || src[i-1] == '\n' {
-			if next, redacted, ok := re.appendLineStartRedactionAt(src, i, dst); ok {
-				dst = redacted
-				i = next
-
-				continue
-			}
-		}
-
-		// Digit runs are handled before the rule dispatch: no trigger byte is
-		// a digit, and identifier-heavy logs (trace ids, UUIDs) are dominated
-		// by digit runs, so they skip the dispatch call entirely.
-		if isDigitByte(src[i]) {
-			i, dst = re.appendDigitRunAt(src, i, dst)
-
-			continue
-		}
-
-		if next, redacted, ok := re.appendTriggeredRedactionAt(src, i, dst); ok {
-			dst = redacted
-			i = next
-
-			continue
-		}
-
-		if src[i] == '\n' {
-			dst = append(dst, src[i])
-			i++
-
-			continue
-		}
-
-		j := bulkTextEnd(src, i)
-		dst = append(dst, src[i:j]...)
-		i = j
-	}
-
-	return dst
-}
-
-// appendLineStartRedactionAt applies the line-anchored rules (PEM blocks and
-// sensitive HTTP headers) at the line beginning at src[i].
-func (re *Redactor) appendLineStartRedactionAt(src []byte, i int, dst []byte) (int, []byte, bool) {
-	if src[i] == '-' && re.enabled(RulePEM) {
-		if next, redacted, ok := re.appendRedactedPEMKeyAt(src, i, dst); ok {
-			return next, redacted, true
-		}
-	}
-
-	if re.enabled(RuleHeaders) {
-		// Skip leading indentation and an optional curl/resty trace decoration
-		// ("> "/"< ") so nested (indented) and trace-prefixed header lines are
-		// covered too — the value of an indented "password:" or a "> Authorization:"
-		// header leaked before. The prefix itself is preserved in the output.
-		nameStart := skipHeaderLinePrefix(src, i)
-		if valueStart, ok := re.sensitiveHeaderValueStart(src, nameStart); ok {
-			dst = append(dst, src[i:valueStart]...)
-			dst = append(dst, re.marker...)
-
-			return headerValueEnd(src, valueStart), dst, true
-		}
-	}
-
-	return 0, dst, false
-}
-
-// appendTriggeredRedactionAt dispatches the byte-triggered rules: JSON keys,
-// URL-encoded pairs, URL userinfo passwords, JWTs, XML elements, inline PEM
-// blocks, and vendor credential tokens.
-//
-//nolint:gocyclo,cyclop // Irreducible one-case-per-rule dispatch switch.
-func (re *Redactor) appendTriggeredRedactionAt(src []byte, i int, dst []byte) (int, []byte, bool) {
-	if rule := triggerRule(src[i]); rule == 0 || !re.enabled(rule) {
-		return 0, dst, false
-	}
-
-	switch src[i] {
-	case '"':
-		if re.likelyJSONKeyStart(src, i) {
-			return re.appendRedactedSensitiveJSONAt(src, i, dst)
-		}
-		// A '"' preceded by a backslash may open an escaped JSON key (a JSON
-		// document embedded as a string value of another JSON document). The
-		// inline backslash test keeps ordinary quotes off the escaped path.
-		if i > 0 && src[i-1] == '\\' {
-			return re.appendRedactedEscapedJSONAt(src, i, dst)
-		}
-	case '=':
-		return re.appendRedactedURLEncodedValueAt(src, i, dst)
-	case ':':
-		return re.appendRedactedURLPasswordAt(src, i, dst)
-	case 'e':
-		return re.appendRedactedJWTAt(src, i, dst)
-	case '<':
-		return re.appendRedactedXMLValueAt(src, i, dst)
-	case '-':
-		return re.appendRedactedInlinePEMKeyAt(src, i, dst)
-	case 'g', 'x', 's', 'r', 'w', 'd', 'A', 'h', 'S':
-		return re.appendRedactedVendorTokenAt(src, i, dst)
-	}
-
-	return 0, dst, false
-}
-
-// triggerRule maps a dispatch byte to the rule class it triggers, or 0 when
-// the byte triggers no rule.
-func triggerRule(c byte) Rule {
-	switch c {
-	case '"':
-		return RuleJSON
-	case '=':
-		return RuleURLEncoded
-	case ':':
-		return RuleUserinfo
-	case 'e':
-		return RuleJWT
-	case '<':
-		return RuleXML
-	case '-':
-		return RulePEM
-	case 'g', 'x', 's', 'r', 'w', 'd', 'A', 'h', 'S':
-		return RuleVendorTokens
-	}
-
-	return 0
-}
-
-// Trigger classes for the bulk-copy scan: most bytes are trigNone and cost a
-// single table load; the rare candidate classes run their cheap prefilter
-// before breaking out to the rule dispatch.
-const (
-	trigNone byte = iota
-	trigStop
-	trigColon
-	trigJWT
-	trigDash
-	trigVendor
-)
-
-// bulkTrigger classifies every byte for bulkTextEnd: hard stops (rule bytes
-// and digits), and the prefiltered candidate starts of the userinfo (':'),
-// JWT ('e'), inline-PEM ('-'), and vendor-token rules. An escaped JSON key
-// ('\"') is caught at its '"', already a hard stop, so '\' needs no class here.
-var bulkTrigger = [256]byte{ //nolint:gochecknoglobals
-	'"': trigStop, '=': trigStop, '\n': trigStop, '<': trigStop,
-	'0': trigStop, '1': trigStop, '2': trigStop, '3': trigStop, '4': trigStop,
-	'5': trigStop, '6': trigStop, '7': trigStop, '8': trigStop, '9': trigStop,
-	':': trigColon,
-	'e': trigJWT,
-	'-': trigDash,
-	'g': trigVendor, 'x': trigVendor, 's': trigVendor, 'r': trigVendor,
-	'w': trigVendor, 'd': trigVendor, 'A': trigVendor, 'h': trigVendor,
-	'S': trigVendor,
-}
-
-// bulkTextEnd returns the end of the plain-text run starting at src[i]: the
-// scan stops at bytes that begin a redaction rule. Ordinary bytes cost one
-// table load; candidate bytes run a short prefilter so the bulk copy stays
-// tight for ordinary text.
-//
-//nolint:gocognit,gocyclo,cyclop // Deliberately flat hot loop: prefilters must stay inline.
-func bulkTextEnd(src []byte, i int) int {
-	j := i + 1
-	for j < len(src) {
-		switch bulkTrigger[src[j]] {
-		case trigStop:
-			return j
-		case trigColon:
-			if j+2 < len(src) && src[j+1] == '/' && src[j+2] == '/' {
-				return j
-			}
-		case trigJWT:
-			if j+2 < len(src) && src[j+1] == 'y' && src[j+2] == 'J' && !isWordChar(src[j-1]) {
-				return j
-			}
-		case trigDash:
-			if hasPrefixAt(src, j, "-----B") {
-				return j
-			}
-		case trigVendor:
-			if !isWordChar(src[j-1]) && isVendorTokenStart(src, j) {
-				return j
-			}
-		}
-
-		j++
-	}
-
-	return j
-}
-
-// appendDigitRunAt handles a digit at src[i]: digit runs glued to word
-// characters are identifiers and copied verbatim; free-standing runs are
-// checked as contiguous and grouped card numbers.
-func (re *Redactor) appendDigitRunAt(src []byte, i int, dst []byte) (int, []byte) {
-	if i > 0 && isWordChar(src[i-1]) {
-		j := scanDigits(src, i)
-
-		return j, append(dst, src[i:j]...)
-	}
-
-	j := scanDigits(src, i)
-
-	if !re.enabled(RuleCards) || (j < len(src) && isWordChar(src[j])) {
-		return j, append(dst, src[i:j]...)
-	}
-
-	if re.isCreditCard(src[i:j]) {
-		return j, append(dst, re.marker...)
-	}
-
-	if end, ok := re.scanGroupedCardSpan(src, i, j); ok {
-		return end, append(dst, re.marker...)
-	}
-
-	return j, append(dst, src[i:j]...)
-}
-
-func isWordChar(c byte) bool {
-	return c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
-}
-
-// backingOverlap reports whether the backing arrays of a and b overlap in
-// memory, using the same address-range test the standard library's crypto
-// packages use to reject in-place aliasing.
-func backingOverlap(a, b []byte) bool {
-	if cap(a) == 0 || cap(b) == 0 {
-		return false
-	}
-
-	aBeg := uintptr(unsafe.Pointer(unsafe.SliceData(a)))
-	bBeg := uintptr(unsafe.Pointer(unsafe.SliceData(b)))
-
-	return aBeg < bBeg+uintptr(cap(b)) && bBeg < aBeg+uintptr(cap(a))
-}
-
-func isDigitByte(c byte) bool {
-	return c >= '0' && c <= '9'
-}
-
-// newRedactionBuffer is the sync.Pool factory for reusable output buffers.
-func newRedactionBuffer() any {
-	b := make([]byte, 0, 1024)
-
-	return &b
-}
-
-func getPooledRedactionBuffer(minCap int) []byte {
-	bp, _ := redactionBufferPool.Get().(*[]byte)
-	if bp == nil {
-		b := make([]byte, 0, minCap)
-
-		return b
-	}
-
-	b := *bp
-	if cap(b) < minCap {
-		return make([]byte, 0, minCap)
-	}
-
-	return b[:0]
-}
-
-func putPooledRedactionBuffer(b []byte) {
-	// Avoid keeping very large buffers indefinitely in the pool.
-	const maxPooledCap = 1 << 20
-	if cap(b) > maxPooledCap {
-		return
-	}
-
-	b = b[:0]
-	redactionBufferPool.Put(&b)
-}

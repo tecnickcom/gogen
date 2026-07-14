@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHTTPDataURLUserinfoPassword(t *testing.T) {
+func TestRedactURLUserinfoPassword(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -42,31 +42,31 @@ func TestHTTPDataURLUserinfoPassword(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
-func TestHTTPDataURLUserinfoScanCap(t *testing.T) {
+func TestRedactURLUserinfoScanCap(t *testing.T) {
 	t.Parallel()
 
 	// An '@' beyond the bounded userinfo scan is not treated as credentials.
 	long := "http://" + strings.Repeat("a", maxUserinfoScan) + ":p@host"
-	require.Equal(t, long, HTTPData(long))
+	require.Equal(t, long, Default().String(long))
 }
 
-func TestHTTPDataUserinfoColonAfterDigits(t *testing.T) {
+func TestRedactUserinfoColonAfterDigits(t *testing.T) {
 	t.Parallel()
 
 	// A ':' reached directly after a digit run (times, ports, ratios) is not
 	// a scheme separator and must be left untouched.
-	require.Equal(t, "12:30:45", HTTPData("12:30:45"))
-	require.Equal(t, "ratio 1:2", HTTPData("ratio 1:2"))
+	require.Equal(t, "12:30:45", Default().String("12:30:45"))
+	require.Equal(t, "ratio 1:2", Default().String("ratio 1:2"))
 }
 
-// TestHTTPDataUserinfoLastAt verifies url.Parse semantics: the LAST '@'
+// TestRedactUserinfoLastAt verifies url.Parse semantics: the LAST '@'
 // before a boundary delimits the userinfo, so passwords containing an
 // unencoded '@' are hidden in full.
-func TestHTTPDataUserinfoLastAt(t *testing.T) {
+func TestRedactUserinfoLastAt(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -80,7 +80,7 @@ func TestHTTPDataUserinfoLastAt(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -94,8 +94,8 @@ func TestUserinfoScanCapIsHardNoMatch(t *testing.T) {
 	input := "://" + strings.Repeat("0", 25) + ":" + strings.Repeat("0", 260) +
 		"@" + strings.Repeat("0", 230) + "@" + strings.Repeat("0", 25) + "@"
 
-	require.Equal(t, input, HTTPData(input))
+	require.Equal(t, input, Default().String(input))
 
-	once := HTTPData(input)
-	require.Equal(t, once, HTTPData(once))
+	once := Default().String(input)
+	require.Equal(t, once, Default().String(once))
 }

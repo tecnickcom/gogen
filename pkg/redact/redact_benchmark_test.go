@@ -2,12 +2,12 @@ package redact
 
 import "testing"
 
-// Benchmarks target the canonical API; the HTTPData* aliases are one-line
-// pass-throughs with identical cost.
+// Benchmarks run against the shared Default instance, the configuration every
+// caller gets when no redact function is wired.
 
 func BenchmarkString(b *testing.B) {
 	for range b.N {
-		_ = String(benchmarkHTTPDataInput)
+		_ = Default().String(benchmarkHTTPDataInput)
 	}
 }
 
@@ -15,7 +15,7 @@ func BenchmarkBytes(b *testing.B) {
 	input := []byte(benchmarkHTTPDataInput)
 
 	for range b.N {
-		_ = Bytes(input)
+		_ = Default().Bytes(input)
 	}
 }
 
@@ -24,7 +24,7 @@ func BenchmarkAppendTo(b *testing.B) {
 	dst := make([]byte, 0, len(input))
 
 	for range b.N {
-		dst = AppendTo(dst, input)
+		dst = Default().AppendTo(dst, input)
 	}
 }
 
@@ -32,20 +32,9 @@ func BenchmarkPooled(b *testing.B) {
 	input := []byte(benchmarkHTTPDataInput)
 
 	for range b.N {
-		Pooled(input, func(out []byte) {
+		Default().Pooled(input, func(out []byte) {
 			_ = out
 		})
-	}
-}
-
-// BenchmarkHTTPDataBytesInto is kept under its historical name so results stay
-// comparable across releases; it measures the same engine as BenchmarkAppendTo.
-func BenchmarkHTTPDataBytesInto(b *testing.B) {
-	input := []byte(benchmarkHTTPDataInput)
-	dst := make([]byte, 0, len(input))
-
-	for range b.N {
-		dst = HTTPDataBytesInto(dst, input)
 	}
 }
 
@@ -58,6 +47,6 @@ func BenchmarkAppendToDigitHeavy(b *testing.B) {
 	dst := make([]byte, 0, len(benchmarkDigitHeavyInput))
 
 	for range b.N {
-		dst = AppendTo(dst, benchmarkDigitHeavyInput)
+		dst = Default().AppendTo(dst, benchmarkDigitHeavyInput)
 	}
 }

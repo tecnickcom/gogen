@@ -63,7 +63,8 @@ func WithPathParam(name string) Option {
 // A nil fn is ignored, keeping the default redaction, so the option can never
 // install a nil function that would panic while logging. fn may be called
 // concurrently by simultaneous forwarded requests, so it must be safe for
-// concurrent use. The default redact.HTTPDataString is.
+// concurrent use. The default redact.Default().BytesToString is; so is the
+// method value of any redact.Redactor built with redact.New.
 func WithRedactFn(fn RedactFn) Option {
 	return func(c *Client) {
 		if fn == nil {

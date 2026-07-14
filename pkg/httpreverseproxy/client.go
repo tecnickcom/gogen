@@ -90,7 +90,7 @@ type Client struct {
 func New(addr string, opts ...Option) (*Client, error) {
 	c := &Client{
 		pathParam: defaultPathParam,
-		redactFn:  redact.HTTPDataString,
+		redactFn:  redact.Default().BytesToString,
 	}
 
 	for _, applyOpt := range opts {
@@ -254,7 +254,7 @@ func (c *Client) newErrorHandler() errHandler {
 
 	redactFn := c.redactFn
 	if redactFn == nil {
-		redactFn = redact.HTTPDataString
+		redactFn = redact.Default().BytesToString
 	}
 
 	return func(w http.ResponseWriter, r *http.Request, err error) {

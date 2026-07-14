@@ -23,7 +23,7 @@ func TestXMLContentScanIsLinear(t *testing.T) {
 		done := make(chan struct{})
 
 		go func() {
-			_ = Bytes(input)
+			_ = Default().Bytes(input)
 
 			close(done)
 		}()
@@ -51,13 +51,13 @@ func TestXMLContentScanCorrectness(t *testing.T) {
 		{`user <token> expired`, `user <token> expired`}, // prose stays untouched
 	}
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 
 	// A large plain-text secret (no embedded comment/CDATA) must still redact:
 	// only the comment/CDATA terminator search is windowed, not plain content.
 	big := `<password>` + strings.Repeat("S", 40000) + `</password>`
-	require.NotContains(t, HTTPData(big), "SSSS", "large plain XML secret leaked")
+	require.NotContains(t, Default().String(big), "SSSS", "large plain XML secret leaked")
 }
 
 // TestInlinePEMLargeBodyNoTailLeak verifies an inline PEM body larger than the
@@ -68,7 +68,7 @@ func TestInlinePEMLargeBodyNoTailLeak(t *testing.T) {
 
 	for _, body := range []int{16384, 17000, 40000} {
 		in := `{"k":"-----BEGIN RSA PRIVATE KEY-----` + strings.Repeat("A", body) + `-----END RSA PRIVATE KEY-----"}`
-		out := HTTPData(in)
+		out := Default().String(in)
 		require.NotContains(t, out, "AAAA", "inline PEM leaked %d-byte body tail", body)
 		require.NotContains(t, out, "END RSA PRIVATE KEY", "inline PEM leaked the END marker for %d-byte body", body)
 	}
@@ -96,7 +96,7 @@ func TestNonSecretKeyAllowlistAllSurfaces(t *testing.T) {
 		"securityContext=on&user=bob",
 	}
 	for _, in := range visible {
-		require.Equal(t, in, HTTPData(in), "should stay visible: %q", in)
+		require.Equal(t, in, Default().String(in), "should stay visible: %q", in)
 	}
 
 	// Real secrets that share those stems still redact.
@@ -108,7 +108,7 @@ func TestNonSecretKeyAllowlistAllSurfaces(t *testing.T) {
 		"Proxy-Authorization: Basic SEKRIT\n": "Proxy-Authorization: ***\n",
 	}
 	for in, want := range redacts {
-		require.Equal(t, want, HTTPData(in), "should redact: %q", in)
+		require.Equal(t, want, Default().String(in), "should redact: %q", in)
 	}
 }
 
@@ -125,11 +125,11 @@ func TestSecureAndAddrTokensDropped(t *testing.T) {
 		`remote_addr=203.0.113.7&status=200`,
 	}
 	for _, in := range visible {
-		require.Equal(t, in, HTTPData(in), "should stay visible: %q", in)
+		require.Equal(t, in, Default().String(in), "should stay visible: %q", in)
 	}
 
-	require.Equal(t, expectedRedaction(`{"address":"***"}`), HTTPData(`{"address":"1 Main St"}`))
-	require.Equal(t, expectedRedaction(`{"email_addr":"***"}`), HTTPData(`{"email_addr":"a@b.com"}`))
+	require.Equal(t, expectedRedaction(`{"address":"***"}`), Default().String(`{"address":"1 Main St"}`))
+	require.Equal(t, expectedRedaction(`{"email_addr":"***"}`), Default().String(`{"email_addr":"a@b.com"}`))
 }
 
 // TestTwoWordPairKeys verifies national+id and connection+string match in all
@@ -150,8 +150,8 @@ func TestTwoWordPairKeys(t *testing.T) {
 		`{"last_name":"Doe"}`,
 	}
 	for _, in := range redacts {
-		require.NotContains(t, HTTPData(in), "123-45-6789", "pair key not redacted: %q", in)
-		require.Contains(t, HTTPData(in), "***", "pair key not redacted: %q", in)
+		require.NotContains(t, Default().String(in), "123-45-6789", "pair key not redacted: %q", in)
+		require.Contains(t, Default().String(in), "***", "pair key not redacted: %q", in)
 	}
 
 	visible := []string{
@@ -161,7 +161,7 @@ func TestTwoWordPairKeys(t *testing.T) {
 		`{"idNumber":"x"}`,
 	}
 	for _, in := range visible {
-		require.Equal(t, in, HTTPData(in), "lookalike over-redacted: %q", in)
+		require.Equal(t, in, Default().String(in), "lookalike over-redacted: %q", in)
 	}
 }
 
@@ -179,7 +179,7 @@ func TestLabeledSecretStrongOnly(t *testing.T) {
 		`{"name":"email","value":"a@b.com"}`,
 	}
 	for _, in := range visible {
-		require.Equal(t, in, HTTPData(in), "label rule over-redacted: %q", in)
+		require.Equal(t, in, Default().String(in), "label rule over-redacted: %q", in)
 	}
 
 	// Strong label values still redact the sibling.
@@ -192,7 +192,7 @@ func TestLabeledSecretStrongOnly(t *testing.T) {
 		{`{"name":"clientSecret","value":"x"}`, `{"name":"clientSecret","value":"***"}`},
 	}
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -211,14 +211,14 @@ func TestEscapedJSONWhitespace(t *testing.T) {
 		{"{\"body\":\"{\\n  \\\"password\\\": \\\"s3cr3t\\\"\\n}\"}", "{\"body\":\"{\\n  \\\"password\\\": \\\"***\\\"\\n}\"}"},
 	}
 	for _, tc := range cases {
-		require.Equal(t, tc.want, HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, tc.want, Default().String(tc.input), "input: %s", tc.input)
 
-		twice := HTTPData(HTTPData(tc.input))
-		require.Equal(t, twice, HTTPData(twice), "not convergent: %s", tc.input)
+		twice := Default().String(Default().String(tc.input))
+		require.Equal(t, twice, Default().String(twice), "not convergent: %s", tc.input)
 	}
 
 	// A backslash-heavy Windows path must not be disturbed (no mis-parse).
-	require.Equal(t, expectedRedaction(`{"path":"C:\\Users\\bob\\secret.txt"}`), HTTPData(`{"path":"C:\\Users\\bob\\secret.txt"}`))
+	require.Equal(t, expectedRedaction(`{"path":"C:\\Users\\bob\\secret.txt"}`), Default().String(`{"path":"C:\\Users\\bob\\secret.txt"}`))
 }
 
 // TestTracePrefixedHeaders verifies curl/resty per-line trace decorations
@@ -240,10 +240,10 @@ func TestTracePrefixedHeaders(t *testing.T) {
 		{"< WWW-Authenticate: Bearer realm=x", "< WWW-Authenticate: Bearer realm=x"},
 	}
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %q", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %q", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent: %q", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent: %q", tc.input)
 	}
 }
 
@@ -267,10 +267,10 @@ func TestLabeledSecretAttr(t *testing.T) {
 		{`name=John&city=NYC`, `name=John&city=NYC`},
 	}
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %q", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %q", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent: %q", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent: %q", tc.input)
 	}
 }
 
@@ -290,7 +290,7 @@ func TestLabeledSecretAttrBailPaths(t *testing.T) {
 		"<input name=\"password\" value=\"a\nb", // value crosses a line boundary
 	}
 	for _, in := range unchanged {
-		require.Equal(t, in, HTTPData(in), "should be unchanged: %q", in)
+		require.Equal(t, in, Default().String(in), "should be unchanged: %q", in)
 	}
 }
 
@@ -309,7 +309,7 @@ func TestNormalizedPairAndStrongTokens(t *testing.T) {
 
 	// A key with a non-ASCII byte routes through the normalized fallback path and
 	// still matches the pair (the ASCII words national+id are intact).
-	require.Equal(t, expectedRedaction(`{"national_id_ä":"***"}`), HTTPData(`{"national_id_ä":"123"}`))
+	require.Equal(t, expectedRedaction(`{"national_id_ä":"***"}`), Default().String(`{"national_id_ä":"123"}`))
 
 	// isStrongSecretName: strong exact token, glued root suffix, and the drop path.
 	require.True(t, defaultRedactor.isStrongSecretName([]byte("api_key")))
@@ -329,7 +329,7 @@ func TestNormalizedPairAndStrongTokens(t *testing.T) {
 func TestEscapedJSONAtInputStart(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, `\"password\":\"***\"`, HTTPData(`\"password\":\"secret\"`))
+	require.Equal(t, `\"password\":\"***\"`, Default().String(`\"password\":\"secret\"`))
 }
 
 // TestVendorSKPrefixNoDash verifies bare sk- keys stop at a dash (so
@@ -344,7 +344,7 @@ func TestVendorSKPrefixNoDash(t *testing.T) {
 		"the sk-8000 chipset",
 	}
 	for _, in := range visible {
-		require.Equal(t, in, HTTPData(in), "sk- false positive: %q", in)
+		require.Equal(t, in, Default().String(in), "sk- false positive: %q", in)
 	}
 
 	redacts := []string{
@@ -353,6 +353,6 @@ func TestVendorSKPrefixNoDash(t *testing.T) {
 		"classic sk-AbCdEfGhIjKlMnOpQrStUvWx012345 done",
 	}
 	for _, in := range redacts {
-		require.Contains(t, HTTPData(in), "***", "sk- key not redacted: %q", in)
+		require.Contains(t, Default().String(in), "***", "sk- key not redacted: %q", in)
 	}
 }

@@ -1179,10 +1179,10 @@ func TestRedactQueryTail(t *testing.T) {
 	t.Parallel()
 
 	// No query: returned unchanged (the redact function is not applied).
-	require.Equal(t, "no-query-here", redactQueryTail("no-query-here", redact.HTTPDataString))
+	require.Equal(t, "no-query-here", redactQueryTail("no-query-here", redact.Default().BytesToString))
 
 	// With a query: the tail is redacted.
-	got := redactQueryTail("p?token=SECRET", redact.HTTPDataString)
+	got := redactQueryTail("p?token=SECRET", redact.Default().BytesToString)
 	require.NotContains(t, got, "SECRET")
 	require.Contains(t, got, redact.RedactionMarker)
 }

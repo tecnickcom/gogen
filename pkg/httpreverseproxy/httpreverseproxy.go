@@ -66,7 +66,7 @@ code/status, request/response timing, and the underlying proxy error. The logged
 path and query are those of the outbound (rewritten) upstream request, since
 ReverseProxy passes the outbound request to the handler. The query and the URL
 embedded in the error are redacted via the configured [WithRedactFn] (default
-redact.HTTPDataString) so query-parameter secrets do not leak into logs. If request
+redact.Default().BytesToString) so query-parameter secrets do not leak into logs. If request
 start time is present in context (via httputil request-time helpers), response
 duration is computed from it.
 

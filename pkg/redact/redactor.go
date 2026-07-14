@@ -1,13 +1,14 @@
 package redact
 
+import "unsafe"
+
 // Redactor is a configurable instance of the redaction engine (see
-// [options.go] for the available configuration). The zero configuration
-// (from [New] without options) behaves exactly like the package-level
-// functions.
+// [options.go] for the available configuration) and the only entry point to it.
 //
 // A Redactor is immutable after construction and safe for concurrent use.
-// Always construct one with [New]: the zero value ([Redactor]{}) is not the
-// intended entry point, but it degrades to correct (uncached) redaction with
+// Always obtain one with [Default] (the shared, zero-configuration instance) or
+// [New] (an independent, configured one): the zero value ([Redactor]{}) is not
+// an intended entry point, but it degrades to correct (uncached) redaction with
 // the default marker rather than panicking — see usableRedactor.
 type Redactor struct {
 	marker      []byte
@@ -18,17 +19,26 @@ type Redactor struct {
 	keyMemo     *sensitiveKeyMemo
 }
 
-// defaultRedactor backs the package-level functions: standard marker, all
-// rules enabled, built-in tokens, and the Luhn gate off.
+// defaultRedactor is the shared zero-configuration instance returned by
+// [Default]: standard marker, all rules enabled, built-in tokens, and the Luhn
+// gate off.
 var defaultRedactor = New() //nolint:gochecknoglobals
 
-// Default returns the Redactor instance backing the package-level functions.
+// Default returns the shared, zero-configuration Redactor: the standard marker,
+// all rules enabled, the built-in token set, and the Luhn gate off. It is the
+// redactor the httpclient, httpserver, and httpreverseproxy packages fall back
+// to when no redact function is configured.
+//
+// Prefer it over New() for the default configuration: a Redactor memoizes
+// non-ASCII key classifications per instance, so sharing one keeps that cache
+// shared and bounded instead of allocating a fresh one per caller.
 func Default() *Redactor {
 	return defaultRedactor
 }
 
-// New builds a Redactor with the given options. Without options it matches
-// the package-level behavior.
+// New builds an independent Redactor with the given options. Without options it
+// is configured like [Default] but carries its own key-classification cache;
+// callers that want the default configuration should use [Default] instead.
 func New(opts ...Option) *Redactor {
 	re := &Redactor{
 		marker:  redactedBytes,
@@ -127,34 +137,17 @@ func (re *Redactor) enabled(r Rule) bool {
 	return re.disabled&r == 0
 }
 
-// markerEndsAt reports whether this instance's marker occupies the bytes
-// ending at src[j] (inclusive).
-func (re *Redactor) markerEndsAt(src []byte, j int) bool {
-	start := j + 1 - len(re.marker)
-	if start < 0 || src[j] != re.marker[len(re.marker)-1] {
+// backingOverlap reports whether the backing arrays of a and b overlap in
+// memory, using the same address-range test the standard library's crypto
+// packages use to reject in-place aliasing. Only [Redactor.AppendTo] needs it:
+// it is the sole entry point whose destination is caller-controlled.
+func backingOverlap(a, b []byte) bool {
+	if cap(a) == 0 || cap(b) == 0 {
 		return false
 	}
 
-	for k, c := range re.marker {
-		if src[start+k] != c {
-			return false
-		}
-	}
+	aBeg := uintptr(unsafe.Pointer(unsafe.SliceData(a)))
+	bBeg := uintptr(unsafe.Pointer(unsafe.SliceData(b)))
 
-	return true
-}
-
-// markerAt reports whether this instance's marker starts at src[i].
-func (re *Redactor) markerAt(src []byte, i int) bool {
-	if i+len(re.marker) > len(src) {
-		return false
-	}
-
-	for k, c := range re.marker {
-		if src[i+k] != c {
-			return false
-		}
-	}
-
-	return true
+	return aBeg < bBeg+uintptr(cap(b)) && bBeg < aBeg+uintptr(cap(a))
 }

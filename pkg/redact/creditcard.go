@@ -207,15 +207,6 @@ func hasSeparatedDigit(src []byte, i int) bool {
 	return i+1 < len(src) && (src[i] == ' ' || src[i] == '-') && isDigitByte(src[i+1])
 }
 
-// scanDigits returns the index just past the run of ASCII digits starting at i.
-func scanDigits(src []byte, i int) int {
-	for i < len(src) && isDigitByte(src[i]) {
-		i++
-	}
-
-	return i
-}
-
 // copyDigits copies src into dst and returns the number of bytes copied, or -1
 // when src does not fit, signaling more digits than any card can hold.
 func copyDigits(dst, src []byte) int {

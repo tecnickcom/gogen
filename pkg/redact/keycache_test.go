@@ -144,7 +144,7 @@ func TestNormalizeKeyDirect(t *testing.T) {
 	require.Equal(t, "x_1", normalizeKey("X-1"))
 }
 
-func TestHTTPDataKeywordBoundaries(t *testing.T) {
+func TestRedactKeywordBoundaries(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -162,7 +162,7 @@ func TestHTTPDataKeywordBoundaries(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -172,7 +172,7 @@ func TestIsSensitiveNormalizedKeyEmpty(t *testing.T) {
 	require.False(t, defaultRedactor.isSensitiveNormalizedKeyTokens(""))
 }
 
-func TestHTTPDataAcronymRunKeys(t *testing.T) {
+func TestRedactAcronymRunKeys(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -187,7 +187,7 @@ func TestHTTPDataAcronymRunKeys(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -201,9 +201,9 @@ func TestNormalizeKeyAcronymRuns(t *testing.T) {
 	require.Equal(t, "x_password", normalizeKey("XPassword"))
 }
 
-// TestHTTPDataClosedCompoundKeys covers closed-compound (concatenated, lowercase)
+// TestRedactClosedCompoundKeys covers closed-compound (concatenated, lowercase)
 // key names that previously leaked because token matching is exact-word.
-func TestHTTPDataClosedCompoundKeys(t *testing.T) {
+func TestRedactClosedCompoundKeys(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -262,14 +262,14 @@ func TestHTTPDataClosedCompoundKeys(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
 // TestGluedCompoundKeys covers all-lowercase closed compounds that have no
 // case or separator boundary to tokenize on ("newpassword", the shape HTML
 // forms use). They are matched by the bounded root-suffix rule, not by
-// substring search: the near-miss cases in TestHTTPDataClosedCompoundKeys pin
+// substring search: the near-miss cases in TestRedactClosedCompoundKeys pin
 // the other side of that boundary.
 func TestGluedCompoundKeys(t *testing.T) {
 	t.Parallel()
@@ -317,7 +317,7 @@ func TestGluedCompoundKeys(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -393,7 +393,7 @@ func TestKeyMatchingRetriesAndCompounds(t *testing.T) {
 	// The JSON rule replaces whole containers, so a false-positive plural key
 	// would destroy an entire array; a JWKS response must survive intact.
 	jwks := `{"keys":[{"kty":"RSA","n":"abc"}]}`
-	require.Equal(t, jwks, String(jwks))
+	require.Equal(t, jwks, Default().String(jwks))
 }
 
 // TestKeyMatchingConfigInteractions locks the coherence of the three matching
@@ -465,7 +465,7 @@ func TestEnvVarCompoundTokens(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 

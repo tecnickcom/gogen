@@ -95,7 +95,7 @@ func defaultClient() *Client {
 		timeout:           1 * time.Minute,
 		traceIDHeaderName: traceid.DefaultHeader,
 		component:         "-",
-		redactFn:          redact.HTTPDataString,
+		redactFn:          redact.Default().BytesToString,
 		logger:            slog.Default(),
 		rnd:               random.New(nil),
 		maxDumpSize:       defaultMaxDumpSize,

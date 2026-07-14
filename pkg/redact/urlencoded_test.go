@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHTTPDataURLEncodedNoFalsePositive(t *testing.T) {
+func TestRedactURLEncodedNoFalsePositive(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -22,14 +22,14 @@ func TestHTTPDataURLEncodedNoFalsePositive(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
-// TestHTTPDataURLFragmentParams verifies parameters in a URL fragment
+// TestRedactURLFragmentParams verifies parameters in a URL fragment
 // (OAuth 2.0 implicit-flow / SAML tokens) redact just like query params, with
 // the path before the '#' left intact.
-func TestHTTPDataURLFragmentParams(t *testing.T) {
+func TestRedactURLFragmentParams(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -46,38 +46,38 @@ func TestHTTPDataURLFragmentParams(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 		// The fix must not disturb convergence.
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent: %s", tc.input)
 	}
 }
 
-func TestHTTPDataURLEncodedSlashInKey(t *testing.T) {
+func TestRedactURLEncodedSlashInKey(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("GET /x/password=SECRET&password=SECRET")
 	want := []byte("GET /x/password=SECRET&password=***")
-	require.Equal(t, want, HTTPDataBytes(input))
+	require.Equal(t, want, Default().Bytes(input))
 }
 
-func TestHTTPDataURLEncodedNoEquals(t *testing.T) {
+func TestRedactURLEncodedNoEquals(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("GET /health HTTP/1.1")
 	want := []byte("GET /health HTTP/1.1")
-	require.Equal(t, want, HTTPDataBytes(input))
+	require.Equal(t, want, Default().Bytes(input))
 }
 
-func TestHTTPDataURLEncodedNonSensitivePreserved(t *testing.T) {
+func TestRedactURLEncodedNonSensitivePreserved(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("reference=VISIBLE&note=PUBLIC")
 	want := []byte("reference=VISIBLE&note=PUBLIC")
-	require.Equal(t, want, HTTPDataBytes(input))
+	require.Equal(t, want, Default().Bytes(input))
 }
 
-func TestHTTPDataURLEncodedKeyBoundaries(t *testing.T) {
+func TestRedactURLEncodedKeyBoundaries(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -96,11 +96,11 @@ func TestHTTPDataURLEncodedKeyBoundaries(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
-func TestHTTPDataURLEncodedValueBoundaries(t *testing.T) {
+func TestRedactURLEncodedValueBoundaries(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -121,7 +121,7 @@ func TestHTTPDataURLEncodedValueBoundaries(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -145,11 +145,11 @@ func TestQuotedValueGluedWordChars(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
 		// The fix exists for idempotency: verify it directly.
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %s", tc.input)
 	}
 }
 
@@ -167,10 +167,10 @@ func TestUnquotedValueStopsAtAngleBrackets(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %s", tc.input)
 	}
 }
 
@@ -198,10 +198,10 @@ func TestTrailingEqualsAfterRedactedPair(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %s", tc.input)
 	}
 }
 
@@ -235,9 +235,9 @@ func TestValueBoundaryBytesFenceFollowingKeys(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %s", tc.input)
 	}
 }

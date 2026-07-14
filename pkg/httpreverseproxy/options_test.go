@@ -60,7 +60,7 @@ func TestWithRedactFn(t *testing.T) {
 	t.Parallel()
 
 	sentinel := func(_ []byte) string { return "REDACTED" }
-	c := &Client{redactFn: redact.HTTPDataString}
+	c := &Client{redactFn: redact.Default().BytesToString}
 
 	WithRedactFn(sentinel)(c)
 	require.Equal(t, "REDACTED", c.redactFn(nil))

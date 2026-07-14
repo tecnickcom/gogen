@@ -93,7 +93,7 @@ func defaultConfig() *config {
 		serverIdleTimeout:         1 * time.Minute,
 		shutdownTimeout:           30 * time.Second,
 		defaultEnabledRoutes:      nil,
-		redactFn:                  redact.HTTPDataString,
+		redactFn:                  redact.Default().BytesToString,
 		middleware:                []MiddlewareFn{},
 		disableDefaultRouteLogger: make(map[DefaultRoute]bool, len(allDefaultRoutes())),
 		logger:                    logger,

@@ -26,9 +26,9 @@ func TestHeaderIndentation(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %q", tc.input)
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent: %q", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %q", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent: %q", tc.input)
 	}
 }
 
@@ -46,27 +46,27 @@ func TestNonSecretHeaderAllowlist(t *testing.T) {
 		"content-security-policy: default-src 'self'\n", // case-insensitive
 	}
 	for _, in := range visible {
-		require.Equal(t, in, HTTPData(in), "should stay visible: %q", in)
+		require.Equal(t, in, Default().String(in), "should stay visible: %q", in)
 	}
 
 	// A header whose name contains a secret token still redacts: a genuine secret
 	// (X-Amz-Security-Token) and the public Sec-WebSocket-Key handshake nonce
 	// (safe over-redaction via the `key` token — not a secret, but harmless to hide).
-	require.Equal(t, "X-Amz-Security-Token: ***\n", HTTPData("X-Amz-Security-Token: SEKRIT\n"))
-	require.Equal(t, "Sec-WebSocket-Key: ***\n", HTTPData("Sec-WebSocket-Key: dGhlIHNhbXBsZQ==\n"))
+	require.Equal(t, "X-Amz-Security-Token: ***\n", Default().String("X-Amz-Security-Token: SEKRIT\n"))
+	require.Equal(t, "Sec-WebSocket-Key: ***\n", Default().String("Sec-WebSocket-Key: dGhlIHNhbXBsZQ==\n"))
 }
 
-func TestHTTPDataAuthorizationLineBranches(t *testing.T) {
+func TestRedactAuthorizationLineBranches(t *testing.T) {
 	t.Parallel()
 
 	// Non-authorization header is left untouched.
-	require.Equal(t, []byte("X-Header: SECRET\n"), HTTPDataBytes([]byte("X-Header: SECRET\n")))
+	require.Equal(t, []byte("X-Header: SECRET\n"), Default().Bytes([]byte("X-Header: SECRET\n")))
 
 	// Authorization header value is redacted, trailing newline preserved.
-	require.Equal(t, []byte("Authorization: ***\n"), HTTPDataBytes([]byte("Authorization: Bearer SECRET\n")))
+	require.Equal(t, []byte("Authorization: ***\n"), Default().Bytes([]byte("Authorization: Bearer SECRET\n")))
 
 	// Authorization header value is redacted without a trailing newline.
-	require.Equal(t, []byte("Authorization: ***"), HTTPDataBytes([]byte("Authorization: Bearer SECRET")))
+	require.Equal(t, []byte("Authorization: ***"), Default().Bytes([]byte("Authorization: Bearer SECRET")))
 }
 
 func TestSensitiveHeaderValueStart(t *testing.T) {
@@ -134,7 +134,7 @@ func TestHeaderValueEnd(t *testing.T) {
 	require.Equal(t, len("X-Api-Key:"), headerValueEnd(src, len("X-Api-Key:")))
 }
 
-func TestHTTPDataProxyAuthorizationHeader(t *testing.T) {
+func TestRedactProxyAuthorizationHeader(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -146,26 +146,26 @@ func TestHTTPDataProxyAuthorizationHeader(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
-// TestHTTPDataAuthorizationCRLF verifies the redacted Authorization line keeps
+// TestRedactAuthorizationCRLF verifies the redacted Authorization line keeps
 // its original terminator instead of collapsing \r\n to \n.
-func TestHTTPDataAuthorizationCRLF(t *testing.T) {
+func TestRedactAuthorizationCRLF(t *testing.T) {
 	t.Parallel()
 
 	require.Equal(t,
 		[]byte("Authorization: ***\r\nHost: x\r\n"),
-		HTTPDataBytes([]byte("Authorization: Bearer SECRET\r\nHost: x\r\n")),
+		Default().Bytes([]byte("Authorization: Bearer SECRET\r\nHost: x\r\n")),
 	)
 
 	// LF-only and no-terminator variants remain correct.
-	require.Equal(t, []byte("Authorization: ***\n"), HTTPDataBytes([]byte("Authorization: Bearer SECRET\n")))
-	require.Equal(t, []byte("Authorization: ***"), HTTPDataBytes([]byte("Authorization: Bearer SECRET")))
+	require.Equal(t, []byte("Authorization: ***\n"), Default().Bytes([]byte("Authorization: Bearer SECRET\n")))
+	require.Equal(t, []byte("Authorization: ***"), Default().Bytes([]byte("Authorization: Bearer SECRET")))
 }
 
-func TestHTTPDataSensitiveHeaderNames(t *testing.T) {
+func TestRedactSensitiveHeaderNames(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -194,7 +194,7 @@ func TestHTTPDataSensitiveHeaderNames(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -204,5 +204,5 @@ func TestHeaderNameLengthBoundary(t *testing.T) {
 	t.Parallel()
 
 	long := "X-" + strings.Repeat("a", 60) + "-Security: SECRET\n"
-	require.Equal(t, "X-"+strings.Repeat("a", 60)+"-Security: ***\n", HTTPData(long))
+	require.Equal(t, "X-"+strings.Repeat("a", 60)+"-Security: ***\n", Default().String(long))
 }

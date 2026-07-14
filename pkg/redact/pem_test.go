@@ -33,9 +33,9 @@ func TestPEMPGPPrivateKey(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent: %s", tc.input)
 	}
 }
 
@@ -52,7 +52,7 @@ func TestInlinePEMScanIsLinear(t *testing.T) {
 		done := make(chan struct{})
 
 		go func() {
-			_ = Bytes(input)
+			_ = Default().Bytes(input)
 
 			close(done)
 		}()
@@ -66,7 +66,7 @@ func TestInlinePEMScanIsLinear(t *testing.T) {
 }
 
 //nolint:gosec // The PEM fixtures are fake fragments, not real credentials.
-func TestHTTPDataPEMPrivateKeys(t *testing.T) {
+func TestRedactPEMPrivateKeys(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -124,16 +124,16 @@ func TestHTTPDataPEMPrivateKeys(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input))
+			require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input))
 		})
 	}
 }
 
-// TestHTTPDataInlinePEMPrivateKeys covers PEM blocks embedded mid-line — most
+// TestRedactInlinePEMPrivateKeys covers PEM blocks embedded mid-line — most
 // commonly a JSON string value carrying a whole blob with escaped "\n"
 // sequences — and the line-start blob regression (a BEGIN line with trailing
 // content must not leak the blob nor swallow the following lines).
-func TestHTTPDataInlinePEMPrivateKeys(t *testing.T) {
+func TestRedactInlinePEMPrivateKeys(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -175,9 +175,9 @@ func TestHTTPDataInlinePEMPrivateKeys(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %s", tc.input)
 	}
 }

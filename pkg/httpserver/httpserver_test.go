@@ -540,7 +540,7 @@ func TestRequestInjectHandler_concurrentLoggerIsolation(t *testing.T) {
 
 	rnd := random.New(nil)
 	logger := slog.New(slog.DiscardHandler)
-	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.HTTPDataString, rnd, nextHandler)
+	handler := RequestInjectHandler(logger, traceid.DefaultHeader, redact.Default().BytesToString, rnd, nextHandler)
 
 	var wg sync.WaitGroup
 

@@ -54,12 +54,12 @@ func TestWithLuhnCheckIsInstanceScoped(t *testing.T) {
 	require.Equal(t, invalidLuhn, strict.String(invalidLuhn))
 	require.Equal(t, RedactionMarker, relaxed.String(invalidLuhn))
 	require.Equal(t, RedactionMarker, explicitOff.String(invalidLuhn))
-	require.Equal(t, RedactionMarker, String(invalidLuhn))
+	require.Equal(t, RedactionMarker, Default().String(invalidLuhn))
 
 	// A Luhn-valid card is redacted everywhere.
 	validLuhn := "4012888888881881"
 	require.Equal(t, RedactionMarker, strict.String(validLuhn))
-	require.Equal(t, RedactionMarker, String(validLuhn))
+	require.Equal(t, RedactionMarker, Default().String(validLuhn))
 }
 
 func TestWithExtraTokens(t *testing.T) {
@@ -84,7 +84,7 @@ func TestWithExtraTokens(t *testing.T) {
 	}
 
 	// The default instance is unaffected.
-	require.Equal(t, "floof=SECRET", String("floof=SECRET"))
+	require.Equal(t, "floof=SECRET", Default().String("floof=SECRET"))
 
 	// Unusable tokens are ignored: empty, non-alphanumeric, too long.
 	loose := New(WithExtraTokens("", "api-key", strings.Repeat("a", maxSensitiveTokenLen+1)))
@@ -112,7 +112,7 @@ func TestWithoutTokens(t *testing.T) {
 	}
 
 	// The default instance still redacts the dropped tokens.
-	require.Equal(t, `{"amount": "***"}`, String(`{"amount": 9999}`)) //nolint:testifylint // byte-exact output comparison is the point
+	require.Equal(t, `{"amount": "***"}`, Default().String(`{"amount": 9999}`)) //nolint:testifylint // byte-exact output comparison is the point
 }
 
 // TestWithoutTokensDropsRootSuffixRule verifies that dropping a token that is
@@ -141,7 +141,7 @@ func TestWithoutTokensDropsRootSuffixRule(t *testing.T) {
 	}
 
 	// The default instance is unaffected.
-	require.Equal(t, "mysecret=***", String("mysecret=SECRET"))
+	require.Equal(t, "mysecret=***", Default().String("mysecret=SECRET"))
 }
 
 //nolint:gosec // The PEM fixtures are fake fragments, not real credentials.
@@ -171,7 +171,7 @@ func TestWithoutRules(t *testing.T) {
 		require.Equal(t, tc.input, re.String(tc.input), "rule %b disabled, input: %s", tc.rule, tc.input)
 
 		// Enabled elsewhere: the default engine redacts it.
-		require.Equal(t, expectedRedaction(tc.want), String(tc.input), "default engine, input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "default engine, input: %s", tc.input)
 	}
 
 	// Combined rule sets disable together.

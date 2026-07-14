@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHTTPDataJSONNumericValues(t *testing.T) {
+func TestRedactJSONNumericValues(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -21,11 +21,11 @@ func TestHTTPDataJSONNumericValues(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
-func TestHTTPDataJSONEdgeBranches(t *testing.T) {
+func TestRedactJSONEdgeBranches(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -78,17 +78,17 @@ func TestHTTPDataJSONEdgeBranches(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input))
+			require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input))
 		})
 	}
 }
 
-func TestHTTPDataJSONNonSensitivePreserved(t *testing.T) {
+func TestRedactJSONNonSensitivePreserved(t *testing.T) {
 	t.Parallel()
 
 	input := []byte(`{"reference":"VISIBLE"}`)
 	want := []byte(`{"reference":"VISIBLE"}`)
-	require.Equal(t, want, HTTPDataBytes(input))
+	require.Equal(t, want, Default().Bytes(input))
 }
 
 func TestRedactionHelpersCoverageBranches(t *testing.T) {
@@ -120,7 +120,7 @@ func TestRedactionHelpersCoverageBranches(t *testing.T) {
 	})
 }
 
-func TestHTTPDataAuthorizationJSONKey(t *testing.T) {
+func TestRedactAuthorizationJSONKey(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -134,7 +134,7 @@ func TestHTTPDataAuthorizationJSONKey(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -168,9 +168,9 @@ func TestAppendRedactedSensitiveJSONAtNoClosingQuote(t *testing.T) {
 	require.False(t, ok)
 }
 
-// TestHTTPDataSensitiveContainerValues covers redaction of object/array values
+// TestRedactSensitiveContainerValues covers redaction of object/array values
 // under a sensitive key, which previously leaked their nested contents.
-func TestHTTPDataSensitiveContainerValues(t *testing.T) {
+func TestRedactSensitiveContainerValues(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -192,7 +192,7 @@ func TestHTTPDataSensitiveContainerValues(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -215,10 +215,10 @@ func TestParseJSONContainerEnd(t *testing.T) {
 	require.Equal(t, len(`{"a":"b`), parseJSONContainerEnd([]byte(`{"a":"b`), 0))
 }
 
-// TestHTTPDataJSONMalformedValues verifies unquoted literals and numbers are
+// TestRedactJSONMalformedValues verifies unquoted literals and numbers are
 // only redacted when followed by a proper JSON delimiter, so malformed input
 // is left intact instead of being spliced around the marker.
-func TestHTTPDataJSONMalformedValues(t *testing.T) {
+func TestRedactJSONMalformedValues(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -236,7 +236,7 @@ func TestHTTPDataJSONMalformedValues(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -261,10 +261,10 @@ func TestJSONKeyDoesNotSpanLines(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %s", tc.input)
 	}
 }
 
@@ -291,10 +291,10 @@ func TestJSONKeyAfterRedactedPrefix(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %s", tc.input)
 	}
 }
 
@@ -324,10 +324,10 @@ func TestLabeledSecretJSON(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 
-		once := HTTPData(tc.input)
-		require.Equal(t, once, HTTPData(once), "not idempotent for input: %s", tc.input)
+		once := Default().String(tc.input)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %s", tc.input)
 	}
 }
 
@@ -355,11 +355,11 @@ func TestEscapedJSON(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, tc.want, HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, tc.want, Default().String(tc.input), "input: %s", tc.input)
 
 		// Convergence: two passes reach a fixed point.
-		twice := HTTPData(HTTPData(tc.input))
-		require.Equal(t, twice, HTTPData(twice), "not convergent for input: %s", tc.input)
+		twice := Default().String(Default().String(tc.input))
+		require.Equal(t, twice, Default().String(twice), "not convergent for input: %s", tc.input)
 	}
 }
 
@@ -381,7 +381,7 @@ func TestEscapedJSONBailPaths(t *testing.T) {
 		`{\"note\":\"visible\"}`, // non-sensitive key, left alone
 	}
 	for _, in := range unchanged {
-		require.Equal(t, in, HTTPData(in), "should be unchanged: %q", in)
+		require.Equal(t, in, Default().String(in), "should be unchanged: %q", in)
 	}
 }
 
@@ -401,7 +401,7 @@ func TestLabeledSecretJSONBailPaths(t *testing.T) {
 		`{"name":"password","value":}`,     // sibling value key has no parsable value
 	}
 	for _, in := range unchanged {
-		require.Equal(t, in, HTTPData(in), "should be unchanged: %q", in)
+		require.Equal(t, in, Default().String(in), "should be unchanged: %q", in)
 	}
 }
 
@@ -412,5 +412,5 @@ func TestEscapedJSONNewlineInContentBails(t *testing.T) {
 	t.Parallel()
 
 	in := "{\\\"pass\nword\\\":\\\"x\\\"}"
-	require.Equal(t, in, HTTPData(in))
+	require.Equal(t, in, Default().String(in))
 }

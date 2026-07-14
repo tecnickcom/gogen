@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHTTPDataCreditCardWordBoundary(t *testing.T) {
+func TestRedactCreditCardWordBoundary(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -24,15 +24,15 @@ func TestHTTPDataCreditCardWordBoundary(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
-func TestHTTPDataCreditCardsKeepsDigitsAdjacentToWordChar(t *testing.T) {
+func TestRedactCreditCardsKeepsDigitsAdjacentToWordChar(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("prefix 4012888888881881x suffix")
-	got := HTTPDataBytes(input)
+	got := Default().Bytes(input)
 
 	require.Equal(t, input, got)
 }
@@ -43,24 +43,24 @@ func TestMatchesCardPatternReturnsFalseForUnknownPrefix(t *testing.T) {
 	require.False(t, matchesCardPattern([]byte("9111111111111111")))
 }
 
-func TestHTTPDataCreditCardsAdditionalBranches(t *testing.T) {
+func TestRedactCreditCardsAdditionalBranches(t *testing.T) {
 	t.Parallel()
 
 	// Match and redact a standalone valid card number.
-	require.Equal(t, []byte("***"), HTTPDataBytes([]byte("4012888888881881")))
+	require.Equal(t, []byte("***"), Default().Bytes([]byte("4012888888881881")))
 
 	// Keep non-matching numeric run unchanged.
-	require.Equal(t, []byte("9111111111111111"), HTTPDataBytes([]byte("9111111111111111")))
+	require.Equal(t, []byte("9111111111111111"), Default().Bytes([]byte("9111111111111111")))
 
 	// Exercise branch where current digit follows a word character.
-	require.Equal(t, []byte("x123"), HTTPDataBytes([]byte("x123")))
+	require.Equal(t, []byte("x123"), Default().Bytes([]byte("x123")))
 }
 
-func TestHTTPDataDigitWordBoundaryBranch(t *testing.T) {
+func TestRedactDigitWordBoundaryBranch(t *testing.T) {
 	t.Parallel()
 
 	input := []byte("(123x)")
-	require.Equal(t, input, HTTPDataBytes(input))
+	require.Equal(t, input, Default().Bytes(input))
 }
 
 func TestPassesLuhn(t *testing.T) {
@@ -108,13 +108,13 @@ func TestWithLuhnCheckGatesRedaction(t *testing.T) {
 	require.Equal(t, []byte("***"), strict.Bytes(validLuhn))
 
 	// Disabled (default): both are redacted because prefix match alone suffices.
-	require.Equal(t, []byte("***"), HTTPDataBytes(invalidLuhn))
-	require.Equal(t, []byte("***"), HTTPDataBytes(validLuhn))
+	require.Equal(t, []byte("***"), Default().Bytes(invalidLuhn))
+	require.Equal(t, []byte("***"), Default().Bytes(validLuhn))
 }
 
-// TestHTTPDataGroupedCardNumbers covers card numbers written as digit groups
+// TestRedactGroupedCardNumbers covers card numbers written as digit groups
 // separated by single spaces or dashes.
-func TestHTTPDataGroupedCardNumbers(t *testing.T) {
+func TestRedactGroupedCardNumbers(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -150,7 +150,7 @@ func TestHTTPDataGroupedCardNumbers(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -184,7 +184,7 @@ func TestMatchesCardPatternExtendedPrefixes(t *testing.T) {
 	require.False(t, matchesCardPattern([]byte("41111111111111111174"))) // 20 digits
 }
 
-func TestHTTPDataLongCardNumbers(t *testing.T) {
+func TestRedactLongCardNumbers(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -201,7 +201,7 @@ func TestHTTPDataLongCardNumbers(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -227,7 +227,7 @@ func TestMaestroCards(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -244,7 +244,7 @@ func TestMaestroShortLuhnGated(t *testing.T) {
 	require.False(t, passesLuhn(shortInvalid))
 
 	// Gate off (default): short Maestro numbers stay visible.
-	require.Equal(t, shortValid12, HTTPDataBytes(shortValid12))
+	require.Equal(t, shortValid12, Default().Bytes(shortValid12))
 
 	strict := New(WithLuhnCheck(true))
 
@@ -282,7 +282,7 @@ func TestGroupedCardLegacyPrefixesExcluded(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -319,6 +319,6 @@ func TestMastercard16Digits(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }

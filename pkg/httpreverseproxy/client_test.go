@@ -504,7 +504,7 @@ func newTestErrorHandler(t *testing.T) (errHandler, *bytes.Buffer) {
 
 	c := &Client{
 		logger:   slog.New(slog.NewTextHandler(&buf, nil)),
-		redactFn: redact.HTTPDataString,
+		redactFn: redact.Default().BytesToString,
 	}
 
 	return c.newErrorHandler(), &buf
@@ -621,11 +621,11 @@ func TestRedactErrorForLog(t *testing.T) {
 	t.Parallel()
 
 	plain := errors.New("plain")
-	require.Same(t, plain, redactErrorForLog(plain, redact.HTTPDataString))
+	require.Same(t, plain, redactErrorForLog(plain, redact.Default().BytesToString))
 
 	// A *url.Error whose URL has no query is returned with the URL unchanged.
 	uerr := &url.Error{Op: "Get", URL: "http://upstream/x", Err: errors.New("EOF")}
-	got := redactErrorForLog(uerr, redact.HTTPDataString)
+	got := redactErrorForLog(uerr, redact.Default().BytesToString)
 	require.Contains(t, got.Error(), "http://upstream/x")
 }
 

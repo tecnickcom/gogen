@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHTTPDataJWTLiterals(t *testing.T) {
+func TestRedactJWTLiterals(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -44,15 +44,15 @@ func TestHTTPDataJWTLiterals(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
-func TestHTTPDataJWTBoundaryAfterDigits(t *testing.T) {
+func TestRedactJWTBoundaryAfterDigits(t *testing.T) {
 	t.Parallel()
 
 	// An "eyJ" glued to a preceding digit run reaches the dispatcher directly
 	// (digits are scanned separately) and must be rejected as an identifier.
 	input := "0eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.x"
-	require.Equal(t, input, HTTPData(input))
+	require.Equal(t, input, Default().String(input))
 }

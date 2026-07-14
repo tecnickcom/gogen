@@ -2,21 +2,10 @@ package redact
 
 import (
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-func expectedRedaction(s string) string {
-	return strings.ReplaceAll(s, "***", RedactionMarker)
-}
-
-func TestRedactionMarkerValue(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, "***", RedactionMarker)
-}
 
 const benchmarkHTTPDataInput = `
 POST /v1/login HTTP/1.1
@@ -27,7 +16,7 @@ Content-Type: application/json
 {"password":"SECRET","apiKey":"SECRET","reference":"VISIBLE","card":"4012888888881881"}
 `
 
-func TestHTTPData(t *testing.T) {
+func TestRedact(t *testing.T) {
 	t.Parallel()
 
 	data := `
@@ -414,162 +403,8 @@ JCB35=(***)
 	"Reference": "VISIBLE"
 }
 `
-	got := HTTPData(data)
+	got := Default().String(data)
 	require.Equal(t, expectedRedaction(expected), got)
-}
-
-func TestHTTPDataBytes(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("Authorization: Bearer SECRET\napiKey=SECRET&reference=VISIBLE\n{\"password\":\"SECRET\",\"reference\":\"VISIBLE\"}")
-	want := []byte(expectedRedaction("Authorization: ***\napiKey=***&reference=VISIBLE\n{\"password\":\"***\",\"reference\":\"VISIBLE\"}"))
-
-	got := HTTPDataBytes(input)
-	require.Equal(t, want, got)
-}
-
-func TestHTTPDataBytesMatchesHTTPData(t *testing.T) {
-	t.Parallel()
-
-	input := benchmarkHTTPDataInput
-	require.Equal(t, HTTPData(input), string(HTTPDataBytes([]byte(input))))
-}
-
-func TestHTTPDataString(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("Authorization: Bearer SECRET\npassword=SECRET&reference=VISIBLE")
-	want := "Authorization: ***\npassword=***&reference=VISIBLE"
-
-	got := HTTPDataString(input)
-	require.Equal(t, want, got)
-}
-
-func TestHTTPDataBytesInto(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("Authorization: Bearer SECRET\napiKey=SECRET&reference=VISIBLE\n{\"password\":\"SECRET\",\"reference\":\"VISIBLE\"}")
-	want := []byte(expectedRedaction("Authorization: ***\napiKey=***&reference=VISIBLE\n{\"password\":\"***\",\"reference\":\"VISIBLE\"}"))
-
-	dst := make([]byte, 0, len(input))
-	got := HTTPDataBytesInto(dst, input)
-	require.Equal(t, want, got)
-}
-
-func TestHTTPDataBytesIntoResetsDestination(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("password=SECRET")
-	dst := []byte("prefix should be overwritten")
-
-	got := HTTPDataBytesInto(dst, input)
-	require.Equal(t, []byte("password=***"), got)
-}
-
-func TestHTTPDataBytesPooled(t *testing.T) {
-	t.Parallel()
-
-	input := []byte("Authorization: Bearer SECRET\napiKey=SECRET&reference=VISIBLE")
-	want := []byte("Authorization: ***\napiKey=***&reference=VISIBLE")
-
-	var got []byte
-
-	HTTPDataBytesPooled(input, func(out []byte) {
-		got = append([]byte(nil), out...)
-	})
-
-	require.Equal(t, want, got)
-}
-
-func TestHTTPDataBytesPooledNilConsumer(t *testing.T) {
-	t.Parallel()
-
-	require.NotPanics(t, func() {
-		HTTPDataBytesPooled([]byte("password=SECRET"), nil)
-	})
-}
-
-//nolint:paralleltest // Swaps the shared pool to validate pooled buffer behavior.
-func TestPooledBufferHelpers(t *testing.T) {
-	// Intentionally not parallel: this test replaces the shared pool. Restore an
-	// equivalent pool afterwards so other tests/benchmarks keep working.
-	t.Cleanup(func() { redactionBufferPool = sync.Pool{New: newRedactionBuffer} })
-
-	// Pool whose New returns a too-small buffer, forcing the grow-path fallback.
-	redactionBufferPool = sync.Pool{New: func() any {
-		b := make([]byte, 0, 1)
-
-		return &b
-	}}
-
-	b := getPooledRedactionBuffer(2 << 20)
-	require.GreaterOrEqual(t, cap(b), 2<<20)
-
-	// Pool whose New returns an unexpected value type, forcing the nil-assertion
-	// fallback in getPooledRedactionBuffer.
-	redactionBufferPool = sync.Pool{New: func() any { return &struct{}{} }}
-
-	b = getPooledRedactionBuffer(64)
-	require.GreaterOrEqual(t, cap(b), 64)
-
-	// Pool whose New returns a usable buffer, exercising the reuse path.
-	redactionBufferPool = sync.Pool{New: func() any {
-		b := make([]byte, 0, 256)
-
-		return &b
-	}}
-
-	b = getPooledRedactionBuffer(64)
-	require.GreaterOrEqual(t, cap(b), 64)
-
-	// Oversized buffers are dropped; right-sized buffers are returned to the pool.
-	putPooledRedactionBuffer(make([]byte, 0, 2<<20))
-	putPooledRedactionBuffer(make([]byte, 0, 128))
-}
-
-func TestCanonicalAPI(t *testing.T) {
-	t.Parallel()
-
-	input := benchmarkHTTPDataInput
-	want := String(input) // canonical reference; every other entry point must agree
-
-	require.Equal(t, want, HTTPData(input)) // the compatibility alias delegates to String
-	require.Equal(t, want, string(Bytes([]byte(input))))
-	require.Equal(t, want, BytesToString([]byte(input)))
-
-	var dst []byte
-
-	dst = AppendTo(dst, []byte(input))
-	require.Equal(t, want, string(dst))
-
-	var pooled string
-
-	Pooled([]byte(input), func(out []byte) { pooled = string(out) })
-	require.Equal(t, want, pooled)
-
-	require.NotPanics(t, func() { Pooled([]byte(input), nil) })
-}
-
-// TestAppendToInPlaceAliasing verifies that an in-place AppendTo(b, b) — where
-// the destination and source share storage — produces the same output as a
-// clean redaction, instead of corrupting the buffer and leaking a secret whose
-// key the write cursor overran.
-func TestAppendToInPlaceAliasing(t *testing.T) {
-	t.Parallel()
-
-	inputs := []string{
-		"pin=1&password=SUPERSECRET",
-		"a=1&b=2&password=SUPERSECRET",
-		"cvv=1&cvv=2&token=SUPERSECRET&x=9",
-		benchmarkHTTPDataInput,
-	}
-
-	for _, in := range inputs {
-		buf := make([]byte, 0, len(in)+16)
-		buf = append(buf, in...)
-
-		require.Equal(t, String(in), string(AppendTo(buf, buf)), "in-place alias for %q", in)
-	}
 }
 
 // TestRedactionIdempotency locks the property that redacting already-redacted
@@ -592,8 +427,8 @@ func TestRedactionIdempotency(t *testing.T) {
 	}
 
 	for _, doc := range docs {
-		once := String(doc)
-		require.Equal(t, once, String(once), "not idempotent for input: %q", doc)
+		once := Default().String(doc)
+		require.Equal(t, once, Default().String(once), "not idempotent for input: %q", doc)
 	}
 }
 
@@ -681,8 +516,8 @@ func TestRedactionConvergence(t *testing.T) {
 	}
 
 	for _, doc := range docs {
-		once := String(doc)
-		twice := String(once)
-		require.Equal(t, twice, String(twice), "no fixed point after two passes for input: %q", doc)
+		once := Default().String(doc)
+		twice := Default().String(once)
+		require.Equal(t, twice, Default().String(twice), "no fixed point after two passes for input: %q", doc)
 	}
 }

@@ -8,16 +8,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultReturnsPackageInstance(t *testing.T) {
+// TestDefaultReturnsSharedInstance verifies Default() hands every caller the one
+// shared instance rather than a fresh one, which is what keeps the key-memo
+// cache shared and bounded across the packages that fall back to it.
+func TestDefaultReturnsSharedInstance(t *testing.T) {
 	t.Parallel()
 
-	require.Same(t, defaultRedactor, Default())
-	require.Equal(t, String(benchmarkHTTPDataInput), Default().String(benchmarkHTTPDataInput))
+	first, second := Default(), Default()
+
+	require.Same(t, defaultRedactor, first)
+	require.Same(t, first, second)
 }
 
-// TestNewWithoutOptionsMatchesPackageFunctions verifies a plain New() instance
-// behaves exactly like the package-level API on representative inputs.
-func TestNewWithoutOptionsMatchesPackageFunctions(t *testing.T) {
+// TestNewWithoutOptionsMatchesDefault verifies a plain New() instance behaves
+// exactly like the shared [Default] one on representative inputs.
+func TestNewWithoutOptionsMatchesDefault(t *testing.T) {
 	t.Parallel()
 
 	re := New()
@@ -33,7 +38,7 @@ func TestNewWithoutOptionsMatchesPackageFunctions(t *testing.T) {
 	}
 
 	for _, in := range inputs {
-		want := String(in)
+		want := Default().String(in)
 		require.Equal(t, want, re.String(in), "String mismatch for %q", in)
 		require.Equal(t, want, string(re.Bytes([]byte(in))))
 		require.Equal(t, want, re.BytesToString([]byte(in)))
@@ -159,4 +164,131 @@ func TestUsableRedactorReturnsCompleteReceiver(t *testing.T) {
 
 	re := New(WithMarker("#"))
 	require.Same(t, re, re.usableRedactor())
+}
+
+// TestRedactorEntryPointsAgree pins the contract that the five entry points are
+// the same engine differing only in input and output handling: String is the
+// reference, and every other one must produce identical bytes.
+func TestRedactorEntryPointsAgree(t *testing.T) {
+	t.Parallel()
+
+	input := benchmarkHTTPDataInput
+	want := Default().String(input)
+
+	require.Equal(t, want, string(Default().Bytes([]byte(input))))
+	require.Equal(t, want, Default().BytesToString([]byte(input)))
+
+	var dst []byte
+
+	dst = Default().AppendTo(dst, []byte(input))
+	require.Equal(t, want, string(dst))
+
+	var pooled string
+
+	Default().Pooled([]byte(input), func(out []byte) { pooled = string(out) })
+	require.Equal(t, want, pooled)
+
+	require.NotPanics(t, func() { Default().Pooled([]byte(input), nil) })
+}
+
+func TestRedactorString(t *testing.T) {
+	t.Parallel()
+
+	input := "Authorization: Bearer SECRET\npassword=SECRET&reference=VISIBLE"
+	want := expectedRedaction("Authorization: ***\npassword=***&reference=VISIBLE")
+
+	require.Equal(t, want, Default().String(input))
+}
+
+func TestRedactorBytes(t *testing.T) {
+	t.Parallel()
+
+	input := []byte("Authorization: Bearer SECRET\napiKey=SECRET&reference=VISIBLE\n{\"password\":\"SECRET\",\"reference\":\"VISIBLE\"}")
+	want := []byte(expectedRedaction("Authorization: ***\napiKey=***&reference=VISIBLE\n{\"password\":\"***\",\"reference\":\"VISIBLE\"}"))
+
+	got := Default().Bytes(input)
+	require.Equal(t, want, got)
+}
+
+func TestRedactorBytesMatchesString(t *testing.T) {
+	t.Parallel()
+
+	input := benchmarkHTTPDataInput
+	require.Equal(t, Default().String(input), string(Default().Bytes([]byte(input))))
+}
+
+func TestRedactorBytesToString(t *testing.T) {
+	t.Parallel()
+
+	input := []byte("Authorization: Bearer SECRET\npassword=SECRET&reference=VISIBLE")
+	want := "Authorization: ***\npassword=***&reference=VISIBLE"
+
+	got := Default().BytesToString(input)
+	require.Equal(t, want, got)
+}
+
+func TestRedactorAppendTo(t *testing.T) {
+	t.Parallel()
+
+	input := []byte("Authorization: Bearer SECRET\napiKey=SECRET&reference=VISIBLE\n{\"password\":\"SECRET\",\"reference\":\"VISIBLE\"}")
+	want := []byte(expectedRedaction("Authorization: ***\napiKey=***&reference=VISIBLE\n{\"password\":\"***\",\"reference\":\"VISIBLE\"}"))
+
+	dst := make([]byte, 0, len(input))
+	got := Default().AppendTo(dst, input)
+	require.Equal(t, want, got)
+}
+
+func TestRedactorAppendToResetsDestination(t *testing.T) {
+	t.Parallel()
+
+	input := []byte("password=SECRET")
+	dst := []byte("prefix should be overwritten")
+
+	got := Default().AppendTo(dst, input)
+	require.Equal(t, []byte("password=***"), got)
+}
+
+// TestRedactorAppendToInPlaceAliasing covers backingOverlap: an in-place
+// AppendTo(b, b) — where the destination and source share storage — must produce
+// the same output as a clean redaction, instead of corrupting the buffer and
+// leaking a secret whose key the write cursor overran.
+func TestRedactorAppendToInPlaceAliasing(t *testing.T) {
+	t.Parallel()
+
+	inputs := []string{
+		"pin=1&password=SUPERSECRET",
+		"a=1&b=2&password=SUPERSECRET",
+		"cvv=1&cvv=2&token=SUPERSECRET&x=9",
+		benchmarkHTTPDataInput,
+	}
+
+	for _, in := range inputs {
+		buf := make([]byte, 0, len(in)+16)
+		buf = append(buf, in...)
+
+		require.Equal(t, Default().String(in), string(Default().AppendTo(buf, buf)), "in-place alias for %q", in)
+	}
+}
+
+func TestRedactorPooled(t *testing.T) {
+	t.Parallel()
+
+	input := []byte("Authorization: Bearer SECRET\napiKey=SECRET&reference=VISIBLE")
+	want := []byte("Authorization: ***\napiKey=***&reference=VISIBLE")
+
+	var got []byte
+
+	Default().Pooled(input, func(out []byte) {
+		got = append([]byte(nil), out...)
+	})
+
+	require.Equal(t, want, got)
+}
+
+func TestRedactorPooledNilConsumer(t *testing.T) {
+	t.Parallel()
+
+	require.NotPanics(t, func() {
+		Default().Pooled([]byte("password=SECRET"), nil)
+	})
 }

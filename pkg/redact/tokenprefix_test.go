@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHTTPDataVendorTokens(t *testing.T) {
+func TestRedactVendorTokens(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -59,7 +59,7 @@ func TestHTTPDataVendorTokens(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		require.Equal(t, expectedRedaction(tc.want), HTTPData(tc.input), "input: %s", tc.input)
+		require.Equal(t, expectedRedaction(tc.want), Default().String(tc.input), "input: %s", tc.input)
 	}
 }
 
@@ -86,7 +86,7 @@ func TestVendorTokenPrefixTable(t *testing.T) {
 
 			// A synthetic token with the minimum tail must redact end-to-end.
 			token := vp.prefix + strings.Repeat("0", vp.minTail)
-			require.Equalf(t, RedactionMarker, HTTPData(token),
+			require.Equalf(t, RedactionMarker, Default().String(token),
 				"synthetic token for prefix %q not redacted", vp.prefix)
 		}
 	}

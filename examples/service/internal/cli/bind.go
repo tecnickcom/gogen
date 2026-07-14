@@ -253,7 +253,7 @@ func newDatabases(
 // response dumps, query strings, and error URLs written to the logs.
 //
 // Wiring one is optional: httpclient, httpserver, and httpreverseproxy already
-// redact with the package-level default ([redact.HTTPDataString]) when the
+// redact with the shared default redactor ([redact.Default]) when the
 // WithRedactFn option is omitted, so this function exists to show how to depart
 // from that default when the service needs it. A [redact.Redactor] is immutable
 // after construction and safe for concurrent use, so a single instance is shared
@@ -277,11 +277,13 @@ func newLogRedactor() *redact.Redactor {
 		// checksum. The default (off) is the safer over-redacting choice: it also
 		// hides unrelated identifiers that share a card prefix and length.
 		redact.WithLuhnCheck(true),
-		// Whole rule classes can be switched off individually. Uncommenting the
-		// block below disables every one of them, turning the redactor into a
-		// pass-through: nothing is sanitized and any secret reaching a logged dump,
-		// query string, or error URL is written to the logs verbatim. Keep only the
-		// rules to disable, and leave the block commented out to redact everything.
+		// Whole rule classes can be switched off individually: uncomment the block
+		// below, keeping only the classes this service does not need. Every class
+		// left enabled keeps redacting, so this stays a safe partial opt-out.
+		//
+		// To turn redaction off entirely, do not disable all nine classes here;
+		// pass redact.InsecureNoRedaction to the WithRedactFn options instead, so
+		// the bypass is visible at the call sites it affects.
 		//
 		// redact.WithoutRules(
 		// 	redact.RuleHeaders,
