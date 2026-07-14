@@ -7,7 +7,7 @@ interval, with optional random jitter and a per-invocation context timeout.
 Background workers that poll an external resource, flush a cache, or emit
 heartbeats are common in production services. Implementing them correctly
 requires handling context cancellation, per-call timeouts, graceful shutdown,
-and the thundering-herd problem when many instances restart simultaneously.
+and the thundering-herd problem when a fleet paces or restarts in lockstep.
 Writing this loop from scratch every time is repetitive and error-prone.
 
 # Solution
@@ -32,8 +32,8 @@ goroutine and [Periodic.Stop] shuts it down cleanly:
 # Features
 
   - Fixed interval with random jitter: the actual pause between calls is
-    interval + rand(0, jitter), spreading load across a fleet and avoiding
-    the thundering-herd problem
+    interval + rand(0, jitter), spreading steady-state load across a fleet and
+    avoiding the thundering-herd problem
     (https://en.wikipedia.org/wiki/Thundering_herd_problem).
   - Per-call timeout: each [TaskFn] invocation receives a [context.Context]
     derived from the parent with an independent deadline, preventing a single
@@ -41,10 +41,15 @@ goroutine and [Periodic.Stop] shuts it down cleanly:
   - Context-aware shutdown: [Periodic.Start] accepts a parent context;
     canceling it (or calling [Periodic.Stop]) stops the loop after the
     current task invocation returns — no goroutine leaks.
-  - Eager first execution: the first call fires after ~1 ns so the task runs
-    immediately on start rather than waiting for the first full interval.
-  - Simple API: three methods ([New], [Periodic.Start], [Periodic.Stop]) and
-    one function type ([TaskFn]) cover the entire surface area.
+  - Eager first execution: by default the first call fires after ~1 ns so the
+    task runs immediately on start rather than waiting for the first full
+    interval. This first call is not jittered, so a fleet that starts in
+    lockstep (a rolling deploy, a simultaneous restart) fires every replica's
+    first call together; pass [WithInitialJitter] to spread the first call
+    across [0, jitter) as well.
+  - Simple API: [New] plus two methods ([Periodic.Start], [Periodic.Stop]),
+    one function type ([TaskFn]), and one option ([WithInitialJitter]) cover
+    the entire surface area.
 
 # Constraints
 
@@ -86,20 +91,22 @@ type TaskFn func(context.Context)
 // Create one with [New], start it with [Periodic.Start], and stop it with
 // [Periodic.Stop]. The zero value is not usable; always use [New].
 type Periodic struct {
-	interval time.Duration // Time between two successive calls.
-	jitter   time.Duration // Maximum random jitter added between each function call.
-	timeout  time.Duration // Timeout applied to each function call via context.
-	task     TaskFn        // Function to be periodically executed. It should return within the context's timeout.
-	timer    *time.Timer   // Owned solely by the loop goroutine.
-	mu       sync.Mutex    // Guards stopped/cancel/done against concurrent or repeated Start/Stop.
-	stopped  bool          // set by Stop; a later Start becomes a no-op.
-	cancel   context.CancelFunc
-	done     chan struct{} // closed by loop on exit so Stop can wait for the in-flight task.
+	interval    time.Duration // Time between two successive calls.
+	jitter      time.Duration // Maximum random jitter added between each function call.
+	timeout     time.Duration // Timeout applied to each function call via context.
+	task        TaskFn        // Function to be periodically executed. It should return within the context's timeout.
+	jitterFirst bool          // When set, the first invocation is jittered too; see WithInitialJitter.
+	timer       *time.Timer   // Owned solely by the loop goroutine.
+	mu          sync.Mutex    // Guards stopped/cancel/done against concurrent or repeated Start/Stop.
+	stopped     bool          // set by Stop; a later Start becomes a no-op.
+	cancel      context.CancelFunc
+	done        chan struct{} // closed by loop on exit so Stop can wait for the in-flight task.
 }
 
 // New constructs a Periodic scheduler with constraints on interval, jitter, timeout, and task validation.
+// Optional [Option] values configure non-default behavior (see [WithInitialJitter]).
 // Returns error if any parameter violates its constraint; call Start() to begin execution.
-func New(interval time.Duration, jitter time.Duration, timeout time.Duration, task TaskFn) (*Periodic, error) {
+func New(interval time.Duration, jitter time.Duration, timeout time.Duration, task TaskFn, opts ...Option) (*Periodic, error) {
 	if interval < 1 {
 		return nil, errors.New("interval must be positive")
 	}
@@ -116,16 +123,24 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 		return nil, errors.New("nil task")
 	}
 
-	return &Periodic{
+	p := &Periodic{
 		interval: interval,
 		jitter:   jitter,
 		timeout:  timeout,
 		task:     task,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(p)
+	}
+
+	return p, nil
 }
 
 // Start begins periodic task execution in a background goroutine.
-// First invocation fires almost immediately; subsequent calls are at interval+rand(0,jitter) after each completion.
+// The first invocation fires almost immediately by default (or after up to jitter
+// when constructed with [WithInitialJitter]); subsequent calls are at
+// interval+rand(0,jitter) after each completion.
 // The loop exits when ctx is canceled or Stop() is called. A second Start on an
 // already-started or already-stopped instance is a no-op, so it never leaks a
 // goroutine — the instance is single-use.
@@ -172,7 +187,7 @@ func (p *Periodic) loop(ctx context.Context) {
 	defer close(p.done)
 	defer p.cancel()
 
-	p.timer = time.NewTimer(1 * time.Nanosecond)
+	p.timer = time.NewTimer(p.firstDelay())
 	defer p.timer.Stop()
 
 	for {
@@ -195,6 +210,17 @@ func (p *Periodic) run(ctx context.Context) {
 	// The timer just fired and was drained by loop's receive; on Go 1.23+ Reset
 	// re-arms it with no stale-value risk, so no Stop/drain dance is needed.
 	p.timer.Reset(p.nextDelay())
+}
+
+// firstDelay returns the delay before the first invocation: one nanosecond
+// (eager) by default, or a uniform random value in [0, jitter) when
+// [WithInitialJitter] is set and jitter is positive.
+func (p *Periodic) firstDelay() time.Duration {
+	if !p.jitterFirst || p.jitter <= 0 {
+		return time.Nanosecond
+	}
+
+	return backoff.AddJitter(0, p.jitter)
 }
 
 // nextDelay returns the pause before the next invocation: the fixed interval
