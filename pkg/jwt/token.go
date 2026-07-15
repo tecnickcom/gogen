@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"io"
 	"slices"
 	"strings"
 	"time"
@@ -36,10 +37,26 @@ var (
 	// RFC 7515 compact JWS (wrong segment count, bad base64url, invalid JSON).
 	ErrMalformedToken = errors.New("jwt: malformed token")
 
+	// ErrTokenTooLarge is returned when a token exceeds the configured maximum
+	// size ([WithMaxTokenBytes]), both when verifying an oversize token and when
+	// signing would mint one (e.g. from an unusually long username). It lets a
+	// caller distinguish a size overrun from a genuinely malformed token.
+	ErrTokenTooLarge = errors.New("jwt: token exceeds the maximum size")
+
 	// ErrUnexpectedSigningMethod is returned when the token header declares an
 	// algorithm different from the configured one (e.g. alg=none or an
 	// algorithm-confusion attempt).
 	ErrUnexpectedSigningMethod = errors.New("jwt: unexpected signing method")
+
+	// ErrUnsupportedCritHeader is returned when the JOSE header carries a `crit`
+	// parameter (RFC 7515 §4.1.11). This package understands no critical
+	// extensions, so any `crit` member, including the invalid empty array, is fatal.
+	ErrUnsupportedCritHeader = errors.New("jwt: unsupported critical header parameter")
+
+	// ErrDuplicateHeaderParameter is returned when the JOSE header repeats a
+	// member name. RFC 7515 §4 requires Header Parameter names to be unique and
+	// permits a verifier to reject duplicates rather than silently take the last.
+	ErrDuplicateHeaderParameter = errors.New("jwt: duplicate JOSE header parameter")
 
 	// ErrInvalidSignature is returned when the token signature does not verify
 	// under any of the accepted keys.
@@ -170,7 +187,16 @@ func (c *JWT) signToken(claims *Claims) (string, error) {
 		return "", err
 	}
 
-	return signingInput + "." + base64.RawURLEncoding.EncodeToString(sig), nil
+	token := signingInput + "." + base64.RawURLEncoding.EncodeToString(sig)
+
+	// Never mint a token the verify path would reject as oversize: the login and
+	// issuance inputs (e.g. the username) are not individually bounded, so a long
+	// one could otherwise produce a token larger than maxTokenBytes.
+	if len(token) > c.maxTokenBytes {
+		return "", fmt.Errorf("%w: %d bytes exceeds the %d-byte limit", ErrTokenTooLarge, len(token), c.maxTokenBytes)
+	}
+
+	return token, nil
 }
 
 // computeSignature returns the HMAC of signingInput under key using the
@@ -194,6 +220,13 @@ func (c *JWT) computeSignature(signingInput string, key []byte) ([]byte, error) 
 // signature verified.
 func (c *JWT) parseToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
+
+	// Bound the input before any decoding: the JOSE header must be base64- and
+	// JSON-decoded before the signature can be checked, so an unbounded token
+	// would let an unauthenticated caller force a large decode.
+	if len(tokenString) > c.maxTokenBytes {
+		return claims, fmt.Errorf("%w: %d bytes exceeds the %d-byte limit", ErrTokenTooLarge, len(tokenString), c.maxTokenBytes)
+	}
 
 	headerSeg, rest, found := strings.Cut(tokenString, ".")
 	if !found {
@@ -233,28 +266,121 @@ func (c *JWT) parseToken(tokenString string) (*Claims, error) {
 	return claims, c.validateClaims(claims)
 }
 
+// joseHeader holds the JOSE header parameters this package inspects: the signing
+// algorithm and the presence of a critical-extensions parameter.
+type joseHeader struct {
+	alg  string
+	crit json.RawMessage
+}
+
 // checkHeader decodes the JOSE header segment and enforces the configured
-// signing algorithm, rejecting alg=none and algorithm-confusion tokens. All
-// other header parameters (typ, kid, crit, ...) are ignored: with a pinned
-// symmetric algorithm and mandatory signature verification they cannot alter
-// how a token is processed.
+// signing algorithm, rejecting alg=none and algorithm-confusion tokens. A `crit`
+// parameter (RFC 7515 §4.1.11) or a duplicate member name is rejected; all other
+// parameters (typ, kid, ...) are ignored, since with a pinned symmetric
+// algorithm and mandatory signature verification they cannot alter how a token
+// is processed.
 func (c *JWT) checkHeader(headerSeg string) error {
 	headerJSON, err := base64.RawURLEncoding.Strict().DecodeString(headerSeg)
 	if err != nil {
 		return fmt.Errorf("%w: invalid header encoding: %w", ErrMalformedToken, err)
 	}
 
-	var header struct {
-		Alg string `json:"alg"`
+	header, err := decodeJOSEHeader(headerJSON)
+	if err != nil {
+		return err
 	}
 
-	err = json.Unmarshal(headerJSON, &header)
+	// RFC 7515 §4.1.11: a JWS carrying critical extensions the recipient does not
+	// understand MUST be rejected. This package understands none, so any crit
+	// member, including "crit": null and the invalid empty array, is fatal.
+	if len(header.crit) > 0 {
+		return ErrUnsupportedCritHeader
+	}
+
+	if header.alg != c.signingMethod.Alg() {
+		return fmt.Errorf("%w: %q", ErrUnexpectedSigningMethod, header.alg)
+	}
+
+	return nil
+}
+
+// decodeJOSEHeader parses the JOSE header JSON in a single strict pass. It
+// extracts alg and crit and rejects a header that is not a JSON object, repeats
+// a member name, or carries trailing data. RFC 7515 §4 requires unique Header
+// Parameter names and lets a verifier reject duplicates rather than silently
+// take the last value, which encoding/json would.
+func decodeJOSEHeader(headerJSON []byte) (joseHeader, error) {
+	var header joseHeader
+
+	dec := json.NewDecoder(bytes.NewReader(headerJSON))
+
+	tok, err := dec.Token()
+	if err != nil {
+		return header, fmt.Errorf("%w: invalid header: %w", ErrMalformedToken, err)
+	}
+
+	if delim, ok := tok.(json.Delim); !ok || delim != '{' {
+		return header, fmt.Errorf("%w: header is not a JSON object", ErrMalformedToken)
+	}
+
+	seen := make(map[string]struct{})
+
+	for dec.More() {
+		err = header.readMember(dec, seen)
+		if err != nil {
+			return header, err
+		}
+	}
+
+	// Consume the closing delimiter and confirm nothing follows it, so a
+	// truncated or padded header segment is rejected rather than half-accepted.
+	_, err = dec.Token()
+	if err != nil {
+		return header, fmt.Errorf("%w: invalid header: %w", ErrMalformedToken, err)
+	}
+
+	_, err = dec.Token()
+	if !errors.Is(err, io.EOF) {
+		return header, fmt.Errorf("%w: trailing data after header", ErrMalformedToken)
+	}
+
+	return header, nil
+}
+
+// readMember reads one "name": value pair into header, rejecting a member name
+// already present in seen. Values are consumed whole (including nested objects),
+// so a nested member name is never mistaken for a header parameter.
+func (h *joseHeader) readMember(dec *json.Decoder, seen map[string]struct{}) error {
+	tok, err := dec.Token()
+
+	// A member name in a JSON object is always a string: Token returns an error
+	// (handled here) rather than a non-string token at a member-name position.
+	name, ok := tok.(string)
+	if err != nil || !ok {
+		return fmt.Errorf("%w: invalid header member name", ErrMalformedToken)
+	}
+
+	if _, dup := seen[name]; dup {
+		return fmt.Errorf("%w: %q", ErrDuplicateHeaderParameter, name)
+	}
+
+	seen[name] = struct{}{}
+
+	var value json.RawMessage
+
+	err = dec.Decode(&value)
 	if err != nil {
 		return fmt.Errorf("%w: invalid header: %w", ErrMalformedToken, err)
 	}
 
-	if header.Alg != c.signingMethod.Alg() {
-		return fmt.Errorf("%w: %q", ErrUnexpectedSigningMethod, header.Alg)
+	switch name {
+	case "alg":
+		err = json.Unmarshal(value, &h.alg)
+		if err != nil {
+			return fmt.Errorf("%w: invalid alg: %w", ErrMalformedToken, err)
+		}
+	case "crit":
+		h.crit = value
 	}
 
 	return nil
@@ -309,4 +435,19 @@ func (c *JWT) validateClaims(claims *Claims) error {
 	}
 
 	return nil
+}
+
+// expiredOnIssue reports whether exp, once truncated to whole seconds as it will
+// be at signing ([NumericDate.MarshalJSON]), already fails the verification
+// expiry check (RFC 7519 §4.1.4 with the configured leeway). It lets issuance
+// avoid minting a born-expired token when the session-cap clamp lands within the
+// current second.
+func (c *JWT) expiredOnIssue(exp *NumericDate) bool {
+	if exp == nil {
+		return false
+	}
+
+	flooredExp := time.Unix(exp.Unix(), 0)
+
+	return !time.Now().Before(flooredExp.Add(c.clockSkewLeeway))
 }

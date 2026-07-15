@@ -38,8 +38,9 @@ Tokens are RFC 7515 compact JWS with RFC 7519 claims, signed with HMAC-SHA2
 the Go standard library. Restricting the surface to
 symmetric HMAC makes the classic JWT attacks (alg=none, asymmetric-to-HMAC
 confusion) structurally impossible: the accepted algorithm is pinned and the
-signature is verified before the claims payload is ever decoded. Unknown JOSE
-header parameters (typ, kid, crit, ...) are ignored. The `exp` and `nbf` time
+signature is verified before the claims payload is ever decoded. A `crit` header
+(RFC 7515 §4.1.11) or a duplicated header parameter is rejected; other unknown
+JOSE header parameters (typ, kid, ...) are ignored. The `exp` and `nbf` time
 claims are validated (with optional leeway); `iat` is decoded but not validated,
 as only a key holder could forge it.
 
@@ -59,6 +60,7 @@ By default the package issues short-lived HMAC-signed tokens with:
   - renew window: [DefaultRenewTime] (30 seconds before expiry)
   - header name: [DefaultAuthorizationHeader] (`Authorization`)
   - request body cap: [DefaultMaxBodyBytes]
+  - token size cap: [DefaultMaxTokenBytes]
 
 Issued tokens include standard registered claims (`exp`, `iat`, `nbf`, `jti`,
 `sub`) and an `auth_time` claim recording the original login. They support
@@ -72,7 +74,8 @@ values, is rejected.
 Functional options allow custom behavior without replacing core handlers:
   - response output customization ([WithSendResponseFn])
   - token/header settings ([WithExpirationTime], [WithRenewTime],
-    [WithAuthorizationHeader], [WithSigningMethod], [WithMaxBodyBytes])
+    [WithAuthorizationHeader], [WithSigningMethod], [WithMaxBodyBytes],
+    [WithMaxTokenBytes])
   - session controls ([WithMaxSessionLifetime], [WithClockSkewLeeway])
   - key rotation ([WithPreviousKeys])
   - claim metadata ([WithClaimIssuer], [WithClaimAudience])
@@ -118,6 +121,7 @@ package jwt
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -140,6 +144,16 @@ const (
 	// login request body. It is generous for JSON credentials while capping the
 	// memory an unauthenticated caller can force the login handler to allocate.
 	DefaultMaxBodyBytes int64 = 1 << 13 // 8 KiB
+
+	// DefaultMaxTokenBytes bounds a compact JWS, both when accepted for
+	// verification and when minted. A legitimate token carrying the registered
+	// claims and a short username is well under 1 KiB; the cap keeps a caller from
+	// forcing a large base64 and JSON decode of the JOSE header, which must
+	// necessarily be parsed before the signature can be checked. The username is
+	// not otherwise bounded, so an unusually long one can push a minted token past
+	// this cap, in which case signing fails with [ErrTokenTooLarge]; raise the cap
+	// with [WithMaxTokenBytes] for long usernames or large custom claims.
+	DefaultMaxTokenBytes int = 1 << 13 // 8 KiB
 )
 
 // Configuration and validation errors returned by [New].
@@ -148,8 +162,9 @@ var (
 	ErrEmptyKey = errors.New("jwt: empty signing key")
 
 	// ErrWeakKey is returned when a signing or verification key is shorter than
-	// the signing method's hash output size (RFC 7518 §3.2).
-	ErrWeakKey = errors.New("jwt: signing key is shorter than the signing method hash size")
+	// the signing method's hash output size (RFC 7518 §3.2). The wrapped message
+	// names which key (the signing key, or a previous key by index) is too short.
+	ErrWeakKey = errors.New("jwt: key is shorter than the signing method hash size")
 
 	// ErrNilVerifyFn is returned when no credential verification function is provided.
 	ErrNilVerifyFn = errors.New("jwt: credential verification function is required")
@@ -161,14 +176,29 @@ var (
 	// ErrInvalidExpirationTime is returned when the expiration time is not positive.
 	ErrInvalidExpirationTime = errors.New("jwt: expiration time must be positive")
 
+	// ErrShortExpirationTime is returned when the expiration time is positive but
+	// shorter than one second. Token times are stamped at whole-second resolution,
+	// so a sub-second expiration cannot be represented and would mint tokens that
+	// expire the instant they are issued.
+	ErrShortExpirationTime = errors.New("jwt: expiration time must be at least one second")
+
 	// ErrInvalidRenewTime is returned when the renew time is not positive.
 	ErrInvalidRenewTime = errors.New("jwt: renew time must be positive")
 
 	// ErrInvalidMaxBodyBytes is returned when the max body size is not positive.
 	ErrInvalidMaxBodyBytes = errors.New("jwt: max body bytes must be positive")
 
+	// ErrInvalidMaxTokenBytes is returned when the max token size is not positive.
+	ErrInvalidMaxTokenBytes = errors.New("jwt: max token bytes must be positive")
+
 	// ErrInvalidMaxSessionLifetime is returned when the max session lifetime is negative.
 	ErrInvalidMaxSessionLifetime = errors.New("jwt: max session lifetime must not be negative")
+
+	// ErrShortMaxSessionLifetime is returned when the max session lifetime is
+	// positive but shorter than one second. Token times are stamped at
+	// whole-second resolution, so a sub-second cap cannot be represented and would
+	// mint tokens that expire the instant they are issued.
+	ErrShortMaxSessionLifetime = errors.New("jwt: max session lifetime must be at least one second")
 
 	// ErrInvalidClockSkewLeeway is returned when the clock-skew leeway is negative.
 	ErrInvalidClockSkewLeeway = errors.New("jwt: clock skew leeway must not be negative")
@@ -205,6 +235,7 @@ type JWT struct {
 	maxSessionLifetime  time.Duration       // Absolute cap on how long a session may be renewed (0 = unlimited).
 	clockSkewLeeway     time.Duration       // Allowed clock-skew leeway during verification (0 = none).
 	maxBodyBytes        int64               // Maximum accepted login request body size in bytes.
+	maxTokenBytes       int                 // Maximum accepted compact-JWS token size in bytes.
 	sendResponseFn      SendResponseFn      // Response function used to send back the HTTP responses.
 	verifyCredentialsFn VerifyCredentialsFn // Function used to verify user credentials.
 	signingMethod       SigningMethod       // HMAC signing method.
@@ -225,6 +256,7 @@ func defaultJWT() *JWT {
 		expirationTime:      DefaultExpirationTime,
 		renewTime:           DefaultRenewTime,
 		maxBodyBytes:        DefaultMaxBodyBytes,
+		maxTokenBytes:       DefaultMaxTokenBytes,
 		authorizationHeader: DefaultAuthorizationHeader,
 		signingMethod:       SigningMethodHS256,
 		logger:              slog.Default(),
@@ -294,9 +326,12 @@ func (c *JWT) validate() error {
 		{c.verifyCredentialsFn == nil, ErrNilVerifyFn},
 		{c.signingMethod.Alg() == "", ErrInvalidSigningMethod},
 		{c.expirationTime <= 0, ErrInvalidExpirationTime},
+		{c.expirationTime > 0 && c.expirationTime < time.Second, ErrShortExpirationTime},
 		{c.renewTime <= 0, ErrInvalidRenewTime},
 		{c.maxBodyBytes <= 0, ErrInvalidMaxBodyBytes},
+		{c.maxTokenBytes <= 0, ErrInvalidMaxTokenBytes},
 		{c.maxSessionLifetime < 0, ErrInvalidMaxSessionLifetime},
+		{c.maxSessionLifetime > 0 && c.maxSessionLifetime < time.Second, ErrShortMaxSessionLifetime},
 		{c.clockSkewLeeway < 0, ErrInvalidClockSkewLeeway},
 	}
 
@@ -310,12 +345,12 @@ func (c *JWT) validate() error {
 	// §3.2): the signing key and any previous verification keys alike.
 	minLen := c.signingMethod.hashSize()
 	if len(c.key) < minLen {
-		return ErrWeakKey
+		return fmt.Errorf("%w: signing key is %d bytes, need at least %d", ErrWeakKey, len(c.key), minLen)
 	}
 
-	for _, key := range c.previousKeys {
+	for i, key := range c.previousKeys {
 		if len(key) < minLen {
-			return ErrWeakKey
+			return fmt.Errorf("%w: previous key %d is %d bytes, need at least %d", ErrWeakKey, i, len(key), minLen)
 		}
 	}
 

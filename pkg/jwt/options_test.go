@@ -109,6 +109,15 @@ func TestWithMaxBodyBytes(t *testing.T) {
 	require.Equal(t, want, c.maxBodyBytes)
 }
 
+func TestWithMaxTokenBytes(t *testing.T) {
+	t.Parallel()
+
+	c := &JWT{}
+	want := 4096
+	WithMaxTokenBytes(want)(c)
+	require.Equal(t, want, c.maxTokenBytes)
+}
+
 func TestWithClaimAudience(t *testing.T) {
 	t.Parallel()
 

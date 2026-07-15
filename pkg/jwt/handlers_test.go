@@ -418,6 +418,159 @@ func TestRenewHandlerSessionLifetime(t *testing.T) {
 	}
 }
 
+func TestRenewHandlerClampsExpToSessionLifetime(t *testing.T) {
+	t.Parallel()
+
+	const maxLifetime = 30 * time.Minute
+
+	// A renewal granted while still under the cap must not mint a token that
+	// outlives auth_time + maxSessionLifetime. With expirationTime (10m) larger
+	// than the remaining budget, an unclamped renewal would overshoot the cap.
+	c, err := New(
+		testKey,
+		testVerify,
+		WithExpirationTime(10*time.Minute),
+		WithRenewTime(1*time.Minute),
+		WithMaxSessionLifetime(maxLifetime),
+	)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	now := time.Now()
+	authTime := now.Add(-29 * time.Minute) // 1 minute of session budget remains
+
+	presented := signClaimsV5(t, testKey, jwtv5.MapClaims{
+		"username":  "test-name",
+		"exp":       now.Add(30 * time.Second).Unix(), // inside the renew window
+		"auth_time": authTime.Unix(),
+	})
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+presented)
+	c.RenewHandler(rr, req)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	renewed, _ := io.ReadAll(resp.Body)
+
+	claims, err := c.parseToken(string(renewed))
+	require.NoError(t, err)
+
+	require.LessOrEqual(t, claims.ExpiresAt.Unix(), authTime.Add(maxLifetime).Unix(),
+		"renewed exp must not outlive auth_time + maxSessionLifetime")
+	require.Equal(t, authTime.Unix(), claims.AuthTime.Unix(),
+		"auth_time must be preserved across renewal")
+}
+
+func TestLoginHandlerRefusesOversizeToken(t *testing.T) {
+	t.Parallel()
+
+	// A long-but-accepted username fits under the body cap yet mints a token past
+	// the token cap; issuance fails and surfaces the existing 500 sign-failure
+	// path rather than a 200 with a token that would fail verification.
+	c, err := New(testKey, testVerify)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	// testVerify accepts when password == username; ~3 KiB each stays under the
+	// 8 KiB body cap but produces a >8 KiB token.
+	cred := strings.Repeat("a", 3000)
+	body := `{"username":"` + cred + `","password":"` + cred + `"}`
+	require.Less(t, len(body), int(DefaultMaxBodyBytes), "body must fit under the body cap")
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", strings.NewReader(body))
+	c.LoginHandler(rr, req)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode,
+		"a login whose token would exceed the cap must fail rather than 200 with a dead token")
+}
+
+func TestRenewHandlerRefusesBornExpiredAtCap(t *testing.T) {
+	t.Parallel()
+
+	// A fractional-second cap: a renewal can be allowed by the cap gate (real
+	// sub-second budget remains) yet mint a token whose exp, floored to whole
+	// seconds, is already in the past. That renewal must be refused as
+	// session-exceeded (401), not returned as a 200 carrying a dead token.
+	c, err := New(
+		testKey,
+		testVerify,
+		WithExpirationTime(time.Hour),
+		WithRenewTime(time.Hour),
+		WithMaxSessionLifetime(1900*time.Millisecond),
+	)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	// Wait for a sub-second phase where the cap gate still allows the renewal, so
+	// the born-expired guard (not the gate) is what refuses it.
+	for {
+		if f := float64(time.Now().Nanosecond()) / 1e9; f > 0.05 && f < 0.55 {
+			break
+		}
+	}
+
+	now := time.Now()
+	authSec := now.Truncate(time.Second).Add(-time.Second).Unix() // floor(now) - 1s
+
+	presented := signClaimsV5(t, testKey, jwtv5.MapClaims{
+		"username":  "test-name",
+		"exp":       now.Add(30 * time.Second).Unix(), // valid, inside the renew window
+		"auth_time": authSec,
+	})
+
+	rr := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.Header.Set(DefaultAuthorizationHeader, httputil.HeaderAuthBearer+presented)
+	c.RenewHandler(rr, req)
+
+	resp := rr.Result()
+	require.NotNil(t, resp)
+
+	defer func() {
+		err := resp.Body.Close()
+		require.NoError(t, err, "error closing resp.Body")
+	}()
+
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode,
+		"a renewal that would mint a born-expired token must be refused")
+	require.Equal(t, challengeInvalidToken, resp.Header.Get(headerWWWAuthenticate),
+		"the refusal must carry the invalid_token challenge")
+}
+
+func TestRenewRefusalReason(t *testing.T) {
+	t.Parallel()
+
+	// With a session cap the born-expired refusal is a genuine cap overrun; without
+	// one it is only the whole-second exp-truncation edge, so the log must not claim
+	// a session lifetime was exceeded.
+	capped, err := New(testKey, testVerify, WithMaxSessionLifetime(time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, "JWT session lifetime exceeded", capped.renewRefusalReason())
+
+	uncapped, err := New(testKey, testVerify)
+	require.NoError(t, err)
+	require.Equal(t, "renewed JWT token would be immediately expired", uncapped.renewRefusalReason())
+}
+
 func TestIsAuthorized(t *testing.T) {
 	t.Parallel()
 

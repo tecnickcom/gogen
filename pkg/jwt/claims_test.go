@@ -97,3 +97,85 @@ func TestAudienceMarshalsAsArray(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, `["one"]`, string(b))
 }
+
+func TestNewClaimsClampsExpToSessionLifetime(t *testing.T) {
+	t.Parallel()
+
+	const expiration = 10 * time.Minute
+
+	tests := []struct {
+		name        string
+		maxLifetime time.Duration
+		authAge     time.Duration // session age; 0 means a fresh login
+		clamped     bool
+	}{
+		{"unset cap keeps full expiration", 0, 0, false},
+		{"cap wider than expiration does not fire on login", 30 * time.Minute, 0, false},
+		{"cap narrower than expiration shortens login", 4 * time.Minute, 0, true},
+		{"renew near the cap is clamped to the cap", 30 * time.Minute, 29 * time.Minute, true},
+		{"renew early in the session keeps full expiration", 30 * time.Minute, 1 * time.Minute, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			c, err := New(testKey, testVerify,
+				WithExpirationTime(expiration),
+				WithMaxSessionLifetime(tt.maxLifetime),
+			)
+			require.NoError(t, err)
+
+			var authTime *NumericDate
+			if tt.authAge > 0 {
+				authTime = NewNumericDate(time.Now().UTC().Add(-tt.authAge))
+			}
+
+			before := time.Now().UTC()
+			claims := c.newClaims("clamp-user", authTime)
+			after := time.Now().UTC()
+
+			require.NotNil(t, claims.ExpiresAt)
+
+			if !tt.clamped {
+				// exp tracks now + expirationTime, unclamped.
+				require.WithinRange(t, claims.ExpiresAt.Time, before.Add(expiration), after.Add(expiration))
+
+				return
+			}
+
+			// Clamped: exp never outlives the cap measured from the session start
+			// (the preserved auth_time on renewal, or the issue time on a login).
+			sessionStart := after
+			if authTime != nil {
+				sessionStart = authTime.Time
+			}
+
+			require.LessOrEqual(t, claims.ExpiresAt.Unix(), sessionStart.Add(tt.maxLifetime).Unix(),
+				"exp must not outlive session start + maxSessionLifetime")
+		})
+	}
+}
+
+func TestNewClaimsClampedTokenStillValidates(t *testing.T) {
+	t.Parallel()
+
+	// A token minted right at the clamp boundary (renewal granted just under the
+	// cap) must still be strictly in the future, so it validates immediately.
+	c, err := New(testKey, testVerify,
+		WithExpirationTime(10*time.Minute),
+		WithMaxSessionLifetime(5*time.Minute),
+	)
+	require.NoError(t, err)
+
+	// Session started 5 minutes minus one second ago: the clamp yields exp about
+	// one second in the future.
+	authTime := NewNumericDate(time.Now().UTC().Add(-5*time.Minute + time.Second))
+
+	token, err := c.signToken(c.newClaims("boundary-user", authTime))
+	require.NoError(t, err)
+
+	claims, err := c.parseToken(token)
+	require.NoError(t, err, "a token clamped to the cap must still validate right after issue")
+	require.True(t, claims.ExpiresAt.After(time.Now()))
+}

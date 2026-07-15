@@ -152,14 +152,26 @@ func (c *JWT) newClaims(username string, authTime *NumericDate) *Claims {
 		authTime = NewNumericDate(tnow)
 	}
 
+	exp := tnow.Add(c.expirationTime)
+
+	// Never mint a token that outlives the absolute session cap measured from the
+	// original login. Without this a renewal granted just under the cap still
+	// issues a full expiration window beyond it, making the effective bound
+	// maxSessionLifetime + expirationTime rather than maxSessionLifetime.
+	if c.maxSessionLifetime > 0 {
+		if hard := authTime.Add(c.maxSessionLifetime); hard.Before(exp) {
+			exp = hard
+		}
+	}
+
 	return &Claims{
-		ExpiresAt: NewNumericDate(tnow.Add(c.expirationTime)), // exp
-		IssuedAt:  NewNumericDate(tnow),                       // iat
-		NotBefore: NewNumericDate(tnow),                       // nbf
-		ID:        c.rnd.UUIDv7().String(),                    // jti
-		Issuer:    c.issuer,                                   // iss
-		Subject:   username,                                   // sub: the authenticated principal
-		Audience:  Audience(c.audience),                       // aud
+		ExpiresAt: NewNumericDate(exp),     // exp
+		IssuedAt:  NewNumericDate(tnow),    // iat
+		NotBefore: NewNumericDate(tnow),    // nbf
+		ID:        c.rnd.UUIDv7().String(), // jti
+		Issuer:    c.issuer,                // iss
+		Subject:   username,                // sub: the authenticated principal
+		Audience:  Audience(c.audience),    // aud
 		Username:  username,
 		AuthTime:  authTime, // auth_time: original login, preserved across renewals
 	}

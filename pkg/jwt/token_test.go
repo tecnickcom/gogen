@@ -3,6 +3,7 @@ package jwt
 import (
 	"encoding/base64"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -362,6 +363,135 @@ func TestCrossValidationWithReferenceLibrary(t *testing.T) {
 	require.Equal(t, now.Add(-time.Minute).Unix(), claims.AuthTime.Unix())
 }
 
+func TestParseTokenSizeCap(t *testing.T) {
+	t.Parallel()
+
+	// A token past the configured cap is rejected before any decoding, so the
+	// header decode an unauthenticated caller can force stays bounded.
+	small, err := New(testKey, testVerify, WithMaxTokenBytes(16))
+	require.NotNil(t, small)
+	require.NoError(t, err)
+
+	oversized := strings.Repeat("a", 17)
+
+	claims, err := small.parseToken(oversized)
+	require.NotNil(t, claims)
+	require.ErrorIs(t, err, ErrTokenTooLarge)
+	require.NotErrorIs(t, err, ErrMalformedToken, "an oversize token must be distinguishable from a malformed one")
+
+	// The same real token is rejected under the tiny cap but accepted at the
+	// default cap, proving the bound is enforced and configurable.
+	def, err := New(testKey, testVerify)
+	require.NoError(t, err)
+
+	token, err := def.IssueToken("cap-user")
+	require.NoError(t, err)
+	require.Greater(t, len(token), 16)
+
+	_, err = small.parseToken(token)
+	require.ErrorIs(t, err, ErrTokenTooLarge, "a valid token longer than the cap is rejected")
+
+	_, err = def.parseToken(token)
+	require.NoError(t, err, "the same token is accepted under the default cap")
+}
+
+func TestSignTokenRejectsOversize(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(testKey, testVerify)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	// A username long enough to push the minted token past the cap makes issuance
+	// fail, so the package never emits a token its own verify path would reject.
+	long := strings.Repeat("a", DefaultMaxTokenBytes)
+
+	_, err = c.IssueToken(long)
+	require.ErrorIs(t, err, ErrTokenTooLarge)
+
+	// A larger cap lets the same username through, and the token round-trips.
+	big, err := New(testKey, testVerify, WithMaxTokenBytes(1<<16))
+	require.NoError(t, err)
+
+	token, err := big.IssueToken(long)
+	require.NoError(t, err)
+
+	claims, err := big.VerifyToken(token)
+	require.NoError(t, err)
+	require.Equal(t, long, claims.Username)
+}
+
+func TestExpiredOnIssue(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(testKey, testVerify)
+	require.NoError(t, err)
+
+	require.False(t, c.expiredOnIssue(nil), "a nil exp is treated as not-expired")
+	require.False(t, c.expiredOnIssue(NewNumericDate(time.Now().Add(time.Hour))), "a future exp is usable")
+	require.True(t, c.expiredOnIssue(NewNumericDate(time.Now().Add(-time.Hour))), "a past exp is born-expired")
+}
+
+func TestCheckHeaderStrictness(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(testKey, testVerify)
+	require.NotNil(t, c)
+	require.NoError(t, err)
+
+	future := strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10)
+	payload := `{"exp":` + future + `,"username":"hdr-user"}`
+
+	tests := []struct {
+		name    string
+		header  string
+		wantErr error
+	}{
+		{"crit with unknown extension", `{"alg":"HS256","typ":"JWT","crit":["exp-policy"]}`, ErrUnsupportedCritHeader},
+		{"empty crit array", `{"alg":"HS256","crit":[]}`, ErrUnsupportedCritHeader},
+		{"null crit", `{"alg":"HS256","crit":null}`, ErrUnsupportedCritHeader},
+		{"duplicate alg smuggles second value", `{"alg":"none","alg":"HS256"}`, ErrDuplicateHeaderParameter},
+		{"duplicate identical alg", `{"alg":"HS256","alg":"HS256"}`, ErrDuplicateHeaderParameter},
+		{"duplicate non-alg member", `{"alg":"HS256","typ":"a","typ":"b"}`, ErrDuplicateHeaderParameter},
+		{"unknown params are ignored", `{"alg":"HS256","typ":"JWT","kid":"k1","x5u":"http://x"}`, nil},
+		{"nested member names are not header params", `{"alg":"HS256","ext":{"inner":1,"inner":2}}`, nil},
+		{"header is not an object", `"HS256"`, ErrMalformedToken},
+		{"header is a null literal", `null`, ErrMalformedToken},
+		{"header is an array", `["HS256"]`, ErrMalformedToken},
+		{"truncated object", `{`, ErrMalformedToken},
+		{"non-string member name", `{123:4}`, ErrMalformedToken},
+		{"missing member value", `{"alg":}`, ErrMalformedToken},
+		{"non-string alg value", `{"alg":123}`, ErrMalformedToken},
+		{"trailing data after object", `{"alg":"HS256"}5`, ErrMalformedToken},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := c.parseToken(craftTokenWithHeader(t, c, tt.header, payload))
+			if tt.wantErr == nil {
+				require.NoError(t, err)
+
+				return
+			}
+
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestCheckHeaderRejectsEmptySegment(t *testing.T) {
+	t.Parallel()
+
+	c, err := New(testKey, testVerify)
+	require.NoError(t, err)
+
+	// An empty header segment decodes to empty bytes, so the strict JOSE parser
+	// sees no opening object token at all.
+	require.ErrorIs(t, c.checkHeader(""), ErrMalformedToken)
+}
+
 // craftToken signs an arbitrary payload segment with the instance signing key,
 // producing a structurally attacker-shaped token that still carries a valid
 // signature, so post-signature parse branches can be exercised.
@@ -369,6 +499,21 @@ func craftToken(t *testing.T, c *JWT, payloadSeg string) string {
 	t.Helper()
 
 	signingInput := c.encodedHeader + "." + payloadSeg
+
+	sig, err := c.computeSignature(signingInput, c.key)
+	require.NoError(t, err)
+
+	return signingInput + "." + base64.RawURLEncoding.EncodeToString(sig)
+}
+
+// craftTokenWithHeader signs a token with an arbitrary JOSE header and JSON
+// payload (both raw, un-encoded), so header-strictness branches can be exercised
+// with a genuinely valid signature over attacker-shaped headers.
+func craftTokenWithHeader(t *testing.T, c *JWT, headerJSON, payloadJSON string) string {
+	t.Helper()
+
+	signingInput := base64.RawURLEncoding.EncodeToString([]byte(headerJSON)) +
+		"." + base64.RawURLEncoding.EncodeToString([]byte(payloadJSON))
 
 	sig, err := c.computeSignature(signingInput, c.key)
 	require.NoError(t, err)

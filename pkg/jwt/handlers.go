@@ -177,7 +177,31 @@ func (c *JWT) RenewHandler(w http.ResponseWriter, r *http.Request) {
 	// Issue a token with fresh registered claims (exp, iat, nbf, jti) but the
 	// preserved session start, so the renewed token extends expiration without
 	// resetting the session clock.
-	c.sendTokenResponse(w, r, c.newClaims(claims.Username, sessionStart))
+	renewed := c.newClaims(claims.Username, sessionStart)
+
+	// A renewal can yield a token that, after exp is truncated to whole seconds at
+	// signing, is already expired. Refuse it rather than returning 200 with a
+	// token that fails on first use.
+	if c.expiredOnIssue(renewed.ExpiresAt) {
+		c.writeUnauthorized(w, r, ErrSessionExpired)
+		c.logger.WarnContext(r.Context(), c.renewRefusalReason(), slog.String("username", claims.Username))
+
+		return
+	}
+
+	c.sendTokenResponse(w, r, renewed)
+}
+
+// renewRefusalReason describes why a born-expired renewal is refused, for logging.
+// With a session cap configured the renewal has reached that cap; without one, the
+// token would only be born-expired from whole-second `exp` truncation at a very
+// short expiration.
+func (c *JWT) renewRefusalReason() string {
+	if c.maxSessionLifetime > 0 {
+		return "JWT session lifetime exceeded"
+	}
+
+	return "renewed JWT token would be immediately expired"
 }
 
 // IsAuthorized validates the bearer token on the incoming request.

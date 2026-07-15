@@ -85,6 +85,19 @@ func TestNew(t *testing.T) {
 			wantErr:  ErrInvalidExpirationTime,
 		},
 		{
+			name:     "failure with sub-second expiration",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithExpirationTime(500 * time.Millisecond)},
+			wantErr:  ErrShortExpirationTime,
+		},
+		{
+			name:     "success with one-second expiration",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithExpirationTime(time.Second), WithRenewTime(500 * time.Millisecond)},
+		},
+		{
 			name:     "failure with non-positive renew",
 			key:      testKey,
 			verifyFn: testVerify,
@@ -99,11 +112,31 @@ func TestNew(t *testing.T) {
 			wantErr:  ErrInvalidMaxBodyBytes,
 		},
 		{
+			name:     "failure with non-positive max token bytes",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithMaxTokenBytes(0)},
+			wantErr:  ErrInvalidMaxTokenBytes,
+		},
+		{
 			name:     "failure with negative max session lifetime",
 			key:      testKey,
 			verifyFn: testVerify,
 			opts:     []Option{WithMaxSessionLifetime(-1)},
 			wantErr:  ErrInvalidMaxSessionLifetime,
+		},
+		{
+			name:     "failure with sub-second max session lifetime",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithMaxSessionLifetime(500 * time.Millisecond)},
+			wantErr:  ErrShortMaxSessionLifetime,
+		},
+		{
+			name:     "success with one-second max session lifetime",
+			key:      testKey,
+			verifyFn: testVerify,
+			opts:     []Option{WithMaxSessionLifetime(time.Second)},
 		},
 		{
 			name:     "failure with negative clock skew leeway",
@@ -130,6 +163,22 @@ func TestNew(t *testing.T) {
 			require.NoError(t, err, "New() unexpected error = %v", err)
 		})
 	}
+}
+
+func TestWeakKeyErrorNamesOffender(t *testing.T) {
+	t.Parallel()
+
+	// A short signing key names the signing key.
+	_, err := New([]byte("too-short"), testVerify)
+	require.ErrorIs(t, err, ErrWeakKey)
+	require.Contains(t, err.Error(), "signing key")
+
+	// A short previous key names it by rotation index, so an operator can tell
+	// which buffer is short (here the second previous key, index 1).
+	_, err = New(testKey, testVerify, WithPreviousKeys(testKey, []byte("short")))
+	require.ErrorIs(t, err, ErrWeakKey)
+	require.Contains(t, err.Error(), "previous key 1")
+	require.NotContains(t, err.Error(), "signing key")
 }
 
 func TestNormalizeOptionals(t *testing.T) {

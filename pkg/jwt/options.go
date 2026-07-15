@@ -8,14 +8,23 @@ import (
 // Option is the interface that allows to set the options.
 type Option func(c *JWT)
 
-// WithExpirationTime sets the token lifetime from issuance to expiry.
+// WithExpirationTime sets the token lifetime from issuance to expiry. It must be
+// at least one second: token times are stamped at whole-second resolution, so a
+// shorter (or non-positive) value is rejected by [New]. Prefer a value comfortably
+// above one second; because `exp` is truncated to whole seconds, a token issued
+// just before a second boundary loses up to that boundary, so at exactly one
+// second its usable lifetime can be a fraction of a second.
 func WithExpirationTime(expirationTime time.Duration) Option {
 	return func(c *JWT) {
 		c.expirationTime = expirationTime
 	}
 }
 
-// WithRenewTime sets how close to expiry renewal becomes allowed.
+// WithRenewTime sets how close to expiry renewal becomes allowed: [JWT.RenewHandler]
+// refuses a token whose remaining lifetime still exceeds this window. It must be
+// positive, and should be shorter than the expiration time; a value greater than
+// or equal to it makes every token renewable from issuance, so the window has no
+// effect.
 func WithRenewTime(renewTime time.Duration) Option {
 	return func(c *JWT) {
 		c.renewTime = renewTime
@@ -25,7 +34,13 @@ func WithRenewTime(renewTime time.Duration) Option {
 // WithMaxSessionLifetime caps how long a session may be kept alive through
 // renewals, measured from the original login (`auth_time`). Once exceeded,
 // [JWT.RenewHandler] refuses to renew and the user must log in again. Zero (the
-// default) means unlimited; a negative value is rejected by [New].
+// default) means unlimited; a negative value, or a positive value shorter than
+// one second (the whole-second resolution of token times), is rejected by [New].
+//
+// The effective absolute bound is maxSessionLifetime plus any [WithClockSkewLeeway]:
+// the last renewed token is capped at auth_time+maxSessionLifetime, but the leeway
+// is added when verifying its `exp`, so it remains accepted until
+// auth_time+maxSessionLifetime+clockSkewLeeway.
 func WithMaxSessionLifetime(maxSessionLifetime time.Duration) Option {
 	return func(c *JWT) {
 		c.maxSessionLifetime = maxSessionLifetime
@@ -35,6 +50,11 @@ func WithMaxSessionLifetime(maxSessionLifetime time.Duration) Option {
 // WithClockSkewLeeway sets the tolerance applied to the validated time claims
 // (exp and nbf) during verification, to absorb clock skew between hosts. Zero
 // (the default) applies no leeway; a negative value is rejected by [New].
+//
+// Keep it small relative to the expiration time: because it is added to `exp`
+// when verifying, it extends every token's effective lifetime, and a leeway at or
+// above the expiration time keeps expired tokens accepted for a comparable extra
+// span. It likewise widens the [WithMaxSessionLifetime] bound.
 func WithClockSkewLeeway(clockSkewLeeway time.Duration) Option {
 	return func(c *JWT) {
 		c.clockSkewLeeway = clockSkewLeeway
@@ -46,6 +66,17 @@ func WithClockSkewLeeway(clockSkewLeeway time.Duration) Option {
 func WithMaxBodyBytes(maxBodyBytes int64) Option {
 	return func(c *JWT) {
 		c.maxBodyBytes = maxBodyBytes
+	}
+}
+
+// WithMaxTokenBytes sets the maximum accepted size, in bytes, of a compact-JWS
+// token presented for verification. It must be positive; see
+// [DefaultMaxTokenBytes] for the default. Raise it only for unusually large
+// custom claims: the cap bounds the base64 and JSON decode of the JOSE header,
+// which is necessarily parsed before the signature can be checked.
+func WithMaxTokenBytes(maxTokenBytes int) Option {
+	return func(c *JWT) {
+		c.maxTokenBytes = maxTokenBytes
 	}
 }
 
