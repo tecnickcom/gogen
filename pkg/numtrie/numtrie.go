@@ -54,7 +54,10 @@ once with [Node.Add], then query it repeatedly with [Node.Get]:
     [github.com/tecnickcom/nurago/pkg/phonekeypad], enabling vanity numbers
     like "1-800-FLOWERS" to be stored and matched transparently.
   - Efficient memory layout: each node holds a fixed 10-slot children array
-    (one slot per digit 0–9), avoiding dynamic allocation per insertion.
+    (one slot per digit 0–9) rather than a per-node map, so a node is a single
+    allocation with no map overhead. Insertion allocates one node per new digit
+    position; re-inserting at an existing position allocates nothing, and
+    lookups ([Node.Get], [Node.GetExact]) never allocate.
 
 # Match Status Codes
 
@@ -66,7 +69,7 @@ The status int8 returned by [Node.Get] is a compact bit field:
 
 The six named constants encode every meaningful combination:
 
-	StatusMatchEmpty         (-127) — input was empty
+	StatusMatchEmpty         (-127) — no digit characters in input
 	StatusMatchNo            (-125) — first digit not in trie
 	StatusMatchFull          (   0) — exact match, leaf node
 	StatusMatchPartial       (   1) — exact match, non-leaf node
@@ -74,9 +77,15 @@ The six named constants encode every meaningful combination:
 	StatusMatchPartialPrefix (   3) — stored key is prefix of input, non-leaf node
 
 When bit 7 is set the status is a standalone sentinel (StatusMatchEmpty or
-StatusMatchNo): only bit 7 is significant, the low bits carry no meaning, and
-[Node.Get] returns a nil value for these statuses even when a root/default value
+StatusMatchNo): only bit 7 is significant and the low bits carry no meaning.
+[Node.Get] returns a nil value for both of these, even when a root/default value
 is present.
+
+A non-negative status does not by itself guarantee a non-nil value: callers must
+always nil-check the returned pointer. StatusMatchFull and StatusMatchPrefix (the
+two leaf outcomes) always carry a value, but StatusMatchPartial and
+StatusMatchPartialPrefix return nil whenever no value was stored on the matched
+path.
 
 # Concurrency
 
@@ -120,7 +129,8 @@ const (
 
 	// StatusMatchPartial indicates that every digit of the input was consumed
 	// and the final trie node is not a leaf (it has children). The input is a
-	// prefix of at least one longer stored key.
+	// prefix of at least one longer stored key. The returned value is the last
+	// non-nil value found along the path, or nil if no value was stored on it.
 	StatusMatchPartial int8 = 1 // 0b00000001
 
 	// StatusMatchPrefix indicates that the trie path was exhausted before all
@@ -131,7 +141,8 @@ const (
 
 	// StatusMatchPartialPrefix indicates that the trie path was exhausted
 	// before all input digits were consumed and the last matched node is not a
-	// leaf. The last non-nil value found along the path is returned.
+	// leaf. The returned value is the last non-nil value found along the path,
+	// or nil if no value was stored on it.
 	StatusMatchPartialPrefix int8 = 3 // 0b00000011
 )
 
@@ -175,6 +186,10 @@ func New[T any]() *Node[T] {
 // A nil val is rejected as a no-op: the trie is left unchanged and Add returns
 // false, since the trie cannot store or distinguish a nil value from an absent
 // one.
+//
+// The trie stores the supplied pointer, not a copy of the pointed-to value:
+// mutating that value after Add is visible through the trie, and a pointer
+// stored under multiple keys is shared by all of them.
 func (t *Node[T]) Add(num string, val *T) bool {
 	if val == nil {
 		return false
@@ -215,7 +230,7 @@ func (t *Node[T]) Add(num string, val *T) bool {
 //
 // The six named constants encode every meaningful combination:
 //
-//	StatusMatchEmpty         (-127) — input was empty
+//	StatusMatchEmpty         (-127) — no digit characters in input
 //	StatusMatchNo            (-125) — first digit not in trie
 //	StatusMatchFull          (   0) — exact match, leaf node
 //	StatusMatchPartial       (   1) — exact match, non-leaf node
@@ -223,7 +238,12 @@ func (t *Node[T]) Add(num string, val *T) bool {
 //	StatusMatchPartialPrefix (   3) — stored key is prefix of input, non-leaf node
 //
 // For the two negative sentinels (StatusMatchEmpty and StatusMatchNo) the
-// returned value is nil, even when a root/default value is present.
+// returned value is nil, even when a root/default value is present. A
+// non-negative status does not by itself guarantee a non-nil value:
+// StatusMatchFull and StatusMatchPrefix always carry a value, but
+// StatusMatchPartial and StatusMatchPartialPrefix return nil when no value was
+// stored on the matched path, so callers must always nil-check the returned
+// pointer.
 func (t *Node[T]) Get(num string) (*T, int8) {
 	var match, digit int
 
@@ -268,7 +288,10 @@ func (t *Node[T]) Get(num string) (*T, int8) {
 }
 
 // matchStatus derives the Get status code for a traversal that ended on the
-// receiver node, having matched match digits out of digit input digits.
+// receiver node. match is the number of digits matched along the trie path.
+// digit is match, or match+1 when the input carried a further digit whose child
+// was absent (the prefix case); only whether digit exceeds match is significant,
+// so digit is not the total input-digit count.
 func (t *Node[T]) matchStatus(match, digit int) int8 {
 	if match == 0 {
 		// No digit was matched: return the named no-match constants directly,

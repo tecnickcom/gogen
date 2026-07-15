@@ -1,19 +1,32 @@
 package numtrie_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/tecnickcom/nurago/pkg/numtrie"
 )
 
 func BenchmarkAdd(b *testing.B) {
-	root := numtrie.New[int]()
+	// Distinct keys inserted into a fresh trie per op, so each Add allocates
+	// real nodes. Re-adding a single key would report a misleading 0 allocs/op
+	// because every node already exists after the first iteration.
+	const numKeys = 1000
+
+	keys := make([]string, numKeys)
+	for i := range keys {
+		keys[i] = fmt.Sprintf("%07d", i)
+	}
+
 	val := 42
 
 	b.ReportAllocs()
 
 	for b.Loop() {
-		root.Add("1-212-555-0100", &val)
+		root := numtrie.New[int]()
+		for _, k := range keys {
+			root.Add(k, &val)
+		}
 	}
 }
 
