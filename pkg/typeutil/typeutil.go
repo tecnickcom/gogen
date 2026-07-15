@@ -1,46 +1,29 @@
 /*
-Package typeutil solves a handful of small but recurring type-handling problems
-in Go generics code: reliably detecting nil through interfaces, obtaining zero
-values generically, dereferencing pointers safely, and converting booleans to
-integers without a branch in the generated assembly.
+Package typeutil provides type-handling helpers for Go generics code: detecting
+nil through interfaces, obtaining zero values generically, dereferencing
+pointers safely, and converting booleans to integers without a branch.
 
-# Problem
-
-Go's type system has several well-known rough edges. The `v == nil` check
-silently misses non-nil interfaces wrapping a nil concrete pointer. Generic
-code frequently needs the zero value of an unknown type T without an instance
-to copy. Dereferencing a pointer that may be nil requires a nil guard every
-time. And converting a bool to 0/1 via an if/else produces less optimal code
-than what the compiler can emit with the right pattern. This package centralizes
-correct, idiomatic solutions to all four in one small dependency.
-
-# Key Features
-
-  - [IsNil]: a reflection-based nil check that correctly handles all nilable
-    kinds — chan, func, interface, map, pointer, slice, unsafe pointer — as well
-    as the untyped nil case. Use this wherever you receive an `any` and need a
-    reliable nil test.
-  - [IsZero]: a generic function that returns true when the value equals the
-    zero value for its type (empty string, 0, nil pointer, false, …), without
-    requiring a comparable constraint.
-  - [Zero]: returns the zero value for any type T. Useful as a readable
-    sentinel return in generic functions: `return typeutil.Zero(v), err`.
-  - [Value]: safely dereferences a pointer, returning the zero value of T when
-    the pointer is nil. Eliminates repetitive nil-guard boilerplate at every
-    pointer dereference.
-  - [BoolToInt]: converts a bool to 0 or 1 using the pattern that the Go
-    compiler optimizes to a single MOVBLZX instruction (no branch, no
-    conditional in the hot path). Preferable to an inline if/else when the
-    result feeds into arithmetic or array indexing.
+  - [IsNil]: reflection-based nil check that handles all nilable kinds (chan,
+    func, interface, map, pointer, slice, unsafe pointer) and the untyped nil
+    case, including a nil concrete pointer wrapped in a non-nil interface that
+    `v == nil` misses.
+  - [IsZero]: returns true when the value equals the zero value for its type
+    (empty string, 0, nil pointer, false), without requiring a comparable
+    constraint.
+  - [Zero]: returns the zero value for any type T.
+  - [Value]: dereferences a pointer, returning the zero value of T when the
+    pointer is nil.
+  - [BoolToInt]: converts a bool to 0 or 1 using the pattern the Go compiler
+    optimizes to a single MOVBLZX instruction.
 
 # Usage
 
-	// Reliable nil detection through an interface:
+	// Nil detection through an interface:
 	var p *MyStruct
 	var i any = p
 	typeutil.IsNil(i) // true, whereas i == nil is false
 
-	// Zero value inferred from an existing value — handy as a sentinel return:
+	// Zero value inferred from an existing value, as a sentinel return:
 	func check[T any](v T) (T, error) {
 		if !valid(v) {
 			return typeutil.Zero(v), errInvalid
@@ -54,10 +37,6 @@ correct, idiomatic solutions to all four in one small dependency.
 
 	// Branch-free bool-to-int:
 	score += typeutil.BoolToInt(isBonus) * bonusPoints
-
-This package is ideal for any Go codebase that uses generics, works with
-`any`-typed values from external sources, or needs micro-optimized arithmetic
-on boolean conditions.
 */
 package typeutil
 
@@ -74,8 +53,7 @@ func IsNil(v any) bool {
 	value := reflect.ValueOf(v)
 
 	// reflect.ValueOf unwraps the interface, so Kind is never Interface for a
-	// top-level any argument; that case is kept only for safety in case IsNil is
-	// ever changed to inspect interface-typed fields.
+	// top-level any argument; the Interface case is kept only for safety.
 	switch value.Kind() { //nolint:exhaustive
 	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
 		return value.IsNil()

@@ -18,7 +18,7 @@ import (
 // the '/' of the path and the key is rejected, leaking OAuth implicit-flow
 // tokens carried in a URL fragment.
 //
-// Invariant: this set must be a superset of isURLValueBoundary's — a redacted
+// Invariant: this set must be a superset of isURLValueBoundary's: a redacted
 // value is replaced by inert marker bytes, so any byte that can end a value
 // must also fence the following key scan, or key extraction would differ
 // between redaction passes.
@@ -63,7 +63,7 @@ func (re *Redactor) appendRedactedURLEncodedValueAt(src []byte, eq int, dst []by
 	}
 
 	// HTML form-attribute labeled secret: a `name="<secret-name>"` attribute
-	// followed by a sibling `value=`/`val=` attribute — the attribute analog of
+	// followed by a sibling `value=`/`val=` attribute, the attribute analog of
 	// the JSON {name,value} rule.
 	if equalsASCIIFold(rawKey, "name") {
 		return re.appendLabeledSecretAttr(src, eq, dst)
@@ -228,7 +228,7 @@ func isURLValueBoundary(c byte) bool {
 
 // redactedMarkerEnd reports the end of an already-redacted value: a marker
 // followed by a non-word boundary spans only the marker itself, keeping
-// redaction idempotent — a quoted value redacted on a first pass
+// redaction idempotent: a quoted value redacted on a first pass
 // ("password=*** tail") must not have its trailing text consumed on a second
 // pass. It returns 0 when the value is not a lone marker.
 //

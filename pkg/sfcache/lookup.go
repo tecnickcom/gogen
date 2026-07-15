@@ -152,7 +152,7 @@ func (c *Cache[K, V]) fetch(ctx context.Context, key K) (V, error) {
 			//
 			// NOTE: abortFlight re-locks the non-reentrant mutex, so no frame this defer
 			// can unwind through may still hold the write lock. Both calls that can panic
-			// — lookupFn and entryTTL — run before publish takes it.
+			// (lookupFn and entryTTL) run before publish takes it.
 			c.abortFlight(key, fl)
 		}
 
@@ -171,7 +171,7 @@ func (c *Cache[K, V]) fetch(ctx context.Context, key K) (V, error) {
 	// exclusive write lock, wedges every other caller of the cache.
 	ctxInduced := (err != nil) && errors.Is(err, ctx.Err())
 
-	// Only a successful lookup is cached, so only it needs a TTL — and only it may run
+	// Only a successful lookup is cached, so only it needs a TTL, and only it may run
 	// ttlFn, which must not see the value of a failed lookup. A panic here unwinds
 	// through the defer above: the flight is deregistered, nothing is stored, and
 	// nothing has been evicted on its behalf.

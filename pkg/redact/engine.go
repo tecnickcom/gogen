@@ -66,8 +66,8 @@ func (re *Redactor) appendLineStartRedactionAt(src []byte, i int, dst []byte) (i
 	if re.enabled(RuleHeaders) {
 		// Skip leading indentation and an optional curl/resty trace decoration
 		// ("> "/"< ") so nested (indented) and trace-prefixed header lines are
-		// covered too — the value of an indented "password:" or a "> Authorization:"
-		// header leaked before. The prefix itself is preserved in the output.
+		// covered too, including an indented "password:" or a "> Authorization:"
+		// header. The prefix itself is preserved in the output.
 		nameStart := skipHeaderLinePrefix(src, i)
 		if valueStart, ok := re.sensitiveHeaderValueStart(src, nameStart); ok {
 			dst = append(dst, src[i:valueStart]...)

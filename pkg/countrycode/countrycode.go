@@ -1,9 +1,8 @@
 /*
-Package countrycode provides fast, reusable access to ISO-3166 country metadata.
+Package countrycode provides access to ISO-3166 country metadata.
 
-It solves a common backend need: translating country identifiers into
-normalized, structured records and selecting countries by geographic hierarchy,
-assignment status, or top-level domain.
+It translates country identifiers into structured records and selects countries
+by geographic hierarchy, assignment status, or top-level domain.
 
 CountryData includes:
   - ISO-3166 alpha-2, alpha-3, and numeric codes
@@ -15,24 +14,8 @@ CountryData includes:
 
 New(nil) builds a Data instance from embedded defaults sourced from ISO-3166,
 the CIA World Factbook, United Nations M49, and Wikipedia. New also accepts a
-custom []CountryData dataset when applications need private overrides, curated
-subsets, or pinned metadata snapshots.
-
-# Top features
-
-  - Direct lookup by Alpha-2, Alpha-3, Numeric code, and TLD.
-  - Region/status enumerations through EnumRegion, EnumSubRegion,
-    EnumIntermediateRegion, and EnumStatus.
-  - Country list queries by region/sub-region/intermediate region, status,
-    and TLD for filtering and reporting workflows.
-  - Compact internal encoding optimized for quick lookups and low memory usage.
-
-# Why this matters
-
-  - Standardizes country metadata handling across services and teams.
-  - Reduces repeated parsing and mapping logic in validation/enrichment paths.
-  - Keeps geographic lookups efficient for both request/response APIs and
-    batch data pipelines.
+custom []CountryData dataset for private overrides, curated subsets, or pinned
+metadata snapshots.
 
 # Typical usage
 
@@ -64,8 +47,8 @@ type CountryData struct {
 // countryByAlpha2ID materializes a full CountryData record from an internal alpha-2 ID.
 //
 // It is the core decoder used by all public lookup methods. The function maps
-// compact internal keys back into developer-friendly fields (codes, names,
-// region hierarchy, status, and TLD) so callers work with normalized data.
+// compact internal keys back into the CountryData fields (codes, names, region
+// hierarchy, status, and TLD).
 func (d *Data) countryByAlpha2ID(a2 uint16) (*CountryData, error) {
 	ck, err := d.countryKeyByAlpha2ID(a2)
 	if err != nil {
@@ -149,9 +132,6 @@ func (d *Data) populateCountryDetails(cd *CountryData, el *countryKeyElem) error
 }
 
 // EnumStatus returns all assignment-status names mapped to their numeric code strings.
-//
-// This is useful for UI dropdowns, validation tables, and API metadata where
-// callers need discoverable status values.
 func (d *Data) EnumStatus() map[string]string {
 	m := make(map[string]string, len(d.dStatusByID))
 
@@ -163,8 +143,6 @@ func (d *Data) EnumStatus() map[string]string {
 }
 
 // EnumRegion returns all region names mapped to their M49-style region codes.
-//
-// It provides a canonical region catalog for filtering and reporting flows.
 func (d *Data) EnumRegion() map[string]string {
 	m := make(map[string]string, len(d.dRegionByID))
 
@@ -180,8 +158,6 @@ func (d *Data) EnumRegion() map[string]string {
 }
 
 // EnumSubRegion returns all sub-region names mapped to their codes.
-//
-// This gives callers a stable reference set for sub-region filtering.
 func (d *Data) EnumSubRegion() map[string]string {
 	m := make(map[string]string, len(d.dSubRegionByID))
 
@@ -197,9 +173,6 @@ func (d *Data) EnumSubRegion() map[string]string {
 }
 
 // EnumIntermediateRegion returns all intermediate-region names mapped to their codes.
-//
-// This supports finer-grained geographic grouping where region/sub-region are
-// not specific enough.
 func (d *Data) EnumIntermediateRegion() map[string]string {
 	m := make(map[string]string, len(d.dIntermediateRegionByID))
 
@@ -216,8 +189,7 @@ func (d *Data) EnumIntermediateRegion() map[string]string {
 
 // CountryByAlpha2Code returns country metadata for an ISO-3166 alpha-2 code.
 //
-// Example: "IT" resolves to Italy. This is the fastest lookup path when
-// upstream systems already use alpha-2 identifiers.
+// Example: "IT" resolves to Italy.
 func (d *Data) CountryByAlpha2Code(alpha2 string) (*CountryData, error) {
 	a2, err := encodeAlpha2(alpha2)
 	if err != nil {
@@ -229,8 +201,7 @@ func (d *Data) CountryByAlpha2Code(alpha2 string) (*CountryData, error) {
 
 // CountryByAlpha3Code returns country metadata for an ISO-3166 alpha-3 code.
 //
-// Example: "ITA" resolves to Italy. The function bridges alpha-3 identifiers
-// to the package's unified country record.
+// Example: "ITA" resolves to Italy.
 func (d *Data) CountryByAlpha3Code(alpha3 string) (*CountryData, error) {
 	a3, err := encodeAlpha3(alpha3)
 	if err != nil {
@@ -247,8 +218,7 @@ func (d *Data) CountryByAlpha3Code(alpha3 string) (*CountryData, error) {
 
 // CountryByNumericCode returns country metadata for an ISO-3166 numeric code.
 //
-// Example: "380" resolves to Italy. This is useful when integrating with
-// systems that store numeric ISO identifiers.
+// Example: "380" resolves to Italy.
 func (d *Data) CountryByNumericCode(num string) (*CountryData, error) {
 	nid, err := encodeNumeric(num)
 	if err != nil {
@@ -415,8 +385,7 @@ func (d *Data) CountriesByStatusName(name string) ([]*CountryData, error) {
 
 // CountriesByTLD returns countries associated with a top-level domain code.
 //
-// Example: "it" resolves to Italy. This is useful for domain-based heuristics
-// and enrichment pipelines.
+// Example: "it" resolves to Italy.
 func (d *Data) CountriesByTLD(tld string) ([]*CountryData, error) {
 	code, err := encodeTLD(tld)
 	if err != nil {

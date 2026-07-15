@@ -82,7 +82,7 @@ func (sc Status) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements the custom unmarshaling function for the json decoder.
 //
 // A JSend status string is mapped back to a representative HTTP status code. The
-// mapping is intentionally lossy — the original code is not recoverable from the
+// mapping is intentionally lossy: the original code is not recoverable from the
 // status string alone and should be read from the accompanying code field (e.g.
 // jsendx.Response.Code):
 //   - "success" maps to 200 (http.StatusOK)

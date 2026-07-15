@@ -6,7 +6,7 @@ type Option func(*Params)
 // WithKeyLen sets the derived key length (Tag length) in bytes.
 // The value is clamped to [16, 1024]: 16 bytes (128 bits) is a safe floor, as
 // shorter keys are trivially brute-forceable offline, and 1024 bytes is the
-// largest length the verification path accepts — a longer key would mint a hash
+// largest length the verification path accepts; a longer key would mint a hash
 // that could never be verified. The default is 32 bytes. (Hashes stored with a
 // shorter key remain verifiable for backward compatibility.)
 func WithKeyLen(v uint32) Option {
@@ -31,7 +31,7 @@ func WithSaltLen(v uint32) Option {
 // The value is clamped to [1, 1024]. Higher values increase resistance to
 // brute-force attacks at the cost of hashing latency; 1024 is the largest value
 // the verification path accepts, so it is the effective ceiling. OWASP
-// recommends tuning so that hashing takes 0.5–1 s on target hardware.
+// recommends tuning so that hashing takes 0.5 to 1 s on target hardware.
 func WithTime(v uint32) Option {
 	return func(ph *Params) {
 		ph.Time = min(max(minTime, v), maxVerifyTime)
@@ -89,9 +89,9 @@ func WithMaxPasswordLength(v uint32) Option {
 // rejected as [ErrInvalidHashData] before any Argon2 computation.
 //
 // The default is 4, which leaves room for the ordinary "raise the configuration,
-// then rehash on the next login" upgrade path — a freshly minted hash costs 1x
+// then rehash on the next login" upgrade path: a freshly minted hash costs 1x
 // and a legacy hash costs less than the current configuration, so neither is
-// rejected — while stopping a single forged or corrupt row from pinning a
+// rejected, while stopping a single forged or corrupt row from pinning a
 // verifier at up to 4 GiB and minutes of CPU per login attempt on that account.
 //
 // Lower it toward 1 where a stored hash could ever be attacker-controlled (a

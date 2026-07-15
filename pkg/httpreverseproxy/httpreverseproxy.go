@@ -1,32 +1,17 @@
 /*
-Package httpreverseproxy provides a reusable reverse-proxy client built on top
-of net/http/httputil.ReverseProxy.
+Package httpreverseproxy provides a reverse-proxy client built on top of
+net/http/httputil.ReverseProxy.
 
-# Problem
-
-Service gateways and edge handlers often need to forward requests to upstream
-services while preserving consistent forwarding semantics, transport setup, and
-error observability. Rebuilding this plumbing for each proxy endpoint leads to
-drift and duplicated maintenance.
-
-# Solution
-
-This package wraps ReverseProxy behind a focused [Client] API:
+The package wraps ReverseProxy behind a [Client]:
   - [New] configures proxy behavior from an upstream base address.
   - [Client.ForwardRequest] forwards incoming HTTP requests to the target.
 
 When no custom rewrite function is provided, requests are rewritten to the
 configured upstream URL and the wildcard `path` segment is forwarded as the
-proxied path. Standard `X-Forwarded-*` headers are set automatically.
-
-# Features
-
-  - Rewrite-based upstream routing with sensible defaults.
-  - Pluggable reverse proxy instance via [WithReverseProxy].
-  - Pluggable HTTP transport client via [WithHTTPClient].
-  - Structured proxy error logging with request metadata and response timing.
-  - Default error handler returning HTTP 502 Bad Gateway on upstream failures.
-  - Middleware-friendly forwarding entry point for integration with routers.
+proxied path. Standard `X-Forwarded-*` headers are set automatically. A custom
+reverse proxy and HTTP transport can be supplied via [WithReverseProxy] and
+[WithHTTPClient]; the default error handler logs upstream failures and returns
+HTTP 502 Bad Gateway.
 
 # Defaults and Behavior
 
@@ -56,8 +41,8 @@ decision; a request that is accepted is still forwarded verbatim (its trailing s
 and any in-bounds `.` / `..` segments are preserved for the upstream to normalize).
 The boundary therefore assumes the upstream resolves paths the same way, and it does
 not defend against multiply percent-encoded traversal (e.g. `%252e%252e`), which
-survives a single decode as a literal segment — put untrusted-input defenses at the
-upstream as well.
+survives a single decode as a literal segment, so put untrusted-input defenses at
+the upstream as well.
 
 # Observability Behavior
 
@@ -77,15 +62,9 @@ Info level under a distinct message with the non-standard 499 code and no respon
 written to the abandoned connection.
 
 Only transport failures and base-path rejections are logged; a successfully forwarded
-request — including one where the upstream returns a 4xx or 5xx response — produces no
+request (including one where the upstream returns a 4xx or 5xx response) produces no
 entry here, because that is a successful round trip. Add access logging by wrapping
 [Client.ForwardRequest] in middleware, or set ModifyResponse on a proxy passed via
 [WithReverseProxy].
-
-# Benefits
-
-httpreverseproxy reduces reverse-proxy boilerplate, keeps forwarding behavior
-consistent across services, and improves operational visibility of upstream
-failures.
 */
 package httpreverseproxy

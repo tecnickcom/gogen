@@ -3,23 +3,15 @@ Package random provides utility functions for generating random bytes, numeric
 identifiers, UID/UUID values, hexadecimal/base36 IDs, and configurable random
 strings.
 
-# Problem
-
-Application code frequently needs random values for IDs, tokens, test fixtures,
-or temporary credentials. Repeatedly wiring secure randomness, string encoding,
-and character-set mapping at call sites is error-prone and inconsistent.
-
-This package centralizes those patterns in one small API.
-
 # Randomness Source
 
 By default, [New] uses [crypto/rand.Reader], which is suitable for
 security-sensitive randomness. A custom [io.Reader] can be supplied directly to
 [New] for testing or specialized environments.
 
-The non-failing helpers — [Rnd.RandUint32], [Rnd.RandUint64] and [Rnd.UUIDv7],
+The non-failing helpers ([Rnd.RandUint32], [Rnd.RandUint64] and [Rnd.UUIDv7],
 plus [Rnd.RandHex64], [Rnd.RandString64], [Rnd.UID64] and [Rnd.UID128], which
-are built on them — fall back to math/rand/v2 if the reader fails, so that their
+are built on them) fall back to math/rand/v2 if the reader fails, so that their
 signatures can stay error-free. [Rnd.RandomBytes] and [Rnd.RandString] never
 fall back: they return the reader's error.
 
@@ -88,9 +80,6 @@ byte drawn from it. Entries must therefore be single-byte (ASCII) values.
 	alphaNum := []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	r2 := random.New(nil, random.WithByteToCharMap(alphaNum))
 	_, _ = r2.RandString(16)
-
-This package is ideal for Go services that need convenient, reusable random
-value generation with sensible secure defaults and explicit customization.
 */
 package random
 
@@ -163,9 +152,9 @@ const (
 // [ErrInvalidCharMap] or panic on the nil reader.
 //
 // A single Rnd is safe for concurrent use: it is immutable after construction
-// and every method allocates its own buffers. Note that [WithByteToCharMap]
-// copies the caller's character map, so a caller retaining the original slice
-// cannot mutate the generator through it.
+// and every method allocates its own buffers. [WithByteToCharMap] copies the
+// caller's character map, so a caller retaining the original slice cannot mutate
+// the generator through it.
 type Rnd struct {
 	reader   io.Reader
 	chrMap   []byte

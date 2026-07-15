@@ -11,8 +11,8 @@ package redact
 //
 // Every secret reaching a logged request/response dump, query string, or error
 // URL is then written to the logs in the clear. Use it only where the secrets
-// are already handled elsewhere — redaction applied downstream in the log
-// pipeline, or a log sink trusted with raw payloads — never merely to quiet
+// are already handled elsewhere (redaction applied downstream in the log
+// pipeline, or a log sink trusted with raw payloads), never merely to quiet
 // noisy output or to inspect a payload in production.
 //
 // It is deliberately named to be conspicuous in a diff, so that disabling

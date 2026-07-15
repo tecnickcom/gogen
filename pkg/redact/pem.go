@@ -30,7 +30,7 @@ const maxPEMBeginScan = 64
 // '\r') is exactly a private-key marker: the FIRST occurrence of a label must
 // terminate the line. A line whose first label is not at the end carries
 // trailing content (e.g. a whole key blob with escaped "\n" sequences, or an
-// END marker on the same logical line) and is left to the inline rule — a plain
+// END marker on the same logical line) and is left to the inline rule; a plain
 // HasSuffix would wrongly match the "PRIVATE KEY-----" tail of an END marker.
 func pemBeginLineIsPrivateKey(line []byte) bool {
 	for _, label := range pemPrivateKeyLabels {
@@ -156,7 +156,7 @@ var pemEndMarker = []byte(pemEndPrefix) //nolint:gochecknoglobals
 // starts a "-----BEGIN ... PRIVATE KEY-----" marker, the key material after
 // the marker is replaced up to the "-----END" marker (kept visible), or up to
 // the closing quote / line end / EOF when unterminated. This catches keys
-// embedded mid-line — most commonly a JSON string value carrying a whole PEM
+// embedded mid-line, most commonly a JSON string value carrying a whole PEM
 // blob with escaped "\n" sequences under a non-sensitive key name.
 func (re *Redactor) appendRedactedInlinePEMKeyAt(src []byte, i int, dst []byte) (int, []byte, bool) {
 	if !hasPrefixAt(src, i, pemBeginPrefix) {
@@ -206,8 +206,8 @@ const maxPEMBodyScan = 1 << 14
 // inlinePEMBodyEnd returns the end of the key material following an inline
 // BEGIN marker: the start of the "-----END" marker when present within the
 // bounded window, else the closing '"' (JSON-embedded blob) or the line end.
-// The END search is bounded (quadratic guard); the '"'/line-end fallback is not
-// — stopping it at the window would truncate a large key body mid-base64 and
+// The END search is bounded (quadratic guard); the '"'/line-end fallback is
+// not: stopping it at the window would truncate a large key body mid-base64 and
 // leave its tail visible. The fallback still cannot go quadratic: it consumes
 // whatever it scans, so it runs at most once over any span.
 func inlinePEMBodyEnd(src []byte, markerEnd int) int {

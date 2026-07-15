@@ -33,9 +33,8 @@ func WithLogger(logger *slog.Logger) HandlerOption {
 // overall status becomes 503. A non-positive duration disables the handler
 // timeout, leaving only the request context to bound execution.
 //
-// Note that a checker which ignores context cancellation still runs to
-// completion in its own goroutine; the timeout bounds the response latency, not
-// the checker itself.
+// A checker which ignores context cancellation still runs to completion in its
+// own goroutine; the timeout bounds the response latency, not the checker itself.
 func WithTimeout(timeout time.Duration) HandlerOption {
 	return func(h *Handler) {
 		h.timeout = timeout

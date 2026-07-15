@@ -19,8 +19,8 @@ type Option func(c *Client)
 // Transport is nil, and a default ErrorLog/ErrorHandler when those are nil. Provide
 // a Rewrite or a Director (never both, which ReverseProxy rejects) to fully control
 // request rewriting; leave them nil for the default upstream routing. Advanced
-// fields New never touches — FlushInterval, ModifyResponse, and a non-nil
-// ErrorHandler — are honored as configured, so pass a fully-built proxy to customize
+// fields New never touches (FlushInterval, ModifyResponse, and a non-nil
+// ErrorHandler) are honored as configured, so pass a fully-built proxy to customize
 // response streaming or mutation.
 func WithReverseProxy(p *httputil.ReverseProxy) Option {
 	return func(c *Client) {

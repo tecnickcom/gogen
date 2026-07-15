@@ -24,8 +24,8 @@ distinct hosts looked up; [Cache.Len] can exceed it.
 # Dialing
 
 [Cache.DialContext] dials the resolved IPs sequentially (not raced) in the
-resolver's preference order, interleaving address families — leading with the
-resolver-preferred one — so a dead family is not exhausted before the other is
+resolver's preference order, interleaving address families (leading with the
+resolver-preferred one) so a dead family is not exhausted before the other is
 tried. Family-restricted networks ("tcp4", "udp6", ...) dial only addresses of the
 matching family.
 
@@ -233,7 +233,7 @@ func (c *Cache) Reset() {
 //
 // A resolution in flight for the host is invalidated: its result is returned to
 // the caller that started it but not cached, and callers waiting on it are
-// released to resolve again — so a second concurrent resolver call for that host
+// released to resolve again, so a second concurrent resolver call for that host
 // may start alongside the one it superseded.
 func (c *Cache) Remove(host string) {
 	c.cache.Remove(normalizeHost(host))

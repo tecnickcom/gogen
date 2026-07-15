@@ -1,22 +1,12 @@
 /*
-Package tsmap solves the common concurrency problem of safely operating on Go
-maps shared across multiple goroutines without repeatedly writing lock/unlock
-boilerplate at every call site.
-
-# Problem
-
-Go maps are not safe for concurrent read/write access. Teams typically wrap each
-operation with a mutex, but this creates repetitive, error-prone code and makes
-it easy to forget a lock around one path. Generic map transformations such as
-filter, map, reduce, and invert are especially noisy when each operation also
-needs synchronization.
-
-tsmap provides lock-aware generic helpers that execute map operations under the
-appropriate lock contract from github.com/tecnickcom/nurago/pkg/threadsafe.
+Package tsmap provides lock-aware generic helpers for operating on Go maps
+shared across multiple goroutines, keeping synchronization explicit at every
+call site.
 
 # How It Works
 
-Every function receives both the map and a lock interface:
+Every function receives both the map and a lock interface from
+github.com/tecnickcom/nurago/pkg/threadsafe:
 
   - write operations ([Set], [Delete], [Do]) require [threadsafe.Locker] and use
     `Lock`/`Unlock`.
@@ -24,24 +14,10 @@ Every function receives both the map and a lock interface:
     [Filter], [Map], [Reduce], [Invert], [RDo]) require [threadsafe.RLocker] and
     use `RLock`/`RUnlock`.
 
-This design keeps synchronization policy explicit at the call site while
-providing a concise, reusable API.
-
-# Key Features
-
-  - Generic API for any map type: functions are parameterized over
-    `M ~map[K]V`, so they work with plain maps and named map types.
-  - Clear read/write lock separation: mutation helpers use exclusive locks,
-    query/transform helpers use read locks.
-  - Functional map utilities with safety built in:
-    [Filter], [Map], [Reduce], and [Invert] delegate to
-    github.com/tecnickcom/nurago/pkg/maputil while preserving thread safety via
-    the provided lock.
-  - Presence-checked reads via [GetOK], and atomic compound operations via
-    [Do] (write) and [RDo] (read) for sequences a single helper cannot express.
-  - [Snapshot] returns a consistent copy under the read lock for safe read-out.
-  - Minimal adoption cost: works directly with standard [sync.RWMutex]
-    (or any compatible custom lock type) through interfaces.
+[Filter], [Map], [Reduce], and [Invert] delegate to
+github.com/tecnickcom/nurago/pkg/maputil under the provided lock. The helpers
+work with standard [sync.RWMutex] and any custom lock type that satisfies the
+interfaces.
 
 # Usage
 

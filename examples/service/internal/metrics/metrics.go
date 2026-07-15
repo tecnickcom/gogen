@@ -36,11 +36,8 @@ type Client struct {
 	collectorExample *prometheus.CounterVec
 }
 
-// New creates a metrics client wrapper with service-specific collectors.
-//
-// It solves a common observability need: keeping custom application metrics
-// close to business events while still integrating with the shared nurago
-// metrics client.
+// New creates a metrics client wrapper with service-specific collectors that
+// integrate with the shared nurago metrics client.
 func New() *Client {
 	return &Client{
 		collectorExample: prometheus.NewCounterVec(
@@ -54,10 +51,7 @@ func New() *Client {
 }
 
 // CreateMetricsClientFunc constructs the underlying metrics client and
-// registers all custom collectors.
-//
-// This method is passed to bootstrap so metrics initialization stays
-// centralized and deterministic during startup.
+// registers all custom collectors. It is passed to bootstrap during startup.
 func (m *Client) CreateMetricsClientFunc() (metrics.Client, error) {
 	var err error
 
@@ -72,18 +66,13 @@ func (m *Client) CreateMetricsClientFunc() (metrics.Client, error) {
 
 // IncExampleCounter increments the example counter for a given status code
 // label.
-//
-// Labeled counters help developers slice behavior by outcome category, which
-// is useful for dashboards and alerting.
 func (m *Client) IncExampleCounter(code string) {
 	m.collectorExample.With(prometheus.Labels{labelCode: code}).Inc()
 }
 
 // InstrumentDB instruments a SQL connection so query and connection pool
-// telemetry is exported with the provided database name.
-//
-// Wrapping DB handles with metrics is key to spotting saturation and latency
-// regressions before they become incidents.
+// telemetry is exported with the provided database name. It returns an error
+// if the metrics client is not initialized.
 func (m *Client) InstrumentDB(dbName string, db *sql.DB) error {
 	if m.libClient == nil {
 		return errMetricsClientNotInitialized

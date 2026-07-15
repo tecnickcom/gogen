@@ -59,7 +59,7 @@ const xmlCDATAPrefix = "<![CDATA["
 // failed rule does not consume, so the outer scan re-enters the search at the
 // next tag. Bounding the terminator search keeps every failed element's scan to
 // a fixed window, so total cost is linear. The plain-text content scan is NOT
-// bounded — it stops at the first '<' (the closing tag), so a large flat secret
+// bounded: it stops at the first '<' (the closing tag), so a large flat secret
 // with no embedded comment/CDATA still redacts; only a comment/CDATA-wrapped
 // secret longer than the window is left visible (an exotic shape, and the
 // safe-vs-DoS tradeoff analogous to PEM's bounded body scan).
@@ -103,7 +103,7 @@ func xmlFlatContentEnd(src []byte, contentStart int, name []byte) int {
 // (<![CDATA[), returns the index just past its terminator and true. The
 // terminator search is bounded by maxXMLContentScan; a section whose terminator
 // is not found within that window is treated as unterminated (returns len(src),
-// so the caller fails the element) rather than rescanned per tag — keeping the
+// so the caller fails the element) rather than rescanned per tag, keeping the
 // outer scan from going quadratic. It returns (i, false) for any other byte
 // sequence.
 func skipXMLCommentOrCDATA(src []byte, i int) (int, bool) {

@@ -37,8 +37,8 @@ func (h *zerologHandler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 // Handle writes the record onto a zerolog Event: level, timestamp, optional source, the record's
-// attributes (nested under any open groups) with the root trace ID written alongside them — after
-// them on the ungrouped path, before the open group on the grouped one — and the message.
+// attributes (nested under any open groups) with the root trace ID written alongside them (after
+// them on the ungrouped path, before the open group on the grouped one) and the message.
 //
 // It returns the destination's write error, if any (see errWriter). slog.Logger discards it, so
 // zerolog's own diagnostic on os.Stderr remains the fallback; a wrapping handler, or a caller
@@ -61,7 +61,7 @@ func (h *zerologHandler) Handle(_ context.Context, record slog.Record) error {
 		e.RawJSON(zerolog.TimestampFieldName, record.Time.AppendFormat(buf[:0], timeLayout))
 	}
 
-	// A zero PC, and one that does not resolve to a frame in this binary, both write no source field —
+	// A zero PC, and one that does not resolve to a frame in this binary, both write no source field,
 	// as under slog's own handlers, which elide an empty caller location (see sourceDict).
 	if h.source {
 		if d, ok := sourceDict(record); ok {
@@ -82,7 +82,7 @@ func (h *zerologHandler) Handle(_ context.Context, record slog.Record) error {
 	// slog's empty-group elision. The dictionary is built before the trace ID is written (though
 	// emitted after it, keeping the field order) because whether it renders decides the injection: a
 	// group named trace_id puts a root-level trace_id field of its own on the record, so it must
-	// suppress the injected one — but only when it actually renders, since an elided group writes
+	// suppress the injected one, but only when it actually renders, since an elided group writes
 	// nothing. A trace_id baked in before the group was opened (h.traceAttr) suppresses it likewise.
 	dict, wrote := h.buildGroupDict(h.groups, &record)
 	rootIsTrace := wrote && h.groups[0].name == logutil.TraceIDKey
@@ -162,8 +162,8 @@ func (h *zerologHandler) WithGroup(name string) slog.Handler {
 }
 
 // writeRoot writes the record's attributes at the root (the ungrouped fast path) and injects the
-// trace ID unless the caller already supplied a root-level trace_id — as a record attribute (reported
-// by addRootAttrEvent as it writes it) or a baked WithAttrs/CommonAttr one (h.traceAttr) — in which
+// trace ID unless the caller already supplied a root-level trace_id (as a record attribute, reported
+// by addRootAttrEvent as it writes it, or a baked WithAttrs/CommonAttr one via h.traceAttr), in which
 // case theirs wins and TraceIDFn is not invoked, matching logutil's trace handler.
 func (h *zerologHandler) writeRoot(e *zerolog.Event, record *slog.Record) {
 	hasTrace := h.traceAttr
@@ -184,7 +184,7 @@ func (h *zerologHandler) writeRoot(e *zerolog.Event, record *slog.Record) {
 // buildGroupDict builds the nested zerolog dictionary for the open group chain, adding each
 // frame's attributes and, at the innermost frame, the record's attributes. It reports whether
 // the chain produced any field, so the caller can omit an all-empty (sub)group rather than
-// render it as a bare "{}" object. This is a single pass — attribute values are resolved once.
+// render it as a bare "{}" object. This is a single pass: attribute values are resolved once.
 func (h *zerologHandler) buildGroupDict(frames []groupFrame, record *slog.Record) (*zerolog.Event, bool) {
 	d := zerolog.Dict()
 	wrote := false

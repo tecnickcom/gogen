@@ -65,14 +65,14 @@ func WithLuhnCheck(enabled bool) Option {
 // tokenized key form (camelCase, snake_case, kebab-case and acronym runs all
 // split into tokens), so an extra token "floof" redacts keys named `floof`,
 // `userFloof`, `floof_id` and (as a numbered field) `floof2`. Extra tokens are
-// matched as whole tokens only — unlike the built-in roots (`password`,
+// matched as whole tokens only, unlike the built-in roots (`password`,
 // `token`, ...) they are NOT matched as the tail of a longer glued compound
 // (`myfloof`) nor as a bare plural (`floofs`).
 //
 // Each argument must be plain ASCII letters/digits, non-empty, and at most 32
 // bytes; anything else (including a name with separators such as `api_key`,
 // `x-api-key`, or `session-id`) is SILENTLY IGNORED. Pass the distinctive words
-// of a multi-word field separately — e.g. WithExtraTokens("tenant", "vault") —
+// of a multi-word field separately (e.g. WithExtraTokens("tenant", "vault")),
 // bearing in mind each becomes a standalone token. Most multi-word secret names
 // already redact because one component (`key`, `token`, `secret`, ...) is a
 // built-in keyword, so an extra token is only needed for a fully house-style word.
@@ -93,8 +93,8 @@ func WithExtraTokens(tokens ...string) Option {
 // WithoutTokens removes tokens from the built-in sensitive set, so keys
 // matching only those tokens stay visible (e.g. keep `amount`/`balance`
 // readable in financial logs). Dropping a token disables all of its matching
-// forms together — exact, numbered (`secret2`), plural (`secrets`), and the
-// glued-compound suffix (`mysecret`) — so WithoutTokens("secret") keeps every
+// forms together: exact, numbered (`secret2`), plural (`secrets`), and the
+// glued-compound suffix (`mysecret`). So WithoutTokens("secret") keeps every
 // one of them visible; other enumerated tokens that happen to end in it
 // (`clientsecret`) are separate entries and must be dropped by name. The same
 // single-word token constraints as [WithExtraTokens] apply.

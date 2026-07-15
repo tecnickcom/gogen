@@ -35,9 +35,6 @@ func IntToFloat(v int64) float64 {
 
 // StringToInt parses a decimal string and returns its scaled int64 form.
 //
-// This is useful when ingesting textual values from config, APIs, or storage
-// while preserving the package's fixed-point representation.
-//
 // Unlike FloatToInt, which clamps non-finite and out-of-range values, this
 // function returns an error wrapping ErrInvalidNumber when the string cannot be
 // parsed or is NaN or infinite, and ErrOutOfRange when the value is outside the

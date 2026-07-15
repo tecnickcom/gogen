@@ -11,7 +11,7 @@ import (
 //
 // A redaction marker directly before the quote also counts as key context:
 // whatever stood there originally allowed a key match on the previous pass,
-// so re-accepting it keeps passes consistent (idempotency) — otherwise a
+// so re-accepting it keeps passes consistent (idempotency); otherwise a
 // rewritten prefix would expose the key's interior to the other rules on the
 // second pass.
 func (re *Redactor) likelyJSONKeyStart(src []byte, i int) bool {
@@ -98,7 +98,7 @@ func (re *Redactor) appendRedactedSensitiveJSONAt(src []byte, i int, dst []byte)
 // kept visible for debuggability unless the label key is itself sensitive (e.g.
 // "key"), in which case it is redacted too, preserving the key rule's behavior.
 //
-// Only this forward order (label then value) is handled — the shape every
+// Only this forward order (label then value) is handled, the shape every
 // producer of these maps emits. It stays convergent: on a re-pass the label
 // value still names a secret and the sibling is already the inert marker.
 func (re *Redactor) appendLabeledSecretJSON(src []byte, i int, labelKey []byte, labelValStart int, dst []byte) (int, []byte, bool) {
@@ -203,15 +203,15 @@ func isJSONValueKey(key []byte) bool {
 // Only simple (backslash-free) escaped keys and escaped string values are
 // handled; any inner escaping makes the handler bail, leaving the input
 // unchanged. Bailing rather than guessing keeps the engine from ever
-// mis-parsing a deeper escape level, and — because the emitted marker is
-// backslash-free — keeps redaction convergent.
+// mis-parsing a deeper escape level, and, because the emitted marker is
+// backslash-free, keeps redaction convergent.
 //
 //nolint:gocyclo,cyclop // One guarded parse step per escaped-key/value component.
 func (re *Redactor) appendRedactedEscapedJSONAt(src []byte, i int, dst []byte) (int, []byte, bool) {
 	// The \" must open an object member: skipping whitespace backward from before
-	// the '\' — raw spaces/tabs and the two-byte escaped \n/\t/\r a non-Go
-	// serializer emits (Python json.dumps' ", "/": " separators, JS
-	// JSON.stringify pretty-printing) — the nearest structural byte is '{' or ','
+	// the '\' (raw spaces/tabs and the two-byte escaped \n/\t/\r a non-Go
+	// serializer emits: Python json.dumps' ", "/": " separators, JS
+	// JSON.stringify pretty-printing), the nearest structural byte is '{' or ','
 	// (the outer bytes of the embedded object), or the start of input.
 	if p := escapedJSONKeyContext(src, i-2); p >= 0 && src[p] != '{' && src[p] != ',' {
 		return 0, dst, false
@@ -277,7 +277,7 @@ func escapedJSONKeyContext(src []byte, p int) int {
 }
 
 // simpleEscapedStringEnd, given p just past an opening `\"`, returns the index
-// of the closing `\"`'s backslash when the content in between is simple — no
+// of the closing `\"`'s backslash when the content in between is simple: no
 // backslash escapes, no bare quote, no line break. It reports false otherwise,
 // so any inner escaping is left untouched rather than mis-parsed.
 func simpleEscapedStringEnd(src []byte, p int) (int, bool) {

@@ -3,19 +3,9 @@ Package profiling bridges Go's built-in [net/http/pprof] profiling tool and the
 [httprouter] request router, allowing all pprof endpoints to be served through a
 single wildcard route without manual per-handler registration.
 
-# Problem
-
-Go's standard [net/http/pprof] package registers its handlers on
-[http.DefaultServeMux]. Applications that use a custom router (such as
-httprouter) cannot use DefaultServeMux directly, and registering each pprof
-endpoint individually is tedious and error-prone.
-
-# Solution
-
 [PProfHandler] is a single [http.HandlerFunc] that reads an `*option` wildcard
 parameter from the httprouter request context and dispatches to the correct
-pprof handler automatically. Registering one wildcard route is all that is
-needed:
+pprof handler. Registering one wildcard route is all that is needed:
 
 	router.GET("/pprof/*option", profiling.PProfHandler)
 
@@ -23,23 +13,18 @@ needed:
 
 The following pprof paths are handled after the wildcard prefix:
 
-	/pprof/             — interactive index page listing all available profiles
-	/pprof/cmdline      — running program's command line
-	/pprof/profile      — 30-second (or ?seconds=N) CPU profile
-	/pprof/symbol       — symbol lookup for program counters
-	/pprof/trace        — execution trace (use ?seconds=N to set duration)
-	/pprof/<name>       — any named runtime profile, e.g. heap, goroutine,
+	/pprof/             - interactive index page listing all available profiles
+	/pprof/cmdline      - running program's command line
+	/pprof/profile      - 30-second (or ?seconds=N) CPU profile
+	/pprof/symbol       - symbol lookup for program counters
+	/pprof/trace        - execution trace (use ?seconds=N to set duration)
+	/pprof/<name>       - any named runtime profile, e.g. heap, goroutine,
 	                      allocs, block, mutex, threadcreate
 
-# Features
-
-  - Zero-configuration: a single handler covers every pprof endpoint.
-  - Router-agnostic path extraction: uses httprouter's context parameter so the
-    mount prefix can be anything (e.g. /debug/pprof/*option).
-  - No global state: does not touch [http.DefaultServeMux].
-  - Extensible: named profiles (heap, goroutine, …) are forwarded to
-    [pprof.Handler] automatically; no code changes are required when the Go
-    runtime adds new profiles.
+The handler does not touch [http.DefaultServeMux], and it reads the endpoint
+from httprouter's context parameter, so the mount prefix can be anything (for
+example /debug/pprof/*option). Named profiles are forwarded to [pprof.Handler],
+so no code changes are needed when the Go runtime adds new profiles.
 
 # Caveats
 

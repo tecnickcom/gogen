@@ -14,8 +14,8 @@ import (
 // runs, and returns it as a single string.
 //
 // It temporarily redirects the process-global os.Stdout, os.Stderr, and the standard
-// logger (via log.SetOutput) to an in-memory pipe, runs fn, then restores all three —
-// including the logger's previous output destination — before returning. Restoration
+// logger (via log.SetOutput) to an in-memory pipe, runs fn, then restores all three
+// (including the logger's previous output destination) before returning. Restoration
 // and cleanup happen on every exit path, including a panic inside fn.
 //
 // Because it mutates process-global state, CaptureOutput MUST NOT be used from parallel

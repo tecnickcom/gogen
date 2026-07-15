@@ -5,7 +5,7 @@ type Error struct {
 	// Tag is the validation tag that failed (e.g. "max").
 	Tag string
 
-	// Param is the Tag's parameter value (if any - e.g. "10").
+	// Param is the Tag's parameter value (if any, e.g. "10").
 	Param string
 
 	// FullTag is the validation tag that failed with included parameters (e.g. "max=10").

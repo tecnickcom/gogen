@@ -2,11 +2,8 @@
 Package uhex provides fixed-width, lowercase hexadecimal encoders for unsigned
 integers and fixed-size byte arrays.
 
-It is intended for hot paths such as trace ID generation, log formatting, and
-binary protocol work where general-purpose formatting can be unnecessarily
-expensive. The implementation is deliberately simple: each input byte is mapped
-through a 256-entry lookup table to its two lowercase hexadecimal characters,
-which are written with a single 16-bit store.
+Each input byte is mapped through a 256-entry lookup table to its two lowercase
+hexadecimal characters, which are written with a single 16-bit store.
 
 Compared with generic formatting such as [fmt.Sprintf]("%x", v), uhex avoids
 reflection and width handling. Compared with [encoding/hex], it focuses on
@@ -35,9 +32,9 @@ byte:
 # Allocation Behavior
 
 The slice-returning helpers ([Hex64], [Hex32], [Hex16], [Hex8], [Hex64B],
-[Hex32B], [Hex16B], and [Hex8B]) are the most convenient API. Each fills a local
-array (16, 8, 4, or 2 bytes) and returns a slice over it. Whether that array is
-allocated on the heap depends on escape analysis at the call site:
+[Hex32B], [Hex16B], and [Hex8B]) each fill a local array (16, 8, 4, or 2 bytes)
+and return a slice over it. Whether that array is allocated on the heap depends
+on escape analysis at the call site:
 
   - If the returned slice does not escape the caller (for example, it is read and
     discarded, or only its bytes are consumed), the array stays on the stack and
@@ -109,9 +106,6 @@ Function suffixes follow this pattern:
 
 	src := [8]byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef}
 	uhex.Hex64BB(src, &dst)
-
-uhex is a good fit when the input width is known in advance and predictable,
-lowercase, zero-padded hexadecimal output is required.
 */
 package uhex
 

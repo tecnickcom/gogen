@@ -67,7 +67,7 @@ type Client struct {
 	// through redactAPIKey before being returned or logged. The key is inserted
 	// verbatim (not percent-escaped) so redactAPIKey can string-match it; keys
 	// are therefore assumed URL-path-safe. A key with a reserved character would
-	// only make request building fail (still redacted) — it cannot leak.
+	// only make request building fail (still redacted); it cannot leak.
 	customIncidentURLFormat string
 	customMetricURLFormat   string
 }

@@ -41,9 +41,9 @@ func isHeaderNameByte(c byte) bool {
 // skipHeaderLinePrefix skips leading indentation and an optional single trace
 // decoration ("> " or "< ", as emitted per header line by `curl -v`, go-resty
 // trace mode, and similar RoundTripper loggers) before a header name. The prefix
-// is not consumed from the output — the caller emits src[i:valueStart] verbatim,
+// is not consumed from the output (the caller emits src[i:valueStart] verbatim),
 // so the "> " marker and indentation are preserved. A continuation/obs-fold line
-// still has no "name:" shape, so this does not resurrect that non-goal.
+// still has no "name:" shape, so it is not matched.
 func skipHeaderLinePrefix(src []byte, i int) int {
 	j := skipInlineSpaces(src, i)
 	if j < len(src) && (src[j] == '>' || src[j] == '<') {

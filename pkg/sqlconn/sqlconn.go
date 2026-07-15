@@ -1,17 +1,7 @@
 /*
-Package sqlconn solves the boilerplate and lifecycle complexity of managing a
-database/sql connection in long-running Go services.
-
-# Problem
-
-Opening a SQL connection in production is more than calling sql.Open: services
-must apply pool limits, verify connectivity, expose health checks, and close
-the connection gracefully on shutdown signals. When every service reimplements
-this flow, behavior drifts and shutdown/health edge cases become hard to reason
-about.
-
-sqlconn provides a small, configurable connection manager that standardizes
-this pattern.
+Package sqlconn manages a database/sql connection lifecycle in long-running Go
+services: applying pool limits, verifying connectivity, exposing health checks,
+and closing the connection on shutdown signals.
 
 # How It Works
 
@@ -33,26 +23,6 @@ this pattern.
     further use by setting the internal DB pointer to nil. Shutdown is
     idempotent and also stops the watcher goroutine, so the watcher and a
     deferred call can both fire safely without leaking the goroutine.
-
-# Key Features
-
-  - Configurable connection pipeline via options:
-    [WithConnectFunc], [WithCheckConnectionFunc], [WithSQLOpenFunc].
-  - Pool tuning support:
-    [WithConnMaxIdleCount], [WithConnMaxIdleTime], [WithConnMaxLifetime],
-    [WithConnMaxOpen].
-  - Built-in health check through [SQLConn.HealthCheck], using a ping timeout
-    ([WithPingTimeout]) and a basic validation query (`SELECT 1`).
-  - Graceful shutdown integration for application lifecycles with
-    [WithLifetimeContext], [WithShutdownSignalChan] and [WithShutdownWaitGroup].
-  - Logger integration with [WithLogger] for lifecycle diagnostics.
-
-# Benefits
-
-  - Consistent SQL connection behavior across services.
-  - Safer startup/shutdown handling with fewer resource-leak risks.
-  - Better testability through injectable open/connect/check functions.
-  - Clear integration points for health endpoints and service orchestration.
 
 # Usage
 
@@ -87,9 +57,6 @@ group so a central signal closes every pool and the process waits for them.
 	if err != nil {
 	    return err
 	}
-
-This package is ideal for Go applications that need a pragmatic, reusable
-database/sql connection lifecycle abstraction with health and shutdown support.
 */
 package sqlconn
 

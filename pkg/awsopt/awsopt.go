@@ -1,19 +1,8 @@
 /*
-Package awsopt solves the repetitive wiring problem of configuring the
-aws-sdk-go-v2 library consistently across multiple AWS service clients. Rather
-than scattering [config.LoadOptionsFunc] calls throughout every package that
-talks to AWS, awsopt centralizes those options into a single composable
-[Options] slice that can be built once and handed to any AWS-based package in
-this library.
-
-# Problem
-
-Every aws-sdk-go-v2 client requires a loaded [aws.Config], and every project
-ends up writing the same region-detection boilerplate: check a hardcoded value,
-fall back to an environment variable, fall back to a default. When several
-packages (secrets, S3, SQS, …) each duplicate this logic, configuration drift
-and inconsistent behavior are inevitable. awsopt provides one canonical
-implementation shared by all of them.
+Package awsopt configures the aws-sdk-go-v2 library consistently across multiple
+AWS service clients. It centralizes [config.LoadOptionsFunc] calls into a
+composable [Options] slice that can be built once and handed to any AWS-based
+package in this library.
 
 # How It Works
 
@@ -27,25 +16,6 @@ accumulated with method calls and then materialized into an [aws.Config] via
     [Options.WithRegionFromURL].
  3. Call [Options.LoadDefaultConfig] to obtain an [aws.Config] that can be
     passed directly to any aws-sdk-go-v2 service constructor.
-
-# Key Features
-
-  - Composable options: [Options] is an append-friendly slice; options from
-    multiple sources can be merged before the config is loaded.
-  - Automatic region resolution: [Options.WithRegionFromURL] extracts the
-    AWS region from a service endpoint URL by taking the right-most
-    region-shaped host label. This is partition-agnostic — standard, dual-stack
-    (api.aws), China, GovCloud, ISO, and VPC-endpoint URLs all work, as do
-    future partitions, with no code changes. When the URL encodes no region, it
-    uses the caller-supplied default if given, and otherwise adds no region
-    option — deferring to the SDK's canonical resolution (AWS_REGION,
-    AWS_DEFAULT_REGION, the shared config file, then IMDS) instead of forcing a
-    hardcoded default. This single function eliminates an entire class of
-    misconfiguration bugs.
-  - Escape hatch: [Options.WithAWSOption] accepts any [config.LoadOptionsFunc],
-    so every SDK option remains accessible without leaving the awsopt pattern.
-  - Zero dependencies beyond aws-sdk-go-v2: the package adds no third-party
-    dependencies of its own.
 
 # Integrated Packages
 
@@ -108,10 +78,10 @@ type Options []config.LoadOptionsFunc
 
 // LoadDefaultConfig builds an aws.Config from the accumulated options.
 //
-// It solves the "repeat config wiring in every AWS client" problem by turning
-// one shared Options value into a concrete SDK configuration in a single call.
-// This keeps region, credentials, and any custom SDK loaders consistent across
-// packages that consume awsopt.
+// It turns one shared Options value into an SDK configuration in a single call,
+// delegating to the SDK's [config.LoadDefaultConfig]. This keeps region,
+// credentials, and any custom SDK loaders consistent across packages that
+// consume awsopt.
 func (c *Options) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
 	o := make([]func(*config.LoadOptions) error, len(*c))
 	for k, v := range *c {
@@ -123,29 +93,25 @@ func (c *Options) LoadDefaultConfig(ctx context.Context) (aws.Config, error) {
 
 // WithAWSOption appends any raw aws-sdk-go-v2 load option.
 //
-// Use this as the escape hatch when you need an SDK feature that does not have
-// a dedicated helper in this package. The main benefit is flexibility without
-// giving up the shared Options composition pattern.
+// Use it as the escape hatch for an SDK feature that has no dedicated helper in
+// this package.
 func (c *Options) WithAWSOption(opt config.LoadOptionsFunc) {
 	*c = append(*c, opt)
 }
 
 // WithRegion appends an explicit AWS region option.
 //
-// This is the direct choice when the region is already known, and it ensures
-// every downstream AWS client built from the same Options value uses the same
-// target region.
+// Use it when the region is already known. Every downstream AWS client built
+// from the same Options value uses this region.
 func (c *Options) WithRegion(region string) {
 	c.WithAWSOption(config.WithRegion(region))
 }
 
 // WithRegionFromURL appends a region derived from an AWS endpoint URL.
 //
-// It removes common endpoint-parsing boilerplate by extracting the region from
-// AWS endpoint URLs. The region is the right-most host label that looks like an
-// AWS region code. This is partition-agnostic — it does not depend on the DNS
-// suffix — so every endpoint form works, including future partitions, with no
-// code changes:
+// The region is the right-most host label that looks like an AWS region code.
+// This is partition-agnostic (it does not depend on the DNS suffix), so every
+// endpoint form works, including future partitions, with no code changes:
 //
 //	https://sqs.eu-west-1.amazonaws.com                -> eu-west-1     (standard)
 //	https://ec2.us-west-2.api.aws                      -> us-west-2     (dual-stack)
@@ -155,26 +121,25 @@ func (c *Options) WithRegion(region string) {
 //
 // The scheme is optional, matching is case-insensitive, and userinfo, port, and
 // path are ignored (only the host is inspected). Scanning right-to-left means a
-// region-shaped label further left — such as a bucket named like a region in
-// "bucket.s3.eu-west-1.amazonaws.com" — does not shadow the real region.
+// region-shaped label further left (such as a bucket named like a region in
+// "bucket.s3.eu-west-1.amazonaws.com") does not shadow the real region.
 //
 // The region must be its own dot-separated host label. Endpoints that fold the
-// region into a larger label are not recognized and fall back — notably the
+// region into a larger label are not recognized and fall back, notably the
 // dash-style S3 website endpoint "bucket.s3-website-us-east-1.amazonaws.com"
 // (the dot-style "bucket.s3-website.us-east-1.amazonaws.com" works).
 //
-// Note the flip side of being partition-agnostic: the host is not verified to be
-// AWS-owned, so a non-AWS URL that happens to carry a region-shaped label yields
-// that region. Pass a genuine AWS endpoint.
+// Because it is partition-agnostic, the host is not verified to be AWS-owned, so
+// a non-AWS URL that happens to carry a region-shaped label yields that region.
+// Pass a genuine AWS endpoint.
 //
 // When the URL carries no region, defaultRegion is used if it is non-empty.
 // Otherwise no region option is added at all: region resolution is left to the
-// SDK's [config.LoadDefaultConfig], which applies AWS's canonical precedence —
-// AWS_REGION, then AWS_DEFAULT_REGION, then the shared config file
-// (~/.aws/config), then EC2 IMDS. In other words this is a thin override: it only
-// pins a region when it has an explicit one (from the URL or defaultRegion) and
-// otherwise stays out of the SDK's way rather than substituting a hardcoded
-// default.
+// SDK's [config.LoadDefaultConfig], which applies AWS's canonical precedence
+// (AWS_REGION, then AWS_DEFAULT_REGION, then the shared config file
+// ~/.aws/config, then EC2 IMDS). It only pins a region when it has an explicit
+// one (from the URL or defaultRegion) and otherwise defers to the SDK rather
+// than substituting a hardcoded default.
 func (c *Options) WithRegionFromURL(rawURL, defaultRegion string) {
 	if region := awsRegionFromURL(rawURL, defaultRegion); region != "" {
 		c.WithRegion(region)
@@ -201,11 +166,11 @@ func awsRegionFromURL(rawURL, defaultRegion string) string {
 //
 // It scans the host labels right-to-left and returns the right-most one matching
 // the AWS region shape. This is deliberately partition-agnostic: it never inspects
-// the DNS suffix, so it works across every AWS endpoint form and partition —
-// "service.<region>.amazonaws.com", dual-stack "service.<region>.api.aws", China
-// "...amazonaws.com.cn", GovCloud, ISO ("...c2s.ic.gov"), VPC endpoints
-// ("<id>.<service>.<region>.vpce.amazonaws.com", where "vpce" is skipped), and any
-// future partition — with no code changes. Scanning right-to-left picks the region
+// the DNS suffix, so it works across every AWS endpoint form and partition
+// ("service.<region>.amazonaws.com", dual-stack "service.<region>.api.aws", China
+// "...amazonaws.com.cn", GovCloud, ISO "...c2s.ic.gov", VPC endpoints
+// "<id>.<service>.<region>.vpce.amazonaws.com" where "vpce" is skipped, and any
+// future partition) with no code changes. Scanning right-to-left picks the region
 // closest to the domain, so region-shaped labels further left (e.g. a bucket named
 // like a region) do not shadow it.
 //

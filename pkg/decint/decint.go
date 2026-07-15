@@ -2,21 +2,13 @@
 Package decint provides utility functions to parse and represent decimal values
 as fixed-point integers with a defined precision.
 
-This package solves the common problem of safely handling small monetary and
-fixed-precision decimal values without using floating-point arithmetic for
-storage or comparison.
+Values with at most six decimal places are stored as integers (scaled by 1e6)
+to preserve deterministic behavior in comparisons, serialization, and transport.
 
-Decint is designed for values with at most six decimal places, and it stores
-those values as integers (scaled by 1e6) to preserve deterministic behavior in
-comparisons, serialization, and transport.
-
-Top features:
-
-- bidirectional conversion between float64/string and scaled int64 or uint64
-- fixed six-decimal output formatting for stable text representation
-- explicit parse errors for invalid numeric strings
-- published safe range constants (MaxInt and MaxFloat) for boundary checks
-- unsigned conversion helpers that clamp non-positive values to zero
+The package provides bidirectional conversion between float64/string and scaled
+int64 or uint64, fixed six-decimal output formatting, explicit parse errors for
+invalid numeric strings, safe range constants (MaxInt and MaxFloat) for boundary
+checks, and unsigned conversion helpers that clamp non-positive values to zero.
 
 Implementation note:
 
@@ -24,18 +16,13 @@ Implementation note:
     integer (half away from zero), so extra fractional digits beyond the
     supported precision are rounded rather than truncated.
 
-Key benefits:
-
-- deterministic decimal handling for currency, rates, and small amounts
-- exact six-decimal representation for every value within the safe range
-
 Safe range:
 
   - Values are safe up to MaxFloat = 2^33 = 8_589_934_592 with six exact
     decimal places. This is the largest magnitude at which a float64 still
     resolves a 1e-6 step (its ULP stays below 1e-6); beyond it the sixth
-    decimal digit is no longer representable, so it is intentionally excluded
-    from the safe range rather than silently rounded.
+    decimal digit is no longer representable, so it is excluded from the safe
+    range rather than rounded.
 */
 package decint
 

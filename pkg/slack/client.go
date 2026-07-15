@@ -224,7 +224,7 @@ func (c *Client) HealthCheck(ctx context.Context) (err error) {
 
 // apiServiceIncident returns the first ongoing incident affecting failService,
 // or nil if none. Entries in active_incidents are ongoing, so only those
-// explicitly marked "resolved" are skipped (robust to a missing per-incident
+// explicitly marked "resolved" are skipped (tolerant of a missing per-incident
 // status field), and only incidents affecting failService are reported.
 func apiServiceIncident(incidents []incident) *incident {
 	for i := range incidents {

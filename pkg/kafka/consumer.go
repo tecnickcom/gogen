@@ -177,13 +177,13 @@ func DefaultMessageDecodeFunc(_ context.Context, msg []byte, data any) error {
 
 // ReceiveData reads a message and decodes it into the provided data argument using the configured decoder.
 //
-// Delivery semantics: at-most-once — see Receive. In particular, when a
+// Delivery semantics: at-most-once, see Receive. In particular, when a
 // consumer group is configured the offset is already committed when decoding
 // happens, so a message failing to decode is permanently skipped. For
 // at-least-once semantics use FetchMessage + CommitMessages and decode the
 // payload manually.
 //
-// After Close the returned error matches ErrConsumerClosed — see Receive.
+// After Close the returned error matches ErrConsumerClosed; see Receive.
 func (c *Consumer) ReceiveData(ctx context.Context, data any) error {
 	message, err := c.Receive(ctx)
 	if err != nil {

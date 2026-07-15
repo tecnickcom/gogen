@@ -1,18 +1,9 @@
 /*
-Package paging computes all pagination metadata — current page, total pages,
-previous/next page numbers, and SQL OFFSET/LIMIT values — from three inputs:
+Package paging computes pagination metadata (current page, total pages,
+previous/next page numbers, and SQL OFFSET/LIMIT values) from three inputs:
 current page number, page size, and total item count.
 
-# Problem
-
-Paginating API responses and database queries requires the same arithmetic
-repeatedly: clamping out-of-range page numbers, computing total pages with
-correct ceiling division, deriving OFFSET for SQL, and determining safe
-previous/next page links that never go below 1 or above the last page.
-Getting any one of these details wrong produces broken navigation links,
-off-by-one errors in SQL queries, or panics on empty result sets.
-
-# Solution
+# Usage
 
 [New] accepts the three caller-supplied values and returns a fully populated
 [Paging] struct in a single call. Out-of-range inputs are clamped automatically
@@ -26,29 +17,6 @@ the last page:
 For cases where only SQL values are needed:
 
 	offset, limit := paging.ComputeOffsetAndLimit(currentPage, pageSize)
-
-# Features
-
-  - Single-call API: [New] computes every pagination field at once — no manual
-    arithmetic required in application code.
-  - Safe input clamping: page numbers below 1 are raised to 1; page numbers
-    beyond the last page are clamped to [Paging.TotalPages]; page sizes below
-    1 are raised to 1. Callers can pass raw query-string values directly.
-  - Correct ceiling division: total-page calculation uses integer ceiling
-    division so the last partial page is never lost.
-  - Boundary-safe navigation: [Paging.PreviousPage] is always >= 1 and
-    [Paging.NextPage] is always <= [Paging.TotalPages], making them safe to
-    embed in API responses and hypermedia links without further validation.
-  - Explicit navigation flags: [Paging.HasPreviousPage] and [Paging.HasNextPage]
-    report whether an adjacent page actually exists, so callers can show or hide
-    navigation links without re-deriving boundary conditions.
-  - SQL-ready offset: [Paging.Offset] is the zero-based row offset for use
-    directly in a SQL OFFSET clause.
-  - JSON-serialisable: all [Paging] fields carry json struct tags, so the
-    struct can be returned as part of an API envelope without a separate DTO.
-  - Lightweight SQL helper: [ComputeOffsetAndLimit] provides the two SQL
-    values without constructing a full [Paging] struct.
-  - Zero dependencies: uses only the Go standard library.
 
 # Example
 
@@ -70,21 +38,15 @@ For 17 items displayed 5 per page, navigating to page 3:
   - Empty result set: with totalItems == 0, [New] returns TotalPages == 1,
     CurrentPage == 1 and Offset == 0 (never zero pages and never a panic).
     Callers detect an empty set via TotalItems == 0, not via the page fields.
-  - Offset overflow: if the offset multiplication overflows uint — only
+  - Offset overflow: if the offset multiplication overflows uint (only
     reachable through [ComputeOffsetAndLimit] with a currentPage far beyond the
-    data, since [New] clamps currentPage to the last page — the offset is
+    data, since [New] clamps currentPage to the last page), the offset is
     clamped to [math.MaxUint] as a "beyond range" sentinel that selects no rows,
     rather than wrapping to a wrong offset.
   - JSON numeric precision: fields are plain integers, but JSON numbers are
     float64 in some clients (e.g. JavaScript), which cannot represent values
     above 2^53 exactly. Realistic pagination magnitudes stay well below that;
     the math.MaxUint offset sentinel does not, so treat it as "no rows".
-
-# Benefits
-
-This package eliminates repetitive, error-prone pagination arithmetic from
-application and data-access code, providing safe, consistent pagination
-metadata in a single import.
 */
 package paging
 

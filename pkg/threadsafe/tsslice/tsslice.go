@@ -1,18 +1,7 @@
 /*
-Package tsslice solves the common concurrency problem of safely operating on
-Go slices shared across multiple goroutines without repeating lock boilerplate
-around every access.
-
-# Problem
-
-Slices are lightweight and ubiquitous, but concurrent reads and writes to shared
-slice state can cause data races and undefined behavior. In practice, teams end
-up duplicating `Lock`/`Unlock` and `RLock`/`RUnlock` blocks around simple
-operations (set, get, append, transform), making code noisy and increasing the
-chance of forgetting synchronization on one code path.
-
-tsslice provides lock-aware generic helpers that keep synchronization explicit
-and consistent while preserving the ergonomics of slice utility operations.
+Package tsslice provides lock-aware generic helpers for operating on Go slices
+shared across multiple goroutines, keeping synchronization explicit around every
+access.
 
 # How It Works
 
@@ -26,22 +15,10 @@ github.com/tecnickcom/nurago/pkg/threadsafe:
     `RLock`/`RUnlock`.
 
 The helpers delegate functional operations to github.com/tecnickcom/nurago/pkg/sliceutil
-while enforcing synchronization around the access.
-
-# Key Features
-
-  - Generic API for any slice type via `S ~[]E`.
-  - Clear separation of mutation vs read/transform lock requirements.
-  - Bounds-checked, non-panicking accessors ([GetOK], [SetOK]) alongside the
-    idiomatic indexing forms ([Get], [Set]).
-  - Atomic compound operations via [Do] (read-modify-write) and [RDo]
-    (multi-step reads) for sequences a single helper cannot express.
-  - [Snapshot] returns a consistent copy under the read lock for safe read-out.
-  - Thread-safe functional utilities:
-    [Filter], [Map], and [Reduce] for expressive transformations on shared
-    slice state.
-  - Minimal adoption cost: compatible with standard [sync.RWMutex] and custom
-    lock implementations that satisfy the interfaces.
+while enforcing synchronization around the access. Accessors come in panicking
+indexing forms ([Get], [Set]) and bounds-checked, non-panicking forms ([GetOK],
+[SetOK]). They work with standard [sync.RWMutex] and any custom lock type that
+satisfies the interfaces.
 
 # Usage
 
@@ -74,8 +51,8 @@ variable directly (outside a helper and outside the lock) is still a data race.
 
 Each helper acquires and releases the lock on its own, so a sequence of separate
 helper calls is not atomic as a whole. Use [Do] (write) or [RDo] (read) to run a
-compound operation — for example a conditional append or a multi-step scan —
-under a single lock acquisition:
+compound operation (for example a conditional append or a multi-step scan) under
+a single lock acquisition:
 
 	var (
 	    mu sync.RWMutex

@@ -1,16 +1,6 @@
 /*
-Package stringkey solves the practical problem of deriving a stable,
-compact, non-cryptographic key from multiple text fields for fast lookup,
-deduplication, and idempotency-style identifiers.
-
-# Problem
-
-Applications frequently need a deterministic key built from several strings
-(for example: first name + last name + country, or provider + external ID +
-scope). Building these keys manually is error-prone because equivalent inputs
-may differ only by case, whitespace, or Unicode composition. stringkey applies
-a canonical normalization pipeline before hashing so semantically equivalent
-inputs map to the same key more often.
+Package stringkey derives a stable, compact, non-cryptographic key from multiple
+text fields for lookup, deduplication, and idempotency-style identifiers.
 
 # How It Works
 
@@ -39,13 +29,6 @@ Two normalization details are worth calling out:
   - Lowercasing uses the locale-independent [unicode.ToLower] simple mapping,
     not language-tailored case folding. For example, the Turkish dotless "ı"
     and dotted "İ" are not special-cased.
-
-# Key Features
-
-  - Deterministic canonicalization across case/spacing/Unicode variants.
-  - Compact 64-bit key suitable for indexing and caching.
-  - Multiple output formats for storage, logs, and URLs.
-  - Fast, allocation-light hashing path for small field sets.
 
 # Stability
 

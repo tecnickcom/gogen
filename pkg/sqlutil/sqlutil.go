@@ -1,15 +1,6 @@
 /*
-Package sqlutil solves a common SQL string-construction problem: safely quoting
-identifiers and string literals when generating query fragments dynamically.
-
-# Problem
-
-Applications that build SQL fragments at runtime often need to quote table,
-schema, and column identifiers, as well as string values. Doing this ad hoc
-across a codebase is error-prone and can lead to malformed SQL or inconsistent
-escaping behavior.
-
-sqlutil centralizes quoting behavior behind a small configurable API.
+Package sqlutil quotes identifiers and string literals when generating SQL query
+fragments dynamically.
 
 # What It Provides
 
@@ -34,8 +25,7 @@ Use options to adapt quoting rules for different SQL dialects:
   - [WithQuoteIDFunc] replaces identifier quoting behavior.
   - [WithQuoteValueFunc] replaces value quoting behavior.
 
-This allows Postgres/SQLite/other dialect-specific quoting while preserving the
-same calling pattern throughout the codebase.
+This adapts quoting to Postgres, SQLite, or other dialects.
 
 # Important Boundary
 

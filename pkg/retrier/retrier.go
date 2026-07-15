@@ -2,16 +2,6 @@
 Package retrier provides a configurable retry engine for executing a task
 function with backoff, jitter, and per-attempt timeouts.
 
-# Problem
-
-Transient failures are common in distributed systems (temporary network issues,
-short-lived upstream overload, brief lock/contention windows). Retrying can
-dramatically improve success rates, but ad hoc retry loops often miss important
-details such as cancellation propagation, bounded attempts, timeout isolation
-per attempt, and jitter to avoid synchronized retry storms.
-
-This package centralizes those concerns in a reusable retrier implementation.
-
 # How It Works
 
 [New] creates a [Retrier] with defaults, or with custom [Option] values.
@@ -36,17 +26,6 @@ The run loop always respects parent context cancellation.
   - maximum delay: unbounded (use [WithMaxDelay] to cap the pre-jitter backoff)
   - retry condition: [DefaultRetryIf] (retry on any non-nil error)
 
-# Key Features
-
-  - Pluggable retry condition via [WithRetryIfFn].
-  - Bounded total attempts via [WithAttempts].
-  - Configurable delay, exponential factor, jitter, maximum delay, and jitter
-    strategy via [WithDelay], [WithDelayFactor], [WithJitter], [WithMaxDelay],
-    and [WithJitterStrategy].
-  - Per-attempt timeout isolation via [WithTimeout].
-  - Optional retry observability via [WithOnRetry].
-  - Context-aware cancellation for clean shutdown behavior.
-
 # Usage
 
 	r, err := retrier.New(
@@ -65,9 +44,6 @@ The run loop always respects parent context cancellation.
 	if err != nil {
 	    return err
 	}
-
-This package is ideal for retrying idempotent or safe-to-repeat operations in
-networked and high-concurrency Go services.
 */
 package retrier
 
@@ -107,8 +83,8 @@ type RetryIfFn func(err error) bool
 // OnRetryFn is an optional observability callback invoked before each scheduled
 // retry. It receives the number of the attempt that just failed (1-based), the
 // delay before the next attempt, and the error that triggered the retry. It
-// counts scheduled retries — one may still be preempted by cancellation before it
-// runs — and must not panic; it runs inline in [Retrier.Run].
+// counts scheduled retries (one may still be preempted by cancellation before it
+// runs) and must not panic; it runs inline in [Retrier.Run].
 type OnRetryFn func(attempt uint, delay time.Duration, err error)
 
 // JitterStrategy selects how backoff jitter is applied. See [backoff.JitterStrategy].

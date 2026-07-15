@@ -12,8 +12,7 @@ import (
 // from zero), so exact decimal inputs whose float64 form is one ULP off
 // (e.g. 8.2) still map to their exact scaled value.
 //
-// Values less than or equal to zero are clamped to 0, making this helper safe
-// for unsigned amount domains.
+// Values less than or equal to zero are clamped to 0.
 //
 // Non-finite and out-of-range inputs are clamped (the signature is preserved):
 // NaN and values less than or equal to zero (including -Inf) yield 0, while

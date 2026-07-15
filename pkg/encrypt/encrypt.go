@@ -2,30 +2,12 @@
 Package encrypt provides helpers for encrypting and decrypting data safely for
 transport and storage.
 
-It solves the problem of protecting application payloads when data moves between
-systems such as databases, queues, caches, or external services.
+It protects application payloads moving between systems such as databases,
+queues, caches, or external services.
 
 This package uses AES-GCM authenticated encryption with a random nonce prefixed
 to the ciphertext. It provides both raw byte-level APIs and convenience helpers
 that serialize arbitrary values with gob or JSON before encryption.
-
-Top features:
-
-  - AES-GCM encryption and decryption with standard key sizes (16, 24, or 32 bytes
-    for AES-128, AES-192, and AES-256)
-  - nonce generation via secure random bytes and nonce-prefix output format for
-    self-contained ciphertext payloads
-  - additional authenticated data (AAD) support via [WithAAD] to bind contextual
-    data (such as a record ID) into the authentication tag
-  - base64 encoded byte and string helpers for transport-safe interchange
-  - gob and JSON wrappers for encrypting and decrypting structured Go values
-  - layered error propagation from encoding, base64, and cryptographic operations
-
-Benefits:
-
-  - reduce boilerplate for secure payload handling
-  - avoid accidental use of insecure or unauthenticated encryption modes
-  - simplify encryption of structured data in distributed systems
 
 # Security and caveats
 

@@ -108,7 +108,7 @@ type Client struct {
 // ctx does not bound the lifetime of the client or the subscription. It
 // contributes only context values to the subscription and is unused entirely
 // when no channels are configured. Canceling ctx after New returns does not
-// stop the subscription — it runs until Close is called or the server
+// stop the subscription: it runs until Close is called or the server
 // disconnects. Consequently, when channels are configured, Close is the only
 // way to stop the background goroutine and must be called.
 func New(ctx context.Context, srvopt SrvOptions, opts ...Option) (*Client, error) {

@@ -65,9 +65,9 @@ type Client struct {
 
 // New creates a DevLake webhook client with validation and retry defaults.
 //
-// It solves repetitive integration setup by centralizing base URL parsing,
-// bearer-token authentication, payload validation, endpoint URL construction,
-// and default network timeouts/retry policy.
+// It parses the base URL and configures bearer-token authentication, payload
+// validation, endpoint URL construction, and default network timeouts and
+// retry policy.
 //
 // Example addr: "https://app.devlake.invalid".
 func New(addr, apiKey string, opts ...Option) (*Client, error) {
@@ -109,11 +109,10 @@ func New(addr, apiKey string, opts ...Option) (*Client, error) {
 		deploymentRegURLFormat: apiBase + "/plugins/webhook/connections/%d/deployments",
 		// NOTE: the DevLake webhook plugin registers each endpoint under both a legacy
 		// ".../webhook/:connectionId/..." form and a newer ".../webhook/connections/:connectionId/..."
-		// form (the latter added with webhook-name support). All three URLs below are valid
-		// registered routes. The deployment URL uses the "connections/" form (requires a
-		// recent DevLake), while the incident URLs use the legacy form (also valid on older
-		// DevLake); the close path correctly uses singular "issue". The styles differ but
-		// both work — see https://devlake.apache.org/docs/Plugins/webhook/
+		// form. All three URLs below are valid registered routes. The deployment URL uses
+		// the "connections/" form (requires a recent DevLake), while the incident URLs use
+		// the legacy form (also valid on older DevLake); the close path uses singular
+		// "issue". See https://devlake.apache.org/docs/Plugins/webhook/
 		incidentRegURLFormat:   apiBase + "/plugins/webhook/%d/issues",
 		incidentCloseURLFormat: apiBase + "/plugins/webhook/%d/issue/%s/close",
 	}
@@ -284,8 +283,7 @@ func (c *Client) SendIncidentClose(ctx context.Context, request *IncidentRequest
 
 // doRequest applies write-safe retry behavior and enforces an HTTP 200 response.
 //
-// It is shared by payload-carrying webhook calls and the bodyless close call so
-// the retry/response handling stays in one place.
+// It is shared by payload-carrying webhook calls and the bodyless close call.
 func (c *Client) doRequest(r *http.Request) (err error) {
 	resp, err := c.retrier.Do(r)
 	if err != nil {

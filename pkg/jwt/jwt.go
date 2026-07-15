@@ -1,18 +1,10 @@
 /*
 Package jwt provides an HTTP-oriented JWT authentication helper for
-username/password login flows.
+username/password login flows: validate user credentials, issue short-lived
+signed JWTs, authorize protected endpoints from an Authorization header, and
+optionally renew tokens near expiration.
 
-# Problem
-
-Most services need the same authentication building blocks: validate user
-credentials, issue short-lived signed JWTs, authorize protected endpoints from
-an Authorization header, and optionally renew tokens near expiration. Wiring
-this repeatedly across handlers is error-prone and often leads to inconsistent
-claim handling and response behavior.
-
-# Solution
-
-This package wraps the core flow in a small API compatible with net/http:
+The API is compatible with net/http:
 
   - [JWT.LoginHandler]: validates credentials and issues signed JWTs.
   - [JWT.RenewHandler]: renews a valid token only when it is close to expiry.
@@ -26,7 +18,7 @@ This package wraps the core flow in a small API compatible with net/http:
   - [JWT.VerifyToken]: validates a raw token string that arrived over any
     transport (WebSocket messages, queue payloads, gRPC metadata).
 
-Credential verification is fully delegated to a caller-provided
+Credential verification is delegated to a caller-provided
 [VerifyCredentialsFn], so the package is agnostic to the password-hashing
 scheme; use the OWASP-compliant github.com/tecnickcom/nurago/pkg/passwordhash
 (Argon2id) for storage.
@@ -109,12 +101,6 @@ Functional options allow custom behavior without replacing core handlers:
     token, at debug level. Where debug logs are retained, disable them or pass a
     redacting logger via [WithLogger] (see github.com/tecnickcom/nurago/pkg/redact,
     which detects JWT compact serializations).
-
-# Benefits
-
-This package gives services a concise, production-oriented JWT auth layer that
-fits naturally into net/http while remaining configurable for real-world
-requirements.
 */
 package jwt
 

@@ -10,7 +10,7 @@ import (
 // self-referential element type has an unbounded number of valid selectors (only their length
 // is capped, by WithMaxFieldDepth), so without a ceiling a long-lived shared Processor fed
 // distinct untrusted filters would grow without limit. Past the ceiling, resolution still
-// works — it is just recomputed per use instead of cached.
+// works; it is recomputed per use instead of cached.
 const defaultFieldCacheMaxEntries = 1 << 14 // 16384
 
 // fieldCacheKey uniquely identifies a resolved field path.
@@ -50,7 +50,7 @@ func (c *fieldCache) Set(t reflect.Type, fieldPath string, path reflectPath) {
 	}
 
 	// Skip once full: correctness does not depend on the cache, only speed, so a miss beyond
-	// the ceiling simply re-resolves. Counting only newly stored keys keeps the bound honest
+	// the ceiling re-resolves. Counting only newly stored keys keeps the bound accurate
 	// under concurrent stores of the same key.
 	if c.count.Load() >= ceiling {
 		return

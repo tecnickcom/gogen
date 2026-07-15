@@ -1,18 +1,7 @@
 /*
-Package strsplit solves the common text-wrapping problem of splitting strings
-into bounded-size chunks without breaking Unicode characters and while trying
-to keep human-readable boundaries (spaces, punctuation, and newlines).
-
-# Problem
-
-Naive string slicing by byte index is unsafe for UTF-8 text and can split a
-multi-byte rune in the middle, producing invalid output. Even when output stays
-valid, hard cuts in the middle of words make messages difficult to read (for
-example in chat payload limits, SMS segmentation, logs, or fixed-size transport
-frames).
-
-strsplit provides chunking helpers that are UTF-8 aware and separator-aware,
-so chunks stay valid and readable.
+Package strsplit splits strings into bounded-size chunks without breaking
+Unicode characters, keeping human-readable boundaries (spaces, punctuation, and
+newlines).
 
 # How It Works
 
@@ -66,9 +55,6 @@ whitespace-trimmed and never empty.
 
 	chunks := strsplit.Chunk(text, 280, -1)    // split full text block
 	lineParts := strsplit.ChunkLine(line, 64, 3) // at most 3 chunks
-
-This package is ideal for any Go application that needs robust,
-Unicode-aware message segmentation under byte-size constraints.
 */
 package strsplit
 

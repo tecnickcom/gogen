@@ -21,7 +21,7 @@ func WithRetryIfFn(retryIfFn RetryIfFn) Option {
 	}
 }
 
-// WithAttempts sets the maximum number of total attempts — the initial request
+// WithAttempts sets the maximum number of total attempts, the initial request
 // plus retries (default 4); must be at least 1.
 func WithAttempts(attempts uint) Option {
 	return func(r *HTTPRetrier) error {

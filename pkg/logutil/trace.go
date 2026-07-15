@@ -57,8 +57,8 @@ type slogTraceIDHandler struct {
 // is an *attribute*. A record's own timestamp is not an attribute and never reaches the filter; it is
 // repaired by the ReplaceAttr callback Config.SlogHandler installs (see replaceLevelName), which this
 // constructor cannot install on a handler it merely wraps. A hand-built record carrying such a
-// timestamp — slog.Logger always stamps time.Now(), so only a middleware, tee or replay handler can
-// produce one — therefore still yields an invalid line here. Use Config.SlogHandler, or give h a
+// timestamp (slog.Logger always stamps time.Now(), so only a middleware, tee or replay handler can
+// produce one) therefore still yields an invalid line here. Use Config.SlogHandler, or give h a
 // ReplaceAttr that rewrites slog.TimeKey.
 //
 // A caller-supplied root-level trace ID wins over the injected one (see Handle). Attributes
@@ -98,10 +98,10 @@ func (h *slogTraceIDHandler) Enabled(ctx context.Context, level slog.Level) bool
 // Handle injects the resolved trace ID and passes the record to the underlying handler,
 // keeping the trace ID at the root of the output, ahead of the record's own attributes.
 //
-// If a root-level trace ID is already present — logged as a record attribute (the reserved
+// If a root-level trace ID is already present, logged as a record attribute (the reserved
 // TraceIDKey, including inside an inlined empty-key group), or carried by the handler because it was
 // supplied via WithAttrs/With or Config.CommonAttr (h.traceAttr), or because the root group is
-// itself named TraceIDKey and renders (h.traceGroup) — the caller's value wins and no second one is
+// itself named TraceIDKey and renders (h.traceGroup), the caller's value wins and no second one is
 // injected, avoiding a duplicate JSON key that a last-wins parser would resolve to the injected
 // value. In that case TraceIDFn is not invoked at all. Suppression requires the caller's field to
 // actually render: one that is elided leaves the injected value in place, so a record never ends up
@@ -115,13 +115,13 @@ func (h *slogTraceIDHandler) Handle(ctx context.Context, record slog.Record) err
 	// the root. It is written ahead of the record's own attributes rather than appended to them
 	// because the record handed in may be shared with other handlers (a tee, or a middleware that
 	// already added attributes of its own), and mutating it would violate slog.Record's copy-sharing
-	// contract — the standard library detects that and writes a "!BUG" field into the line. TraceIDFn
+	// contract: the standard library detects that and writes a "!BUG" field into the line. TraceIDFn
 	// is resolved only when the value is actually injected, so a caller-supplied trace ID skips it.
 	//
 	// A group that renders nothing, followed by the injected attribute, would trip a separator bug in
 	// the standard library's handlers; the sanitizing handler this one sits under (see
 	// slogSanitizeHandler) has already removed such groups from the record, so nothing is filtered
-	// here — and a record reaching this handler by another route is not protected.
+	// here, and a record reaching this handler by another route is not protected.
 	if !h.grouped {
 		if h.traceAttr || (record.NumAttrs() > 0 && recordHasAttr(record, TraceIDKey)) {
 			return h.inner.Handle(ctx, record) //nolint:wrapcheck
@@ -133,7 +133,7 @@ func (h *slogTraceIDHandler) Handle(ctx context.Context, record slog.Record) err
 	// A group is open: replay the user's operations from the pre-group root with the trace ID
 	// injected first, so it stays at the root instead of nesting in the group. A trace ID already
 	// carried at the root (h.traceAttr) is replayed with the ops, so the injected one is skipped
-	// rather than duplicating it — as is a root group named TraceIDKey, but only once it is known to
+	// rather than duplicating it, as is a root group named TraceIDKey, but only once it is known to
 	// render: whether it does depends on this record, so unlike the rest it cannot be decided at
 	// derivation time, and deciding it there would drop the trace ID from every record that leaves
 	// the group empty.
@@ -156,20 +156,20 @@ func (h *slogTraceIDHandler) Handle(ctx context.Context, record slog.Record) err
 // leadAttrsInline is the number of a record's own attributes leadRecord gathers without allocating.
 // slog.Record stores its first five attributes inline and spills the rest into a slice it grows
 // geometrically from empty, so a record's attributes must be handed to AddAttrs in one call (see
-// leadRecord) — which means gathering them first. Sixteen covers the widest request-log line in
+// leadRecord), which means gathering them first. Sixteen covers the widest request-log line in
 // practice while keeping the array small enough to stay on the stack.
 const leadAttrsInline = 16
 
 // leadRecord returns a copy of record carrying lead ahead of its own attributes.
 //
 // The record is rebuilt rather than mutated: slog.Record's contract forbids modifying a record whose
-// copies have been handed out — AddAttrs on a shared record makes the standard library write a
-// "!BUG" field into the line — and a handler cannot know whether an upstream one kept a copy.
+// copies have been handed out (AddAttrs on a shared record makes the standard library write a
+// "!BUG" field into the line) and a handler cannot know whether an upstream one kept a copy.
 //
 // The record's own attributes are gathered and added in a single AddAttrs call. Adding them one at a
 // time instead makes AddAttrs regrow its overflow slice from scratch on every call (1, 2, 4, 8 …), so
-// a record with more attributes than slog.Record's five inline slots — of which the injected trace ID
-// takes one — costs an allocation per attribute rather than one for the whole record.
+// a record with more attributes than slog.Record's five inline slots (of which the injected trace ID
+// takes one) costs an allocation per attribute rather than one for the whole record.
 func leadRecord(record slog.Record, lead slog.Attr) slog.Record {
 	var stack [leadAttrsInline]slog.Attr
 
@@ -221,7 +221,7 @@ func hasRootKey(attrs []Attr, key string) bool {
 // not into named groups, whose members nest under their own key. A value that writes no field (see
 // attrRenders) does not count: it cannot stand in for the injected trace ID.
 //
-// It resolves only where the key could be carried — an attribute already under it, or an empty-key one,
+// It resolves only where the key could be carried: an attribute already under it, or an empty-key one,
 // which is the only kind that can inline. That resolution costs nothing anyway: the sanitizing handler
 // above has already resolved every value and substituted the result, so resolving here is a no-op, as
 // it is for the standard library handler below when it writes them. Every LogValuer is invoked exactly
@@ -281,12 +281,12 @@ func (h *slogTraceIDHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 //
 // A group opened at the root under the reserved TraceIDKey writes a root-level trace_id field of its
 // own (an object holding the grouped attributes), so it suppresses the injected one rather than
-// colliding with it — but only for records that give it something to hold, since slog elides a group
+// colliding with it, but only for records that give it something to hold, since slog elides a group
 // that renders nothing. That is decided per record in Handle, so a record which leaves the group
 // empty still carries the injected trace ID rather than an empty object in its place.
 //
 // The suppression only ever removes the *injected* trace ID. A caller who supplies the key twice
-// themselves — With(slog.String(TraceIDKey, ...)) and then WithGroup(TraceIDKey) — gets both of their
+// themselves, With(slog.String(TraceIDKey, ...)) and then WithGroup(TraceIDKey), gets both of their
 // own fields at the root, as they would from a bare standard-library handler: one is a preformatted
 // attribute and the other an open group, and dropping either would discard what they asked to log.
 func (h *slogTraceIDHandler) WithGroup(name string) slog.Handler {
@@ -308,7 +308,7 @@ func (h *slogTraceIDHandler) WithGroup(name string) slog.Handler {
 
 // carriesRootTraceID reports whether the handler already puts a root-level trace ID on this record,
 // so the injected one would duplicate it: one baked in via WithAttrs/With or Config.CommonAttr, or a
-// root group named TraceIDKey that renders — which depends on the record, since slog elides a group
+// root group named TraceIDKey that renders, which depends on the record, since slog elides a group
 // that holds nothing, and an elided one supplies no trace ID.
 func (h *slogTraceIDHandler) carriesRootTraceID(record slog.Record) bool {
 	if h.traceAttr {

@@ -2,13 +2,8 @@
 Package enumbitmap provides helpers to encode and decode enumeration values as
 bitmaps.
 
-It solves the problem of compactly representing sets of named flags using a
-single integer, while still allowing easy conversion back to human-readable
-values.
-
 Each bit corresponds to a unique enumeration value. The package processes up to
-32 bit positions (1<<0 through 1<<31), making it suitable for compact flag sets
-and feature toggles.
+32 bit positions (1<<0 through 1<<31).
 
 Contract:
 
@@ -24,20 +19,6 @@ Values are treated as the low 32 bits of a host int. Bit 31 is the sign bit on
 platforms where int is 32 bits wide, so this package is intended for 64-bit
 platforms; on a 32-bit build, inputs at or above 1<<31 behave in
 implementation-defined ways and should be avoided.
-
-Top features:
-
-  - convert string slices to bitmap integers with StringsToBitMap
-  - convert bitmap integers back to string slices with BitMapToStrings
-  - report unknown names or bit positions with clear aggregated errors
-  - preserve partial conversion results even when unknown values are found
-    (useful for tolerant parsing and diagnostics)
-
-Benefits:
-
-  - compact in-memory and storage representation for enum sets
-  - easy interoperability with bitmask-based APIs and database fields
-  - predictable conversion behavior for both strict and best-effort workflows
 
 Example with 8 bits:
 

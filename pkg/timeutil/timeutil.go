@@ -1,46 +1,29 @@
 /*
-Package timeutil solves the recurring friction of marshaling time values to and
-from JSON in Go services. The standard library's [time.Time] marshals as
-RFC-3339 only, and [time.Duration] marshals as a raw nanosecond integer — both
-mismatches for APIs that expect human-readable strings like "1h30m" or
-"2023-01-02T15:04:05Z". This package provides two drop-in types that fix both
-problems, plus a compile-time-safe mechanism for customizing the datetime format
-without runtime configuration.
+Package timeutil provides two JSON-friendly time types. The standard library's
+[time.Time] marshals as RFC-3339 only, and [time.Duration] marshals as a raw
+nanosecond integer, which mismatch APIs that expect human-readable strings like
+"1h30m" or "2023-01-02T15:04:05Z". DateTime and Duration marshal to and from
+such strings, and the datetime format is selected by a type parameter checked at
+compile time.
 
-# Problem
+# Types
 
-Services that exchange time values over JSON face two common issues:
-
- 1. Different API contracts require different datetime formats (RFC-3339,
-    RFC-822, date-only, kitchen time, …). Switching formats means changing
-    marshal/unmarshal logic scattered across the codebase, or wrapping
-    [time.Time] with a custom type for every format.
- 2. Duration values deserialised from JSON as raw nanosecond integers are
-    unreadable in configuration files and API payloads. Human operators and
-    API consumers expect strings like "30s" or "5m".
-
-# Key Features
-
-  - [DateTime]: a generic type `DateTime[T DateTimeType]` that wraps
-    [time.Time] and implements [json.Marshaler] / [json.Unmarshaler] using the
-    format string returned by the type parameter T. Switching formats is a
-    one-character type-argument change — no runtime configuration, no string
-    constants, caught by the compiler. It also implements
-    [encoding.TextMarshaler] / [encoding.TextUnmarshaler], so it can be used as a
-    JSON map key and with text-based encoders (YAML, TOML, [flag.TextVar]).
-  - [DateTimeType]: the single-method interface (`Format() string`) that type
-    parameters must satisfy, making it trivial to define custom formats.
-  - Built-in format types: ready-to-use implementations of [DateTimeType] for
-    every datetime layout in the standard library — [TRFC3339], [TRFC3339Nano],
-    [TRFC822], [TRFC822Z], [TRFC850], [TRFC1123], [TRFC1123Z], [TUnixDate],
-    [TANSIC], [TRubyDate], [TKitchen], [TStamp], [TStampMilli], [TStampMicro],
-    [TStampNano], [TLayout], [TDateTime], and [TDateOnly] / [TTimeOnly] — plus
-    [TJira] for Jira's timestamp format, covering every use case without
-    additional dependencies.
+  - [DateTime]: a generic type DateTime[T DateTimeType] that wraps [time.Time]
+    and implements [json.Marshaler] and [json.Unmarshaler] using the format
+    string returned by the type parameter T. It also implements
+    [encoding.TextMarshaler] and [encoding.TextUnmarshaler], so it can be used as
+    a JSON map key and with text-based encoders (YAML, TOML, [flag.TextVar]).
+  - [DateTimeType]: the single-method interface (Format() string) that type
+    parameters must satisfy.
+  - Built-in format types implement [DateTimeType] for every datetime layout in
+    the standard library ([TRFC3339], [TRFC3339Nano], [TRFC822], [TRFC822Z],
+    [TRFC850], [TRFC1123], [TRFC1123Z], [TUnixDate], [TANSIC], [TRubyDate],
+    [TKitchen], [TStamp], [TStampMilli], [TStampMicro], [TStampNano], [TLayout],
+    [TDateTime], [TDateOnly], [TTimeOnly]), plus [TJira] for Jira's timestamp
+    format.
   - [Duration]: an alias for [time.Duration] that marshals as a human-readable
     string (e.g. "1h30m0s") and unmarshals from both string and numeric JSON
-    values, making duration fields self-documenting in configuration files and
-    API responses. It also implements [encoding.TextMarshaler] /
+    values. It also implements [encoding.TextMarshaler] and
     [encoding.TextUnmarshaler] for use as a map key and with text-based encoders.
 
 # Usage

@@ -2,19 +2,8 @@
 Package mysqllock provides process-distributed mutual exclusion using MySQL's
 named lock primitives GET_LOCK and RELEASE_LOCK.
 
-# Problem
-
-When multiple application instances (or background workers) run concurrently,
-some operations must execute at most once cluster-wide: scheduled jobs,
-idempotent migrations, reconciliation tasks, or cache rebuilds. Coordinating
-this with in-memory mutexes is impossible across processes, and introducing a
-separate lock service can add operational complexity.
-
-# Solution
-
-This package uses MySQL's built-in named locks to provide a simple distributed
-lock API around an existing database dependency. [MySQLLock.Acquire] requests a
-lock by key and returns a [ReleaseFunc] that must be called to release it.
+[MySQLLock.Acquire] requests a lock by key and returns a [ReleaseFunc] that must
+be called to release it.
 
 Usage:
 
@@ -65,7 +54,7 @@ section can be aborted:
 # Features
 
   - Single-call acquisition API: [MySQLLock.Acquire] returns a release closure,
-    so lock lifetime is easy to scope with defer. The returned closure is
+    so lock lifetime can be scoped with defer. The returned closure is
     idempotent and safe to call more than once, including concurrently.
   - Explicit timeout handling: [ErrTimeout] is returned when GET_LOCK does not
     acquire the lock within the requested timeout.

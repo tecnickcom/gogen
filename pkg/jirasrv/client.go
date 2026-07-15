@@ -205,11 +205,9 @@ func (c *Client) SendRequest(
 
 // requestBuffer validates request and JSON-encodes it into a buffer.
 //
-// This keeps SendRequest focused on transport flow while enforcing payload
-// schema checks before network calls. Only struct payloads (or non-nil
-// pointers to structs) carry validation tags, so validation is skipped for
-// other JSON-encodable payloads (maps, slices, strings), which the validator
-// would otherwise reject as invalid input.
+// Only struct payloads (or non-nil pointers to structs) carry validation tags,
+// so validation is skipped for other JSON-encodable payloads (maps, slices,
+// strings), which the validator would otherwise reject as invalid input.
 func (c *Client) requestBuffer(
 	ctx context.Context,
 	request any,

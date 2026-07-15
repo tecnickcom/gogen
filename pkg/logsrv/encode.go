@@ -23,7 +23,7 @@ const timeLayout = `"` + timeLayoutBare + `"`
 // timeBufSize is the stack buffer used to format the record timestamp. Any year in 1..9999 renders
 // in at most 37 bytes; time.Time's extremes reach 46 (a negative 12-digit year with a numeric zone
 // offset), which this covers so even those stay allocation-free. A longer value would still be
-// correct — AppendFormat simply grows the slice — merely at the cost of one allocation.
+// correct (AppendFormat grows the slice), merely at the cost of one allocation.
 const timeBufSize = 48
 
 // addRootAttrEvent writes a single root-level slog.Attr onto the record's Event and reports both
@@ -32,7 +32,7 @@ const timeBufSize = 48
 //
 // An inlined (empty-key) group is flattened onto the root by addGroupEvent, so its members are
 // root-level attributes too and are walked here rather than handed off. The value is still resolved
-// exactly once — a LogValuer that yields an inlined group carrying a trace_id is therefore detected
+// exactly once: a LogValuer that yields an inlined group carrying a trace_id is therefore detected
 // without ever running LogValue twice. Only a field that is actually written counts as the trace ID:
 // an elided one (a typed-nil error logged under trace_id, say) does not suppress the injection.
 func addRootAttrEvent(e *zerolog.Event, a slog.Attr) (bool, bool) {
@@ -76,15 +76,15 @@ func addAttrEvent(e *zerolog.Event, a slog.Attr) bool {
 //
 // The value is resolved *before* the emptiness test, as appendAttr does, not after: a LogValuer is never
 // equal to the zero Value (its kind differs), so testing first lets one that resolves to the zero Value
-// slip through and be written as a null field under an empty key — and, under the reserved key, replace
+// slip through and be written as a null field under an empty key and, under the reserved key, replace
 // the trace ID with an object holding it.
 //
 // A *slog.Source is then given slog's special case: an empty one (nil or zero-valued) writes no field,
 // and a populated one is replaced by its group form, so it reaches the group path and inlines onto the
-// enclosing level when its key is empty — as it does under the standard library's handlers — instead of
+// enclosing level when its key is empty (as it does under the standard library's handlers) instead of
 // nesting under "". Under a named key the group form renders the same object the value would have
 // marshaled to, so only the empty-key case changes.
-// Both shapes it has to recognize — the zero Attr and a *slog.Source — resolve to KindAny, so every
+// Both shapes it has to recognize (the zero Attr and a *slog.Source) resolve to KindAny, so every
 // other kind is decided by the kind check alone and the rest is kept out of line, off the path taken by
 // an ordinary attribute.
 func resolveAttr(a slog.Attr) (slog.Value, bool) {
@@ -189,7 +189,7 @@ func addGroupEvent(e *zerolog.Event, key string, attrs []slog.Attr) bool {
 }
 
 // addAnyEvent writes an arbitrary value onto e and reports whether it produced a field: an error
-// through addErrEvent (zerolog's native error form — its message string), anything implementing
+// through addErrEvent (zerolog's native error form, its message string), anything implementing
 // zerolog.LogObjectMarshaler as a JSON object, and any other value via reflection. The choice is made
 // on the value's type, not on the key, so an error renders as its message under any key. An untyped nil
 // is not an error value and is emitted as a null field.
@@ -202,7 +202,7 @@ func addGroupEvent(e *zerolog.Event, key string, attrs []slog.Attr) bool {
 // therefore reaches the wire as a string under this backend and as an object under logutil's. That is
 // the price of zerolog's error form being the package's documented rendering for any error value.
 //
-// Rendering a value runs caller code — Error, MarshalJSON, MarshalText, MarshalZerologObject — which
+// Rendering a value runs caller code (Error, MarshalJSON, MarshalText, MarshalZerologObject), which
 // may panic. slog recovers such a panic and renders the "!PANIC" sentinel rather than letting a log
 // call take the process down (the failure path is precisely where logging is called); zerolog does
 // not, so it is recovered here, and the sentinel is reported as a written field so an enclosing group
@@ -228,7 +228,7 @@ func addAnyEvent(e *zerolog.Event, key string, v slog.Value) (wrote bool) {
 	if obj, isObj := x.(zerolog.LogObjectMarshaler); isObj {
 		// A typed nil would panic on its own nil receiver unless the marshaler guards against it, and
 		// the "!PANIC" sentinel is a poor rendering of what is simply a nil value: slog writes null, so
-		// write null too. An *error* that is a typed nil is not routed here — addErrEvent drops it
+		// write null too. An *error* that is a typed nil is not routed here: addErrEvent drops it
 		// before the hook, whether or not it could render itself as an object.
 		if isNilPointer(x) {
 			e.Interface(key, nil)
@@ -245,7 +245,7 @@ func addAnyEvent(e *zerolog.Event, key string, v slog.Value) (wrote bool) {
 }
 
 // sourceAttrs returns the attributes slog's handlers render a populated *slog.Source as (its unexported
-// group form, see slog's Source.group), so this backend writes the same field names — and, under an
+// group form, see slog's Source.group), so this backend writes the same field names and, under an
 // empty key, inlines them the same way.
 //
 // A zero component is omitted, exactly as slog omits it: a partially populated *slog.Source (a line
@@ -274,7 +274,7 @@ func sourceAttrs(src *slog.Source) []slog.Attr {
 //
 // It calls the process-global zerolog.ErrorMarshalFunc exactly once. Asking AnErr what it would do and
 // then letting it do it invokes that hook twice per error: it doubles the cost of a hook that captures
-// a stack or emits a metric — the usual reasons to replace it — and a stateful one would render the
+// a stack or emits a metric (the usual reasons to replace it), and a stateful one would render the
 // second result rather than the first.
 //
 // It routes a LogObjectMarshaler (which is what the hook returns for an error zerolog renders as an
@@ -283,13 +283,13 @@ func sourceAttrs(src *slog.Source) []slog.Attr {
 // And it reports what was actually written. The nil case writes no field, so reporting one would leave
 // an enclosing group rendered as a bare "{}".
 //
-// A typed-nil error writes no field, and the test for it PRECEDES the hook — unlike zerolog's AnErr,
+// A typed-nil error writes no field, and the test for it PRECEDES the hook, unlike zerolog's AnErr,
 // which tests for nil only inside its error arm, so a typed nil that can render itself as an object (a
 // LogObjectMarshaler guarding its nil receiver), or that the hook renders itself, is written. This
 // backend drops all of them, because the sibling logutil backend must: its filter decides the same
 // question (logutil.valueRenders) and cannot see either zerolog's interfaces or its process-global
 // hook, so a rule conditional on those two could not be mirrored there. The backends would then ship
-// different field sets — and different trace IDs — for one slog.Attr, which is the failure the shared
+// different field sets (and different trace IDs) for one slog.Attr, which is the failure the shared
 // rule exists to prevent. A nil error is no error; neither backend writes one.
 //
 // The hook is therefore not invoked for a typed nil (there is nothing to render), which is the one
@@ -319,8 +319,8 @@ func addErrEvent(e *zerolog.Event, key string, err error) bool {
 	return true
 }
 
-// isEmptySource reports whether src is an empty caller location — a nil *slog.Source, or a zero-valued
-// one — which slog's own handlers give a special case and elide.
+// isEmptySource reports whether src is an empty caller location (a nil *slog.Source, or a zero-valued
+// one) which slog's own handlers give a special case and elide.
 //
 // It is elided here too, so the two backends agree. It matters beyond the field itself: such a value
 // logged under the reserved trace ID key would otherwise be read as a caller-supplied trace ID and
@@ -335,7 +335,7 @@ func isEmptySource(src *slog.Source) bool {
 // zerolog's Event.Object appends the key and the opening brace onto e *before* calling
 // MarshalZerologObject, and the buffer it writes into is unexported, so a recover cannot roll that
 // back: the record would carry an object that is never closed, swallowing every field written after it
-// — the message and the trace ID included — into an unparseable line. Through a baked WithAttrs the
+// (the message and the trace ID included) into an unparseable line. Through a baked WithAttrs the
 // corruption lands in the zerolog context and is replayed on every subsequent record of that logger.
 // Building the object separately keeps the failure local: on a panic the dictionary is discarded whole
 // and the "!PANIC" sentinel is written as a plain string field instead.
@@ -367,13 +367,13 @@ func panicSentinel(r any) string {
 	return fmt.Sprintf("!PANIC: %v", r)
 }
 
-// isNilError reports whether err is nil or a typed nil — a non-nil interface holding a nil pointer,
-// such as a nil *MyErr — which zerolog's AnErr renders as no field at all.
+// isNilError reports whether err is nil or a typed nil (a non-nil interface holding a nil pointer,
+// such as a nil *MyErr) which zerolog's AnErr renders as no field at all.
 //
 // Only a pointer counts, mirroring zerolog's own isNilValue exactly. A nil value of a slice, map or
 // func kind (an aggregate error such as a nil validator.ValidationErrors, whose underlying type is a
 // slice) is NOT nil for this purpose: zerolog calls Error() on it and writes the field, so treating
-// it as nil here would silently drop a field the sibling backend renders — and, since the result
+// it as nil here would silently drop a field the sibling backend renders and, since the result
 // drives group elision, drop its enclosing group too.
 func isNilError(err error) bool {
 	return err == nil || isNilPointer(err)
@@ -529,7 +529,7 @@ func applyErrContext(c zerolog.Context, key string, err error) (zerolog.Context,
 
 // applyObjectContext bakes a zerolog.LogObjectMarshaler into c through a detached dictionary, the
 // context counterpart of addObjectEvent. zerolog's Context.Object renders into a scratch event, so a
-// panic inside the marshaler does not corrupt the context as it does an Event's buffer — but the
+// panic inside the marshaler does not corrupt the context as it does an Event's buffer, but the
 // scratch event is then never returned to zerolog's pool. Building the dictionary here keeps both
 // paths on one rendering and recycles it on the failure branch.
 //
@@ -554,8 +554,8 @@ func applyObjectContext(c zerolog.Context, key string, obj zerolog.LogObjectMars
 
 // sourceDict builds the caller-location "source" object and reports whether it produced one at all,
 // mirroring slog's AddSource group. It applies the same write-or-elide rules as sourceAttrs, which
-// renders a *slog.Source logged as an attribute — a zero component is omitted, and a location with no
-// components at all writes no field — because slog reaches both through the same Source.group() and
+// renders a *slog.Source logged as an attribute (a zero component is omitted, and a location with no
+// components at all writes no field) because slog reaches both through the same Source.group() and
 // isEmpty(). The two are kept apart only so this one, on the per-record path, can resolve the frame
 // without allocating a *slog.Source or a slice; TestBackends_AgreeOnTheSourceField pins them together.
 //

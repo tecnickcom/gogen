@@ -1,20 +1,9 @@
 /*
-Package traceid solves the distributed-tracing correlation problem at the
-service boundary: capturing a request-scoped trace ID from an inbound HTTP
-header, propagating it through the [context.Context] for the lifetime of the
-request, and writing it back into outbound HTTP headers when calling downstream
-services — all without coupling business logic to any particular tracing
-framework.
-
-# Problem
-
-In distributed systems every request needs a stable identifier that survives
-hops across services so that logs, metrics, and traces can be correlated after
-the fact. The naive approach — passing the ID as an explicit function parameter
-— pollutes every call site. Storing it ad-hoc under an untyped string key in the
-context risks collisions with other packages. And extracting the ID from an HTTP
-header requires consistent validation to prevent header-injection attacks.
-This package encapsulates all three concerns in a handful of small, focused functions.
+Package traceid captures a request-scoped trace ID at the service boundary: it
+reads the ID from an inbound HTTP header, propagates it through the
+[context.Context] for the lifetime of the request, and writes it back into
+outbound HTTP headers when calling downstream services, without coupling
+business logic to any particular tracing framework.
 
 # How It Works
 
@@ -31,8 +20,8 @@ guaranteeing no collision with any other package's context values.
     default (typically [DefaultValue]) when none is set.
   - [FromHTTPRequestHeader] extracts the trace ID from an incoming HTTP request
     header and validates it with [Valid] (1 to [MaxIDLen] characters from the
-    set [0-9A-Za-z._-]). Any value that does not match — including an empty or
-    absent header — is replaced with the caller-supplied default, preventing
+    set [0-9A-Za-z._-]). Any value that does not match (including an empty or
+    absent header) is replaced with the caller-supplied default, preventing
     header-injection.
   - [SetHTTPRequestHeaderFromContext] reads the ID from the context and writes
     it onto an outgoing [*http.Request] header, completing the propagation loop
@@ -54,7 +43,7 @@ At the inbound boundary (e.g. an HTTP middleware):
 	ctx := traceid.NewContext(r.Context(), id)
 	// pass ctx to all downstream handlers
 
-Anywhere in the call chain — logging, metrics, business logic:
+Anywhere in the call chain (logging, metrics, business logic):
 
 	id := traceid.FromContext(ctx, traceid.DefaultValue)
 	logger.With(traceid.DefaultLogKey, id).Info("processing request")
@@ -62,9 +51,6 @@ Anywhere in the call chain — logging, metrics, business logic:
 At an outbound boundary (e.g. before calling a downstream service):
 
 	traceid.SetHTTPRequestHeaderFromContext(ctx, outboundReq, traceid.DefaultHeader, traceid.DefaultValue)
-
-This package is ideal for any Go HTTP service that participates in a distributed
-system and needs lightweight, framework-agnostic trace ID propagation.
 */
 package traceid
 

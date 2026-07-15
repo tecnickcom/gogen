@@ -3,14 +3,6 @@ Package phonekeypad converts alphabetic strings and phone number literals to
 their numeric equivalents on a standard 12-key telephony keypad (ITU E.161 /
 ITU T.9).
 
-# Problem
-
-Many telephony applications, vanity-number look-ups, DTMF generators, and
-T9-style input systems need to translate letters to the digits printed on a
-phone keypad. Doing this correctly—handling both upper- and lower-case input,
-skipping punctuation and separators, and producing either a []int slice or a
-plain string—requires repetitive boilerplate that this package encapsulates.
-
 # Keypad Layout
 
 The standard keypad mapping (ITU E.161) used by this package:
@@ -29,23 +21,6 @@ The standard keypad mapping (ITU E.161) used by this package:
 	|     |     |     |
 	+-----+-----+-----+
 
-# Features
-
-  - Single-rune conversion ([KeypadDigit]): convert one character at a time;
-    ideal for streaming input or custom filtering logic.
-  - Slice output ([KeypadNumber]): convert a full string to []int, preserving
-    each digit as an integer for arithmetic or comparison.
-  - String output ([KeypadNumberString]): convert a full string directly to a
-    digit string, ready for storage, display, or dialing.
-  - Case-insensitive: accepts both upper- and lower-case letters with no
-    pre-processing required by the caller.
-  - ASCII-scoped: only ASCII digits '0'–'9' and ASCII letters 'A'–'Z'/'a'–'z'
-    are mapped (per ITU E.161). Every other character — separators, punctuation,
-    whitespace, and any non-ASCII rune such as accented or full-width letters —
-    is silently skipped, so formatted phone numbers like "1-800-FLOWERS" work
-    without sanitisation.
-  - Zero dependencies: uses only the Go standard library.
-
 # Quick Start
 
 Translate a vanity phone number to its dialable form:
@@ -57,13 +32,6 @@ Or get the digit sequence as a slice for programmatic use:
 
 	digits := phonekeypad.KeypadNumber("1-800-FLOWERS")
 	// digits == []int{1, 8, 0, 0, 3, 5, 6, 9, 3, 7, 7}
-
-# Benefits
-
-This package eliminates boilerplate in any Go application that deals with
-telephony, DTMF, vanity numbers, or T9 text encoding. Its simple, allocation-
-minimal design makes it suitable for both low-latency request handlers and
-batch-processing pipelines.
 */
 package phonekeypad
 
@@ -73,8 +41,8 @@ import (
 
 // KeypadDigit maps a single rune to its ITU E.161 phone-keypad digit.
 //
-// Digits '0'–'9' map to themselves. Letters 'A'–'Z' and 'a'–'z' are mapped
-// case-insensitively according to the standard keypad layout:
+// Digits '0' to '9' map to themselves. Letters 'A' to 'Z' and 'a' to 'z' are
+// mapped case-insensitively according to the standard keypad layout:
 //
 //	'A','B','C'         → 2
 //	'D','E','F'         → 3
@@ -85,10 +53,10 @@ import (
 //	'T','U','V'         → 8
 //	'W','X','Y','Z'     → 9
 //
-// Any rune that is not an ASCII digit or ASCII letter — punctuation, whitespace,
-// symbols, and non-ASCII letters such as 'É' or full-width digits — returns
+// Any rune that is not an ASCII digit or ASCII letter (punctuation, whitespace,
+// symbols, and non-ASCII letters such as 'É' or full-width digits) returns
 // (-1, false). This makes it safe to range over formatted phone strings like
-// "(800) 555-1234" and simply skip characters where ok is false.
+// "(800) 555-1234" and skip characters where ok is false.
 func KeypadDigit(r rune) (int, bool) {
 	if r >= '0' && r <= '9' {
 		return int(r - '0'), true

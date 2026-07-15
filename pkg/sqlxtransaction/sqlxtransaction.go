@@ -1,18 +1,6 @@
 /*
-Package sqlxtransaction solves a common reliability problem in Go database
-code: correctly handling begin/commit/rollback control flow around business
-logic executed inside a sqlx transaction.
-
-# Problem
-
-Manual transaction handling is repetitive and easy to get wrong. Typical bugs
-include forgetting rollback on error paths, attempting double rollback,
-committing after a failed operation, or returning partial error context. These
-issues can silently leak inconsistent state and make production incidents harder
-to debug.
-
-This package provides a small execution wrapper that centralizes the
-transaction lifecycle and enforces a safe default pattern.
+Package sqlxtransaction handles begin/commit/rollback control flow around
+business logic executed inside a sqlx transaction.
 
 # How It Works
 
@@ -30,18 +18,6 @@ Rollback behavior is deferred and guarded:
   - `sql.ErrTxDone` is ignored during deferred rollback,
   - rollback failures are joined with the current error so diagnostics are not
     lost.
-
-# Key Features
-
-  - Minimal API: call [Exec] for default transaction options, or
-    [ExecWithOptions] for custom [sql.TxOptions] (isolation level, read-only,
-    etc.).
-  - Testability by interface: the [DB] interface abstracts `BeginTxx`, making
-    the transaction entrypoint easy to mock.
-  - Strong error context: begin, run, commit, and rollback failures are
-    wrapped with actionable messages.
-  - Safe-by-default lifecycle: commit happens only on successful function
-    completion; otherwise rollback is guaranteed.
 
 # Usage
 

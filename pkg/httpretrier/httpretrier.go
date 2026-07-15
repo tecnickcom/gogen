@@ -2,22 +2,11 @@
 Package httpretrier provides configurable retry execution for outbound HTTP
 requests.
 
-# Problem
-
-Remote dependencies fail in transient ways (timeouts, connection resets,
-temporary 5xx/429 responses). Without a consistent retry strategy, callers
-either fail too aggressively or duplicate ad hoc retry loops with different
-policies across services.
-
-# Solution
-
-This package wraps an [HTTPClient] with retry orchestration driven by a
-pluggable [RetryIfFn].
-
-[HTTPRetrier.Do] executes a request up to a bounded number of attempts,
-applying delay growth and jitter between retries. The retry decision function
-receives both `*http.Response` and `error`, enabling policy decisions based on
-transport failures and/or HTTP status codes.
+It wraps an [HTTPClient] with retry orchestration driven by a pluggable
+[RetryIfFn]. [HTTPRetrier.Do] executes a request up to a bounded number of
+attempts, applying delay growth and jitter between retries. The retry decision
+function receives both `*http.Response` and `error`, enabling policy decisions
+based on transport failures and/or HTTP status codes.
 
 # Built-in Retry Policies
 
@@ -50,11 +39,6 @@ When a request has a body and retries are needed, the retrier relies on
 request has a body that cannot be recreated (GetBody missing or failing),
 retries cannot continue and Do returns an error. Bodyless requests (e.g. a GET
 with no body) retry without restriction.
-
-# Benefits
-
-httpretrier standardizes retry behavior for HTTP clients, improving resilience
-while keeping retry policies explicit, testable, and reusable across services.
 */
 package httpretrier
 
@@ -104,8 +88,8 @@ type RetryIfFn func(r *http.Response, err error) bool
 // OnRetryFn is an optional observability callback invoked before each scheduled
 // retry. It receives the number of the attempt that just failed (1-based), the
 // delay before the next attempt, and the response/error that triggered the retry
-// (the response body is already closed). It counts scheduled retries — one may
-// still be preempted by cancellation before it runs — and must not panic; it runs
+// (the response body is already closed). It counts scheduled retries (one may
+// still be preempted by cancellation before it runs) and must not panic; it runs
 // inline in [HTTPRetrier.Do].
 type OnRetryFn func(attempt uint, delay time.Duration, r *http.Response, err error)
 
@@ -322,7 +306,7 @@ func (c *HTTPRetrier) run(r *http.Request, s *doState) bool {
 }
 
 // reopenBodyForRetry recreates the request body immediately before a retry
-// attempt (lazily, so a retry that is later aborted — e.g. by cancellation —
+// attempt (lazily, so a retry that is later aborted, e.g. by cancellation,
 // never leaves an opened body dangling). It is a no-op on the first attempt or
 // for a request with no GetBody, and returns false (setting doError) if GetBody
 // fails.
@@ -344,8 +328,8 @@ func (c *HTTPRetrier) reopenBodyForRetry(r *http.Request, s *doState) bool {
 	return true
 }
 
-// closeAndCheckReplay closes the current attempt's response body — so its
-// connection is never leaked — and verifies the request body can be replayed. It
+// closeAndCheckReplay closes the current attempt's response body (so its
+// connection is never leaked) and verifies the request body can be replayed. It
 // returns false (setting doError) to stop retrying on a close failure or a
 // consumed body that cannot be recreated.
 func closeAndCheckReplay(r *http.Request, s *doState) bool {

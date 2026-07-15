@@ -29,7 +29,7 @@ func WithOutWriter(w io.Writer) Option {
 // slice, func or channel.
 //
 // An untyped nil always panics when written to, and so does a nil pointer whose Write method has a
-// pointer receiver that dereferences it — by far the common shape (a nil *os.File, *bytes.Buffer,
+// pointer receiver that dereferences it, by far the common shape (a nil *os.File, *bytes.Buffer,
 // *bufio.Writer). The other nilable kinds are rejected on the same suspicion rather than on proof: a
 // nil map or slice with a value receiver can have a perfectly working Write. Rejecting them costs a
 // caller nothing but an explicit non-nil value, whereas accepting a writer that panics on the first

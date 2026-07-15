@@ -3,21 +3,11 @@ Package passwordpwned checks whether a password has appeared in a known data
 breach, using the Have I Been Pwned (HIBP) Pwned Passwords API v3
 (https://haveibeenpwned.com/API/v3#PwnedPasswords).
 
-# Problem
-
-Storing or transmitting a plain-text password to a third-party service to check
-whether it has been compromised would itself be a security vulnerability.
-Applications that want to reject breached passwords during registration or
-credential-change flows need a safe, privacy-preserving way to perform the
-check without revealing the password or its full hash to any external service.
-
-# Solution
-
-This package implements the HIBP k-anonymity model: only the first 5 hex
-characters of the SHA-1 hash are sent over the network. The API returns all
-hash suffixes that share that 5-character prefix (typically 800–1 000 entries
-due to Add-Padding). The full hash match is resolved entirely on the client
-side, so the actual password and its complete hash never leave the process.
+It uses the HIBP k-anonymity model: only the first 5 hex characters of the
+SHA-1 hash are sent over the network. The API returns all hash suffixes that
+share that 5-character prefix (typically 800 to 1,000 entries due to
+Add-Padding). The full hash match is resolved on the client side, so the
+password and its complete hash never leave the process.
 
 Create a client with [New] and call [Client.IsPwnedPassword]:
 
@@ -49,46 +39,28 @@ more than N times"), use [Client.PwnedCount]:
 
 # Features
 
-  - Privacy-preserving k-anonymity: only a 5-character hash prefix is
-    transmitted; the full hash and the original password never leave the caller.
-  - Add-Padding support: requests include the Add-Padding header so all
-    responses contain 800–1 000 entries regardless of real match count,
-    preventing traffic-analysis attacks.
-  - Content-Encoding aware: responses are requested as brotli and decoded
-    according to their declared Content-Encoding, transparently handling gzip
-    (from re-encoding proxies) and identity (uncompressed) responses from
-    mirrors or proxies.
-  - Bounded responses: the decoded body is capped (see [WithResponseSizeLimit])
-    to guard against decompression-bomb style memory exhaustion.
-  - Fail-loud validation: a 200 response that is not structurally valid range
-    data (e.g. a captive-portal HTML page) is rejected with
-    [ErrMalformedResponse] instead of being silently read as "not pwned".
-  - Automatic retries: a configurable [httpretrier]-backed retry policy handles
-    transient network errors safely for read-only requests and honors a
-    server-provided Retry-After header.
-  - Breach counts: [Client.PwnedCount] exposes the raw breach count for
-    threshold policies, while [Client.IsPwnedPassword] provides a simple boolean.
-  - Health probe: [Client.HealthCheck] performs a lightweight range request
-    (bounded by a dedicated ping timeout) to verify the endpoint is reachable.
-  - Functional options: [WithURL], [WithTimeout], [WithHTTPClient],
-    [WithUserAgent], [WithRetryAttempts], [WithRetryDelay],
-    [WithResponseSizeLimit], and [WithPingTimeout] let callers customize every
-    aspect of the HTTP client without subclassing.
-  - Testable by design: [HTTPClient] is an interface, making it trivial to
-    inject a mock HTTP client in unit tests.
+Requests set the Add-Padding header, so every response contains 800 to 1,000
+entries regardless of the real match count. Responses are requested as brotli
+and decoded per their declared Content-Encoding (brotli, gzip, or identity);
+the decoded body is capped (see [WithResponseSizeLimit]) to guard against
+decompression-bomb style memory exhaustion. A 200 response that is not
+structurally valid range data (e.g. a captive-portal HTML page) is rejected
+with [ErrMalformedResponse] instead of being read as "not pwned". A
+[httpretrier]-backed retry policy handles transient network errors for
+read-only requests and honors a server-provided Retry-After header.
+[Client.PwnedCount] returns the raw breach count for threshold policies;
+[Client.IsPwnedPassword] returns a boolean. [Client.HealthCheck] performs a
+bounded range request to verify the endpoint is reachable. [WithURL],
+[WithTimeout], [WithHTTPClient], [WithUserAgent], [WithRetryAttempts],
+[WithRetryDelay], [WithResponseSizeLimit], and [WithPingTimeout] configure the
+client. [HTTPClient] is an interface, so a mock HTTP client can be injected in
+tests.
 
 # Security Note
 
 The SHA-1 algorithm is used solely because the HIBP API requires it. The
 password is hashed locally; only the 5-character prefix is sent over TLS.
 This package does not store, log, or persist the password or its hash.
-
-# Benefits
-
-This package provides a single-function integration with the industry-standard
-HIBP Pwned Passwords service, handling hashing, network communication,
-compression, padding, and retries so application code stays focused on
-business logic.
 */
 package passwordpwned
 
@@ -171,7 +143,7 @@ func (c *Client) IsPwnedPassword(ctx context.Context, password string) (bool, er
 // The lookup uses the HIBP k-anonymity model:
 //  1. The SHA-1 hash of password is computed locally.
 //  2. Only the first 5 hex characters of the hash are sent to the HIBP API.
-//  3. The API returns all matching hash suffixes (padded to 800–1 000 entries).
+//  3. The API returns all matching hash suffixes (padded to 800 to 1,000 entries).
 //  4. The full hash is matched client-side; the password never leaves the process.
 //
 // Returns a non-nil error on any network, encoding, size-limit, or unexpected
@@ -258,7 +230,7 @@ func readRangeBody(reader io.Reader, limit int64) ([]byte, error) {
 	// A well-formed HIBP range response always contains padded entries, so an
 	// empty or non-range body (e.g. an HTML page served with status 200 by a
 	// captive portal or a misrouted mirror) signals a broken response rather
-	// than "not pwned" — for a breach check, "can't verify" must never read as
+	// than "not pwned": for a breach check, "can't verify" must never read as
 	// "verified safe".
 	if !validRangeStart(data) {
 		return nil, ErrMalformedResponse
@@ -267,8 +239,8 @@ func readRangeBody(reader io.Reader, limit int64) ([]byte, error) {
 	return data, nil
 }
 
-// validRangeStart reports whether data begins with "<35-hex>:<digit>" — the
-// shape of every HIBP range line — rejecting well-formed non-range bodies that
+// validRangeStart reports whether data begins with "<35-hex>:<digit>", the
+// shape of every HIBP range line, rejecting well-formed non-range bodies that
 // would otherwise silently resolve to "not pwned". Checking only the first line
 // is deliberate: it is O(1) regardless of body size, and any response opening
 // with a valid range line came from something speaking the range protocol.
@@ -290,7 +262,7 @@ func validRangeStart(data []byte) bool {
 // decodeBody selects a reader for the response body based on its declared
 // Content-Encoding. Setting Accept-Encoding manually disables Go's transparent
 // gzip handling, so every encoding a server (or a re-encoding mirror/proxy) may
-// legitimately return — brotli, gzip, or identity — must be handled explicitly;
+// legitimately return (brotli, gzip, or identity) must be handled explicitly;
 // any other encoding is rejected.
 func decodeBody(resp *http.Response) (io.Reader, error) {
 	switch enc := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Encoding"))); enc {

@@ -155,8 +155,8 @@ func passesLuhn(digits []byte) bool {
 // the joined groups, ending on a group boundary that is not glued to a word
 // character, forms a card number. Candidates are evaluated at every group
 // boundary (windowed, longest match wins) rather than only after joining
-// greedily, so a card followed by further digit groups — e.g. a PAN with a
-// trailing "12 26" expiry — is still caught.
+// greedily, so a card followed by further digit groups (e.g. a PAN with a
+// trailing "12 26" expiry) is still caught.
 func (re *Redactor) scanGroupedCardSpan(src []byte, start, firstGroupEnd int) (int, bool) {
 	var digits [maxCardDigits]byte
 
@@ -190,7 +190,7 @@ func (re *Redactor) scanGroupedCardSpan(src []byte, start, firstGroupEnd int) (i
 // the legacy 15-digit ranges (JCB 2131, Diners 1800) are excluded: those cards
 // are never printed in spaced groups, and their prefixes collide with common
 // phone formats ("1 800 555 0199 1234", "36 1234 5678 9012"). Amex (15 digits,
-// prefix 3) stays eligible — it is an active network physically printed in
+// prefix 3) stays eligible: it is an active network physically printed in
 // 4-6-5 groups. Contiguous runs are unaffected and keep matching all networks.
 func (re *Redactor) isGroupedCardCandidate(digits []byte) bool {
 	n := len(digits)

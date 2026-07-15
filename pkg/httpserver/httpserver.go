@@ -1,18 +1,7 @@
 /*
-Package httpserver provides a configurable, production-oriented HTTP server
-bootstrap for Go services.
+Package httpserver provides a configurable HTTP server bootstrap for Go services.
 
-# Problem
-
-Starting a robust HTTP service usually requires repetitive infrastructure code:
-listener setup, route registration, middleware chaining, panic/404/405
-handling, request timeouts, TLS wiring, graceful shutdown, and optional
-observability endpoints. Implementing this independently in each service leads
-to inconsistency and duplicated maintenance effort.
-
-# Solution
-
-This package defines a reusable server assembly with:
+The package assembles the server from:
   - option-driven configuration ([New] + functional [Option]s)
   - pluggable route binding via [Binder]
   - configurable default route set for operational endpoints
@@ -27,35 +16,32 @@ enabled selectively (or all at once) through options.
 When enabled, the built-in route set includes:
   - /ip: returns the service public IP (via ipify integration)
   - /metrics: returns metrics payload (501 by default unless replaced)
-  - /ping: lightweight liveness endpoint
+  - /ping: liveness endpoint
   - /pprof/*option: pprof profiling endpoints
   - /status: service health endpoint
   - / (index): generated route index
 
-# Features
+# Behavior
 
-  - Graceful lifecycle control: non-blocking start, context-aware shutdown,
-    configurable shutdown timeout, external wait-group and signal integration,
+  - Lifecycle: non-blocking start, context-aware shutdown, configurable
+    shutdown timeout, external wait-group and signal integration,
     abnormal-termination reporting via [HTTPServer.ServeError], and ephemeral
     port discovery via [HTTPServer.Addr].
   - Startup validation: misconfigured routes and options (nil handlers or
     middleware, duplicate or malformed routes, unknown default route
     identifiers) are reported by [New] as wrapped sentinel errors instead of
     panics.
-  - Router defaults: standardized not-found, method-not-allowed, and panic
-    handlers with structured logging.
+  - Router defaults: not-found, method-not-allowed, and panic handlers with
+    structured logging.
   - Middleware pipeline: common middleware (logger/timeout) plus global and
     per-route middleware composition, with per-route timeout override or
     opt-out ([DisableTimeout]).
-  - Observability integration: trace-id propagation hooks, HTTP data redaction,
-    per-request log entries carrying the response status code and size,
-    optional pprof/metrics/status routes, and net/http internal diagnostics
-    routed to the structured logger.
-  - Transport flexibility: plain TCP or TLS (HTTP/1.1 and HTTP/2 via ALPN)
-    from cert/key material ([WithTLSCertData]) or a fully custom
-    [WithTLSConfig].
-  - Safe defaults with extensibility: overridable handlers and server
-    parameters for production customization.
+  - Observability: trace-id propagation hooks, HTTP data redaction, per-request
+    log entries carrying the response status code and size, optional
+    pprof/metrics/status routes, and net/http internal diagnostics routed to
+    the structured logger.
+  - Transport: plain TCP or TLS (HTTP/1.1 and HTTP/2 via ALPN) from cert/key
+    material ([WithTLSCertData]) or a custom [WithTLSConfig].
 
 # Security
 
@@ -66,12 +52,6 @@ details, and /ip performs an outbound call to a third-party service. Enable
 these routes only on internal or administrative listeners that are not
 reachable from the public internet, or protect them with authentication
 middleware appropriate for your environment.
-
-# Benefits
-
-httpserver reduces service bootstrap boilerplate, enforces consistent runtime
-behavior across projects, and accelerates delivery of HTTP services with
-operational best practices built in.
 
 For a usage example, refer to examples/service/internal/cli/bind.go.
 */

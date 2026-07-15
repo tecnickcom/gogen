@@ -1,17 +1,7 @@
 /*
 Package maputil provides generic functional-style helpers for Go maps.
 
-# Problem
-
-Go's built-in map type is efficient and ergonomic, but common transformation
-patterns (filtering entries, remapping keys/values, reducing to an aggregate,
-or inverting key-value direction) are often rewritten ad hoc across projects.
-That leads to repetitive loops, inconsistent behavior, and subtle bugs around
-map iteration order.
-
-# Solution
-
-This package offers a small set of generic, allocation-conscious helpers:
+It offers a small set of generic, allocation-conscious helpers:
   - [Filter] keeps entries matching a predicate.
   - [Map] transforms key/value pairs into a new map type.
   - [Reduce] folds all entries into a single accumulator value.
@@ -27,11 +17,6 @@ Go map iteration order is intentionally randomized. Therefore:
     order-independent (for example, commutative/associative operations).
   - [Map] and [Invert] follow "last write wins" semantics when multiple input
     entries map to the same output key.
-
-# Benefits
-
-These utilities remove repetitive boilerplate while preserving type safety,
-making map-heavy code easier to read, review, and test.
 */
 package maputil
 

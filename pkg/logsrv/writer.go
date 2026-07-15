@@ -14,7 +14,7 @@ import (
 // errWriter passes writes through to the destination and remembers the most recent failure, so Handle
 // can return it: zerolog's Event API reports no error of its own. The error is still returned to
 // zerolog as well, so its own fallback (a diagnostic on os.Stderr) remains the last resort for callers
-// that discard Handle's error — slog.Logger is one.
+// that discard Handle's error, such as slog.Logger.
 //
 // What it holds is a signal that the destination is failing, not a per-call status, and it is not
 // possible to make it one: writes reach it serialized (it sits inside zerolog's SyncWriter) but takeErr
@@ -27,7 +27,7 @@ import (
 // Keeping the most recent failure rather than the first is deliberate: when a transient error (a full
 // pipe) is followed by a fatal one, the fatal one is the useful diagnosis.
 //
-// Sequentially — one goroutine, which is how the error is normally consumed — it is exact: each failed
+// Sequentially (one goroutine, which is how the error is normally consumed) it is exact: each failed
 // write is reported to the next Handle, and a destination that recovers stops reporting the stale error.
 type errWriter struct {
 	w   io.Writer
@@ -35,7 +35,7 @@ type errWriter struct {
 }
 
 // Write forwards to the destination, recording the error, if any, for takeErr. The error is boxed
-// inside the failure branch, so the successful path — every path, normally — heap-allocates nothing:
+// inside the failure branch, so the successful path (every path, normally) heap-allocates nothing:
 // taking the address of the returned err itself would make it escape on every write.
 func (ew *errWriter) Write(p []byte) (int, error) {
 	n, err := ew.w.Write(p)
@@ -103,9 +103,9 @@ func darkGray(s string) string { return "\x1b[90m" + s + "\x1b[0m" }
 
 // consoleTimestamp returns the ConsoleWriter timestamp formatter: it parses the field with the same
 // layout the handler writes (timeLayoutBare) and renders it in the local zone in the console time
-// format, mirroring zerolog's own formatter — including its dark-gray coloring (suppressed by the
+// format, mirroring zerolog's own formatter, including its dark-gray coloring (suppressed by the
 // NO_COLOR environment variable, which zerolog reads per call, as here), and its "<nil>" for a
-// missing field so a record with a zero time reads as before — minus the dependency on the
+// missing field so a record with a zero time reads as before, minus the dependency on the
 // process-global zerolog.TimeFieldFormat, which no longer describes the field.
 func consoleTimestamp(noColor bool) zerolog.Formatter {
 	return func(i any) string {
@@ -120,8 +120,8 @@ func consoleTimestamp(noColor bool) zerolog.Formatter {
 }
 
 // consoleTimeValue renders the decoded time field for the console. A value that is not the timestamp
-// this handler writes cannot be a record timestamp — it is a user attribute colliding with the
-// reserved "time" key, or a missing field — so it is passed through rather than dropped: an
+// this handler writes cannot be a record timestamp: it is a user attribute colliding with the
+// reserved "time" key, or a missing field, so it is passed through rather than dropped: an
 // unparseable string verbatim, any other value via its default formatting, and a missing field as
 // zerolog's own "<nil>" placeholder.
 func consoleTimeValue(i any) string {

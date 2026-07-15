@@ -2,19 +2,9 @@
 Package periodic schedules a task function to run repeatedly at a fixed
 interval, with optional random jitter and a per-invocation context timeout.
 
-# Problem
-
-Background workers that poll an external resource, flush a cache, or emit
-heartbeats are common in production services. Implementing them correctly
-requires handling context cancellation, per-call timeouts, graceful shutdown,
-and the thundering-herd problem when a fleet paces or restarts in lockstep.
-Writing this loop from scratch every time is repetitive and error-prone.
-
-# Solution
-
 [New] constructs a [Periodic] scheduler from an interval, a jitter ceiling, a
 per-call timeout, and a [TaskFn]. [Periodic.Start] runs the task in a dedicated
-goroutine and [Periodic.Stop] shuts it down cleanly:
+goroutine and [Periodic.Stop] shuts it down:
 
 	p, err := periodic.New(
 		30*time.Second,  // run every 30 s
@@ -29,27 +19,23 @@ goroutine and [Periodic.Stop] shuts it down cleanly:
 	p.Start(ctx)
 	defer p.Stop()
 
-# Features
+# Behavior
 
-  - Fixed interval with random jitter: the actual pause between calls is
-    interval + rand(0, jitter), spreading steady-state load across a fleet and
-    avoiding the thundering-herd problem
+  - Fixed interval with random jitter: the pause between calls is
+    interval + rand(0, jitter), spreading steady-state load across a fleet to
+    avoid a thundering herd
     (https://en.wikipedia.org/wiki/Thundering_herd_problem).
   - Per-call timeout: each [TaskFn] invocation receives a [context.Context]
-    derived from the parent with an independent deadline, preventing a single
-    slow call from blocking the scheduler.
+    derived from the parent with an independent deadline.
   - Context-aware shutdown: [Periodic.Start] accepts a parent context;
     canceling it (or calling [Periodic.Stop]) stops the loop after the
-    current task invocation returns — no goroutine leaks.
+    current task invocation returns, without leaking a goroutine.
   - Eager first execution: by default the first call fires after ~1 ns so the
     task runs immediately on start rather than waiting for the first full
     interval. This first call is not jittered, so a fleet that starts in
     lockstep (a rolling deploy, a simultaneous restart) fires every replica's
     first call together; pass [WithInitialJitter] to spread the first call
     across [0, jitter) as well.
-  - Simple API: [New] plus two methods ([Periodic.Start], [Periodic.Stop]),
-    one function type ([TaskFn]), and one option ([WithInitialJitter]) cover
-    the entire surface area.
 
 # Constraints
 
@@ -57,14 +43,8 @@ goroutine and [Periodic.Stop] shuts it down cleanly:
   - jitter must be >= 0 (pass 0 to disable jitter entirely).
   - timeout must be > 0.
   - task must not be nil.
-  - task must not panic — it runs in the background goroutine with no recovery,
+  - task must not panic: it runs in the background goroutine with no recovery,
     so a panic crashes the process (recover inside the task if needed).
-
-# Benefits
-
-This package eliminates the recurring boilerplate of ticker-based background
-loops in Go services, providing built-in jitter, cancellation, and timeout
-handling in a minimal, dependency-free implementation.
 */
 package periodic
 
@@ -143,7 +123,7 @@ func New(interval time.Duration, jitter time.Duration, timeout time.Duration, ta
 // interval+rand(0,jitter) after each completion.
 // The loop exits when ctx is canceled or Stop() is called. A second Start on an
 // already-started or already-stopped instance is a no-op, so it never leaks a
-// goroutine — the instance is single-use.
+// goroutine; the instance is single-use.
 //
 // If ctx is canceled just before the first tick, the task may still run once
 // (with the already-canceled context); a well-behaved task returns promptly.
@@ -164,8 +144,8 @@ func (p *Periodic) Start(ctx context.Context) {
 
 // Stop cancels the execution loop and waits for the current task invocation to complete.
 // Safe to call multiple times, before Start(), or concurrently with Start(): whatever
-// the ordering, once Stop returns the scheduler is stopped and will not (re)start —
-// a Stop that wins the race before Start prevents the loop from ever launching.
+// the ordering, once Stop returns the scheduler is stopped and will not (re)start.
+// A Stop that wins the race before Start prevents the loop from ever launching.
 // The instance is single-use and cannot be restarted after Stop.
 func (p *Periodic) Stop() {
 	p.mu.Lock()

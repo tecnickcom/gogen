@@ -1,10 +1,6 @@
 /*
-Package countryphone resolves international phone number prefixes into
-country and regional metadata.
-
-It addresses a common backend problem: mapping a dialed number (or prefix) to
-structured geographic and number-type information that can be used for
-validation, formatting, routing, fraud controls, and analytics.
+Package countryphone resolves international phone number prefixes into country
+and regional metadata.
 
 The package models country calling code behavior defined by the International
 Telecommunication Union (ITU), including the ITU-T E.123 and E.164 numbering
@@ -12,30 +8,10 @@ recommendations.
 
 # How it works
 
-countryphone indexes prefix data in a trie and performs longest-prefix lookup.
-This gives fast reads and deterministic matches for variable-length numbering
-plans. The default dataset is embedded, and callers can provide custom data
-through New when they need provider-specific or updated plans.
-
-Top features
-
-  - Longest-prefix matching for accurate geographic resolution across mixed
-    prefix lengths.
-  - Rich metadata output via NumInfo and GeoInfo, including country code,
-    area/group name, and typed classifications.
-  - Stable enum helpers (NumberType and AreaType) that convert integer types
-    into readable labels.
-  - Custom dataset injection using InData, InCountryData, and InPrefixGroup,
-    so teams can adapt to private numbering rules without forking package code.
-
-Why this matters
-
-  - Consistent prefix resolution across services reduces subtle routing and
-    validation bugs.
-  - Trie-based lookup is efficient for both single-request APIs and bulk
-    processing pipelines.
-  - The data model composes naturally with country metadata from
-    github.com/tecnickcom/nurago/pkg/countrycode.
+countryphone indexes prefix data in a trie and performs longest-prefix lookup,
+giving deterministic matches for variable-length numbering plans. The default
+dataset is embedded, and callers can provide custom data through New for
+provider-specific or updated plans.
 
 # Typical usage
 
@@ -186,7 +162,7 @@ type Data struct {
 // New builds a prefix resolver backed by a longest-prefix trie.
 //
 // If data is nil, the embedded default numbering dataset is loaded.
-// Precomputing trie indexes at construction keeps NumberInfo lookups fast and
+// Precomputing trie indexes at construction keeps NumberInfo lookups
 // deterministic for mixed-length international prefixes.
 func New(data InData) *Data {
 	d := &Data{}
@@ -232,8 +208,7 @@ func cloneNumInfo(src *NumInfo) *NumInfo {
 
 // NumberType returns the label for a numeric prefix-type code.
 //
-// It converts compact integer values into readable type names for APIs,
-// logging, and analytics outputs.
+// It converts integer values into readable type names.
 func (d *Data) NumberType(t int) (string, error) {
 	if t < 0 || t >= len(enumNumberType) {
 		return "", fmt.Errorf("%w %d", ErrInvalidNumberType, t)

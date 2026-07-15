@@ -219,7 +219,7 @@ func (c *Client) pathWithinBase(r *http.Request) bool {
 // rejectTraversal logs a base-path escape attempt and answers HTTP 400.
 //
 // The request is rejected before any rewrite, so request_path here is the inbound
-// path the client sent (e.g. "/proxy/../admin") — unlike the "proxy_error" entry,
+// path the client sent (e.g. "/proxy/../admin"), unlike the "proxy_error" entry,
 // whose request_path is the rewritten upstream path.
 func (c *Client) rejectTraversal(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -242,7 +242,7 @@ func (c *Client) rejectTraversal(w http.ResponseWriter, r *http.Request) {
 // an upstream fault, so it is logged at Info level and no 502 is written to the
 // abandoned connection. This is detected from the inbound context state rather than
 // the error, because an upstream ResponseHeaderTimeout also reports as a deadline
-// error while the client is still connected — that case must remain a 502.
+// error while the client is still connected, and that case must remain a 502.
 //
 // Genuine upstream failures are logged at Error level and answered with HTTP 502.
 // The request query and the URL embedded in a *url.Error are redacted before logging
@@ -340,7 +340,7 @@ func parseUpstreamURL(addr string) (*url.URL, error) {
 // redactErrorForLog returns a log-safe copy of err. A failed request yields a
 // *url.Error whose message embeds the full outbound URL; its query string is
 // redacted so query-parameter secrets do not leak into error logs. The error
-// returned to the caller (ReverseProxy) is left untouched — only the logged copy is
+// returned to the caller (ReverseProxy) is left untouched; only the logged copy is
 // redacted. Any error that does not wrap a *url.Error is returned as-is.
 func redactErrorForLog(err error, redactFn RedactFn) error {
 	var uerr *url.Error

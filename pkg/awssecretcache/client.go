@@ -193,7 +193,7 @@ func (c *Cache) Reset() {
 // A fetch in flight for key is invalidated: its result is returned to the caller
 // that started it but not cached, and callers waiting on it are released to
 // fetch again. Removing a secret whose fetch is still in flight therefore allows
-// a second concurrent upstream call for it — the price of not serving the
+// a second concurrent upstream call for it, the price of not serving the
 // pre-rotation value.
 func (c *Cache) Remove(key string) {
 	c.cache.Remove(key)

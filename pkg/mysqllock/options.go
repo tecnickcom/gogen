@@ -4,7 +4,7 @@ import "time"
 
 // Option configures a [MySQLLock] at construction time.
 //
-// Options are additive; passing none preserves the historical default behavior.
+// Options are additive; passing none preserves the default behavior.
 type Option func(*MySQLLock)
 
 // WithKeepAliveErrorHandler sets a handler that receives errors produced by the

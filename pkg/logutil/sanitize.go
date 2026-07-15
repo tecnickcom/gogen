@@ -24,7 +24,7 @@ const sanitizeAttrsInline = 16
 // handler the group's name stays in the key prefix and the next attribute is silently written under the
 // wrong key ("z=1" becomes "g.z=1"). It bites wherever a rendering attribute follows an elided group in
 // the same buffer: among a record's attributes, inside another group, and within a single WithAttrs
-// call — which is how Config.CommonAttr is applied, so a single elided group there corrupts every line
+// call, which is how Config.CommonAttr is applied, so a single elided group there corrupts every line
 // the process writes. Dropping the group changes nothing about the output and sidesteps the bug. The
 // filter is recursive: a group that is kept is rebuilt without any non-rendering subgroup it holds.
 //
@@ -32,15 +32,15 @@ const sanitizeAttrsInline = 16
 // writes an "!ERROR:" string for it and then writes the value anyway (appendJSONTime does not return
 // after the error), so one key carries two JSON strings and the line is invalid. Such a value is
 // rewritten here as the RFC 3339 string the logsrv backend writes for it, which is the only rendering
-// that keeps the line parseable and keeps the two backends agreeing. It is reachable from ordinary code
-// — a deadline built by adding a large duration, or a time.Unix on a corrupt field.
+// that keeps the line parseable and keeps the two backends agreeing. It is reachable from ordinary code:
+// a deadline built by adding a large duration, or a time.Unix on a corrupt field.
 //
 // Only an *attribute*: a record's own timestamp is not one and never passes through here. It carries the
 // same defect, and is repaired by the ReplaceAttr callback Config.SlogHandler installs (see
-// replaceLevelName) — which is why a handler wrapped by NewSlogTraceIDHandler, where that callback is
+// replaceLevelName), which is why a handler wrapped by NewSlogTraceIDHandler, where that callback is
 // the caller's to supply, is not covered.
 //
-// Values are resolved here, and the resolved value is what is handed downstream — a LogValuer only
+// Values are resolved here, and the resolved value is what is handed downstream: a LogValuer only
 // yields its group once resolved, and a purely structural filter cannot see it (that mistake made this
 // handler blind to the whole class). Substituting the resolved value keeps the cost at exactly one
 // LogValue call per attribute per record: the handler below resolves again as it writes, and resolving
@@ -53,13 +53,13 @@ const sanitizeAttrsInline = 16
 // resolved, so the trace ID it injects can never be the attribute that follows an elided group; and the
 // per-record handler-chain replay a grouped logger performs runs below it, so it costs nothing there.
 //
-// The common attributes are the one set it cannot see — they are baked straight into the handler
-// underneath — so Config.SlogHandler filters them itself before baking them.
+// The common attributes are the one set it cannot see (they are baked straight into the handler
+// underneath) so Config.SlogHandler filters them itself before baking them.
 //
 // One rule it deliberately does not model: a ReplaceAttr callback that deletes an attribute (by
 // returning the zero slog.Attr) can empty a group below this handler, re-creating the first defect.
 // The filter cannot see a callback installed on a handler it merely wraps. Config.SlogHandler is
-// unaffected — the only callback it installs is replaceLevelName, which never deletes — but a handler
+// unaffected (the only callback it installs is replaceLevelName, which never deletes) but a handler
 // passed to NewSlogTraceIDHandler with a deleting ReplaceAttr is not protected (see attrRenders).
 type slogSanitizeHandler struct {
 	inner slog.Handler
@@ -110,8 +110,8 @@ func (h *slogSanitizeHandler) WithGroup(name string) slog.Handler {
 // untouched.
 //
 // The record is rebuilt rather than mutated: slog.Record's contract forbids modifying a record whose
-// copies have been handed out — AddAttrs on a shared record makes the standard library write a "!BUG"
-// field into the line — and a handler cannot know whether an upstream one kept a copy.
+// copies have been handed out (AddAttrs on a shared record makes the standard library write a "!BUG"
+// field into the line) and a handler cannot know whether an upstream one kept a copy.
 func sanitizeRecord(record slog.Record) slog.Record {
 	if !recordMayNeedSanitize(record) {
 		return record
@@ -125,14 +125,14 @@ func sanitizeRecord(record slog.Record) slog.Record {
 	record.Attrs(func(a slog.Attr) bool {
 		clean, keep, dirty := sanitizeAttr(a)
 
-		// An attribute that is dropped changes the record even when it was not itself rewritten — an
-		// empty *slog.Source and a nil-pointer error are both dropped without being dirty — so !keep
+		// An attribute that is dropped changes the record even when it was not itself rewritten: an
+		// empty *slog.Source and a nil-pointer error are both dropped without being dirty, so !keep
 		// counts too. Without it the record would keep an attribute the WithAttrs path drops, and the
 		// two would hand different attribute sets downstream for the same input.
 		//
 		// (The zero Attr is the exception: it is dropped without being dirty as well, but
 		// recordMayNeedSanitize never wakes for one, so a record carrying only that keeps it. slog
-		// elides it harmlessly — before it opens any group — so the output is the same either way.)
+		// elides it harmlessly (before it opens any group) so the output is the same either way.)
 		changed = changed || dirty || !keep
 
 		if keep {
@@ -155,8 +155,8 @@ func sanitizeRecord(record slog.Record) slog.Record {
 // recordMayNeedSanitize reports whether any of record's attributes could need the filter: a group can
 // hold something that renders nothing and a LogValuer can turn into one; a time.Time can carry a year
 // slog's JSON encoder cannot write; and an Any can hold a value this package writes no field for where
-// slog would write one — an empty *slog.Source, or a nil-pointer error (see valueRenders). Every other
-// kind always writes itself as it stands, so a record of plain attributes — the hot path — resolves
+// slog would write one, an empty *slog.Source, or a nil-pointer error (see valueRenders). Every other
+// kind always writes itself as it stands, so a record of plain attributes (the hot path) resolves
 // nothing, allocates nothing, and is passed on as it came.
 func recordMayNeedSanitize(record slog.Record) bool {
 	found := false
@@ -168,8 +168,8 @@ func recordMayNeedSanitize(record slog.Record) bool {
 
 			return false
 		case slog.KindTime:
-			// Only an out-of-range year needs rewriting, so an ordinary timestamp attribute — much the
-			// commoner case — stays on the fast path.
+			// Only an out-of-range year needs rewriting, so an ordinary timestamp attribute (much the
+			// commoner case) stays on the fast path.
 			if !encodableJSONTime(a.Value.Time()) {
 				found = true
 
@@ -273,8 +273,8 @@ func sanitizeAttr(a Attr) (Attr, bool, bool) {
 //     bare "{}". Eliding is the rule both backends already document, and it is what keeps
 //     WithGroup(TraceIDKey) from replacing the trace ID with an empty object.
 //   - A nil-pointer error counts as writing nothing, where slog renders it as the string "<nil>". The
-//     logsrv backend drops it too, so the two agree. Without this a typed nil — the commonest error bug
-//     in Go — logged under TraceIDKey would be read as a caller-supplied trace ID, suppressing the
+//     logsrv backend drops it too, so the two agree. Without this a typed nil (the commonest error bug
+//     in Go) logged under TraceIDKey would be read as a caller-supplied trace ID, suppressing the
 //     injected one and shipping the record correlated by the string "<nil>".
 //
 // Both are disclosed in the package documentation.
@@ -302,14 +302,14 @@ func attrRenders(a Attr) bool {
 // rules and the two deviations).
 //
 // A group yields nothing when every member does: slog ignores a group with no members, drops the zero
-// Attr, and elides a subgroup that itself renders nothing — so an arbitrarily nested empty group writes
+// Attr, and elides a subgroup that itself renders nothing, so an arbitrarily nested empty group writes
 // nothing at all, however many levels it has.
 //
 // An empty *slog.Source (a nil one, or a zero-valued one) writes nothing either: slog's handlers give
 // that type a special case and elide it. A nil-pointer error writes nothing because the sibling zerolog
 // backend omits it. Both matter beyond the field itself: such a value logged under TraceIDKey would
 // otherwise be read as a caller-supplied trace ID, suppressing the injected one while writing nothing
-// usable — leaving the record with no correlation ID.
+// usable, leaving the record with no correlation ID.
 func valueRenders(value slog.Value) bool {
 	switch value.Kind() { //nolint:exhaustive // every other kind writes a field.
 	case slog.KindGroup:
@@ -326,17 +326,17 @@ func valueRenders(value slog.Value) bool {
 	return true
 }
 
-// emptySource reports whether src is an empty caller location — a nil *slog.Source, or a zero-valued
-// one — which slog's own handlers give a special case and elide.
+// emptySource reports whether src is an empty caller location (a nil *slog.Source, or a zero-valued
+// one) which slog's own handlers give a special case and elide.
 func emptySource(src *slog.Source) bool {
 	return src == nil || *src == slog.Source{}
 }
 
-// nilPointerError reports whether err is a typed nil — a non-nil interface holding a nil pointer, such
+// nilPointerError reports whether err is a typed nil: a non-nil interface holding a nil pointer, such
 // as a nil *MyErr. (A nil interface cannot reach here: it does not match the error case of a type
 // switch, and slog.Any(key, nil) is rendered as a null field, not as an error.)
 //
-// Only a pointer counts, mirroring zerolog's isNilValue — and so the logsrv backend's isNilError —
+// Only a pointer counts, mirroring zerolog's isNilValue (and so the logsrv backend's isNilError)
 // exactly: a nil value of a slice, map, func or channel kind, an aggregate error such as a nil
 // validator.ValidationErrors, is not nil for this purpose, because zerolog calls Error() on it and
 // writes the field.
@@ -347,7 +347,7 @@ func nilPointerError(err error) bool {
 }
 
 // encodableJSONTime reports whether slog's JSON encoder can write t. Its appendJSONTime rejects a year
-// outside [0,9999] — and then writes the value anyway, after the error string — so such a time must be
+// outside [0,9999] (and then writes the value anyway, after the error string) so such a time must be
 // rewritten before it reaches the handler (see slogSanitizeHandler).
 func encodableJSONTime(t time.Time) bool {
 	y := t.Year()

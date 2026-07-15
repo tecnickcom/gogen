@@ -76,7 +76,7 @@ func (c *Config) SlogLogger() *slog.Logger {
 	return slog.New(c.SlogHandler())
 }
 
-// OutWriter returns the effective output destination: Config.Out, or os.Stderr when Out is unusable —
+// OutWriter returns the effective output destination: Config.Out, or os.Stderr when Out is unusable:
 // nil, or a typed nil (a nil *os.File, say, held in a non-nil io.Writer interface), which Out being an
 // exported field allows even though WithOutWriter rejects it. Both backends resolve the destination
 // through it, so a hand-built Config never yields a handler that panics on the first write.
@@ -134,8 +134,8 @@ func (c *Config) SlogHandler() slog.Handler {
 	// trace-ID deduplication for a CommonAttr-supplied trace_id is seeded explicitly here.
 	//
 	// They are filtered first: they are preformatted in a single WithAttrs call, so one attribute among
-	// them that the standard library encodes incorrectly — a group that renders nothing, or a time whose
-	// year it cannot write — would corrupt every line the handler ever writes (see slogSanitizeHandler).
+	// them that the standard library encodes incorrectly (a group that renders nothing, or a time whose
+	// year it cannot write) would corrupt every line the handler ever writes (see slogSanitizeHandler).
 	// Nothing above can filter them, since they never pass through it again.
 	common, _ := sanitizeAttrs(c.CommonAttr)
 	h = h.WithAttrs(common)
@@ -146,7 +146,7 @@ func (c *Config) SlogHandler() slog.Handler {
 
 	// The sanitizing handler goes above the trace wrapper, not below it: every record and every
 	// derivation then reaches the wrapper already stripped of the groups that render nothing, so the
-	// trace ID it injects can never be the attribute that follows one — and the per-record replay a
+	// trace ID it injects can never be the attribute that follows one, and the per-record replay a
 	// grouped logger performs runs on a chain the sanitizer is not part of, keeping it off the hot
 	// path. It is installed whatever else is configured, so a nil TraceIDFn (which leaves no trace
 	// wrapper at all) is protected just the same.

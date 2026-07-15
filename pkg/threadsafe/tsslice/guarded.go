@@ -28,8 +28,8 @@ type Guarded[E any] struct {
 // initially empty slice.
 //
 // Ownership must be exclusive: after the call the caller must not read or write
-// s — nor any other slice that aliases the same backing array, such as a
-// spare-capacity re-slice — except through the returned Guarded, otherwise those
+// s (nor any other slice that aliases the same backing array, such as a
+// spare-capacity re-slice) except through the returned Guarded, otherwise those
 // accesses race with the Guarded's methods.
 func NewGuarded[E any](s []E) *Guarded[E] {
 	return &Guarded[E]{s: s}

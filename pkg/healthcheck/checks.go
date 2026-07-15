@@ -27,8 +27,7 @@ type HTTPClient interface {
 // transport failures or mismatched status codes. By default the status must equal
 // wantStatusCode; [WithAcceptStatus] replaces that with a predicate. A positive
 // timeout bounds the request via a derived context; a non-positive timeout adds no
-// deadline of its own, leaving only ctx to bound execution. This helper is ideal
-// for upstream dependency checks in readiness endpoints.
+// deadline of its own, leaving only ctx to bound execution.
 func CheckHTTPStatus(
 	ctx context.Context,
 	httpClient HTTPClient,

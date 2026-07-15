@@ -1,17 +1,7 @@
 /*
 Package filter provides declarative, rule-based filtering for in-memory slices.
-
-# Problem
-
-API endpoints frequently need to apply client-driven filters to server-side
-collections (for example, after parsing a `filter=` query parameter). Handwritten
-loop logic is repetitive, hard to validate, and difficult to keep consistent
-across data models.
-
-# Solution
-
-This package evaluates structured [Rule] expressions against slice elements and
-filters the slice in place.
+It evaluates structured [Rule] expressions against slice elements and filters the
+slice in place.
 
 Rules are grouped as `[][]Rule` with boolean semantics:
   - outer slice: AND
@@ -25,20 +15,18 @@ Rules can be supplied directly or parsed from JSON via [Processor.ParseJSON], an
 parameter payloads can be loaded with [Processor.ParseURLQuery]. A JSON rule object must carry
 the "field", "type", and "value" keys (an empty "field" selects the whole element; a "value" of
 null is a nil reference); the JSON grammar is defined by filter_schema.json. Supplying rules
-directly as a [][]Rule in Go is not held to that shape — a Go caller may, for example, pass an
+directly as a [][]Rule in Go is not held to that shape; a Go caller may, for example, pass an
 empty rule set to match every element.
 
-# Key Features
+# Features
 
-  - JSON-friendly filtering grammar for client-provided filters.
-  - Rich comparison operators: regexp, equality/equal-fold, prefix/suffix,
+  - Comparison operators: regexp, equality/equal-fold, prefix/suffix,
     contains, and numeric ordering (<, <=, >, >=) with a collection/string
     length fallback.
   - Optional negation prefix (`!`) for every operator.
   - Dot-path field selection for nested struct fields. By default selectors are matched
     against Go field names, case-sensitively (so `Address.Country`); use [WithFieldNameTag]
     to match a struct tag instead (so a JSON-style `address.country`).
-  - Optional struct-tag based field lookup via [WithFieldNameTag].
   - In-place filtering with pagination-style controls via [Processor.ApplySubset]
     (offset + length), plus total-match count.
   - Limits to constrain runtime and untrusted-input cost: rule/result counts
@@ -52,23 +40,23 @@ empty rule set to match every element.
     pointer to a slice and is modified in place: matching elements are compacted to
     the front and the slice is shortened (its backing array is not zeroed beyond the
     new length).
-  - A field selector that cannot be resolved against a concrete element type — it names no
+  - A field selector that cannot be resolved against a concrete element type (it names no
     such field, descends into a non-struct, targets an unexported field, or is deeper than
-    [WithMaxFieldDepth] — is a deterministic client error, rejected with [ErrInvalidFilter]
-    before any element is touched. A field that is merely unreachable on a given element — a
-    nil pointer along the path, or a field absent from the concrete type of an element in an
-    interface-typed slice (e.g. []any), knowable only per element — makes that element a
-    non-match (filtered out) rather than an error. A pointer or interface leaf is dereferenced
-    to the value it holds, and a nil leaf compares as a nil operand.
+    [WithMaxFieldDepth]) is a deterministic client error, rejected with [ErrInvalidFilter]
+    before any element is touched. A field that is merely unreachable on a given element makes
+    that element a non-match (filtered out) rather than an error; this covers a nil pointer
+    along the path, or a field absent from the concrete type of an element in an
+    interface-typed slice (e.g. []any), knowable only per element. A pointer or interface leaf
+    is dereferenced to the value it holds, and a nil leaf compares as a nil operand.
   - [Processor.ParseURLQuery] returns nil rules when the configured query key is
     missing or empty.
   - The `!` prefix inverts an operator's result, including for operands the base operator
     cannot handle: `!==` against a type it cannot compare, or `!<` against a non-ordered
     operand, matches. For any element whose field is actually read, exactly one of a rule and
     its negation matches. They fail to partition the slice only when the field is *unreachable*
-    on an element — a nil pointer along the path, or a field absent on a []any element — since
+    on an element (a nil pointer along the path, or a field absent on a []any element), since
     such an element is a non-match for both the rule and its negation (the evaluator is never
-    reached). Note that `!=` negates equal-fold (`=`), i.e. it is "not equal under case folding".
+    reached). `!=` negates equal-fold (`=`), i.e. it is "not equal under case folding".
   - A [Processor] and a compiled [][]Rule are safe for concurrent use across
     goroutines. That safety does not extend to a target slice shared between
     concurrent [Processor.Apply] calls, since Apply mutates it in place.
@@ -94,7 +82,7 @@ bytes ([WithMaxFilterBytes]), [WithMaxRules] caps how many rules may be applied,
 [WithMaxFieldDepth] bounds field-selector nesting. Array and object rule values are rejected
 outright by the JSON parser. The number of distinct resolved field paths cached per Processor
 is also capped internally, so filtering a recursive element type with an unbounded variety of
-selectors cannot grow memory without limit. Note that [Processor.Apply] still evaluates every
+selectors cannot grow memory without limit. [Processor.Apply] still evaluates every
 rule against every element regardless of the requested result window, so callers should also
 bound the size of the slice being filtered. Decode untrusted filter JSON with
 [Processor.ParseJSON] (or [Processor.ParseURLQuery]): these apply the payload-size and
@@ -180,13 +168,8 @@ whole result: a `!` rule also matches when the base operator could not apply at 
 cannot compare, or an operand with no ordering). For any element whose field is actually read,
 exactly one of a rule and its negation matches; they fail to partition the elements only when
 the field is unreachable on an element (a nil pointer along the path, or a field absent on a
-[]any element), which is a non-match for both. Note that `!=` is the negation of `=`
+[]any element), which is a non-match for both. `!=` is the negation of `=`
 (equal-fold), i.e. "not equal under case folding", not a distinct operator.
-
-# Benefits
-
-filter enables expressive, validated, and reusable filtering logic for API and
-application layers while minimizing repetitive per-type query code.
 */
 package filter
 
@@ -246,8 +229,8 @@ const (
 // an HTTP 400) and log the detail server-side, instead of returning the underlying
 // message, which may echo client input or internal type names.
 //
-// Errors caused by misuse of the Apply/ApplySubset arguments by the calling code —
-// a non-slice-pointer target, or an out-of-range length — are NOT wrapped with it.
+// Errors caused by misuse of the Apply/ApplySubset arguments by the calling code
+// (a non-slice-pointer target, or an out-of-range length) are NOT wrapped with it.
 var ErrInvalidFilter = errors.New("invalid filter")
 
 // Processor provides the filtering logic and methods. Construct one with [New]; the zero
@@ -302,13 +285,13 @@ func (p *Processor) ParseURLQuery(q url.Values) ([][]Rule, error) {
 // ParseJSON decodes a JSON filter rule set with the Processor's safety limits applied:
 // it rejects payloads larger than the configured maximum ([WithMaxFilterBytes]) before
 // decoding, and rejects rule sets exceeding [WithMaxRules]. The payload must match the shape of
-// filter_schema.json — at least one non-empty AND group, and every rule object carrying the
-// "field", "type", and "value" keys — otherwise it is rejected as a malformed filter. It is the
+// filter_schema.json (at least one non-empty AND group, and every rule object carrying the
+// "field", "type", and "value" keys), otherwise it is rejected as a malformed filter. It is the
 // only supported way to decode untrusted filter JSON; the unbounded decoder is internal.
 // Filter-attributable errors are wrapped with [ErrInvalidFilter].
 func (p *Processor) ParseJSON(s string) ([][]Rule, error) {
 	// Reject oversized payloads before decoding, so a huge value cannot force a large
-	// JSON allocation just to be rejected afterwards by the rule-count limit.
+	// JSON allocation only to be rejected afterwards by the rule-count limit.
 	if uint(len(s)) > p.maxFilterBytes {
 		return nil, fmt.Errorf("%w: filter payload too large: got %d bytes max is %d", ErrInvalidFilter, len(s), p.maxFilterBytes)
 	}
@@ -384,7 +367,7 @@ func (p *Processor) ApplySubset(rules [][]Rule, slicePtr any, offset, length uin
 }
 
 func (p *Processor) checkRulesCount(rules [][]Rule) error {
-	// Bound the number of AND groups, not just the total rule count, so that a large set of
+	// Bound the number of AND groups, not only the total rule count, so that a large set of
 	// single-rule groups cannot slip past a per-group view of the limit.
 	if uint(len(rules)) > p.maxRules {
 		return fmt.Errorf("%w: too many rule groups: got %d max is %d", ErrInvalidFilter, len(rules), p.maxRules)
@@ -553,7 +536,7 @@ func (p *Processor) compileRule(rule Rule, elemType reflect.Type) (compiledRule,
 			// Any other resolution failure (descent into a non-struct field, a selector
 			// deeper than the configured limit, an unexported target) is likewise
 			// deterministic for a concrete element type, so it is reported now rather than
-			// deferred to evaluation — where it would surface only for a non-empty slice.
+			// deferred to evaluation, where it would surface only for a non-empty slice.
 			return compiledRule{}, rerr
 		default:
 			cr.path = path
@@ -662,7 +645,7 @@ func (p *Processor) dynamicFieldValue(rule compiledRule, value reflect.Value) (r
 // segments. It returns ok=false (non-match) when a nil pointer makes the field unreachable.
 // The resolved leaf is unwrapped through any pointers and interfaces to the concrete value an
 // evaluator should read; a nil leaf becomes an invalid Value, which evaluators treat as a nil
-// operand. Unexported and otherwise unreadable selectors cannot reach here — resolvePath
+// operand. Unexported and otherwise unreadable selectors cannot reach here; resolvePath
 // rejects them when the path is compiled.
 func walkFieldPath(value reflect.Value, path reflectPath) (reflect.Value, bool) {
 	for _, fieldIndex := range path {
@@ -679,15 +662,15 @@ func walkFieldPath(value reflect.Value, path reflectPath) (reflect.Value, bool) 
 }
 
 // maxLeafIndirections caps how many pointer/interface hops unwrapLeaf follows. A real leaf needs
-// only a few; the cap prevents an unbounded spin on a pathological cyclic reference — a pointer
-// or interface chain that never reaches a concrete value (e.g. an any field set to point at
-// itself) — which would otherwise hang Apply. An ordinary linked list or tree does not approach
+// only a few; the cap prevents an unbounded spin on a pathological cyclic reference (a pointer
+// or interface chain that never reaches a concrete value, e.g. an any field set to point at
+// itself), which would otherwise hang Apply. An ordinary linked list or tree does not approach
 // it, since the chain stops at the first struct or scalar.
 const maxLeafIndirections = 100
 
 // unwrapLeaf follows pointers and interfaces at a resolved leaf so that an evaluator reads the
-// concrete value rather than a pointer or an interface header — the pointer-leaf case a
-// between-segments reflect.Indirect never reaches. A nil pointer or interface (or a cyclic chain
+// concrete value rather than a pointer or an interface header (the pointer-leaf case a
+// between-segments reflect.Indirect never reaches). A nil pointer or interface (or a cyclic chain
 // that exceeds maxLeafIndirections) yields an invalid Value, matching how a nil operand is
 // treated everywhere else.
 func unwrapLeaf(value reflect.Value) reflect.Value {
@@ -802,7 +785,7 @@ func (r rawRule) rule() (Rule, error) {
 //
 // Array and object values are rejected: the ordering and string operators cannot act on them,
 // and equality against a composite is only ever a reflect.DeepEqual against an identically
-// typed field — a corner the JSON grammar (see filter_schema.json) does not offer. Rejecting
+// typed field, a corner the JSON grammar (see filter_schema.json) does not offer. Rejecting
 // them here keeps the untrusted-input surface to scalars. A Go caller may still construct a
 // composite-valued [Rule] directly if it needs one.
 func normalizeRuleValue(v any) (any, error) {

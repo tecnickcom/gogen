@@ -2,16 +2,10 @@
 Package sliceutil provides generic, allocation-conscious helpers for common
 slice operations and numeric dataset summarization.
 
-# Problem
-
-Go intentionally keeps slice operations minimal in the standard library. Teams
-typically re-implement the same small helpers for filter/map/reduce in multiple
-packages, and statistical summary code is often copied with subtle differences.
-This package centralizes those patterns into a reusable, type-safe API.
-
 # What It Provides
 
-Functional slice primitives:
+Functional slice primitives, generic over `S ~[]E`, whose callbacks receive the
+element index:
 
   - [Filter]: returns a new slice containing elements that satisfy a predicate.
   - [Map]: returns a new slice with each element transformed to a new type.
@@ -19,21 +13,11 @@ Functional slice primitives:
 
 Descriptive statistics for numeric slices:
 
-  - [Stats]: computes a [DescStats] summary for any numeric slice type.
+  - [Stats]: computes a [DescStats] summary for any numeric slice type, and
+    returns [ErrEmptySlice] for an empty slice.
   - [DescStats] includes count, sum, min/max (+ indexes), range, mode,
     mean/median, entropy, variance, standard deviation, skewness, and excess
     kurtosis.
-
-# Key Features
-
-  - Generic APIs (`S ~[]E`) that work with native and named slice types.
-  - Functional helpers include element index in callbacks for context-aware
-    transforms.
-  - Numeric statistics are available for all [typeutil.Number] types.
-  - Safe error behavior for invalid input: [Stats] returns [ErrEmptySlice] for
-    empty slices.
-  - Clear composition model: use [Filter], [Map], and [Reduce] in pipelines,
-    then summarize results with [Stats].
 
 # Usage
 
@@ -50,10 +34,6 @@ Descriptive statistics for numeric slices:
 	    return err
 	}
 	_ = ds.Mean
-
-This package is ideal for Go services and libraries that want concise,
-predictable slice transformations and lightweight statistical summaries without
-pulling in heavy data-processing dependencies.
 */
 package sliceutil
 

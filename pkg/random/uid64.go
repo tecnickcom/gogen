@@ -16,14 +16,14 @@ type TUID64 uint64
 // Because only the lower 32 bits are random and the upper 32 bits are shared by
 // all identifiers generated within the same second, uniqueness relies on a
 // single 32-bit random draw per second: birthday collisions become likely at
-// roughly 2^16 (~65k) identifiers generated within the same second — about a 39%
+// roughly 2^16 (~65k) identifiers generated within the same second, about a 39%
 // chance at 65k, and 50% at ~77k. For high-throughput or collision-critical use,
 // prefer [Rnd.UID128] (64 random bits) or [Rnd.UUIDv7] (62 random bits; its other
 // 12 non-timestamp bits are clock-derived, not random).
 //
 // The second offset is measured from the start of the current decade, so it
-// stays well within 32 bits; note that it resets at each decade boundary, which
-// makes the value time-ordered only within a decade (see [TUID64.Hex]).
+// stays well within 32 bits; it resets at each decade boundary, which makes the
+// value time-ordered only within a decade (see [TUID64.Hex]).
 func (r *Rnd) UID64() TUID64 {
 	t := time.Now().UTC()
 

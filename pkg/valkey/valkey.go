@@ -1,19 +1,8 @@
 /*
-Package valkey solves the friction of integrating Valkey (https://valkey.io) —
-the open-source, Redis-compatible in-memory data store — into a Go service.
-The upstream valkey-go client (https://github.com/valkey-io/valkey-go) is
-powerful but low-level; this package wraps it with a clean, opinionated API
-that covers the most common patterns: key/value storage, typed data
-serialization, and Pub/Sub messaging, all behind a single [Client] type.
-
-# Problem
-
-Working directly with valkey-go requires composing command builders,
-type-asserting results, handling Pub/Sub subscriptions manually, and wiring in
-serialization for every call site. Teams end up duplicating the same thin
-adapter in every service. This package provides that adapter once, with
-consistent error wrapping, pluggable encode/decode functions, and a
-mockable interface for testing.
+Package valkey wraps the valkey-go client
+(https://github.com/valkey-io/valkey-go) for Valkey (https://valkey.io), a
+Redis-compatible in-memory data store. It covers key/value storage, typed data
+serialization, and Pub/Sub messaging behind a single [Client] type.
 
 # How It Works
 
@@ -29,34 +18,28 @@ valkey-go's ClientOption) and a variadic list of [Option] values:
     subscription that feeds [Client.Receive] and [Client.ReceiveData]
     one message per call. The subscription runs until [Client.Close] is
     called: canceling the [New] context does not stop it.
- 3. Encode and decode functions — defaulting to [DefaultMessageEncodeFunc] and
-    [DefaultMessageDecodeFunc] — are stored on the client and used
+ 3. Encode and decode functions (defaulting to [DefaultMessageEncodeFunc] and
+    [DefaultMessageDecodeFunc]) are stored on the client and used
     transparently by the typed data methods.
 
-# Key Features
+# Operations
 
-  - Raw string operations: [Client.Set], [Client.Get], and [Client.Del]
-    offer direct key/value access with expiration support.
-  - Typed data operations: [Client.SetData] and [Client.GetData] encode/decode
-    Go values automatically using the configured [TEncodeFunc] / [TDecodeFunc],
-    removing serialization boilerplate at every call site.
-  - Pub/Sub: [Client.Send] and [Client.Receive] work with raw strings;
-    [Client.SendData] and [Client.ReceiveData] apply the same encode/decode
-    pipeline, returning the channel name alongside the decoded value.
-  - Pluggable serialization: [WithMessageEncodeFunc] and
-    [WithMessageDecodeFunc] replace the default JSON+base64 codec with any
-    implementation — including encrypted or compressed payloads — without
-    changing call sites.
-  - Health check: [Client.HealthCheck] sends a PING and returns a wrapped error
-    on failure, making it trivial to integrate with liveness probes.
-  - Sentinel errors: a missing key surfaces as [ErrKeyNotFound], and
-    configuration or subscription states as the other exported Err values,
-    all matchable with errors.Is.
-  - Mockable client: [WithValkeyClient] injects a custom [VKClient], enabling
-    fast, dependency-free unit tests.
-  - Graceful close: [Client.Close] drains all pending calls before releasing
-    the underlying connection. Close is required to stop the background
-    subscription when channels are configured.
+  - [Client.Set], [Client.Get], and [Client.Del] provide raw key/value access
+    with expiration.
+  - [Client.SetData] and [Client.GetData] encode and decode Go values with the
+    configured [TEncodeFunc] and [TDecodeFunc].
+  - [Client.Send] and [Client.Receive] carry raw strings; [Client.SendData] and
+    [Client.ReceiveData] apply the same codec and return the channel name with
+    the decoded value.
+  - [WithMessageEncodeFunc] and [WithMessageDecodeFunc] replace the default
+    JSON+base64 codec.
+  - [Client.HealthCheck] sends a PING and returns a wrapped error on failure.
+  - A missing key surfaces as [ErrKeyNotFound]; other configuration and
+    subscription states surface as the exported Err values, all matchable with
+    errors.Is.
+  - [WithValkeyClient] injects a custom [VKClient] for testing.
+  - [Client.Close] drains pending calls before releasing the connection, and is
+    required to stop the background subscription when channels are configured.
 
 # Usage
 

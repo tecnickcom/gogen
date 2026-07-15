@@ -1,19 +1,10 @@
 /*
-Package logsrv provides a high-performance zerolog backend exposed through the
-standard log/slog API.
+Package logsrv provides a zerolog backend exposed through the standard log/slog
+API.
 
-# Problem
-
-Teams often want the ecosystem compatibility of slog while still leveraging
-zerolog's speed and compact structured output. Without an adapter layer,
-applications end up with mixed logging APIs, inconsistent severity mapping, and
-duplicated setup logic across services.
-
-# Solution
-
-This package bridges [log/slog] and zerolog with a native slog.Handler that
-writes each record's attributes directly onto a zerolog Event. It reuses the
-shared configuration model from nurago's logutil package.
+It bridges [log/slog] and zerolog with a native slog.Handler that writes each
+record's attributes directly onto a zerolog Event. It reuses the shared
+configuration model from nurago's logutil package.
 
 [NewLogger] creates a slog.Logger backed by zerolog and applies:
   - log format selection (JSON, console, discard),
@@ -58,8 +49,8 @@ attributes here and before them there. The deliberate value-level divergences ar
     logutil's backend marshals it as JSON, so the same value can reach the wire with different field
     names.
   - A nil-pointer error writes no field at all, where the standard library renders it as the string
-    "<nil>". Both backends agree — logutil's sanitizing handler drops it too (see
-    logutil.NewSlogTraceIDHandler) — but a bare slog handler does not. It matters beyond the field: a
+    "<nil>". Both backends agree (logutil's sanitizing handler drops it too, see
+    logutil.NewSlogTraceIDHandler), but a bare slog handler does not. It matters beyond the field: a
     typed nil logged under "trace_id" would otherwise be read as a caller-supplied trace ID and suppress
     the injected one, leaving the record correlated by the string "<nil>".
   - A value JSON cannot represent renders as zerolog's text rather than slog's: NaN and ±Inf as the
@@ -68,7 +59,7 @@ attributes here and before them there. The deliberate value-level divergences ar
     not fire on this backend.
   - Replacing the process-global zerolog.ErrorMarshalFunc with one that maps a non-nil error to nil, or
     to a typed-nil error, makes this backend write no field for it (and elide a group left empty by it),
-    while logutil's backend — which cannot see a zerolog global — still renders the error. Those are the
+    while logutil's backend, which cannot see a zerolog global, still renders the error. Those are the
     only shapes on which the two disagree about whether an attribute writes a field.
   - A value that renders differently on the two backends (any of the shapes above) and is logged under
     the reserved "trace_id" key correlates the record under a different ID on each: the field is written
@@ -78,22 +69,22 @@ In FormatConsole two further differences come from zerolog's ConsoleWriter, whic
 line into a map before rendering it:
 
   - Duplicate keys collapse last-wins. That only arises when the caller supplies a root "trace_id"
-    twice themselves (see below), and the survivor is the *last* one — so the console shows the group,
+    twice themselves (see below), and the survivor is the *last* one, so the console shows the group,
     not the value supplied via With/CommonAttr. The JSON format keeps both.
   - A caller location renders as an object, where the standard library's text handler renders it as
-    "file:line" — whether it was logged as a *slog.Source attribute or emitted by cfg.Source. Which
+    "file:line", whether it was logged as a *slog.Source attribute or emitted by cfg.Source. Which
     components it carries, and whether it is written at all, agree in both formats; only the rendering
     differs.
 
 The emitted "level" field carries the full syslog severity name via logutil.LevelName
 ("emergency", "alert", "critical", "error", "warning", "notice", "info", "debug",
-"trace"), matching logutil's backend — the extended severities are not collapsed onto
+"trace"), matching logutil's backend: the extended severities are not collapsed onto
 zerolog's fixed level set. In FormatConsole mode, zerolog's ConsoleWriter colorizes only
 its own level vocabulary, so the extended names render without color.
 
 An error value is rendered as its message string whatever key it is logged under (the "error"
 and "err" keys are not special: the rendering is chosen by the value's type). An error implementing
-zerolog.LogObjectMarshaler is the exception zerolog itself makes: it is written as a JSON object — as is
+zerolog.LogObjectMarshaler is the exception zerolog itself makes: it is written as a JSON object, as is
 any non-error value implementing it.
 
 Errors are rendered by mirroring zerolog's own AnErr dispatch, so the process-global ErrorMarshalFunc
@@ -102,16 +93,16 @@ written (nothing at all, for nil), and the field is reported as written only whe
 enclosing group is never left as a bare "{}".
 
 A nil-pointer error (e.g. a nil *MyError) is omitted entirely, and a group left with no other fields by
-such a value is elided along with it. That test precedes ErrorMarshalFunc — unlike zerolog's AnErr,
+such a value is elided along with it. That test precedes ErrorMarshalFunc, unlike zerolog's AnErr,
 which tests for nil only within its error arm and so still writes a typed nil that can render itself as
 an object (a LogObjectMarshaler guarding its nil receiver) or that the hook renders itself. Those are
 dropped here too, and the hook is not invoked for them, because the sibling logutil backend decides the
 same question with a filter that can see neither zerolog's interfaces nor its globals: a rule
 conditional on either could not be mirrored there, and the two backends would ship different field sets
-— and different trace IDs — for one slog.Attr. A nil error is no error; neither backend writes one.
+(and different trace IDs) for one slog.Attr. A nil error is no error; neither backend writes one.
 
-A nil error of any other kind — a nil slice, map, func or channel, the shape of aggregate errors such as
-validator.ValidationErrors — is not omitted: it is not a nil pointer, so Error() is called on it and it
+A nil error of any other kind (a nil slice, map, func or channel, the shape of aggregate errors such as
+validator.ValidationErrors) is not omitted: it is not a nil pointer, so Error() is called on it and it
 renders as its message.
 
 An untyped nil value (slog.Any(key, nil)) is emitted as a null field, and so is a typed-nil
@@ -131,13 +122,13 @@ logutil's backend rewrites it to ("warning"). "trace_id" is reserved too, but is
 a caller-supplied root-level trace_id replaces the injected one instead of duplicating it,
 whether it arrives as a record attribute, via WithAttrs/With, via cfg.CommonAttr, inside an
 inlined (empty-key) group on any of those paths, or as a root group opened under the key
-(WithGroup("trace_id")), which writes a root-level trace_id object of its own — unless that group
+(WithGroup("trace_id")), which writes a root-level trace_id object of its own, unless that group
 renders no fields, in which case the injected value is written as usual.
 
 What that guarantees is that the *injected* trace ID never duplicates a caller-supplied one, so a
 record normally carries exactly one root trace_id. It cannot stop a caller from writing the key twice
 themselves: With(slog.String("trace_id", ...)) followed by WithGroup("trace_id") supplies two
-root-level trace_id fields of the caller's own, and both are written — as they are by a bare
+root-level trace_id fields of the caller's own, and both are written, as they are by a bare
 standard-library handler, since dropping either would discard the caller's data. A nil-pointer error
 under the key is a related case: it writes no field, so the injected trace ID stands, and the record
 still carries one.
@@ -150,14 +141,9 @@ a non-thread-safe writer shared between them must be serialized by the caller.
 Records are handed to zerolog at zerolog.NoLevel, which the process-global zerolog level still
 gates: a caller who sets zerolog.SetGlobalLevel(zerolog.Disabled) anywhere in the binary silently
 drops every record regardless of cfg.Level. No other global level affects the output. The record is
-still encoded when it is dropped — every value is resolved and every caller marshaler runs, so their
-side effects still fire — because zerolog discards the event at the write, not at the build; use
+still encoded when it is dropped (every value is resolved and every caller marshaler runs, so their
+side effects still fire) because zerolog discards the event at the write, not at the build; use
 cfg.Level (or logutil.FormatNone) to stop the work as well as the output.
-
-# Benefits
-
-logsrv lets applications keep the standard slog interface while using zerolog's
-performance characteristics and structured logging ergonomics.
 */
 package logsrv
 
@@ -187,14 +173,14 @@ func NewLogger(cfg *logutil.Config) *slog.Logger {
 // NewHandler constructs the slog.Handler backing a logsrv logger, without mutating any
 // global logger state. Applies format selection, common attributes, trace-ID injection,
 // hooks, and full syslog level naming. A nil cfg falls back to logutil.DefaultConfig, and an unusable
-// Out writer — nil, or a typed nil such as a nil *os.File assigned straight to the exported field —
+// Out writer (nil, or a typed nil such as a nil *os.File assigned straight to the exported field)
 // falls back to os.Stderr (see logutil.Config.OutWriter), so construction never yields a handler that
 // panics on the first write.
 //
 // The trace ID is resolved per record via cfg.TraceIDFn (matching the logutil model), so
 // a dynamic TraceIDFn reflects the current request/context on every line rather than being
-// frozen at construction. The handler writes it natively at the root of every record — even
-// for loggers derived with WithGroup — and a caller-supplied root trace_id takes precedence:
+// frozen at construction. The handler writes it natively at the root of every record (even
+// for loggers derived with WithGroup), and a caller-supplied root trace_id takes precedence:
 // supplying it as a record attribute, via WithAttrs/With, or via cfg.CommonAttr suppresses the
 // injected one rather than emitting a second trace_id key, as does opening a root group under the
 // key (WithGroup("trace_id")), which writes a root-level trace_id of its own. Suppression requires
@@ -238,7 +224,7 @@ func NewHandler(cfg *logutil.Config) slog.Handler {
 	ew := &errWriter{w: writerByFormat(cfg.Format, out)}
 
 	// TraceLevel base so the logger's own level never gates a record: enablement is decided at the
-	// slog layer (via Enabled), matching cfg.Level exactly — including the Trace level, which a
+	// slog layer (via Enabled), matching cfg.Level exactly, including the Trace level, which a
 	// default (Debug-level) zerolog logger would otherwise drop.
 	//
 	// The process-global zerolog level is the one exception left: records are written at

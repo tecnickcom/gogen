@@ -3,17 +3,10 @@ Package numtrie provides a generic, digit-indexed [trie] (prefix tree) for
 associating values of any type with numerical keys, with built-in support for
 partial/prefix matching and alphabetical (vanity) phone-number keys.
 
-# Problem
+Lookup is O(k) in the number of digits k, with prefix traversal and
+partial-match support.
 
-Telephony routing tables, dial-plan engines, number-classification services,
-and similar systems must map a dialed number to a route, tariff, or carrier
-by walking from the most-specific prefix to the least-specific one. A hash map
-cannot express this longest-prefix-match semantics efficiently. A naive scan
-over a sorted list degrades at scale. A trie provides O(k) lookup (where k is
-the number of digits) with natural support for prefix traversal and partial
-matches.
-
-# Solution
+# Usage
 
 [Node] is a generic trie node parameterised on the value type. Build the trie
 once with [Node.Add], then query it repeatedly with [Node.Get]:
@@ -31,33 +24,12 @@ once with [Node.Add], then query it repeatedly with [Node.Get]:
 		// val == &newYorkRoute (longest matching prefix: "1212")
 	}
 
-# Features
+# Allocation
 
-  - Generic value type: [Node][T] works with any type T; no interface{}
-    assertions or separate value maps required.
-  - Longest-prefix / partial-match semantics: [Node.Get] returns the last
-    non-nil value found while walking the trie path, implementing longest-prefix
-    match in a single traversal.
-  - Exact-match lookup: [Node.GetExact] returns the value stored exactly at a
-    key position, without any longest-prefix fallback.
-  - Six fine-grained match status codes: the int8 status returned by [Node.Get]
-    distinguishes empty input, no match, full exact match, partial match (input
-    is a prefix of a stored key), prefix match (stored key is a prefix of the
-    input), and the combined partial-prefix case — giving callers precise
-    information for routing decisions without a second lookup.
-  - Separator-tolerant keys: non-digit characters (hyphens, spaces,
-    parentheses, '+') are silently ignored during both [Node.Add] and
-    [Node.Get], so E.164 formatted numbers like "+1-212-555-0100" work
-    without sanitisation.
-  - Alphabetical key support: letter characters in keys are converted to
-    their ITU E.161 phone-keypad digits via
-    [github.com/tecnickcom/nurago/pkg/phonekeypad], enabling vanity numbers
-    like "1-800-FLOWERS" to be stored and matched transparently.
-  - Efficient memory layout: each node holds a fixed 10-slot children array
-    (one slot per digit 0–9) rather than a per-node map, so a node is a single
-    allocation with no map overhead. Insertion allocates one node per new digit
-    position; re-inserting at an existing position allocates nothing, and
-    lookups ([Node.Get], [Node.GetExact]) never allocate.
+Each node holds a fixed 10-slot children array (one slot per digit 0 to 9)
+rather than a per-node map, so a node is a single allocation. Insertion
+allocates one node per new digit position; re-inserting at an existing position
+allocates nothing, and lookups ([Node.Get] and [Node.GetExact]) never allocate.
 
 # Match Status Codes
 
@@ -69,12 +41,12 @@ The status int8 returned by [Node.Get] is a compact bit field:
 
 The six named constants encode every meaningful combination:
 
-	StatusMatchEmpty         (-127) — no digit characters in input
-	StatusMatchNo            (-125) — first digit not in trie
-	StatusMatchFull          (   0) — exact match, leaf node
-	StatusMatchPartial       (   1) — exact match, non-leaf node
-	StatusMatchPrefix        (   2) — stored key is prefix of input, leaf node
-	StatusMatchPartialPrefix (   3) — stored key is prefix of input, non-leaf node
+	StatusMatchEmpty         (-127): no digit characters in input
+	StatusMatchNo            (-125): first digit not in trie
+	StatusMatchFull          (   0): exact match, leaf node
+	StatusMatchPartial       (   1): exact match, non-leaf node
+	StatusMatchPrefix        (   2): stored key is prefix of input, leaf node
+	StatusMatchPartialPrefix (   3): stored key is prefix of input, non-leaf node
 
 When bit 7 is set the status is a standalone sentinel (StatusMatchEmpty or
 StatusMatchNo): only bit 7 is significant and the low bits carry no meaning.
@@ -93,13 +65,6 @@ A [Node] is not safe for concurrent modification: [Node.Add] mutates the trie in
 place. Once the trie is fully built it may be queried concurrently by any number
 of goroutines via [Node.Get] and [Node.GetExact], provided no [Node.Add] runs
 concurrently.
-
-# Benefits
-
-This package delivers O(k) longest-prefix match over numerical keys in a
-single import, replacing ad-hoc scan loops with a purpose-built data structure
-that naturally handles separators, vanity numbers, and fine-grained match
-reporting.
 
 [trie]: https://en.wikipedia.org/wiki/Trie
 */
@@ -153,7 +118,7 @@ const indexSize = 10 // digits from 0 to 9
 
 // Node is a generic numerical-indexed trie node that stores a value of type T.
 //
-// Each node holds up to 10 children, one per digit 0–9. Non-digit characters
+// Each node holds up to 10 children, one per digit 0 to 9. Non-digit characters
 // in keys are skipped during traversal, making the trie tolerant of formatted
 // numbers (e.g. "+1-800-555-0100") and vanity letter sequences.
 //
@@ -230,12 +195,12 @@ func (t *Node[T]) Add(num string, val *T) bool {
 //
 // The six named constants encode every meaningful combination:
 //
-//	StatusMatchEmpty         (-127) — no digit characters in input
-//	StatusMatchNo            (-125) — first digit not in trie
-//	StatusMatchFull          (   0) — exact match, leaf node
-//	StatusMatchPartial       (   1) — exact match, non-leaf node
-//	StatusMatchPrefix        (   2) — stored key is prefix of input, leaf node
-//	StatusMatchPartialPrefix (   3) — stored key is prefix of input, non-leaf node
+//	StatusMatchEmpty         (-127): no digit characters in input
+//	StatusMatchNo            (-125): first digit not in trie
+//	StatusMatchFull          (   0): exact match, leaf node
+//	StatusMatchPartial       (   1): exact match, non-leaf node
+//	StatusMatchPrefix        (   2): stored key is prefix of input, leaf node
+//	StatusMatchPartialPrefix (   3): stored key is prefix of input, non-leaf node
 //
 // For the two negative sentinels (StatusMatchEmpty and StatusMatchNo) the
 // returned value is nil, even when a root/default value is present. A

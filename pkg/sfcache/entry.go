@@ -32,7 +32,7 @@ type entry[V any] struct {
 }
 
 // usable reports whether the caller can return this entry: a non-expired value,
-// or — for a caller that awaited the flight that produced it — any completed
+// or, for a caller that awaited the flight that produced it, any completed
 // outcome, even an expired one (a TTL <= 0, or an error that is not cached).
 func (e *entry[V]) usable(waited bool) bool {
 	return waited || time.Now().Before(e.expireAt)

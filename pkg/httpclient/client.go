@@ -25,7 +25,7 @@ const defaultMaxDumpSize = 1 << 20 // 1 MiB
 // defaultMaxIdleConnsPerHost is the per-host idle-connection pool size for the
 // default transport. http.DefaultTransport leaves this at 0 (net/http's default
 // of 2), which throttles connection reuse for a client that concentrates traffic
-// on a few downstream hosts — the service-to-service use case this package
+// on a few downstream hosts, the service-to-service use case this package
 // targets. It is raised to match the default MaxIdleConns so the per-host pool is
 // not the bottleneck.
 const defaultMaxIdleConnsPerHost = 100
@@ -392,9 +392,9 @@ func redactQueryTail(raw string, redactFn RedactFn) string {
 //     its body omitted: httputil.DumpRequestOut with body=true would block until
 //     the body reaches EOF, which for an unsent streaming request would deadlock.
 //   - A body whose known length exceeds maxDumpSize has its payload omitted (a
-//     body-stripped copy is dumped) to bound memory; note that DumpRequestOut
-//     with body=false would otherwise write ContentLength filler bytes, so a
-//     copy with the body removed is required to actually bound the dump.
+//     body-stripped copy is dumped) to bound memory; DumpRequestOut with
+//     body=false would otherwise write ContentLength filler bytes, so a copy
+//     with the body removed is required to actually bound the dump.
 //   - Otherwise the real body is included.
 //
 // A non-positive maxDumpSize disables the size cap (streaming bodies are still

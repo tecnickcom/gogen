@@ -1,18 +1,6 @@
 /*
-Package sqltransaction solves a common reliability problem in Go database code:
-executing business logic inside a transaction with correct begin/commit/rollback
-control flow and consistent error handling.
-
-# Problem
-
-Manual transaction handling with database/sql is repetitive and fragile.
-Developers frequently duplicate transaction scaffolding and can accidentally
-forget rollback on one error path, attempt rollback after commit, or lose
-important diagnostic context when multiple failures happen (for example,
-operation error plus rollback error).
-
-This package centralizes the transaction lifecycle in one helper so callers can
-focus on domain logic.
+Package sqltransaction executes business logic inside a transaction with
+begin/commit/rollback control flow and consistent error handling.
 
 # How It Works
 
@@ -29,15 +17,6 @@ Rollback behavior is guarded to avoid noisy false failures:
   - rollback is skipped after successful commit,
   - `sql.ErrTxDone` during rollback is ignored,
   - rollback failures are joined with the current error for full diagnostics.
-
-# Key Features
-
-  - Small API surface: [Exec] for default settings and [ExecWithOptions] for
-    custom [sql.TxOptions] (isolation level, read-only mode, etc.).
-  - Interface-driven testability: [DB] allows mocking transaction begin logic
-    in unit tests.
-  - Strong error context across begin/run/commit/rollback stages.
-  - Safe-by-default transaction semantics with deterministic cleanup.
 
 # Usage
 

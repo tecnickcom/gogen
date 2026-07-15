@@ -223,7 +223,7 @@ func (c *Client) InstrumentRoundTripper(next http.RoundTripper) http.RoundTrippe
 // MetricsHandlerFunc returns a minimal health-style handler.
 //
 // OpenTelemetry metrics are exported by configured exporters, so this endpoint
-// does not expose a scrape payload and simply returns "OK".
+// does not expose a scrape payload and returns "OK".
 func (c *Client) MetricsHandlerFunc() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`OK`)) }
 }
@@ -429,11 +429,11 @@ func DefaultSDKResource(ctx context.Context, name, version string) *sdkresource.
 	return resolveResource(res, err, attrs)
 }
 
-// resolveResource keeps resource construction robust: sdkresource.New can report
-// detection or schema-URL conflict errors and, in the worst case, return no
-// resource at all. Rather than silently propagating a nil resource (which would
-// drop all service metadata), it falls back to a schemaless resource carrying
-// the explicit attributes.
+// resolveResource falls back to a schemaless resource when construction fails.
+// sdkresource.New can report detection or schema-URL conflict errors and, in the
+// worst case, return no resource at all. Rather than propagating a nil resource
+// (which would drop all service metadata), it returns a schemaless resource
+// carrying the explicit attributes.
 func resolveResource(res *sdkresource.Resource, err error, attrs []attribute.KeyValue) *sdkresource.Resource {
 	if err != nil && res == nil {
 		return sdkresource.NewSchemaless(attrs...)

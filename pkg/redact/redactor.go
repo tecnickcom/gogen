@@ -9,7 +9,7 @@ import "unsafe"
 // Always obtain one with [Default] (the shared, zero-configuration instance) or
 // [New] (an independent, configured one): the zero value ([Redactor]{}) is not
 // an intended entry point, but it degrades to correct (uncached) redaction with
-// the default marker rather than panicking — see usableRedactor.
+// the default marker rather than panicking (see usableRedactor).
 type Redactor struct {
 	marker      []byte
 	disabled    Rule
@@ -72,7 +72,7 @@ func (re *Redactor) AppendTo(dst, src []byte) []byte {
 	// AppendTo is the only entry point whose destination is caller-controlled
 	// and could alias src (an in-place AppendTo(b, b)); redacting into an
 	// aliasing buffer would let the write cursor overtake the read cursor and
-	// corrupt — and leak — not-yet-scanned bytes. Bytes and Pooled always pass a
+	// corrupt (and leak) not-yet-scanned bytes. Bytes and Pooled always pass a
 	// fresh or pooled destination, so they skip this check.
 	if backingOverlap(dst, src) {
 		dst = make([]byte, 0, len(src))

@@ -504,8 +504,8 @@ func (d *Data) alpha2IDsByTLD(id uint16) ([]uint16, error) {
 
 // defaultData loads the embedded ISO/M49/TLD metadata snapshot.
 //
-// It populates canonical enum tables and packed country dictionaries used by
-// New(nil) to provide an out-of-the-box country resolver.
+// It populates the canonical enum tables and packed country dictionaries used
+// by New(nil).
 //
 // Default data sources (updated at: 2024-07-17):
 //   - https://www.iso.org/iso-3166-country-codes.html

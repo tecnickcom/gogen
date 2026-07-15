@@ -1,7 +1,6 @@
 /*
-Package sleuth provides a focused Go client for the Sleuth.io API, covering the
-most common write-side integrations used for delivery metrics and operational
-signal ingestion.
+Package sleuth provides a Go client for the Sleuth.io API, covering common
+write-side integrations for delivery metrics and operational signal ingestion.
 
 This package supports four Sleuth workflows:
 
@@ -12,17 +11,6 @@ This package supports four Sleuth workflows:
 
 Sleuth API reference:
 https://help.sleuth.io/sleuth-api
-
-# Problem
-
-Integrating with Sleuth directly from raw HTTP calls involves repeated
-boilerplate: endpoint formatting, authorization headers, JSON encoding,
-request validation, retry handling, and response status checks. Recreating this
-logic in each service increases maintenance cost and makes behavior inconsistent
-across deployments.
-
-This package centralizes that integration logic behind a typed client and
-request models.
 
 # How It Works
 
@@ -42,26 +30,6 @@ Health checks are implemented using Sleuth's documented behavior in absence of a
 dedicated ping endpoint: the client performs a controlled registration call and
 verifies expected 404 semantics and response content.
 
-# Key Features
-
-  - Typed request models with validation tags for safer API inputs.
-  - End-to-end helpers:
-    [Client.SendDeployRegistration], [Client.SendManualChange],
-    [Client.SendCustomIncidentImpactRegistration],
-    [Client.SendCustomMetricImpactRegistration].
-  - Built-in authentication and JSON header management.
-  - Configurable client behavior via options:
-    [WithHTTPClient], [WithTimeout], [WithPingTimeout],
-    [WithRetryAttempts], [WithRetryDelay].
-  - Health-check API through [Client.HealthCheck] for readiness/liveness flows.
-
-# Benefits
-
-  - Faster and more consistent Sleuth integrations across services.
-  - Reduced API misuse risk through validated typed payloads.
-  - Better resilience to transient HTTP failures via retry support.
-  - Cleaner application code by delegating protocol and endpoint details.
-
 # Usage
 
 	c, err := sleuth.New("https://app.sleuth.io/api/1", "my-org", apiKey)
@@ -80,9 +48,6 @@ verifies expected 404 semantics and response content.
 	if err != nil {
 	    return err
 	}
-
-This package is ideal for Go services that need a lightweight, production-ready
-Sleuth API adapter without hand-writing HTTP integration code.
 */
 package sleuth
 

@@ -1,14 +1,6 @@
 /*
-Package redact provides lightweight, pattern-based redaction utilities for
-obscuring sensitive data before logging or debugging output is emitted.
-
-# Problem
-
-Operational logs and diagnostics often include raw HTTP headers, JSON payloads,
-or URL-encoded form data. Without sanitization, these records can leak secrets
-such as credentials, tokens, API keys, session identifiers, personal data, or
-payment details. This package offers a fast, single-pass redaction step that
-can be applied at log boundaries.
+Package redact provides pattern-based redaction utilities for obscuring
+sensitive data before logging or debugging output is emitted.
 
 # API
 
@@ -45,8 +37,8 @@ httpclient, httpserver, and httpreverseproxy packages, which default to
 redacting. To disable redaction outright, pass [InsecureNoRedaction] as the
 redact function: it returns its input verbatim, so secrets are logged in the
 clear, and it is named to make that choice conspicuous wherever it appears.
-Redaction is never lost by omission — an unset option falls back to [Default],
-and a nil function is ignored — only by naming that bypass.
+Redaction is never lost by omission (an unset option falls back to [Default],
+and a nil function is ignored); it is lost only by naming that bypass.
 
 # What It Redacts
 
@@ -83,8 +75,8 @@ Each call applies multiple redaction rules in a single pass:
     tokens.
   - PEM `-----BEGIN ... PRIVATE KEY-----` blocks: the base64 body is replaced
     with a single marker line (public blocks such as CERTIFICATE stay
-    visible). Blocks embedded mid-line — e.g. a JSON string carrying a blob
-    with escaped `\n` sequences — are redacted too.
+    visible). Blocks embedded mid-line (e.g. a JSON string carrying a blob
+    with escaped `\n` sequences) are redacted too.
   - Credit-card numbers: contiguous digit runs, and runs grouped by single
     spaces or dashes (`4012 8888 8888 1881`), bounded by non-word characters.
 
@@ -97,10 +89,10 @@ kebab-case, and acronym runs all tokenize (`apiKey`, `api_key`, `API-KEY` and
   - a trailing digit run is stripped, so a numbered field matches its base
     (`password2`, `cvv2`, `key1`); a digit rarely ends an ordinary key word, so
     this retry runs against the whole keyword set. A key-size label whose stem is
-    a keyword (`rsa2048`, `dsa1024`) is redacted as a harmless corollary — it is
-    a false positive on non-secret metadata, never a leak.
+    a keyword (`rsa2048`, `dsa1024`) is redacted as a corollary; it is a false
+    positive on non-secret metadata, never a leak.
   - a trailing plural `s` is stripped, but only the strong roots below are
-    retried — so `tokens`, `apikeys` and `newpasswords` redact while plurals of
+    retried, so `tokens`, `apikeys` and `newpasswords` redact while plurals of
     ordinary-word keywords (`keys`, a JWKS array; `cells`; `accounts`;
     `payments`) stay visible.
 
@@ -110,8 +102,8 @@ keyword alone: `first`/`last` + `name`, `national` + `id`, and `connection` +
 `connectionString`/`connection_string` all match, while `international` and
 `connectionTimeout` do not.
 
-A closed compound — an all-lowercase glued name with no boundary to split on, as
-HTML forms use (`<input name="newpassword">`) — matches in two cases only:
+A closed compound (an all-lowercase glued name with no boundary to split on, as
+HTML forms use, e.g. `<input name="newpassword">`) matches in two cases only:
 
   - it is one of the enumerated keywords (`apikey`, `passphrase`,
     `clientsecret`, `connectionstring`, `masterkey`, `sessioncookie`, ...); or
@@ -132,7 +124,7 @@ preserved. All matched sensitive values are replaced with a constant marker so
 output remains structurally useful while hiding private content. Redaction is
 convergent: re-redacting output never reveals more, is byte-stable in a single
 pass on well-formed input, and reaches a fixed point after at most one extra
-pass on pathological (structurally ambiguous) input — so layered redaction does
+pass on pathological (structurally ambiguous) input, so layered redaction does
 not keep mangling logs.
 
 # Credit-Card Detection and the Optional Luhn Gate
@@ -168,13 +160,6 @@ The gate is instance-scoped and fixed at construction, and defaults to off. The
 shared [Default] instance always runs with it off; a component that wants it
 must build its own [Redactor] with [New]. Enabling it may cause malformed or
 non-Luhn test numbers to be left visible.
-
-# Key Features
-
-  - Generic single-pass redaction for logs, HTTP dumps, JSON, and form data.
-  - Broad keyword families to catch many real-world secret field names.
-  - Preserves surrounding structure to keep logs searchable and debuggable.
-  - No external dependencies beyond the Go standard library.
 
 # Usage
 

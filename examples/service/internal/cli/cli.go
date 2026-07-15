@@ -20,24 +20,17 @@ import (
 
 type bootstrapFunc func(bindFn bootstrap.BindFunc, opts ...bootstrap.Option) error
 
-// New builds the root CLI command and wires the full service startup flow.
+// New builds the root CLI command and wires the full service startup flow,
+// turning configuration, logging, metrics, and graceful shutdown into a single
+// entry point:
 //
-// It solves a common operational problem for service binaries: turning runtime
-// concerns (configuration, logging, metrics, and graceful shutdown) into a
-// single repeatable entry point so business features can be added without
-// re-implementing process scaffolding.
-//
-// Top features for developers:
 //   - Loads configuration from files and environment variables with CLI
 //     overrides for log format and level.
-//   - Initializes structured logging with program metadata for easier
-//     debugging and release correlation.
+//   - Initializes structured logging with program metadata for debugging and
+//     release correlation.
 //   - Creates and registers a metrics client used by HTTP and DB layers.
 //   - Delegates lifecycle orchestration to bootstrap, including shutdown
 //     timeout, wait group coordination, and shared stop signal.
-//
-// The result is a predictable startup contract that improves maintainability
-// and reduces copy-paste infrastructure code in new services.
 func New(version, release string, bootstrapFn bootstrapFunc) (*cobra.Command, error) {
 	var (
 		argConfigDir string

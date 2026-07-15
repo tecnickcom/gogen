@@ -29,7 +29,7 @@ func WithUserAgent(s string) Option {
 }
 
 // WithTimeout sets the HTTP request timeout of the internally constructed HTTP
-// client (default: 30 s). It has no effect when [WithHTTPClient] is used —
+// client (default: 30 s). It has no effect when [WithHTTPClient] is used:
 // configure the injected client's timeout directly. Non-positive values are
 // ignored, keeping the default: net/http would treat them as "no timeout",
 // leaving requests bounded only by the caller's context.
@@ -50,7 +50,7 @@ func WithHTTPClient(hc HTTPClient) Option {
 	}
 }
 
-// WithRetryAttempts sets the maximum number of total attempts — the initial
+// WithRetryAttempts sets the maximum number of total attempts, the initial
 // request plus retries (default: [httpretrier.DefaultAttempts], 4). Must be at
 // least 1 ([New] rejects 0); a value of 1 disables retries.
 func WithRetryAttempts(attempts uint) Option {

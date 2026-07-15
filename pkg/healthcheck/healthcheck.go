@@ -1,20 +1,11 @@
 /*
-Package healthcheck provides a reusable framework for defining, executing, and
+Package healthcheck provides a framework for defining, executing, and
 aggregating service health probes.
 
-# Problem
-
-Services commonly need to report health across multiple dependencies (databases,
-HTTP upstreams, queues, internal subsystems). Implementing these checks ad hoc
-often leads to inconsistent response formats, duplicated handler boilerplate,
-and slow serial probing.
-
-# Solution
-
-This package standardizes health probing around three core pieces:
-  - [HealthChecker]: pluggable check contract (`HealthCheck(context.Context) error`),
+It standardizes health probing around three pieces:
+  - [HealthChecker]: check contract (`HealthCheck(context.Context) error`),
     with [HealthCheckFunc] to adapt a plain function
-  - [HealthCheck]: lightweight ID + checker registration unit
+  - [HealthCheck]: ID + checker registration unit
   - [Handler]: HTTP aggregator that runs checks concurrently and writes a
     combined result
 
@@ -23,7 +14,7 @@ the check error message.
 
 # Aggregation Semantics
 
-  - checks execute in parallel for faster probe completion
+  - checks execute in parallel
   - overall HTTP status is 200 when all checks pass
   - overall HTTP status is 503 when any check fails
   - response payload always includes per-check results
@@ -33,21 +24,14 @@ the check error message.
 Check IDs should be unique and non-empty: results are keyed by ID, so duplicate
 or empty IDs collapse into a single entry (a warning is logged at construction).
 
-Result-writing behavior is customizable via [WithResultWriter], making it easy
-to integrate with custom envelopes (for example JSendX) while keeping the
-execution model unchanged.
+Result-writing behavior is customizable via [WithResultWriter] to integrate
+custom envelopes (for example JSendX) while keeping the execution model
+unchanged.
 
 # HTTP Probe Helper
 
-[CheckHTTPStatus] is included as a convenience helper for external HTTP
-dependencies. It supports context timeout control and request customization via
-[WithConfigureRequest].
-
-# Benefits
-
-healthcheck makes health endpoint behavior consistent, concurrent, and easy to
-compose across projects, with minimal boilerplate and strong operational
-clarity.
+[CheckHTTPStatus] is a helper for external HTTP dependencies. It supports
+context timeout control and request customization via [WithConfigureRequest].
 
 For an implementation example, see examples/service/internal/cli/bind.go.
 */
@@ -63,9 +47,8 @@ type HealthChecker interface {
 }
 
 // HealthCheckFunc adapts a plain function to the [HealthChecker] interface,
-// mirroring the http.HandlerFunc pattern. It removes the need for a wrapper type
-// and makes function-based probes (such as one calling [CheckHTTPStatus]) easy to
-// register:
+// mirroring the http.HandlerFunc pattern, so a function-based probe (such as one
+// calling [CheckHTTPStatus]) can be registered without a wrapper type:
 //
 //	healthcheck.New("upstream", healthcheck.HealthCheckFunc(func(ctx context.Context) error {
 //		return healthcheck.CheckHTTPStatus(ctx, client, http.MethodGet, url, http.StatusOK, 2*time.Second)

@@ -26,8 +26,8 @@ const (
 // of one of them, so it is never searched for.
 //
 // It holds no reference to the cache's keymap, so an eviction cannot walk the cache to
-// find its victim. Note that the queues themselves hold every stored entry, so a range
-// over one of them is the same O(Size) pass under the same exclusive write lock.
+// find its victim. The queues themselves hold every stored entry, so a range over one
+// of them is the same O(Size) pass under the same exclusive write lock.
 // NOTE: this is not thread-safe, it must be used within the cache's mutex lock.
 type victims[K comparable, V any] struct {
 	// values holds every stored value no failed refresh has revived, ordered by

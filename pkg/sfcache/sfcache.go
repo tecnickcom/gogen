@@ -129,7 +129,7 @@ the flight rather than by an entry.
 
 A key must be hashable and equal to itself. An interface key holding an unhashable
 dynamic type panics, in [Cache.Lookup] and in [Cache.Remove] alike, as any map access
-would. A key that is not equal to itself — one that is or contains a NaN — could never
+would. A key that is not equal to itself (one that is or contains a NaN) could never
 be found in a map again, so [Cache.Lookup] rejects it with [ErrInvalidKey] before any
 lookup is attempted.
 

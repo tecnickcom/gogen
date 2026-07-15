@@ -26,14 +26,11 @@ import (
 )
 
 // bind returns the bootstrap bind function that wires the full runtime graph.
+// It centralizes how handlers, clients, middleware, metrics, health checks, and
+// servers are connected:
 //
-// It solves the composition problem in service startup by centralizing how
-// handlers, clients, middleware, metrics, health checks, and servers are
-// connected.
-//
-// Top features for developers:
 //   - Builds shared outbound HTTP client options (logging, tracing,
-//     instrumentation) once and reuses them consistently.
+//     instrumentation) once and reuses them.
 //   - Enables or disables optional components (service routes and databases)
 //     from configuration.
 //   - Starts monitoring, private, and public servers with consistent timeout,
@@ -41,10 +38,8 @@ import (
 //   - Upgrades status reporting from default status to dependency-aware health
 //     checks when enabled.
 //
-// This gives a clear, extensible startup blueprint that keeps operational
-// behavior consistent as the service grows. The wiring is split into small,
-// named helpers (newIpifyClient, bindServiceHandlers, newDatabases,
-// startServiceServer) so each concern stays readable and independently testable.
+// The wiring is split into named helpers (newIpifyClient, bindServiceHandlers,
+// newDatabases, startServiceServer).
 func bind(cfg *appConfig, appInfo *jsendx.AppInfo, mtr instr.Metrics, wg *sync.WaitGroup, sc chan struct{}) bootstrap.BindFunc {
 	return func(ctx context.Context, l *slog.Logger, m metrics.Client) error {
 		jsx := jsendx.NewJSXResp(httputil.NewHTTPResp(l))
@@ -337,12 +332,10 @@ func startServiceServer(
 	return nil
 }
 
-// newDatabase creates, instruments, and health-checks a named SQL connection
-// so DB dependencies can be added with one reusable path.
+// newDatabase creates, instruments, and health-checks a named SQL connection.
 //
-// It standardizes connection pool options, startup ping behavior, metrics
-// instrumentation, and health integration, reducing the risk of divergent DB
-// setup between main/read or future database roles.
+// It sets connection pool options, startup ping behavior, metrics
+// instrumentation, and health integration.
 func newDatabase(
 	ctx context.Context,
 	name string,

@@ -1,18 +1,9 @@
 /*
-Package slack provides a lightweight client for sending messages to Slack via
-Incoming Webhooks.
+Package slack provides a client for sending messages to Slack via Incoming
+Webhooks.
 
 Slack webhook reference:
 https://api.slack.com/messaging/webhooks
-
-# Problem
-
-Posting to Slack webhooks directly from raw HTTP code introduces repeated
-boilerplate: JSON payload shaping, timeout handling, retries, optional sender
-metadata defaults (username/icon/channel), and status checks. Repeating that
-in each service increases integration drift and failure-handling inconsistencies.
-
-This package centralizes those concerns behind a small client API.
 
 # What It Provides
 
@@ -21,16 +12,6 @@ This package centralizes those concerns behind a small client API.
     icon emoji, icon URL, and channel, while falling back to client defaults.
   - [Client.HealthCheck] performs an availability check against a status
     endpoint (default: Slack Status API) with a dedicated ping timeout.
-
-# Key Features
-
-  - Simple send API for webhook messages with sensible defaults.
-  - Optional per-message metadata overrides without reconstructing the client.
-  - Write-request retry strategy (via nurago httpretrier) for transient failures.
-  - Configurable HTTP behavior through options:
-    [WithTimeout], [WithPingTimeout], [WithPingURL],
-    [WithHTTPClient], [WithRetryAttempts].
-  - Health checks suitable for readiness/liveness integrations.
 
 # Usage
 
@@ -59,8 +40,5 @@ This package centralizes those concerns behind a small client API.
 	if err != nil {
 	    return err
 	}
-
-This package is ideal for Go services that need a minimal, dependable Slack
-notification integration without hand-writing webhook request plumbing.
 */
 package slack

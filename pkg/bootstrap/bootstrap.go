@@ -1,22 +1,12 @@
 /*
-Package bootstrap solves the repetitive, error-prone problem of wiring together
-the core infrastructure of a Go service: context lifecycle, structured logging,
-metrics collection, OS signal handling, and graceful shutdown — all with a single
-function call.
-
-# Problem
-
-Every long-running Go service needs the same boilerplate: create a context,
-configure a logger, initialize metrics, wire up components, listen for SIGTERM,
-and coordinate a clean shutdown without dropping in-flight work. Doing this
-correctly — with timeouts, WaitGroups, and proper signal handling — is
-repetitive and easy to get wrong. This package encapsulates that pattern once,
-tested and production-ready.
+Package bootstrap wires together the core infrastructure of a Go service:
+context lifecycle, structured logging, metrics collection, OS signal handling,
+and graceful shutdown, in a single function call.
 
 # How It Works
 
-The entry point is [Bootstrap]. It accepts a [BindFunc] — the caller-supplied
-function that wires up all application-specific components — plus a variadic
+The entry point is [Bootstrap]. It accepts a [BindFunc], the caller-supplied
+function that wires up all application-specific components, plus a variadic
 list of [Option] values that tune the runtime behavior:
 
  1. A cancellable [context.Context] is created and threaded through the entire
@@ -24,38 +14,21 @@ list of [Option] values that tune the runtime behavior:
  2. A [metrics.Client] is created (Prometheus by default) and passed to BindFunc.
  3. A [*slog.Logger] is created and passed to BindFunc.
     If a [logutil.Config] is provided with [WithLogConfig], the logger
-    automatically emits a metrics counter for every log line, broken down by
-    level — giving instant observability into error rates.
+    emits a metrics counter for every log line, broken down by level.
  4. BindFunc is called. This is where the caller registers HTTP servers,
     database connections, background workers, etc.
  5. Bootstrap blocks until it receives os.Interrupt (SIGINT), SIGTERM, or
     until the context is canceled externally.
  6. A shutdown signal is broadcast on the shared channel
     (see [WithShutdownSignalChan]) and the application context is canceled, so
-    every registered dependent — whether keyed on the channel or on
-    ctx.Done() — can start its own teardown.
+    every registered dependent (whether keyed on the channel or on ctx.Done())
+    can start its own teardown.
  7. Bootstrap waits for all dependants to finish via a [sync.WaitGroup]
     (see [WithShutdownWaitGroup]), bounded by a configurable timeout
     (see [WithShutdownTimeout]) to prevent hanging indefinitely. If the timeout
     fires first, Bootstrap returns an error wrapping [ErrShutdownTimeout].
  8. The metrics client is closed so buffered measurements are flushed before
     the process exits.
-
-# Key Features
-
-  - Single-function API: one call handles the entire lifecycle.
-  - Functional options pattern: zero mandatory configuration; override only
-    what you need via [WithContext], [WithLogConfig], [WithLogger],
-    [WithCreateLoggerFunc], [WithCreateMetricsClientFunc],
-    [WithShutdownTimeout], [WithShutdownWaitGroup], and [WithShutdownSignalChan].
-  - Automatic log-level metrics: when a [logutil.Config] is supplied, every
-    log emission increments a labeled counter, enabling SLO-style alerting on
-    error log rates without extra instrumentation.
-  - Graceful shutdown with timeout: dependants (HTTP servers, consumers, …)
-    communicate completion through a shared [sync.WaitGroup]; Bootstrap honors
-    a deadline so a stuck goroutine can never block the process forever.
-  - Testable by design: [WithContext] lets tests inject a cancellable context
-    to drive the shutdown path without sending real OS signals.
 
 # Notes
 
@@ -90,7 +63,7 @@ Wire your application in a [BindFunc] and pass it to [Bootstrap]:
 	    }
 	}
 
-For a complete, runnable implementation see — in order:
+For a complete, runnable implementation see, in order:
   - examples/service/cmd/main.go
   - examples/service/internal/cli/cli.go
   - examples/service/internal/cli/bind.go
@@ -112,21 +85,17 @@ import (
 
 // Bootstrap initializes core service infrastructure and manages process lifecycle.
 //
-// It solves the repeated startup/shutdown orchestration problem by centralizing
-// context setup, logger and metrics creation, application binding, signal
-// handling, and graceful termination in one call.
+// It centralizes context setup, logger and metrics creation, application
+// binding, signal handling, and graceful termination in one call.
 //
 // The function applies options, validates configuration, invokes bindFn to wire
 // dependants, waits for shutdown signals, broadcasts a shutdown event to all
 // listeners, then waits for dependant completion up to the configured timeout.
 //
 // It returns a wrapped error when configuration is invalid, when metrics or
-// application binding fails, or — wrapping [ErrShutdownTimeout] — when dependants
+// application binding fails, or, wrapping [ErrShutdownTimeout], when dependants
 // do not finish within the configured shutdown timeout. All returned errors are
 // matchable with errors.Is.
-//
-// The main benefit is predictable service lifecycle behavior with less
-// boilerplate and fewer shutdown edge-case bugs.
 func Bootstrap(bindFn BindFunc, opts ...Option) error {
 	if bindFn == nil {
 		return ErrNilBindFunc

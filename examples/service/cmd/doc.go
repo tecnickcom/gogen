@@ -3,13 +3,9 @@ Package main runs the nuragoexample service.
 
 # Overview
 
-nuragoexample is a production-oriented reference service built with nurago.
-It demonstrates how to bootstrap a Go service with consistent configuration,
-structured logging, metrics, health checks, and graceful shutdown.
-
-The service solves a common problem for backend teams: starting from a clean,
-maintainable foundation instead of rebuilding service plumbing for every new
-project.
+nuragoexample is a reference service built with nurago. It demonstrates how to
+bootstrap a Go service with consistent configuration, structured logging,
+metrics, health checks, and graceful shutdown.
 
 # Runtime Topology
 
@@ -49,30 +45,21 @@ config schema supports enabling or disabling:
 When `db.enabled` is true, main and read connections are created, instrumented,
 and included in health checks.
 
-# Developer-Focused Features
+# Features
 
   - Bootstrap lifecycle: startup and shutdown are coordinated with a shared
     wait group and shutdown signal channel.
   - Structured logging: configurable format and level with build metadata
     (`program`, `version`, `release`) attached to each record.
-  - Observability-first HTTP stack: request instrumentation middleware,
-    Prometheus metrics exposure, and standard failure handlers.
+  - HTTP stack: request instrumentation middleware, Prometheus metrics
+    exposure, and standard failure handlers.
   - Health reporting: default status endpoint can be upgraded to dependency-
     aware health checks when optional components are enabled.
   - Trace propagation: outbound clients and servers use a shared trace header
     for request correlation.
 
-# Why These Features Matter
-
-  - Faster delivery: teams can implement business endpoints without spending
-    early sprints rebuilding operational scaffolding.
-  - Safer operations: built-in health, metrics, and graceful shutdown reduce
-    deployment and incident risk.
-  - Clear separation of concerns: public, private, and monitoring traffic
-    are isolated by design.
-  - Extensibility: service wiring in `internal/cli/bind.go` makes it easy to
-    add dependencies, middleware, and handlers without changing core startup
-    flow.
+Public, private, and monitoring traffic are isolated by exposure boundary, and
+service wiring lives in `internal/cli/bind.go`.
 
 # Command-Line Flags
 

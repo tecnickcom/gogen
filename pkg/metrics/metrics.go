@@ -2,17 +2,8 @@
 Package metrics defines a backend-agnostic instrumentation contract for Go
 services.
 
-# Problem
-
-Application code often needs to instrument SQL connections, HTTP handlers,
-outgoing HTTP clients, and domain-level error counters. If business code calls
-vendor-specific APIs directly (Prometheus, StatsD, OpenTelemetry, etc.),
-switching backend or running tests without a metrics stack becomes difficult.
-
-# Solution
-
-This package provides the [Client] interface as a stable abstraction over
-common instrumentation points used across services:
+The [Client] interface is an abstraction over common instrumentation points
+used across services:
 
   - SQL opening and DB instrumentation
   - inbound HTTP handler instrumentation
@@ -20,11 +11,11 @@ common instrumentation points used across services:
   - metrics endpoint handler
   - application-level counters (log levels and error taxonomy)
 
-The [Default] implementation is intentionally minimal and safe:
+The [Default] implementation is minimal:
 
   - it behaves as a no-op for instrumentation methods,
   - it still returns a valid SQL connection from [Default.SqlOpen], and
-  - it exposes a lightweight health-style metrics handler that returns "OK".
+  - it exposes a health-style metrics handler that returns "OK".
 
 This makes instrumentation optional and allows applications to run without a
 configured metrics backend while keeping a consistent API.
@@ -35,12 +26,6 @@ Concrete implementations are available in sibling packages:
   - github.com/tecnickcom/nurago/pkg/metrics/statsd
   - github.com/tecnickcom/nurago/pkg/metrics/prometheus
   - github.com/tecnickcom/nurago/pkg/metrics/opentel
-
-# Benefits
-
-Code can depend on one small interface and remain portable across metrics
-systems, easier to test, and simpler to evolve as observability requirements
-change.
 */
 package metrics
 

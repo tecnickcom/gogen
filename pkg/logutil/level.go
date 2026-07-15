@@ -78,12 +78,12 @@ func ValidLevel(l LogLevel) bool {
 // Unrecognized level values are left untouched so slog's own "WARN+1"-style banding is preserved rather
 // than reduced to a bare number.
 //
-// The top-level "time" attribute — the record's own timestamp — is rewritten as an RFC 3339 string when
+// The top-level "time" attribute (the record's own timestamp) is rewritten as an RFC 3339 string when
 // its year falls outside [0,9999], because slog's JSON encoder writes an "!ERROR:" string for such a
 // value and then writes the value as well, putting two JSON strings under one key and making the line
 // invalid (see slogSanitizeHandler, which repairs the same shape in an *attribute*; the record's
 // timestamp never passes through it, since it is not an attribute). A record only carries such a time
-// if it was hand-built — slog.Logger always stamps time.Now() — but a middleware, tee, or replay
+// if it was hand-built (slog.Logger always stamps time.Now()), but a middleware, tee, or replay
 // handler can hand one over.
 func replaceLevelName(groups []string, a Attr) Attr {
 	if len(groups) != 0 {
@@ -109,7 +109,7 @@ func replaceLevelName(groups []string, a Attr) Attr {
 // slog levels are arbitrary integers, so a level that is not one of the named severities has no name
 // here. It falls back to slog's own banded form ("INFO+1", "WARN-2"), never to a bare number: a bare
 // number would collide with the numeric syslog vocabulary that ParseLevel accepts, where "1" means
-// alert — so a record one notch above info would be read back as a near-fatal severity.
+// alert, so a record one notch above info would be read back as a near-fatal severity.
 //
 //nolint:cyclop
 func LevelName(l LogLevel) string {

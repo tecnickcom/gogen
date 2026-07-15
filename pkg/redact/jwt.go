@@ -1,7 +1,7 @@
 package redact
 
 const (
-	// jwtPrefix is the base64url encoding of `{"` — every JWS/JWE compact
+	// jwtPrefix is the base64url encoding of `{"`; every JWS/JWE compact
 	// token starts with it, making detection precise and cheap.
 	jwtPrefix = "eyJ"
 
@@ -17,10 +17,9 @@ const (
 // appendRedactedJWTAt handles an 'e' at src[i]: when it starts a JWT compact
 // serialization at a word boundary ("eyJ<header>.<payload>[.<segment>...]"),
 // the whole token is replaced with the marker and the index just past it is
-// returned. JWTs leak constantly through query parameters, state values, and
-// error messages; the shape gates keep prose ("eyJ only") and glued
-// identifiers untouched. All dot-joined trailing segments are consumed so JWE
-// tokens (5 segments) do not leave ciphertext fragments behind.
+// returned. The shape gates keep prose ("eyJ" only) and glued identifiers
+// untouched. All dot-joined trailing segments are consumed so JWE tokens
+// (5 segments) do not leave ciphertext fragments behind.
 func (re *Redactor) appendRedactedJWTAt(src []byte, i int, dst []byte) (int, []byte, bool) {
 	if i > 0 && isWordChar(src[i-1]) {
 		return 0, dst, false

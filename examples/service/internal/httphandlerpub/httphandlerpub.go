@@ -21,10 +21,8 @@ type HTTPHandlerPublic struct {
 	rnd     *random.Rnd
 }
 
-// New creates a public API handler with shared response and UID utilities.
-//
-// It solves the same routing and response consistency problem as the private
-// handler, but for endpoints intended for external consumers.
+// New creates a public API handler with shared response and UID utilities for
+// endpoints intended for external consumers.
 func New(s Service, l *slog.Logger) *HTTPHandlerPublic {
 	return &HTTPHandlerPublic{
 		service: s,
@@ -34,9 +32,6 @@ func New(s Service, l *slog.Logger) *HTTPHandlerPublic {
 }
 
 // BindHTTP returns the public routes exposed by this handler.
-//
-// Defining public routes as data makes endpoint exposure explicit and easy to
-// evolve without changing server bootstrap logic.
 func (h *HTTPHandlerPublic) BindHTTP(_ context.Context) []httpserver.Route {
 	return []httpserver.Route{
 		{
@@ -49,9 +44,6 @@ func (h *HTTPHandlerPublic) BindHTTP(_ context.Context) []httpserver.Route {
 }
 
 // handleGenUID responds with a UUIDv7 string in JSON format.
-//
-// It provides a simple, externally reachable route useful for integration
-// checks and example client wiring.
 func (h *HTTPHandlerPublic) handleGenUID(w http.ResponseWriter, r *http.Request) {
 	h.httpres.SendJSON(r.Context(), w, http.StatusOK, h.rnd.UUIDv7().String())
 }

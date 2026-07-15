@@ -11,8 +11,6 @@ import (
 // UUID is a 128-bit (16-byte) Universally Unique Identifier (UUID)
 // as defined in RFC 9562 (https://datatracker.ietf.org/doc/html/rfc9562).
 //
-// UUIDs are commonly used to uniquely identify resources, records, or entities
-// in distributed systems without requiring centralized coordination.
 // This type represents the binary form; use String() or Byte() to get the standard
 // textual representation in the format "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
 type UUID [16]byte
@@ -157,7 +155,7 @@ func (r *Rnd) UUIDv7() UUID {
 // lookup table and written with a single 16-bit store, so the routine is fully
 // unrolled, branch-free, independent of the UUID value, and writes into the
 // caller's array without allocating. Against the usual standard-library ways of
-// producing the same string this is markedly cheaper: versus
+// producing the same string this is cheaper: versus
 // [fmt.Sprintf]("%x-%x-%x-%x-%x", …) it is well over an order of magnitude faster
 // (~40x on amd64) and avoids the reflection-driven allocations, and versus
 // [encoding/hex] plus manual separator insertion it is roughly 2-3x faster,

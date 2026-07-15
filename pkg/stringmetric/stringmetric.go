@@ -6,14 +6,6 @@ This package currently implements the Damerau-Levenshtein edit distance via
 [DLDistance], which measures the minimum number of edit operations required to
 transform one string into another.
 
-# Problem
-
-Exact string equality is too strict for many real-world tasks: user input
-contains typos, transposed characters, missing letters, or small variations in
-formatting. Systems that need "close enough" matching (search suggestions,
-deduplication, record linkage, typo-tolerant lookups) require a metric that
-quantifies how different two strings are.
-
 # What It Computes
 
 [DLDistance] returns an integer distance where:
@@ -40,13 +32,6 @@ DLDistance(b, a)), is bounded above by max(len(a), len(b)) counted in runes, and
 satisfies the triangle inequality (DLDistance(a, c) <= DLDistance(a, b) +
 DLDistance(b, c)). It is a pure function and safe for concurrent use.
 
-# Why Damerau-Levenshtein
-
-Compared to plain Levenshtein distance, Damerau-Levenshtein treats adjacent
-character swaps as a single edit (for example "act" vs "cat"), which better
-matches common human typing errors and usually yields more intuitive fuzzy-match
-scores.
-
 # Implementation Notes
 
 The algorithm uses dynamic programming with:
@@ -57,9 +42,7 @@ The algorithm uses dynamic programming with:
 
 This delivers deterministic O(|a|*|b|) time and O(|a|*|b|) memory: the full
 matrix must be retained because the transposition term can reference any earlier
-row, so the two-row optimization used for plain Levenshtein does not apply. That
-makes it suitable for the short-to-medium strings typical in API, search, and
-validation workflows rather than very long inputs.
+row, so the two-row optimization used for plain Levenshtein does not apply.
 
 # Usage
 
@@ -67,10 +50,6 @@ validation workflows rather than very long inputs.
 	if d <= 2 {
 	    // treat as likely typo match
 	}
-
-Use the returned distance as a ranking signal or apply a threshold tuned to
-your domain (for example strict thresholds for identifiers, looser thresholds
-for free-text names).
 */
 package stringmetric
 

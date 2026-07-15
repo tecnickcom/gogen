@@ -2,17 +2,7 @@
 Package ipify provides a small client to resolve the current instance public IP
 address using the ipify service (https://www.ipify.org/).
 
-# Problem
-
-Services running behind NAT, cloud load balancers, or dynamic outbound egress
-often need to discover their externally visible IP address at runtime (for
-allow-list updates, diagnostics, or registration workflows). Implementing this
-from scratch requires HTTP setup, timeout handling, status validation, and
-error fallback logic.
-
-# Solution
-
-This package wraps those concerns in a focused [Client] API:
+The [Client] API:
   - [New] creates a configurable ipify client.
   - [Client.GetPublicIP] performs the request and returns the resolved IP.
   - [Client.HealthCheck] probes endpoint reachability for parity with the other
@@ -45,10 +35,5 @@ endpoint surfaces as [ErrInvalidResponse]. Match the sentinels with errors.Is.
 
 The default endpoint resolves standard ipify behavior. To force IPv6-capable
 resolution, point the client to `https://api64.ipify.org` via [WithURL].
-
-# Benefits
-
-ipify gives applications a minimal, testable, and timeout-safe way to discover
-public IP information without duplicating HTTP boilerplate.
 */
 package ipify

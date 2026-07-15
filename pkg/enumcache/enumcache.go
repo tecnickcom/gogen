@@ -2,30 +2,11 @@
 Package enumcache provides thread-safe storage and lookup for enumeration name
 and ID mappings.
 
-It solves the problem of maintaining reusable bidirectional enum mappings in
-concurrent applications, including support for bitmask-based enum sets.
-
-The cache is useful when you need fast mapping from string names to integer IDs
-and back again. It also supports encoding and decoding enum bitmaps when enum
-IDs represent bit flags.
+It maps string names to integer IDs and back, and supports encoding and decoding
+enum bitmaps when enum IDs represent bit flags.
 
 Typical usage is set-once, read-many: populate entries during startup using Set,
 SetAllIDByName, or SetAllNameByID, then perform lookups from application code.
-
-Top features:
-
-  - concurrent-safe name-to-ID and ID-to-name lookup guarded by an internal read/write mutex
-  - bulk population helpers for loading enum definitions from code or external sources
-  - deterministic sorted retrieval with SortNames and SortIDs for logs, output, and tests
-  - binary-map encoding and decoding via github.com/tecnickcom/nurago/pkg/enumbitmap
-    for flag-style enum values
-  - explicit error returns when IDs or names are missing, improving caller control
-
-Benefits:
-
-  - keep enum mappings centralized and thread-safe
-  - reduce duplication of lookup logic across services
-  - simplify support for feature flags and bitmask enums
 */
 package enumcache
 

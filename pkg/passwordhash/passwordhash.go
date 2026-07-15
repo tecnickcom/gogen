@@ -3,21 +3,11 @@ Package passwordhash provides OWASP-compliant password hashing and verification
 using the Argon2id algorithm (RFC 9106), with an optional AES-GCM encryption
 layer (peppered hashing) for defense in depth.
 
-# Problem
+# Usage
 
-Storing passwords securely is one of the most critical and most frequently
-mishandled tasks in application development. MD5, SHA-1, and even bcrypt are
-either broken or insufficient against modern GPU-based attacks. Choosing the
-correct algorithm, tuning its parameters, generating a cryptographically random
-salt, and encoding everything into a portable, self-describing format — all
-without introducing subtle timing-attack vulnerabilities — requires deep
-cryptographic knowledge most teams would rather not reinvent.
-
-# Solution
-
-This package encapsulates the full OWASP Password Storage Cheat Sheet
-(https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
-recommendations into three method pairs on a single [Params] configuration object:
+The methods operate on a single [Params] configuration object, following the
+OWASP Password Storage Cheat Sheet recommendations
+(https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html):
 
 	p := passwordhash.New() // RFC 9106 §4 defaults
 
@@ -39,7 +29,7 @@ variants add an AES-GCM layer on top of the Argon2id hash:
 
 # Storage Format
 
-The hashed password is stored as a base64-encoded JSON object that is fully
+The hashed password is stored as a base64-encoded JSON object that is
 self-describing: it embeds the algorithm name, version, all Argon2id tuning
 parameters, the random salt, and the derived key. This makes the stored value
 portable across languages and systems, and allows parameters to be upgraded
@@ -68,15 +58,15 @@ Argon2 implementations across languages:
 
 	$argon2id$v=19$m=65536,t=3,p=4$<base64 salt>$<base64 key>
 
-The JSON format is fully self-contained but is a nurago-specific schema; the PHC
+The JSON format is self-contained but is a nurago-specific schema; the PHC
 format is what external tooling (PHP's password_hash, Python's argon2-cffi and
 passlib, the Argon2 reference CLI) reads and writes directly. [Params.PasswordVerify],
 [Params.PasswordNeedsRehash], and their encrypted counterparts auto-detect which
-format a stored value uses — a leading '$' marks PHC — so switching formats never
+format a stored value uses (a leading '$' marks PHC), so switching formats never
 invalidates an existing hash. [Params.PasswordNeedsRehash] also steers format
 migration: a hash stored in a format outside the configured accepted set (see
 [WithFormat]) is reported as needing a rehash, so an existing store converges to
-the configured format through the ordinary rehash-on-login flow — or stays
+the configured format through the ordinary rehash-on-login flow, or stays
 deliberately mixed when both formats are listed as accepted.
 
 The accepted PHC envelope is deliberately strict: argon2id only (a PHC string
@@ -88,46 +78,24 @@ rejected), and the same deserialization bounds that protect the JSON format.
 
 # Features
 
-  - Argon2id algorithm: resists both side-channel (Argon2i) and GPU-based
-    (Argon2d) attacks — the current OWASP top recommendation (RFC 9106,
-    https://www.rfc-editor.org/info/rfc9106).
-  - Cryptographically random salt: a fresh salt is generated for every hash,
-    preventing rainbow-table and pre-computation attacks.
-  - Constant-time comparison: final hash comparison uses [crypto/subtle],
-    preventing timing side-channel attacks.
-  - Self-describing storage format: algorithm, version, and all parameters
-    travel with the hash; no separate migration table is needed when tuning
-    changes.
-  - Optional pepper encryption: [Params.EncryptPasswordHash] and
-    [Params.EncryptPasswordVerify] wrap the Argon2id hash in AES-GCM using a
-    key stored outside the database, so a DB leak alone is insufficient to
-    mount an offline attack.
-  - Input length guards: the configured minimum length is enforced when
-    hashing (registration policy) and the maximum length is enforced
-    everywhere, rejecting oversized passwords before any CPU-intensive
-    computation; oversized stored hash strings are likewise rejected before
-    any decoding, preventing denial-of-service via extremely long inputs.
-    These guards bound input length only; the separate cost of the Argon2
-    parameters embedded in a stored hash is bounded at verification by the
-    verify-cost multiplier (see [WithVerifyCostMultiplier]), not by any length
-    limit.
-  - Transparent parameter upgrades: [Params.PasswordNeedsRehash] and
-    [Params.EncryptPasswordNeedsRehash] detect hashes minted with outdated
-    parameters so they can be re-hashed on the next successful login.
-  - Sentinel errors: every failure class is matchable with [errors.Is] —
-    policy rejection, invalid configuration, corrupt or forged hash data,
-    algorithm/version mismatch, and invalid pepper key.
-  - Tunable via functional options: [WithTime], [WithMemory], [WithThreads],
-    [WithKeyLen], [WithSaltLen], [WithMinPasswordLength], and
-    [WithMaxPasswordLength] let each deployment match the OWASP parameter
-    guidance for its hardware profile.
-  - Portable format: JSON + base64 storage can be decoded by any language with
-    standard libraries, enabling cross-platform password verification.
-  - PHC interoperability: [WithFormat] can emit the standard PHC string format
-    ($argon2id$v=19$m=...,t=...,p=...$salt$key), and verification auto-detects and
-    accepts argon2id PHC hashes produced by other implementations (PHP's
-    password_hash, Python's argon2-cffi and passlib, the Argon2 reference CLI),
-    easing migration to and from other ecosystems without bulk re-hashing.
+Hashing uses Argon2id (RFC 9106) with a fresh cryptographically random salt per
+hash and a constant-time final comparison ([crypto/subtle]). The self-describing
+storage format carries the algorithm, version, and all parameters with the hash,
+so no separate migration table is needed when tuning changes.
+[Params.EncryptPasswordHash] and [Params.EncryptPasswordVerify] add an optional
+AES-GCM pepper layer keyed outside the database, so a database leak alone cannot
+mount an offline attack. Input length is bounded before any Argon2 work and
+oversized stored hash strings are rejected before decoding; the separate cost of
+the Argon2 parameters embedded in a stored hash is bounded at verification by
+the verify-cost multiplier (see [WithVerifyCostMultiplier]).
+[Params.PasswordNeedsRehash] and [Params.EncryptPasswordNeedsRehash] detect
+hashes minted with outdated parameters so they can be re-hashed on the next
+successful login. Every failure class is matchable with [errors.Is]. [WithTime],
+[WithMemory], [WithThreads], [WithKeyLen], [WithSaltLen],
+[WithMinPasswordLength], and [WithMaxPasswordLength] tune the parameters, and
+[WithFormat] selects JSON or PHC serialization; verification auto-detects and
+accepts argon2id PHC hashes produced by other implementations (PHP's
+password_hash, Python's argon2-cffi and passlib, the Argon2 reference CLI).
 
 # Verification Flow
 
@@ -154,21 +122,13 @@ RFC 9106 §4 (https://datatracker.ietf.org/doc/html/rfc9106#section-4).
 Parallelism is a flat constant, deliberately not derived from runtime.NumCPU():
 Argon2 lanes are goroutines, so p=4 is valid on any host, and a
 machine-independent default keeps the work factor reproducible across
-heterogeneous fleets — with a per-machine default, hosts with different core
+heterogeneous fleets. With a per-machine default, hosts with different core
 counts would mint hashes with different parameters and
 [Params.PasswordNeedsRehash] would report an upgrade on every alternating
 login, re-hashing forever.
-For production deployments, benchmark [Params.PasswordHash] on representative
-hardware and adjust via [WithTime], [WithMemory], and [WithThreads] so that
-hashing takes 0.5–1 s under your expected load.
-
-# Benefits
-
-This package delivers a complete, OWASP-compliant password security layer in a
-single import: correct algorithm, safe defaults, timing-attack-resistant
-comparison, optional pepper support, and a portable self-describing storage
-format — letting application code focus on business logic rather than
-cryptographic plumbing.
+Benchmark [Params.PasswordHash] on representative hardware and adjust via
+[WithTime], [WithMemory], and [WithThreads] so that hashing takes 0.5 to 1 s
+under your expected load.
 */
 package passwordhash
 
@@ -230,7 +190,7 @@ const (
 	// It is deliberately a flat constant rather than a value derived from
 	// runtime.NumCPU(): Argon2 lanes are goroutines, so p=4 is valid on any host,
 	// and a machine-independent default keeps the work factor reproducible across
-	// heterogeneous fleets — otherwise hosts with different core counts would
+	// heterogeneous fleets; otherwise hosts with different core counts would
 	// mint hashes with different parameters and PasswordNeedsRehash would report
 	// an upgrade on every alternating login, re-hashing forever.
 	defaultThreads = 4
@@ -269,7 +229,7 @@ const (
 	// absolute maxVerify* ceilings above) before the blob is rejected. It stops a
 	// single forged or corrupt row from pinning a verifier far above its real
 	// cost, while leaving headroom for the standard "raise the configuration, then
-	// rehash on the next login" upgrade path — a freshly minted hash costs exactly
+	// rehash on the next login" upgrade path: a freshly minted hash costs exactly
 	// 1x and legacy hashes cost less than the current configuration, so neither is
 	// ever rejected by this bound. Tune it with [WithVerifyCostMultiplier].
 	defaultVerifyCostMultiplier = 4
@@ -305,7 +265,7 @@ var (
 
 	// ErrInvalidHashData is returned when a stored hash blob cannot be decoded
 	// (or decrypted), exceeds the maximum accepted size, is missing fields, or
-	// embeds parameters that are out of range or internally inconsistent — all
+	// embeds parameters that are out of range or internally inconsistent, all
 	// signs of corruption or forgery.
 	ErrInvalidHashData = errors.New("invalid hash data")
 
@@ -469,7 +429,7 @@ func New(opts ...Option) *Params {
 // A cryptographically random salt of length [Params.SaltLen] is generated for
 // each call, so two hashes of the same password will always differ.
 // The returned string embeds the algorithm, version, all tuning parameters,
-// the salt, and the derived key — everything needed for future verification.
+// the salt, and the derived key: everything needed for future verification.
 //
 // The serialization is base64-encoded JSON by default, or the interoperable PHC
 // string format when [WithFormat](FormatPHC) is set. Both are accepted by
@@ -549,7 +509,7 @@ func (ph *Params) PasswordVerify(password, hash string) (bool, error) {
 //
 // Because the pepper is stored separately from the database (e.g. in a secrets
 // manager or HSM), an attacker who obtains the database alone cannot perform
-// an offline dictionary attack — the ciphertext is opaque without the key.
+// an offline dictionary attack: the ciphertext is opaque without the key.
 //
 // The returned string is a base64-encoded AES-GCM ciphertext. Use
 // [Params.EncryptPasswordVerify] with the same key to verify.
@@ -609,9 +569,9 @@ func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool
 	return ok, err
 }
 
-// PasswordNeedsRehash reports whether a stored hash — produced by
+// PasswordNeedsRehash reports whether a stored hash (produced by
 // [Params.PasswordHash] in either serialization format, or imported as an
-// argon2id PHC string from another implementation — was created with parameters
+// argon2id PHC string from another implementation) was created with parameters
 // that differ from this [Params] configuration, and so should be re-hashed.
 // Because the storage format is self-describing,
 // parameters can be upgraded (or an algorithm/version changed) without
@@ -621,12 +581,12 @@ func (ph *Params) EncryptPasswordVerify(key []byte, password, hash string) (bool
 // It returns true if the stored algorithm, version, key length, salt length,
 // time, memory, or threads differ from the current configuration, or if the
 // stored value's serialization is not among the accepted formats (see
-// [WithFormat]) — so a store gradually converges to the configured format
+// [WithFormat]), so a store gradually converges to the configured format
 // through the same rehash-on-login flow that upgrades parameters. It returns an
 // error only if the hash string is oversized or malformed, or embeds
 // out-of-range parameters; a well-formed hash that matches the current
 // parameters and an accepted format returns (false, nil). PasswordNeedsRehash
-// does not verify the password — call it after a successful
+// does not verify the password; call it after a successful
 // [Params.PasswordVerify].
 func (ph *Params) PasswordNeedsRehash(hash string) (bool, error) {
 	err := validateHashLen(hash)
@@ -845,7 +805,7 @@ func (ph *Params) validateHashParams() error {
 // validateHashCostParams checks the Argon2 cost parameters against the mint
 // envelope: the same [floor, ceiling] range the verification path accepts, so
 // that any hash this configuration can mint, it can also verify. The ceilings
-// matter as much as the floors — a value above the verify limit (for example
+// matter as much as the floors: a value above the verify limit (for example
 // Time > 1024 or Memory > 4 GiB) would mint a blob that every verification path
 // rejects, a total lockout discovered only at first login. Verification also
 // caps the stored time and memory at verifyCostMultiplier times the configured

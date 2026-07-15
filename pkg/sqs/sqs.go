@@ -1,20 +1,7 @@
 /*
-Package sqs solves the operational friction of using AWS SQS directly from the
-aws-sdk-go-v2 in application code. It wraps
-github.com/aws/aws-sdk-go-v2/service/sqs with a small, focused API that covers
-the common queue workflow: send, receive, decode, acknowledge (delete), and
-health-check.
-
-# Problem
-
-Raw SQS integration requires repetitive boilerplate across services: queue and
-endpoint setup, FIFO message-group handling, long-poll configuration,
-visibility-timeout tuning, payload serialization, and error-safe delete logic.
-Teams often re-implement this stack in each service, which leads to subtle
-behavior drift and harder testing.
-
-This package standardizes that flow into one client with explicit options and
-safe defaults.
+Package sqs wraps github.com/aws/aws-sdk-go-v2/service/sqs with an API that
+covers the common queue workflow: send, receive, decode, acknowledge (delete),
+and health-check.
 
 # How It Works
 
@@ -52,22 +39,6 @@ Receive flow behavior:
   - If decode fails, [Client.ReceiveData] still returns the receipt handle so
     callers can choose whether to delete or re-queue according to their policy.
 
-# Key Features
-
-  - Simple SQS workflow API: send, receive, delete, and health check.
-  - FIFO-aware safety: validates message-group usage for FIFO queues and
-    supports explicit per-message deduplication IDs.
-  - Typed payload support with customizable serialization/encryption via
-    [WithMessageEncodeFunc] and [WithMessageDecodeFunc].
-  - Endpoint and AWS config customization via [WithAWSOptions],
-    [WithSrvOptionFuncs], [WithEndpointMutable], and [WithEndpointImmutable]
-    for local testing and advanced deployments.
-  - Full client injection via [WithSQSClient] for tests and advanced
-    integrations; when set, the AWS configuration is not loaded and the AWS and
-    service options above are ignored.
-  - Health probe support through [Client.HealthCheck], which verifies queue
-    accessibility in the configured region.
-
 # Usage
 
 	c, err := sqs.New(ctx,
@@ -94,9 +65,5 @@ Receive flow behavior:
 	if receiptHandle != "" {
 	    _ = c.Delete(ctx, receiptHandle)
 	}
-
-This package is ideal for Go services that need a minimal, consistent,
-production-friendly abstraction over SQS without losing access to AWS SDK
-customization.
 */
 package sqs

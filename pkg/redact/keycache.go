@@ -192,10 +192,10 @@ var sensitiveTokens = map[string]struct{}{ //nolint:gochecknoglobals
 // nonSensitiveKeys are well-known keys that tokenize to a sensitive keyword yet
 // never carry a secret: CSP/HSTS response headers and the CORS credentials flag
 // (the "security"/"credentials" tokens), auth *challenge* headers (the
-// "authenticate" token — distinct from the credential-bearing "authorization"),
+// "authenticate" token, distinct from the credential-bearing "authorization"),
 // and the Kubernetes/AWS security-* structural fields. They are kept visible on
 // EVERY surface (headers, JSON, URL-encoded, XML) so a debugging dump stays
-// readable — the same tokenized keyword check therefore applies uniformly.
+// readable; the same tokenized keyword check therefore applies uniformly.
 // Entries are stored in normalizeKey form and matched case-insensitively.
 var nonSensitiveKeys = map[string]struct{}{ //nolint:gochecknoglobals
 	"content_security_policy":             {},
@@ -263,7 +263,7 @@ func isNonSensitiveNormalizedKey(normalized string) bool {
 // Two-word sensitive pairs: a key is sensitive when two adjacent tokens form
 // one of these pairs, even though neither word is a sensitive token on its own.
 // This catches the natural spellings of names that are otherwise enumerated only
-// as a fully-glued token (`nationalid`, `connectionstring`) — so `nationalId`,
+// as a fully-glued token (`nationalid`, `connectionstring`), so `nationalId`,
 // `national_id`, `connectionString` and `connection_string` all match.
 const (
 	pairNone          = iota
@@ -274,7 +274,7 @@ const (
 
 // pairHeadKind classifies a token that is the FIRST word of a two-word
 // sensitive pair, or pairNone. Dispatched on length so a token pays at most one
-// equalsASCIIFold — this runs for every token of every key.
+// equalsASCIIFold; this runs for every token of every key.
 func pairHeadKind(tok []byte) int {
 	switch len(tok) {
 	case 4:
@@ -353,14 +353,14 @@ var strongSecretTokens = map[string]struct{}{ //nolint:gochecknoglobals
 
 // sensitiveRoots are the secret words that also match as the tail of a longer
 // glued compound. The tokenizer only splits on case and separator boundaries,
-// so an all-lowercase closed compound — the shape HTML forms and their
-// URL-encoded dumps use (`<input name="newpassword">`) — arrives as a single
+// so an all-lowercase closed compound (the shape HTML forms and their
+// URL-encoded dumps use, e.g. `<input name="newpassword">`) arrives as a single
 // token and would otherwise miss the exact lookup.
 //
 // The list is deliberately short: an entry qualifies only when no ordinary
 // word ends in it, so the suffix rule stays a bounded generalization rather
-// than a substring free-for-all. Ambiguous roots are excluded on purpose —
-// "key" would match "monkey" and "card" would match "wildcard" — and stay
+// than a substring free-for-all. Ambiguous roots are excluded on purpose
+// ("key" would match "monkey" and "card" would match "wildcard") and stay
 // exact-match only.
 //
 // Every root must also be an exact token in sensitiveTokens (TestSensitiveRootsAreTokens).
@@ -374,7 +374,7 @@ var sensitiveRoots = []string{ //nolint:gochecknoglobals
 // minGluedCompoundLen is the shortest token the root-suffix rule considers.
 // The only roots shorter than 6 bytes are "pwd" (3) and "token"/"passwd" (5/6),
 // and the shortest real glued compound of any of them is a 5-byte "pwd" form
-// (`dbpwd`, `mypwd`) — which does NOT tokenize on its own
+// (`dbpwd`, `mypwd`), which does NOT tokenize on its own
 // (`normalizeKey("dbpwd") == "dbpwd"`, a single non-sensitive token). Gating at
 // 5 keeps those while sparing the many 4-byte ordinary keys of a log line
 // ("host", "code", "name", "user") the scan entirely.
@@ -420,8 +420,8 @@ type sensitiveKeyMemo struct {
 
 // newSensitiveKeyMemo creates an empty memo cache. The backing map (pre-sized
 // for the max entry count, ~200 KB) is allocated lazily on the first insertion,
-// so an instance that only ever classifies ASCII keys — which never reach the
-// memo — carries no cache at all.
+// so an instance that only ever classifies ASCII keys (which never reach the
+// memo) carries no cache at all.
 func newSensitiveKeyMemo() *sensitiveKeyMemo {
 	return &sensitiveKeyMemo{}
 }
@@ -466,7 +466,7 @@ func (c *sensitiveKeyMemo) set(k string, v bool) {
 // normalization, honoring the instance's extra and dropped tokens. A key that
 // matches a sensitive token but is on the nonSensitiveKeys allowlist (CSP/HSTS
 // headers, security-* structural fields, ...) is reported non-sensitive on every
-// surface — the allowlist check runs only for the sensitive minority, off the
+// surface; the allowlist check runs only for the sensitive minority, off the
 // common non-sensitive-key fast path.
 func (re *Redactor) isSensitiveKey(key []byte) bool {
 	if result, ok := re.sensitiveKeyASCIIFast(key); ok {
@@ -562,7 +562,7 @@ func (re *Redactor) sensitiveKeyASCIIFast(key []byte) (bool, bool) {
 
 // closeSensitiveToken checks a completed token: it reports whether the token
 // (or a two-word sensitive pair completed by it, e.g. "first"+"name",
-// "national"+"id") is sensitive, and which pair head — if any — this token
+// "national"+"id") is sensitive, and which pair head, if any, this token
 // primes for the next token.
 func (re *Redactor) closeSensitiveToken(tok []byte, prevPairHead int) (bool, int) {
 	if re.sensitiveTokenASCII(tok) {
@@ -620,14 +620,14 @@ func (re *Redactor) sensitiveTokenASCII(tok []byte) bool {
 //   - the token as-is, against the exact sets (built-in and extra, minus
 //     dropped) and the glued-compound roots;
 //   - the token with a trailing digit run stripped, against the same, so a
-//     numbered field like "password2"/"cvv2"/"key1" matches its base — a digit
-//     rarely ends an ordinary key word, so this retry stays permissive;
+//     numbered field like "password2"/"cvv2"/"key1" matches its base (a digit
+//     rarely ends an ordinary key word), so this retry stays permissive;
 //   - the token with a trailing plural "s" stripped, against the roots ONLY
 //     (never the short exact tokens), so "tokens"/"apikeys"/"newpasswords"
 //     redact while "keys"/"cells"/"accounts" (plurals of ordinary-word tokens)
-//     stay visible — an "s" is a far more ambiguous ending than a digit.
+//     stay visible; an "s" is a far more ambiguous ending than a digit.
 //
-// The as-is match is inlined here (the hot path — most tokens are neither
+// The as-is match is inlined here (the hot path, most tokens are neither
 // dropped nor suffixed); the two retries are reached only for tokens that
 // actually end in a digit or an "s", so their helper call is off the hot path.
 //
@@ -711,7 +711,7 @@ func (re *Redactor) matchesTokenOrRoot(tok string) bool {
 }
 
 // matchesRoot reports whether tok is one of the strong roots (minus dropped) or
-// a glued compound ending in one — the exact-token set is deliberately excluded
+// a glued compound ending in one; the exact-token set is deliberately excluded
 // (see sensitiveToken's plural mode).
 func (re *Redactor) matchesRoot(tok string) bool {
 	if tok == "" {
@@ -735,7 +735,7 @@ func (re *Redactor) matchesRoot(tok string) bool {
 // bytes, checked by the caller) is a glued compound ending in one of the
 // sensitive roots ("newpassword", "awssecretkey"). A token equal to a root is
 // not matched here: that is an exact hit handled by the caller, so a root
-// dropped with [WithoutTokens] stays dropped — and the drop also disables its
+// dropped with [WithoutTokens] stays dropped, and the drop also disables its
 // suffix rule, keeping the two coherent.
 func (re *Redactor) hasSensitiveRootSuffix(tok string) bool {
 	for _, root := range sensitiveRootsByLastByte[tok[len(tok)-1]] {

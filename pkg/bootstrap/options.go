@@ -25,8 +25,8 @@ func WithContext(ctx context.Context) Option {
 // WithLogConfig configures logger creation from a logutil.Config.
 //
 // It should be used as an alternative to WithLogger and
-// WithCreateLoggerFunc. The benefit is centralized logger policy with optional
-// hooks (including log-level metrics wiring performed by Bootstrap).
+// WithCreateLoggerFunc. It centralizes logger policy with optional hooks
+// (including log-level metrics wiring performed by Bootstrap).
 //
 // As a side effect of building the logger from the config, Bootstrap replaces the
 // process-wide default logger (via slog.SetDefault) and redirects the standard

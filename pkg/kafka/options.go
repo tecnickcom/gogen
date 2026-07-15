@@ -126,9 +126,8 @@ func WithMessageDecodeFunc(f TDecodeFunc) Option {
 // the groupID argument is not used for reading, and the session timeout and
 // start offset settings have no effect (their values are still validated).
 // The brokers and topic arguments remain required (and validated) because
-// HealthCheck probes them; note that injecting a reader does NOT mock
-// HealthCheck, which still performs real network I/O unless WithBrokerCheckFunc
-// is also supplied.
+// HealthCheck probes them; injecting a reader does NOT mock HealthCheck, which
+// still performs real network I/O unless WithBrokerCheckFunc is also supplied.
 //
 // This option is consumer-only and has no effect on a Producer; passing it to
 // NewProducer is silently ignored.
@@ -145,9 +144,9 @@ func WithKafkaReader(r KReader) Option {
 // the balancer, required acks, and batch settings have no effect (their
 // values are still validated). The brokers and topic arguments remain
 // required (and validated) because HealthCheck probes them and the topic
-// appears in encode error messages; note that injecting a writer does NOT
-// mock HealthCheck, which still performs real network I/O unless
-// WithBrokerCheckFunc is also supplied.
+// appears in encode error messages; injecting a writer does NOT mock
+// HealthCheck, which still performs real network I/O unless WithBrokerCheckFunc
+// is also supplied.
 //
 // This option is producer-only and has no effect on a Consumer; passing it to
 // NewConsumer is silently ignored.

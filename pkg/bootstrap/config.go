@@ -83,8 +83,8 @@ type config struct {
 
 // defaultConfig returns the baseline bootstrap configuration.
 //
-// It provides production-safe defaults so callers can start with zero options
-// and override only the pieces they need.
+// It provides defaults so callers can start with zero options and override only
+// the pieces they need.
 func defaultConfig() *config {
 	return &config{
 		context:                 context.Background(),
@@ -121,7 +121,7 @@ func (c *config) newLogger() *slog.Logger {
 
 // logConfigWithMetricHook returns a copy of c.logConfig whose HookFn first
 // increments a per-level metric counter on m and then chains any caller-installed
-// hook, giving instant observability into log rates by level.
+// hook.
 //
 // It works on a shallow copy so the caller-owned logutil.Config is never mutated.
 // When no log config was supplied (WithLogConfig unused) it returns nil unchanged;

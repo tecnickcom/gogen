@@ -1,17 +1,10 @@
 /*
-Package redis provides focused helpers built on go-redis for common application
+Package redis provides helpers built on go-redis for common application
 workflows: key/value storage, Pub/Sub messaging, typed payload encoding, and
-basic connection health checks.
+connection health checks.
 
 Redis reference: https://redis.io
 Underlying client: https://github.com/redis/go-redis
-
-# Problem
-
-Direct use of go-redis is powerful but often leads to repeated adapter code in
-services: typed payload serialization, subscription channel wiring, and
-consistent error wrapping around set/get/publish operations. This package
-centralizes those patterns behind a minimal client API.
 
 # How It Works
 
@@ -27,33 +20,28 @@ and a variadic list of [Option] values:
     Pub/Sub subscription feeds [Client.Receive] and [Client.ReceiveData] one
     message per call. The subscription runs until [Client.Close] is called:
     canceling the [New] context does not stop it.
- 3. Encode and decode functions — defaulting to [DefaultMessageEncodeFunc] and
-    [DefaultMessageDecodeFunc] — are stored on the client and used
+ 3. Encode and decode functions (defaulting to [DefaultMessageEncodeFunc] and
+    [DefaultMessageDecodeFunc]) are stored on the client and used
     transparently by the typed data methods.
 
-# Key Features
+# Operations
 
-  - Raw operations: [Client.Set], [Client.Get], and [Client.Del] offer direct
-    key/value access with expiration support.
-  - Typed data operations: [Client.SetData] and [Client.GetData] encode/decode
-    Go values automatically using the configured [TEncodeFunc] / [TDecodeFunc],
-    removing serialization boilerplate at every call site.
-  - Pub/Sub: [Client.Send] and [Client.Receive] work with raw strings;
-    [Client.SendData] and [Client.ReceiveData] apply the same encode/decode
-    pipeline, returning the channel name alongside the decoded value.
-  - Pluggable serialization: [WithMessageEncodeFunc] and
-    [WithMessageDecodeFunc] replace the default codec with any implementation —
-    including encrypted or compressed payloads — without changing call sites.
-  - Health check: [Client.HealthCheck] sends a PING and returns a wrapped error
-    on failure, making it trivial to integrate with liveness probes.
-  - Sentinel errors: a missing key surfaces as [ErrKeyNotFound], and
-    configuration or subscription states as the other exported Err values,
-    all matchable with errors.Is.
-  - Mockable client: [WithRedisClient] injects a custom [RClient], enabling
-    fast, dependency-free unit tests of the command path.
-  - Graceful close: [Client.Close] releases Pub/Sub and client resources; it is
-    idempotent and required to stop the subscription when channels are
-    configured.
+  - [Client.Set], [Client.Get], and [Client.Del] provide raw key/value access
+    with expiration.
+  - [Client.SetData] and [Client.GetData] encode and decode Go values with the
+    configured [TEncodeFunc] and [TDecodeFunc].
+  - [Client.Send] and [Client.Receive] carry raw strings; [Client.SendData] and
+    [Client.ReceiveData] apply the same codec and return the channel name with
+    the decoded value.
+  - [WithMessageEncodeFunc] and [WithMessageDecodeFunc] replace the default
+    codec.
+  - [Client.HealthCheck] sends a PING and returns a wrapped error on failure.
+  - A missing key surfaces as [ErrKeyNotFound]; other configuration and
+    subscription states surface as the exported Err values, all matchable with
+    errors.Is.
+  - [WithRedisClient] injects a custom [RClient] for testing.
+  - [Client.Close] releases Pub/Sub and client resources; it is idempotent and
+    required to stop the subscription when channels are configured.
 
 # Subscription Configuration
 
@@ -61,9 +49,9 @@ Use options to define Pub/Sub behavior at client creation time:
 
   - [WithChannels] to subscribe to channels.
   - [WithChannelOptions] to tune subscription channel behavior: buffer size,
-    send timeout, and health check interval. Note that with the go-redis
-    defaults, a consumer that stops calling [Client.Receive] loses messages
-    once the 100-message buffer stays full for one minute.
+    send timeout, and health check interval. With the go-redis defaults, a
+    consumer that stops calling [Client.Receive] loses messages once the
+    100-message buffer stays full for one minute.
 
 # Usage
 

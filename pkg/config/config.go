@@ -1,12 +1,9 @@
 /*
-Package config provides a production-ready configuration bootstrap for Go
-services built on top of Viper.
+Package config provides configuration bootstrap for Go services built on top of
+Viper.
 
-The package solves a common problem in service development: keeping
-configuration loading predictable across local development, CI, and deployment,
-without repeating boilerplate in every application.
-
-It centralizes:
+It keeps configuration loading predictable across local development, CI, and
+deployment without repeating boilerplate in every application, centralizing:
   - default values
   - local file discovery
   - environment overrides
@@ -49,25 +46,6 @@ ones):
     environment. Register a default for every configurable key to make it
     reliably env-overridable.
  6. Validate() is called on the final decoded config struct.
-
-# Why this matters
-
-Top features for developers:
-  - Predictable precedence model: easy to reason about which value wins.
-  - File-less deployments: the "envvar" provider loads the whole configuration
-    from a single environment variable.
-  - Pluggable remote sources: WithRemoteLoader plugs in any remote storage
-    backend (e.g. consul, etcd, vault, S3) without adding its client
-    dependencies to this package.
-  - Sensible shared defaults: common log and shutdown settings are ready to use.
-  - Validation hook: fail fast on invalid runtime configuration.
-  - Testability: Viper is abstracted behind an interface for easy mocking.
-
-# Benefits
-
-Using this package reduces startup/config code in each service, improves
-configuration consistency across environments, and keeps configuration behavior
-explicit and auditable.
 
 For a complete implementation example, see the Configuration implementation in
 examples/service/internal/cli/config.go and the Load call in
@@ -248,12 +226,9 @@ type RemoteSourceConfig struct {
 
 // Load builds cfg from defaults, local config, environment, and optional remote sources.
 //
-// It is the package entry point that standardizes startup configuration loading
-// so applications avoid duplicating Viper wiring and precedence logic.
-//
-// The function applies the documented merge order, unmarshals into cfg, and
-// executes cfg.Validate before returning. Optional behaviors (e.g. a custom
-// remote source loader) can be enabled via opts.
+// It applies the documented merge order, unmarshals into cfg, and executes
+// cfg.Validate before returning. Optional behaviors (e.g. a custom remote source
+// loader) can be enabled via opts.
 func Load(cmdName, configDir, envPrefix string, cfg Configuration, opts ...Option) error {
 	if cfg == nil {
 		return ErrNilConfiguration
@@ -273,8 +248,7 @@ func Load(cmdName, configDir, envPrefix string, cfg Configuration, opts ...Optio
 // loadConfig performs the full configuration pipeline for cfg.
 //
 // It loads local values, overlays optional remote values, then validates the
-// final typed configuration. Splitting this logic keeps Load simple while
-// allowing deterministic unit testing with mocked Viper instances.
+// final typed configuration.
 func loadConfig(localViper, remoteViper Viper, cmdName, configDir, envPrefix string, cfg Configuration, o *options) error {
 	remoteSourceCfg, err := loadLocalConfig(localViper, cmdName, configDir, envPrefix, cfg, o)
 	if err != nil {
@@ -377,9 +351,6 @@ func loadLocalConfig(v Viper, cmdName, configDir, envPrefix string, cfg Configur
 // It starts from local defaults/values, applies environment overrides, loads
 // optional remote configuration depending on provider, and finally unmarshals
 // into the application struct.
-//
-// This staged merge model gives developers predictable precedence and clear
-// separation between local and remote concerns.
 func loadRemoteConfig(lv Viper, rv Viper, rs *RemoteSourceConfig, envPrefix string, cfg Configuration, o *options) error {
 	// Seed the remote viper with every resolved local key as a default. This
 	// intentionally demotes local file/default values to the "default" layer so
@@ -465,8 +436,7 @@ func loadFromRemoteLoader(v Viper, rs *RemoteSourceConfig, loader RemoteLoaderFu
 // configureSearchPath registers local config lookup directories in search order.
 //
 // If configDir is provided, it is checked first, then standard fallback paths
-// are appended. This gives callers explicit control while preserving sensible
-// defaults for local development and system installs.
+// are appended.
 func configureSearchPath(v Viper, cmdName, configDir string) {
 	var configSearchPath []string
 

@@ -88,10 +88,8 @@ type appConfig struct {
 // SetDefaults registers baseline configuration values used when no explicit
 // value is provided by files, remote providers, or environment variables.
 //
-// It solves a frequent service reliability issue: undefined runtime behavior
-// caused by missing configuration. By providing explicit defaults for server
-// endpoints, timeouts, external clients, and database pools, startup behavior
-// remains predictable across local, CI, and production environments.
+// It sets defaults for server endpoints, timeouts, external clients, and
+// database pools.
 func (c *appConfig) SetDefaults(v config.Viper) {
 	v.SetDefault("enabled", true)
 
@@ -129,9 +127,8 @@ func (c *appConfig) SetDefaults(v config.Viper) {
 // Validate checks the loaded configuration against structural and semantic
 // rules before the service starts.
 //
-// This protects developers from late runtime failures by catching invalid
-// addresses, missing required fields, and unsupported values at startup,
-// producing field-aware validation errors tied to config keys.
+// It catches invalid addresses, missing required fields, and unsupported
+// values, producing field-aware validation errors tied to config keys.
 func (c *appConfig) Validate() error {
 	opts := []validator.Option{
 		validator.WithFieldNameTag(fieldTagName),

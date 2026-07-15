@@ -2,20 +2,11 @@
 Package backoff computes successive retry delays with exponential growth, a
 bounded maximum, and random jitter.
 
-# Problem
-
-Exponential-backoff-with-jitter is easy to get subtly wrong: unbounded growth
-overflows the int64 nanosecond range into negative durations, a zero jitter
-ceiling panics the random source, and the arithmetic is duplicated (with
-diverging guards) across every package that retries or paces work.
-
-# Solution
-
-[Schedule] is a pure, per-call delay calculator: given a base delay, a growth
-factor, a jitter ceiling, and a maximum, each call to [Schedule.Next] returns
-the next delay and advances the progression. It performs no timing, scheduling,
-goroutines, or I/O — callers own their own timers and loops and simply ask the
-Schedule for the next duration.
+[Schedule] is a per-call delay calculator: given a base delay, a growth factor,
+a jitter ceiling, and a maximum, each call to [Schedule.Next] returns the next
+delay and advances the progression. It performs no timing, scheduling,
+goroutines, or I/O; callers own their timers and loops and ask the Schedule for
+the next duration.
 
 [AddJitter] exposes the jitter step on its own for callers that pace work at a
 fixed interval rather than backing off exponentially.
@@ -25,20 +16,18 @@ fixed interval rather than backing off exponentially.
 By default a Schedule adds a fixed random ceiling ([JitterAdditive]); its
 desynchronizing effect shrinks as the delay grows. [JitterFull] and
 [JitterEqual] instead scale the jitter with the delay, decorrelating concurrent
-clients far better at large delays. Select one via Config.Strategy.
+clients at large delays. Select one via Config.Strategy.
 
 # Bounds and overflow
 
 Both the internal progression and the jitter addition are clamped so no delay
-can ever overflow into a negative duration, regardless of factor, attempt
-count, or configured maximum. The growth is capped well below the int64 limit
-(~146 years), and the jitter addition saturates at [math.MaxInt64] rather than
-wrapping. Out-of-contract negative or NaN inputs are floored to zero rather than
-producing a negative delay.
+can overflow into a negative duration, regardless of factor, attempt count, or
+configured maximum. The growth is capped below the int64 limit (~146 years),
+and the jitter addition saturates at [math.MaxInt64] rather than wrapping.
+Negative or NaN inputs are floored to zero.
 
 Delays are computed in float64, so integer-nanosecond precision is exact only up
 to ~2^53 ns (~104 days); beyond that a result may differ by a few nanoseconds.
-This is immaterial at realistic (sub-minute) delays.
 
 # Usage
 
@@ -78,8 +67,8 @@ const maxSafeDelay = time.Duration(math.MaxInt64 / 2)
 //
 // The additive strategy adds a fixed ceiling, whose desynchronizing effect
 // shrinks as the delay grows; the full and equal strategies scale the jitter
-// with the delay itself and therefore decorrelate concurrent clients far better
-// at large delays (see the AWS "Exponential Backoff And Jitter" analysis).
+// with the delay itself and therefore decorrelate concurrent clients better
+// at large delays.
 type JitterStrategy int
 
 const (
@@ -140,7 +129,7 @@ type Config struct {
 // jitter. It is a pure per-call calculator that performs no timing, scheduling,
 // or I/O.
 //
-// A Schedule is stateful — each [Schedule.Next] advances the progression — and
+// A Schedule is stateful (each [Schedule.Next] advances the progression) and
 // is therefore not safe for concurrent use. Create one per retry sequence.
 type Schedule struct {
 	next     float64        // pre-jitter delay for the next Next call, in nanoseconds
