@@ -293,7 +293,14 @@ func (d *Data) regionByID(id int) (*enumData, error) {
 }
 
 // regionIDByCode resolves an internal region ID from a region code.
+//
+// The empty code maps to the internal region-less sentinel and is rejected as
+// ErrNotFound; it is not a valid region code (see EnumRegion).
 func (d *Data) regionIDByCode(code string) (uint8, error) {
+	if code == "" {
+		return 0, ErrNotFound
+	}
+
 	v, ok := d.dRegionIDByCode[code]
 	if !ok {
 		return 0, ErrNotFound
@@ -304,8 +311,13 @@ func (d *Data) regionIDByCode(code string) (uint8, error) {
 
 // regionIDByName resolves an internal region ID from a region name.
 //
-// Name matching is case-insensitive.
+// Name matching is case-insensitive. The empty name maps to the internal
+// region-less sentinel and is rejected as ErrNotFound (see EnumRegion).
 func (d *Data) regionIDByName(name string) (uint8, error) {
+	if name == "" {
+		return 0, ErrNotFound
+	}
+
 	v, ok := d.dRegionIDByName[strings.ToUpper(name)]
 	if !ok {
 		return 0, ErrNotFound
@@ -324,7 +336,14 @@ func (d *Data) subRegionByID(id int) (*enumData, error) {
 }
 
 // subRegionIDByCode resolves an internal sub-region ID from a sub-region code.
+//
+// The empty code maps to the internal region-less sentinel and is rejected as
+// ErrNotFound; it is not a valid sub-region code (see EnumSubRegion).
 func (d *Data) subRegionIDByCode(code string) (uint8, error) {
+	if code == "" {
+		return 0, ErrNotFound
+	}
+
 	v, ok := d.dSubRegionIDByCode[code]
 	if !ok {
 		return 0, ErrNotFound
@@ -335,8 +354,13 @@ func (d *Data) subRegionIDByCode(code string) (uint8, error) {
 
 // subRegionIDByName resolves an internal sub-region ID from a sub-region name.
 //
-// Name matching is case-insensitive.
+// Name matching is case-insensitive. The empty name maps to the internal
+// region-less sentinel and is rejected as ErrNotFound (see EnumSubRegion).
 func (d *Data) subRegionIDByName(name string) (uint8, error) {
+	if name == "" {
+		return 0, ErrNotFound
+	}
+
 	v, ok := d.dSubRegionIDByName[strings.ToUpper(name)]
 	if !ok {
 		return 0, ErrNotFound
@@ -355,7 +379,14 @@ func (d *Data) intermediateRegionByID(id int) (*enumData, error) {
 }
 
 // intermediateRegionIDByCode resolves an internal intermediate-region ID from code.
+//
+// The empty code maps to the internal region-less sentinel and is rejected as
+// ErrNotFound; it is not a valid code (see EnumIntermediateRegion).
 func (d *Data) intermediateRegionIDByCode(code string) (uint8, error) {
+	if code == "" {
+		return 0, ErrNotFound
+	}
+
 	v, ok := d.dIntermediateRegionIDByCode[code]
 	if !ok {
 		return 0, ErrNotFound
@@ -366,8 +397,13 @@ func (d *Data) intermediateRegionIDByCode(code string) (uint8, error) {
 
 // intermediateRegionIDByName resolves an internal intermediate-region ID from name.
 //
-// Name matching is case-insensitive.
+// Name matching is case-insensitive. The empty name maps to the internal
+// region-less sentinel and is rejected as ErrNotFound (see EnumIntermediateRegion).
 func (d *Data) intermediateRegionIDByName(name string) (uint8, error) {
+	if name == "" {
+		return 0, ErrNotFound
+	}
+
 	v, ok := d.dIntermediateRegionIDByName[strings.ToUpper(name)]
 	if !ok {
 		return 0, ErrNotFound

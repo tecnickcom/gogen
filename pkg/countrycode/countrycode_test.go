@@ -202,7 +202,9 @@ func Test_EnumRegion(t *testing.T) {
 	require.NotNil(t, data)
 	got := data.EnumRegion()
 
-	require.Len(t, got, len(data.dRegionByID))
+	// The region-less sentinel is excluded, so one fewer than the catalog.
+	require.Len(t, got, len(data.dRegionByID)-1)
+	require.NotContains(t, got, "")
 }
 
 func Test_EnumSubRegion(t *testing.T) {
@@ -214,7 +216,9 @@ func Test_EnumSubRegion(t *testing.T) {
 	require.NotNil(t, data)
 	got := data.EnumSubRegion()
 
-	require.Len(t, got, len(data.dSubRegionByID))
+	// The region-less sentinel is excluded, so one fewer than the catalog.
+	require.Len(t, got, len(data.dSubRegionByID)-1)
+	require.NotContains(t, got, "")
 }
 
 func Test_EnumIntermediateRegion(t *testing.T) {
@@ -226,7 +230,9 @@ func Test_EnumIntermediateRegion(t *testing.T) {
 	require.NotNil(t, data)
 	got := data.EnumIntermediateRegion()
 
-	require.Len(t, got, len(data.dIntermediateRegionByID))
+	// The region-less sentinel is excluded, so one fewer than the catalog.
+	require.Len(t, got, len(data.dIntermediateRegionByID)-1)
+	require.NotContains(t, got, "")
 }
 
 func Test_CountryByAlpha2Code(t *testing.T) {
@@ -543,10 +549,10 @@ func Test_CountriesByRegionCode(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
-			exp:     429,
-			wantErr: false,
+			exp:     0,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -630,10 +636,10 @@ func Test_CountriesByRegionName(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
-			exp:     429,
-			wantErr: false,
+			exp:     0,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -734,10 +740,10 @@ func Test_CountriesBySubRegionCode(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
-			exp:     429,
-			wantErr: false,
+			exp:     0,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -786,10 +792,10 @@ func Test_CountriesBySubRegionName(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
-			exp:     429,
-			wantErr: false,
+			exp:     0,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -890,10 +896,10 @@ func Test_CountriesByIntermediateRegionCode(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
-			exp:     571,
-			wantErr: false,
+			exp:     0,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -942,10 +948,10 @@ func Test_CountriesByIntermediateRegionName(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
-			exp:     571,
-			wantErr: false,
+			exp:     0,
+			wantErr: true,
 		},
 		{
 			name:    "last",

@@ -456,10 +456,10 @@ func Test_regionIDByCode(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
 			exp:     0,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -508,10 +508,10 @@ func Test_regionIDByName(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
 			exp:     0,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -618,10 +618,10 @@ func Test_subRegionIDByCode(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
 			exp:     0,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -670,10 +670,10 @@ func Test_subRegionIDByName(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
 			exp:     0,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -780,10 +780,10 @@ func Test_intermediateRegionIDByCode(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
 			exp:     0,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "last",
@@ -832,10 +832,10 @@ func Test_intermediateRegionIDByName(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "first",
+			name:    "empty",
 			in:      "",
 			exp:     0,
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "last",

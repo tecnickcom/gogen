@@ -1,6 +1,7 @@
 package countrycode
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -587,5 +588,61 @@ func Test_encodeNumeric(t *testing.T) {
 
 			require.NoError(t, err)
 		})
+	}
+}
+
+func Test_decodeAlpha2_exhaustive(t *testing.T) {
+	t.Parallel()
+
+	// The table lookup must equal the bit formula for every uint16, including
+	// codes above the 10-bit range, which must be masked rather than panic.
+	for code := range 0x10000 {
+		c := uint16(code)
+		exp := string([]byte{
+			byte(((c & bitMaskChar1) >> bitPosChar1) + chrOffsetUpper),
+			byte(((c & bitMaskChar0) >> bitPosChar0) + chrOffsetUpper),
+		})
+
+		if got := decodeAlpha2(c); got != exp {
+			t.Fatalf("decodeAlpha2(%#x) = %q, want %q", c, got, exp)
+		}
+	}
+}
+
+func Test_decodeTLD_exhaustive(t *testing.T) {
+	t.Parallel()
+
+	// The table lookup must equal the bit formula for every uint16, including
+	// codes above the 10-bit range, which must be masked rather than panic.
+	for code := range 0x10000 {
+		c := uint16(code)
+		exp := string([]byte{
+			byte(((c & bitMaskChar1) >> bitPosChar1) + chrOffsetLower),
+			byte(((c & bitMaskChar0) >> bitPosChar0) + chrOffsetLower),
+		})
+
+		if got := decodeTLD(c); got != exp {
+			t.Fatalf("decodeTLD(%#x) = %q, want %q", c, got, exp)
+		}
+	}
+}
+
+func Test_numericStr(t *testing.T) {
+	t.Parallel()
+
+	// Exhaustive equivalence with fmt.Sprintf("%03d", n) over the valid range.
+	for n := range 1000 {
+		exp := fmt.Sprintf("%03d", n)
+
+		if got := numericStr(uint16(n)); got != exp {
+			t.Fatalf("numericStr(%d) = %q, want %q", n, got, exp)
+		}
+	}
+
+	// The 10-bit field can carry 1000-1023, which are not three-digit codes.
+	for _, n := range []uint16{1000, 1023, 0xFFFF} {
+		if got := numericStr(n); got != "" {
+			t.Fatalf("numericStr(%d) = %q, want empty string", n, got)
+		}
 	}
 }

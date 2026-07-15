@@ -185,12 +185,41 @@ func encodeAlpha2(s string) (uint16, error) {
 	return ((c1 << bitPosChar1) | (c0 << bitPosChar0)), nil
 }
 
+// alpha2Tab holds the decoded two-letter uppercase text for every 10-bit
+// alpha-2 code, concatenated, so decodeAlpha2 can slice instead of allocating.
+//
+//nolint:gochecknoglobals // immutable, write-once lookup table for hot-path decoding
+var alpha2Tab = buildCharTab(chrOffsetUpper)
+
+// tldTab holds the decoded two-letter lowercase text for every 10-bit TLD code,
+// concatenated, so decodeTLD can slice instead of allocating.
+//
+//nolint:gochecknoglobals // immutable, write-once lookup table for hot-path decoding
+var tldTab = buildCharTab(chrOffsetLower)
+
+// buildCharTab concatenates the decoded two-character text for every value in
+// the 10-bit code space; offset selects uppercase or lowercase letters.
+func buildCharTab(offset uint16) string {
+	b := make([]byte, 0, 2*(mask10Bit+1))
+
+	for code := range mask10Bit + 1 {
+		c := uint16(code)
+		b = append(b,
+			byte(((c&bitMaskChar1)>>bitPosChar1)+offset),
+			byte(((c&bitMaskChar0)>>bitPosChar0)+offset),
+		)
+	}
+
+	return string(b)
+}
+
 // decodeAlpha2 decodes a packed alpha-2 uint16 value into text.
+//
+// Only the low 10 bits are significant; higher bits are masked off.
 func decodeAlpha2(code uint16) string {
-	return string([]byte{
-		byte(((code & bitMaskChar1) >> bitPosChar1) + chrOffsetUpper),
-		byte(((code & bitMaskChar0) >> bitPosChar0) + chrOffsetUpper),
-	})
+	i := int(code&mask10Bit) * 2
+
+	return alpha2Tab[i : i+2]
 }
 
 // encodeAlpha3 encodes a three-letter uppercase alpha-3 code into uint16 bits.
@@ -246,11 +275,12 @@ func encodeTLD(s string) (uint16, error) {
 }
 
 // decodeTLD decodes a packed TLD uint16 value into text.
+//
+// Only the low 10 bits are significant; higher bits are masked off.
 func decodeTLD(code uint16) string {
-	return string([]byte{
-		byte(((code & bitMaskChar1) >> bitPosChar1) + chrOffsetLower),
-		byte(((code & bitMaskChar0) >> bitPosChar0) + chrOffsetLower),
-	})
+	i := int(code&mask10Bit) * 2
+
+	return tldTab[i : i+2]
 }
 
 // encodeNumeric parses and encodes a three-digit numeric country code.
@@ -265,4 +295,33 @@ func encodeNumeric(s string) (uint16, error) {
 	}
 
 	return uint16(v), nil
+}
+
+// numeric3Tab holds "000001002...999" so a three-digit ISO numeric code can be
+// produced by slicing, with no formatting and no allocation on the lookup path.
+//
+//nolint:gochecknoglobals // immutable, write-once lookup table for hot-path decoding
+var numeric3Tab = func() string {
+	b := make([]byte, 0, 3000)
+
+	for i := range 1000 {
+		b = append(b, byte('0'+(i/100)%10), byte('0'+(i/10)%10), byte('0'+i%10))
+	}
+
+	return string(b)
+}()
+
+// numericStr renders a numeric country code as a zero-padded three-digit string,
+// the allocation-free equivalent of fmt.Sprintf("%03d", n) for n <= 999.
+//
+// The packed numeric field is 10 bits (0-1023); values above 999 cannot be
+// rendered in three digits and return "" to keep the function total.
+func numericStr(n uint16) string {
+	if n > 999 {
+		return ""
+	}
+
+	i := int(n) * 3
+
+	return numeric3Tab[i : i+3]
 }

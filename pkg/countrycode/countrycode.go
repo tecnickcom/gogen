@@ -43,8 +43,6 @@ query methods.
 */
 package countrycode
 
-import "fmt"
-
 // CountryData contains the country data to be returned.
 type CountryData struct {
 	StatusCode             uint8  `json:"statusCode"`
@@ -109,7 +107,7 @@ func (d *Data) populateCountryDetails(cd *CountryData, el *countryKeyElem) error
 	}
 
 	if el.numeric > 0 {
-		cd.NumericCode = fmt.Sprintf("%03d", el.numeric)
+		cd.NumericCode = numericStr(el.numeric)
 	}
 
 	// Names are optional: reserved codes have no entry, so a miss is not an error.
@@ -171,6 +169,10 @@ func (d *Data) EnumRegion() map[string]string {
 	m := make(map[string]string, len(d.dRegionByID))
 
 	for _, v := range d.dRegionByID {
+		if v.code == "" && v.name == "" {
+			continue // skip the region-less sentinel; it is not a valid code.
+		}
+
 		m[v.name] = v.code
 	}
 
@@ -184,6 +186,10 @@ func (d *Data) EnumSubRegion() map[string]string {
 	m := make(map[string]string, len(d.dSubRegionByID))
 
 	for _, v := range d.dSubRegionByID {
+		if v.code == "" && v.name == "" {
+			continue // skip the region-less sentinel; it is not a valid code.
+		}
+
 		m[v.name] = v.code
 	}
 
@@ -198,6 +204,10 @@ func (d *Data) EnumIntermediateRegion() map[string]string {
 	m := make(map[string]string, len(d.dIntermediateRegionByID))
 
 	for _, v := range d.dIntermediateRegionByID {
+		if v.code == "" && v.name == "" {
+			continue // skip the region-less sentinel; it is not a valid code.
+		}
+
 		m[v.name] = v.code
 	}
 
